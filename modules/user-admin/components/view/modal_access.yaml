@@ -30,24 +30,11 @@ properties:
   cancelText: Cancel
 events:
   onOpen:
-    - id: seed_access
-      type: SetState
-      params:
-        # Held role ids, mapped from the resolved roles (catalog + held orphans).
-        roles:
-          _array.map:
-            on:
-              _request: get_user_detail.0.roles
-            callback:
-              _function:
-                __args: 0.id
-        member_attributes:
-          _request: get_user_detail.0.member_attributes
-        # Seeded on every open, so reopening the modal shows the stored tier
-        # rather than an abandoned edit. Seeded whether or not the control renders.
-        # One unread state key costs less than a conditional SetState.
-        org_role:
-          _request: get_user_detail.0.org_role
+    - _ref: actions/seed_access.yaml
+  # After Save (detail already refetched) or Cancel: the Attributes tile's rows
+  # read the same state keys, so restore them to the stored member.
+  onClose:
+    - _ref: actions/seed_access.yaml
   onOk:
     _build.array.concat:
       - - id: validate_access
