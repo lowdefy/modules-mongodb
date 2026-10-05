@@ -1,8 +1,8 @@
 # Shared magic-link send affordance. Dispatches the one `Login` action with
 # `magicLink: true` off the canonical `id: email` input the page owns. The send
 # returns `{ status: true }` and no session, so it cannot navigate; on success
-# it applies the caller-supplied `on_sent` SetState (the page's own view flip +
-# stored target email) to show that page's "check your email" state. The send
+# it applies the caller-supplied `on_sent` SetState (the page's own view flip)
+# to show that page's "check your email" state. The send
 # carries the two verify-callback targets the module owns as structured targets:
 # `callbackUrl` -> the inbound `?callbackUrl=` or app home, `newUserCallbackUrl`
 # -> the app home, or the inbound `?callbackUrl=` when it is the accept page.

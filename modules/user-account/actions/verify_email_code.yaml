@@ -2,8 +2,7 @@
 # onClick and the code field's onPressEnter so click and Enter run the identical
 # sequence. Reads the visible email input when there is one (the expired-link
 # render of the login page), else the address the send was made to
-# (`magic_link_sent_email`), the key both the login and signup "check your
-# email" renders store it under.
+# (`magic_link_sent_email`, stored by actions/send_magic_link.yaml).
 #
 # EmailOtpVerify signs the caller in and the engine navigates to the resolved
 # callbackUrl. A 2FA-enrolled user gets no session but a `twoFactorRedirect`
