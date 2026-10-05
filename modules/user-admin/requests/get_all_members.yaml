@@ -73,14 +73,20 @@ properties:
                       _payload: pagination.pageSize
                   # Resolve role ids → { label, orphan } against the catalog.
                   - _ref: requests/stages/roles_from_catalog.yaml
-                  # A member with no stored name would render an avatar beside an
-                  # empty Name cell. Applied after the sort and filter, so it only
-                  # shapes the displayed row.
+                  # A member with no name would render an avatar beside an empty
+                  # Name cell. A bare sign-up stores `users.name` as "", not null,
+                  # so both are caught. Applied after the sort and filter, so it
+                  # only shapes the displayed row.
                   - $addFields:
                       name:
-                        $ifNull:
-                          - "$name"
+                        $cond:
+                          - $eq:
+                              - $ifNull:
+                                  - "$name"
+                                  - ""
+                              - ""
                           - No name
+                          - "$name"
                 - _module.var: request_stages.get_all_users
                 # Close the row LAST, after the consumer slot, so it still sees
                 # the raw joins and anything it adds survives.

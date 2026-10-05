@@ -16,22 +16,22 @@ build error.
 
 ## The keys
 
-| Key                     | Type                | Source                                                   |
-| ----------------------- | ------------------- | -------------------------------------------------------- |
-| `_id`                   | string              | member id                                                |
-| `user_id`               | string              | auth user id                                             |
-| `organization_id`       | string              | the organization named by `org_slug`                     |
-| `name`                  | string              | `contact.profile.name` ?? `user.name`; `No name` on the list read when both are unset |
-| `email`                 | string              | `user.email`                                             |
-| `picture`               | string \| null      | `contact.profile.picture`                                |
-| `roles`                 | `{ id, label, description, orphan }[]` | `app_roles` resolved against the app's role catalog |
-| `status`                | string              | `Active` / `Suspended`                                   |
-| `created` / `updated`   | date \| null        | contact change-stamp timestamps                          |
-| `signed_up`             | date                | member `created_at`                                      |
-| `total_results`         | number              | list read only (pagination)                              |
-| **`profile`**           | object              | `contact.profile` — the `fields.profile` bag             |
-| **`user_attributes`**   | object              | `user.attributes` — the `fields.user_attributes` bag     |
-| **`member_attributes`** | object              | `member.attributes` — the `fields.member_attributes` bag |
+| Key                     | Type                                   | Source                                                                                        |
+| ----------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `_id`                   | string                                 | member id                                                                                     |
+| `user_id`               | string                                 | auth user id                                                                                  |
+| `organization_id`       | string                                 | the organization named by `org_slug`                                                          |
+| `name`                  | string                                 | `contact.profile.name` ?? `user.name`; `No name` on the list read when that is unset or empty |
+| `email`                 | string                                 | `user.email`                                                                                  |
+| `picture`               | string \| null                         | `contact.profile.picture`                                                                     |
+| `roles`                 | `{ id, label, description, orphan }[]` | `app_roles` resolved against the app's role catalog                                           |
+| `status`                | string                                 | `Active` / `Suspended`                                                                        |
+| `created` / `updated`   | date \| null                           | contact change-stamp timestamps                                                               |
+| `signed_up`             | date                                   | member `created_at`                                                                           |
+| `total_results`         | number                                 | list read only (pagination)                                                                   |
+| **`profile`**           | object                                 | `contact.profile` — the `fields.profile` bag                                                  |
+| **`user_attributes`**   | object                                 | `user.attributes` — the `fields.user_attributes` bag                                          |
+| **`member_attributes`** | object                                 | `member.attributes` — the `fields.member_attributes` bag                                      |
 
 The bold three are the configurable field bags. They ride under **exactly the names
 the `fields.*` vars use**, so a column path is the same string as the form block id
