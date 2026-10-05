@@ -22,9 +22,36 @@ type:
     default: PageHeaderMenu
 properties:
   _build.object.assign:
-    - title:
-        _var: title
-      menu:
+    # The server writes `properties.title` into the HTML <title> without
+    # evaluating it, so a runtime operator there (`_request`, `_state`, ...) shows
+    # as "[object Object]". Only a title that is a string at build time is used;
+    # otherwise the entity-type eyebrow, otherwise none (the server then uses the
+    # page id).
+    - _build.if:
+        test:
+          _build.type:
+            type: string
+            on:
+              _var:
+                key: title
+                default: null
+        then:
+          title:
+            _var: title
+        else:
+          _build.if:
+            test:
+              _build.type:
+                type: string
+                on:
+                  _var:
+                    key: type
+                    default: null
+            then:
+              title:
+                _var: type
+            else: {}
+    - menu:
         _var:
           key: menu
           default:

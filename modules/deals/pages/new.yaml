@@ -4,7 +4,7 @@ _ref:
   vars:
     id: new
     type:
-      _string.concat:
+      _build.string.concat:
         - "New "
         - _module.var: label
     content_width: 700
