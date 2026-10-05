@@ -5,8 +5,14 @@
 # layer; "unknown" is the blank form.
 # CallAPI stores the endpoint's return value under `<id>.response.response`
 # (`<id>.response` is the call record: loading / success / response / …).
+# Vars: skip (optional): skips both actions, for the page's onInit when the URL
+# carries no email.
 - id: check_invite
   type: CallAPI
+  skip:
+    _var:
+      key: skip
+      default: false
   params:
     endpointId:
       _module.endpointId: check-invite-email
@@ -15,6 +21,10 @@
         _state: email
 - id: apply_resolution
   type: SetState
+  skip:
+    _var:
+      key: skip
+      default: false
   params:
     invite_state:
       _if:
@@ -37,8 +47,32 @@
       _actions: check_invite.response.response.contact
     profile:
       _actions: check_invite.response.response.contact.profile
-    # The invitation form's organization-authority default. `member` is the
-    # no-authority value, so an admin who ignores the field invites app roles and
-    # nothing more. Re-seeded on every resolve, so a tier chosen for one email
-    # cannot ride along to the next one checked.
-    org_role: member
+    # App roles, org tier and member attributes come from the latest expired
+    # invitation when there is one, so a re-invite keeps what the expired row
+    # granted. With none, roles and attributes start empty and the tier is
+    # `member`, the no-authority value, so an admin who ignores the field invites
+    # app roles and nothing more. Re-seeded on every resolve, so values from one
+    # email cannot ride along to the next one checked. A stored `owner` seeds
+    # `admin`: the form does not mint the protected creator tier, and `admin`
+    # carries the same capabilities. With the `org_authority` var false the tier
+    # control does not render and the tier is always `member`.
+    roles:
+      _actions: check_invite.response.response.expired_invitation.app_roles
+    member_attributes:
+      _actions: check_invite.response.response.expired_invitation.attributes
+    org_role:
+      _build.if:
+        test:
+          _module.var: org_authority
+        then:
+          _if:
+            test:
+              _eq:
+                - _actions: check_invite.response.response.expired_invitation.role
+                - owner
+            then: admin
+            else:
+              _if_none:
+                - _actions: check_invite.response.response.expired_invitation.role
+                - member
+        else: member

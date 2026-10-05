@@ -50,6 +50,11 @@ exports:
       description: Soft-delete a report the caller owns (recoverable from the deleted scope)
     - id: summarize-report
       description: Generate an AI reading of a readable report under the caller's active filter values (nothing persisted)
+  components:
+    - id: report-policy
+      description: >-
+        Dynamic blocks policy the report page renders under. List it in the
+        app's policies.dynamicBlocks.
   connections:
     - id: reports-store
       description: MongoDB collection for saved report specs
@@ -247,6 +252,11 @@ plugins:
   # tool-name pattern rejects with a 400 on every chat turn.
   - name: "@lowdefy/connection-ai-gateway"
     version: 0.0.0-experimental-20260928120643
+
+components:
+  - id: report-policy
+    component:
+      _ref: components/report_policy.yaml
 
 connections:
   - _ref: connections/reports-store.yaml

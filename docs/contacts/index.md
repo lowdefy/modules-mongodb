@@ -53,7 +53,7 @@ The is_user guard and per-app access flags read the app's own `slug` — nothing
 Both write APIs derive part of the contact themselves, so a payload does not get to set these:
 
 - **`create-contact` mints the contact `_id` server-side.** A payload's `_id` is ignored. Read the created id off the response's `contactId` — as both in-module callers already do. The API still de-duplicates on `lowercase_email`, so a retried create converges on one contact rather than duplicating.
-- **`profile.name`, `profile.avatar_color` and `profile.picture` are computed by the write**, from `given_name`, `family_name` and the `avatar_colors` palette. A payload's `picture` is ignored — the avatar can no longer go stale when a contact is renamed. See [Avatar colors](../shared/avatar-colors.md).
+- **`profile.name`, `profile.avatar_color` and `profile.picture` are computed by the write**, from `given_name`, `family_name` and the `avatar_colors` palette. `profile.name` is whichever of the two parts are set, joined by a space, and is null only when neither is. A payload's `picture` is ignored — the avatar can no longer go stale when a contact is renamed. See [Avatar colors](../shared/avatar-colors.md).
 
 `request_stages.write` still runs **after** these, so a consumer stage that overrides a derived field wins.
 

@@ -1,4 +1,7 @@
 page_type: sidebar
+# Content area padding for every page, in place of the page block's 40px.
+content_style:
+  padding: 0 24px 24px 24px
 footer:
   - id: footer-text
     type: Html

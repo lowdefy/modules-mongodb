@@ -1,0 +1,21 @@
+# A user row's global `attributes` (`{}` when unset). A routine step, `_ref`'d
+# before and after the attributes write.
+#
+# Vars:
+#   id      — the step id
+#   user_id — the user row's `_id`
+#
+# `_step: <id>.attributes` is the value, and is absent when no row matches.
+id:
+  _var: id
+type: MongoDBFindOne
+connectionId:
+  _module.connectionId: users
+properties:
+  query:
+    _id:
+      _var: user_id
+  options:
+    projection:
+      _id: 0
+      attributes: 1

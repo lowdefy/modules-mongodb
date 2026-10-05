@@ -10,6 +10,8 @@
 #   contact  : a contact exists on lowercase_email but has no member row here →
 #              the UI prefills the form from `contact.profile`.
 #   unknown  : nothing found → blank form.
+# In the contact and unknown states, `expired_invitation` (the latest expired
+# pending row, or null) seeds the form's app roles, org tier and attributes.
 #
 # Reads user-invitations directly (bypassing the org-plugin helpers) so it can do
 # its own status/expiry filtering, preserving the one-contact-per-email invariant.
@@ -80,47 +82,63 @@ routine:
             "user.name": 1
             "user.banned": 1
 
-  # 3) Is there a live pending invitation for this org? "pending" status AND a
-  #    future expires_at (an expired-but-pending row is derived-"Expired", handled
-  #    by invite.yaml's stale reconciliation, not here). Case-insensitive email
-  #    match via $expr/$toLower.
-  - id: find_invitation
-    type: MongoDBFindOne
+  # 3) This org's pending invitations for the email (case-insensitive, via
+  #    $expr/$toLower), split by expiry in one read:
+  #    live    — a future expires_at. Routes the UI to Resend (state `pending`).
+  #    expired — the most recent expires_at at or before now. It does not change
+  #              `state`: an expired row is re-invited through the form, which
+  #              prefills its app roles, org tier and attributes from this row,
+  #              and the invite routine cancels the row before inviting.
+  #    The result is an array of one row: `_step: find_invitations.0.live.0`.
+  - id: find_invitations
+    type: MongoDBAggregation
     connectionId:
       _module.connectionId: user-invitations
     properties:
-      query:
-        organization_id:
-          _module.var: org_slug
-        status: pending
-        $expr:
-          $eq:
-            - $toLower: "$email"
-            - _string.toLowerCase:
-                _string.trim:
-                  _if_none:
-                    - _payload: email
-                    - ""
-        expires_at:
-          $gt:
-            _date: now
-      # Same whitelist hazard as find_member above: an unnamed field arrives
-      # undefined and the pending panel renders empty rather than failing.
-      options:
-        projection:
-          _id: 1
-          email: 1
-          # The invitation's app roles, and separately BetterAuth's org tier.
-          # Resend re-sends both, so a resend preserves what the invitation
-          # granted instead of quietly reducing it.
-          app_roles: 1
-          role: 1
-          inviter_id: 1
-          expires_at: 1
-          status: 1
-          # Invite-time member attributes, returned so the pending panel's
-          # Resend can preserve them rather than blank them.
-          attributes: 1
+      pipeline:
+        - $match:
+            organization_id:
+              _module.var: org_slug
+            status: pending
+            $expr:
+              $eq:
+                - $toLower: "$email"
+                - _string.toLowerCase:
+                    _string.trim:
+                      _if_none:
+                        - _payload: email
+                        - ""
+        - $sort:
+            expires_at: -1
+        # Same whitelist hazard as find_member above: an unnamed field arrives
+        # undefined and the pending panel renders empty rather than failing.
+        - $project:
+            _id: 1
+            email: 1
+            # The invitation's app roles, and separately BetterAuth's org tier.
+            # Resend re-sends both, so a resend preserves what the invitation
+            # granted instead of quietly reducing it.
+            app_roles: 1
+            role: 1
+            inviter_id: 1
+            expires_at: 1
+            status: 1
+            # Invite-time member attributes, returned so the pending panel's
+            # Resend can preserve them rather than blank them.
+            attributes: 1
+        - $facet:
+            live:
+              - $match:
+                  expires_at:
+                    $gt:
+                      _date: now
+              - $limit: 1
+            expired:
+              - $match:
+                  expires_at:
+                    $lte:
+                      _date: now
+              - $limit: 1
 
   # 4) Discriminated result. `state` is computed with the nested _if OPERATOR
   #    (test/then/else) in priority order: member → pending → contact → unknown.
@@ -147,7 +165,7 @@ routine:
             _if:
               test:
                 _ne:
-                  - _step: find_invitation._id
+                  - _step: find_invitations.0.live.0._id
                   - null
               then: pending
               else:
@@ -161,6 +179,8 @@ routine:
       member:
         _step: find_member.0
       invitation:
-        _step: find_invitation
+        _step: find_invitations.0.live.0
+      expired_invitation:
+        _step: find_invitations.0.expired.0
       contact:
         _step: find_contact

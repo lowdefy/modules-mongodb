@@ -13,14 +13,17 @@
 # payload omits them. A caller can only ever add to or repeat what's stored,
 # never blank or downgrade it by omission. The step still defaults an absent
 # `orgRole` to `member` beneath the stored fallback, matching InviteMember's own
-# default for a genuinely first-time invite.
+# default for a genuinely first-time invite. With the `org_authority` var false
+# the payload's `org_role` is ignored and the stored tier is re-sent: the
+# deployment grants org authority out of band, so a resend can neither raise nor
+# lower it.
 #
 # Payload: { email, roles? (array of role ids), org_role?, member_attributes? }
 id: resend-invitation
 type: Api
 routine:
   # Stored invitation, read for the app_roles/role/attributes fallback below.
-  # Mirrors check-invite-email.yaml's find_invitation.
+  # Matches invitations the way check-invite-email.yaml's find_invitations does.
   - id: find_invitation
     type: MongoDBFindOne
     connectionId:
@@ -56,7 +59,12 @@ routine:
           - _step: find_invitation.app_roles
       orgRole:
         _if_none:
-          - _payload: org_role
+          - _build.if:
+              test:
+                _module.var: org_authority
+              then:
+                _payload: org_role
+              else: null
           - _if_none:
               - _step: find_invitation.role
               - member

@@ -5,11 +5,13 @@
 # stored target email) to show that page's "check your email" state. The send
 # carries the two verify-callback targets the module owns as structured targets:
 # `callbackUrl` -> the inbound `?callbackUrl=` or app home, `newUserCallbackUrl`
-# -> the onboarding page, or the inbound `?callbackUrl=` when it is the accept
-# page. Under `policy: tenant` an invitee who has not accepted yet holds no
-# membership and is refused every protected page, onboarding included; the
-# accept page is public, and after accepting it enters the app, whose router
-# sends a first-time user on to onboarding. `errorCallbackUrl` is deliberately
+# -> the app home, or the inbound `?callbackUrl=` when it is the accept page.
+# A new user is sent home, not to onboarding, because the module cannot tell at
+# send time whether they will hold an organization: under `policy: tenant` an
+# invitee who has not accepted yet holds none and is refused every protected
+# page, onboarding included, which the engine renders as a 404. The app's
+# router reads the caller and sends a first-time member on to onboarding and an
+# invitee on to the public accept page. `errorCallbackUrl` is deliberately
 # unset. The engine
 # defaults it to authPages.error (the login page), so an expired/consumed link
 # lands there with `?error=INVALID_TOKEN`.
@@ -47,96 +49,8 @@ properties:
     _state: magic_link_cooldown
 events:
   onClick:
-    try:
-      # Block a blank/omitted email before dispatch. Without this, an empty
-      # email reaches the Login action, whose single-provider auto-fill selects
-      # the sole configured OAuth provider and redirects off-app instead of
-      # sending a link. `email` is the canonical id the login/signup pages own.
-      # `messages.error: false` suppresses the break-condition toast so a blank
-      # email surfaces only as the inline field error, not a toast.
-      - id: validate_email
-        type: Validate
-        messages:
-          error: false
-        params: email
-      - id: begin_cooldown
-        type: SetState
-        params:
-          magic_link_cooldown: true
-      - id: magic_link_send
-        type: Login
-        messages:
-          error: false
-        params:
-          email:
-            _state: email
-          magicLink: true
-          callbackUrl:
-            _if:
-              test:
-                _ne:
-                  - _url_query: callbackUrl
-                  - null
-              then:
-                url:
-                  _url_query: callbackUrl
-              else:
-                home: true
-          # A new user whose inbound `?callbackUrl=` is the accept page keeps it —
-          # the accept page sends invitees here with the accept URL, and
-          # dropping it lands a brand-new invitee on the PROTECTED onboarding
-          # page, which the existence-hiding bounce renders as a 404 for an
-          # awaiting (org-less) caller. Onboarding is still reached afterwards
-          # via the router (profile_created is false until the profile save).
-          newUserCallbackUrl:
-            _if:
-              test:
-                _string.endsWith:
-                  - _get:
-                      from:
-                        _string.split:
-                          - _if_none:
-                              - _url_query: callbackUrl
-                              - ""
-                          - "?"
-                      key: "0"
-                  - _string.concat:
-                      - /
-                      - _module.pageId: accept
-              then:
-                url:
-                  _url_query: callbackUrl
-              else:
-                pageId:
-                  _module.pageId: onboarding
-      - id: show_link_sent
-        type: SetState
-        params:
+    _ref:
+      path: actions/send_magic_link.yaml
+      vars:
+        on_sent:
           _var: on_sent
-      - id: hold_cooldown
-        type: Wait
-        params:
-          ms: 30000
-      - id: clear_cooldown
-        type: SetState
-        params:
-          magic_link_cooldown: false
-    catch:
-      # This catch also receives the Validate break condition. Only a genuinely
-      # failed send should toast: `magic_link_cooldown` is true only once
-      # `begin_cooldown` ran, i.e. validation passed and a send was attempted. A
-      # validation break arrives here with the cooldown still unset, so the
-      # toast is skipped and the inline field error stands alone. The toast must
-      # read the cooldown before `clear_cooldown_on_error` resets it.
-      - id: toast_magic_link_error
-        type: DisplayMessage
-        skip:
-          _not:
-            _state: magic_link_cooldown
-        params:
-          status: error
-          content: We couldn't send your sign-in link. Wait a moment and try again.
-      - id: clear_cooldown_on_error
-        type: SetState
-        params:
-          magic_link_cooldown: false

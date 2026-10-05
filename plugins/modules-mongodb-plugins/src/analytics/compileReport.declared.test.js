@@ -8,22 +8,34 @@ import compileReport from "./compileReport.js";
 import testCatalog from "./testDatasets.js";
 
 // compileReport emits Lowdefy config that the report page's Dynamic block
-// resolves server-side. Dynamic validates every block, action and operator type
-// in the resolved output against the list the block DECLARES, and throws on
-// anything undeclared — which, with no `required: true`, drops the WHOLE report
-// to the fallback slot rather than degrading the offending section.
+// renders under the module's report policy (components/report_policy.yaml).
+// The policy check refuses every block, action and operator type the policy
+// does not list, which drops the WHOLE report to the fallback slot rather than
+// degrading the offending section.
 //
-// That is how a formatted table column came to 404 every report containing one:
-// a `format` descriptor compiles to a `__function` cell renderer wrapping
-// `___intl.numberFormat`, and `_intl` was declared nowhere. Nothing caught it —
-// `ldf:b` cannot, because reports compile at runtime from a stored spec, and the
-// other tests call compileReport() directly rather than through Dynamic.
+// A formatted table column compiles to a `__function` cell renderer wrapping
+// `___intl.numberFormat`, so `_function`, `_intl` and `_args` must be listed.
+// `ldf:b` cannot catch a missing type, because reports compile at runtime from
+// a stored spec, and the other tests call compileReport() directly rather than
+// through Dynamic.
 //
 // So assert the invariant directly: everything the compiler can emit must be
-// declared on the block. This is the compile-side half; the render-side half is
+// listed in the policy. This is the compile-side half; the render-side half is
 // the e2e spec in apps/demo/e2e/ai-reporting.
 
 const here = dirname(fileURLToPath(import.meta.url));
+const declared = loadYaml(
+  readFileSync(
+    resolve(
+      here,
+      "../../../../modules/ai-reporting/components/report_policy.yaml",
+    ),
+    "utf8",
+  ),
+);
+
+// report.yaml is a `_ref` into layout's `page` component, so its blocks live
+// under the ref's vars, not at the document root.
 const reportPage = loadYaml(
   readFileSync(
     resolve(here, "../../../../modules/ai-reporting/pages/report.yaml"),
@@ -31,20 +43,15 @@ const reportPage = loadYaml(
   ),
 );
 
-// report.yaml is a `_ref` into layout's `page` component, so its blocks live
-// under the ref's vars, not at the document root.
-const dynamicProperties = reportPage._ref.vars.blocks.find(
-  (b) => b.type === "Dynamic",
-).properties;
-const declared = dynamicProperties.types;
-
 // Icons are the same class of problem with a quieter failure. The build collects
 // icon imports by scanning the STATIC page config for icon names, so an icon only
 // the compiled output names is bundled only if the consuming app happens to use
 // it elsewhere — and renders as the exclamation-circle fallback otherwise. The
 // report page lists compileReport's icons in `properties.icons` (unread by the
 // block, present for the scan); this is the guard that the list is complete.
-const declaredIcons = dynamicProperties.icons;
+const declaredIcons = reportPage._ref.vars.blocks.find(
+  (b) => b.type === "Dynamic",
+).properties.icons;
 
 // Dynamic collapses an operator's leading underscores to one before checking
 // membership, so `__state`, `___intl.numberFormat` and `_intl` are all `_intl`-
@@ -251,7 +258,7 @@ const results = [
   [{ region: "EU", total: 10 }],
 ];
 
-test("every type compileReport emits is declared on the report page's Dynamic block", () => {
+test("every type compileReport emits is listed in the report policy", () => {
   const blocks = compileReport({
     spec,
     results,
@@ -346,7 +353,7 @@ test("every icon compileReport emits is listed on the report page's Dynamic bloc
 // A section that fails verification compiles to an Alert instead of its normal
 // block, so Alert must be declared too — otherwise the graceful per-section
 // degradation would itself take down the whole report.
-test("the failed-section Alert path emits only declared types", () => {
+test("the failed-section Alert path emits only policy-listed types", () => {
   const blocks = compileReport({
     spec: {
       title: "Failing",

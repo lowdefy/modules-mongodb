@@ -1,0 +1,5 @@
+---
+"@lowdefy/modules-mongodb-user-admin": minor
+---
+
+**Audit events record before and after.** `access-updated` records the member row's `{ roles, attributes }` before and after the save under `metadata.before` and `metadata.after`, so a save that changes only member attributes shows the difference. `member-invited` records the access the invitation was sent with, and its organization-authority tier as `org_role`, as `metadata.after`; `member-removed` and `user-deleted` record the access the person held as `metadata.before`. `org-role-updated` records the tier before and after, `user-attributes-updated` the user row's attributes before and after, and `profile-updated` the submitted profile fields the save changed, as stored on the contact before and after, leaving out the photo and the picture. Each `before` is read in the same routine, ahead of the write. `access-updated` no longer carries `metadata.roles` (now `metadata.after.roles`), and `org-role-updated` no longer carries `metadata.org_role` (now `metadata.after`). Event titles and the timeline are unchanged. The shapes are in the new Audit events reference page.

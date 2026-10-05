@@ -76,5 +76,31 @@ routine:
             - _payload: user_id
           contact_ids:
             - _payload: contact_id
+        # The submitted profile fields whose stored value the save changed, as
+        # stored on the contact before and after the write: the fragment reads the
+        # contact before writing (read_profile_contact) and re-reads it after
+        # (reread_contact). The form posts the whole stored profile, so the
+        # payload's keys alone would record every field. `photo` and `picture`
+        # are left out: both hold image data URIs.
+        metadata:
+          _js:
+            fn: |
+              const before = args.before ?? {};
+              const after = args.after ?? {};
+              const keys = Object.keys(args.written ?? {}).filter(
+                (key) =>
+                  key !== 'photo' &&
+                  key !== 'picture' &&
+                  JSON.stringify(before[key] ?? null) !== JSON.stringify(after[key] ?? null)
+              );
+              const pick = (bag) => Object.fromEntries(keys.map((key) => [key, bag[key] ?? null]));
+              return { before: pick(before), after: pick(after) };
+            args:
+              written:
+                _payload: profile
+              before:
+                _step: read_profile_contact.profile
+              after:
+                _step: reread_contact.profile
   - :return:
       success: true

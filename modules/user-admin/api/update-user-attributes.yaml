@@ -10,10 +10,19 @@
 # falls back to the APP's pinned organization, which refuses an administrator of
 # any other.
 #
+# The audit event records the user row's `attributes` read before and after the
+# write.
+#
 # Payload: { user_id, user_attributes (object)?, target_name?, target_email? }
 id: update-user-attributes
 type: Api
 routine:
+  - _ref:
+      path: api/steps/read_user_attributes.yaml
+      vars:
+        id: attributes_before
+        user_id:
+          _payload: user_id
   - id: set_user_attributes
     type: UpdateUserAttributes
     properties:
@@ -25,6 +34,12 @@ routine:
         _if_none:
           - _payload: user_attributes
           - {}
+  - _ref:
+      path: api/steps/read_user_attributes.yaml
+      vars:
+        id: attributes_after
+        user_id:
+          _payload: user_id
   - id: audit
     type: CallApi
     properties:
@@ -57,5 +72,14 @@ routine:
         references:
           user_ids:
             - _payload: user_id
+        metadata:
+          before:
+            _if_none:
+              - _step: attributes_before.attributes
+              - {}
+          after:
+            _if_none:
+              - _step: attributes_after.attributes
+              - {}
   - :return:
       success: true

@@ -69,7 +69,7 @@ The timeline joins each event's referenced actions and renders their cards inlin
 Two vars point the engine at the app's collections. Both default to `null` on the module entry, and the engine falls back to its built-in collection names — so enrichment works out of the box and you override these only when your collections are named differently:
 
 - **`actions_collection`** (default `null` → engine falls back to `actions`) — the actions collection the timeline joins to enrich events with action cards. Enrichment shows up wherever events carry `action_ids`; the join is inert when they don't.
-- **`contacts_collection`** (default `null` → engine falls back to `user-contacts`) — the contacts collection joined to resolve each event author's avatar (`created.user.id` → `_id`). It falls back to author initials when an author has no matching contact, so it only ever adds an avatar and never breaks rendering.
+- **`contacts_collection`** (default `null` → engine falls back to `user-contacts`) — the contacts collection joined to resolve each event author's avatar (`created.user.id` → `user_id`). It falls back to author initials when an author has no matching contact, so it only ever adds an avatar and never breaks rendering.
 
 ### Worked example — turn on enrichment for the whole app
 

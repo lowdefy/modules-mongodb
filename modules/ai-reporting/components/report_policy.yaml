@@ -1,0 +1,93 @@
+# The dynamic blocks policy a compiled report renders under. compileReport
+# builds the report's blocks from a stored, AI-authored spec, so Lowdefy treats
+# them as data: a Dynamic block renders data as blocks only under a policy, and
+# only once a ValidateDynamic step has checked them against it (resolve-report).
+# The same policy is checked again on every page get.
+#
+# Lowdefy reads policies from the app's lowdefy.yaml only, so the app lists this
+# component under policies.dynamicBlocks.
+#
+# html stays false, so no string in a report (AI-written markdown, titles,
+# labels, row values) may carry HTML tags. The build warns that the operators
+# below can build strings at render time; none of them feeds a block that renders
+# HTML. resolve-report maps each refusal back to the section that produced it and
+# renders that section as an Alert, so a refused value in a section costs that
+# section; in the report title or description it costs the report.
+#
+# The lists are everything compileReport emits. A type, operator, endpoint or
+# page missing here is refused wherever compileReport emits it, so keep them in
+# step with compileReport.
+id:
+  _ref: components/report_policy_id.yaml
+blocks:
+  # Section containers. A kpi, chart or table section compiles into a Card
+  # carrying that section's span, and Box wraps sections that share a laid-out
+  # row. Either refused takes every section inside it, so both are listed.
+  - Card
+  - Box
+  - Title
+  - Paragraph
+  - Statistic
+  - EChart
+  - AgGridBalham
+  - Selector
+  - MultipleSelector
+  - DateRangeSelector
+  - Button
+  - Alert
+  - Markdown
+  # The header's ⋯ is a DropdownMenu wrapping its trigger Button: a dropdown
+  # owns the block that opens it, so it is compiled rather than static on the
+  # page the way the rename and delete modals are.
+  - DropdownMenu
+actions:
+  - CallAPI
+  - SetState
+  - DownloadCsv
+  # Continue-in-chat and Fix-in-chat open the source conversation; publish,
+  # unpublish, duplicate and Drop re-open a report.
+  - Link
+  # The ⋯ items that open the page's static rename and delete modals.
+  - CallMethod
+operators:
+  - _state
+  - _api
+  - _if_none
+  # Every chart block carries both themes behind an `_if` on `_media: darkMode`,
+  # because the ink a chart needs depends on the card it is drawn on and only
+  # the browser knows which mode that is. Resolved per render, so toggling dark
+  # mode re-inks the charts with no re-resolve.
+  - _if
+  - _media
+  # The report id the header and Drop actions send, read from the page URL
+  # resolve-report loaded the report from.
+  - _url_query
+  # The ⋯ fires one onClick for the whole menu, carrying the clicked item's key,
+  # so each item's actions skip on `_ne: [{_event: key}, <item>]`.
+  - _event
+  - _ne
+  # A table column with a `format` descriptor renders through a `_function`
+  # cell renderer calling `_intl.numberFormat` on `_args` (compileReport
+  # numericCellRenderer).
+  - _function
+  - _intl
+  - _args
+endpoints:
+  - _module.endpointId: query-data
+  - _module.endpointId: chart-data
+  - _module.endpointId: remove-report-section
+  - _module.endpointId: set-report-favourite
+  - _module.endpointId: set-report-visibility
+  - _module.endpointId: duplicate-report
+links:
+  pages:
+    - _module.pageId: chat
+    - _module.pageId: report
+limits:
+  # The whole compiled report, header and every section. Section rows are
+  # inlined into it (table rowData, chart options, KPI values), and one table
+  # section may return 1000 rows, so the 256 KB default refuses ordinary
+  # reports. compileReport reads this value: sections that would take the
+  # content over it render as Alerts, in spec order, rather than failing the
+  # report.
+  bytes: 8000000

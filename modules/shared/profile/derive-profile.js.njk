@@ -28,10 +28,13 @@ const fn = (profile.family_name || '').trim();
 const avatar_color =
   profile.avatar_color || palette[Math.floor(Math.random() * palette.length)];
 
+// One name part is enough to name a person: a profile may carry only a given or
+// only a family name.
+const parts = [gn, fn].filter(Boolean);
+
 let initials;
-if (gn && fn) initials = (gn[0] + fn[0]).toUpperCase();
-else if (gn.length > 1) initials = gn.substring(0, 2).toUpperCase();
-else if (gn) initials = gn.toUpperCase();
+if (parts.length === 2) initials = (gn[0] + fn[0]).toUpperCase();
+else if (parts.length === 1) initials = parts[0].substring(0, 2).toUpperCase();
 else initials = '?';
 
 const from = (avatar_color && avatar_color.from) || '#37474f';
@@ -39,10 +42,10 @@ const to = (avatar_color && avatar_color.to) || '#546e7a';
 const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='${from}'/><stop offset='100%' stop-color='${to}'/></linearGradient></defs><rect width='128' height='128' fill='url(#g)'/><text x='64' y='64' dominant-baseline='central' text-anchor='middle' fill='white' font-family='sans-serif' font-size='48' font-weight='bold'>${initials}</text></svg>`;
 
 return {
-  // null, not a lone space: a truthy `" "` renders as blank text everywhere a name
-  // is displayed instead of letting the consumer's fallback show. Matches the MQL
-  // $concat this replaces, which yields null when either part is missing.
-  name: gn && fn ? `${gn} ${fn}` : null,
+  // null, not an empty string, when neither part is set: the seams key the
+  // unnamed-profile rule on null, and a blank name would render as empty text
+  // instead of letting the consumer's fallback show.
+  name: parts.length ? parts.join(' ') : null,
   avatar_color,
   // Always set, including the `?` fallback the picker's preview needs before a name
   // is typed. The seams remove it for an unnamed profile so the Avatar block's

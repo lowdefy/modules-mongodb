@@ -8,48 +8,75 @@
 # against the caller's member row in the organization the step names. Audit event
 # is the final step.
 #
+# Behind the `remove_member` var (default true): when false, the routine is a
+# bare reject.
+#
+# The audit event records the member row's `{ roles, attributes }` as `before`,
+# read before the delete. The read matches the row by id, so a call that names
+# the member by email records `before: null`.
+#
 # Payload: { member_id (member row id or email), user_id?, target_name?, target_email? }
 id: remove-member
 type: Api
 routine:
-  - id: remove
-    type: RemoveMember
-    properties:
-      memberIdOrEmail:
-        _payload: member_id
-      organizationId:
-        _module.var: org_slug
-  - id: audit
-    type: CallApi
-    properties:
-      endpointId:
-        _module.endpointId:
-          id: new-event
-          module: events
-      payload:
-        type: member-removed
-        display:
-          _build.object.fromEntries:
-            - - _build.app: slug
-              - title:
-                  _nunjucks:
-                    template:
-                      _build.if_none:
-                        - _module.var: event_display.member-removed
-                        - _ref:
-                            path: defaults/event_display.yaml
-                            key: member-removed
-                    on:
-                      user:
-                        _user: true
-                      target:
-                        name:
-                          _payload: target_name
-                        email:
-                          _payload: target_email
-                description: null
-        references:
-          user_ids:
-            - _payload: user_id
-  - :return:
-      success: true
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _module.var: remove_member
+        then:
+          - - :reject: Removing members is disabled for this deployment (the "remove_member" var is false).
+        else: []
+    - - _ref:
+          path: api/steps/read_member_access.yaml
+          vars:
+            id: access_before
+            match:
+              _id:
+                _payload: member_id
+      - id: remove
+        type: RemoveMember
+        properties:
+          memberIdOrEmail:
+            _payload: member_id
+          organizationId:
+            _module.var: org_slug
+      - id: audit
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: member-removed
+            display:
+              _build.object.fromEntries:
+                - - _build.app: slug
+                  - title:
+                      _nunjucks:
+                        template:
+                          _build.if_none:
+                            - _module.var: event_display.member-removed
+                            - _ref:
+                                path: defaults/event_display.yaml
+                                key: member-removed
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _payload: target_name
+                            email:
+                              _payload: target_email
+                    description: null
+            references:
+              user_ids:
+                - _payload: user_id
+            metadata:
+              before:
+                _if_none:
+                  - _step: access_before.0
+                  - null
+      - :return:
+          success: true

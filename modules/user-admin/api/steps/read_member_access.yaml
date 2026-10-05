@@ -1,0 +1,36 @@
+# One member row's access in this instance's organization, in the shape an audit
+# event records it: `{ roles, attributes }` (`app_roles` and `attributes` on the
+# row, `[]` and `{}` when unset). A routine step, `_ref`'d by the endpoints whose
+# events carry a `before` or `after` access value.
+#
+# Vars:
+#   id    — the step id
+#   match — the fields that pick the member row (`_id` or `user_id`). The
+#           organization is added here, because `user-members` is a shared
+#           connection and a member row is per organization.
+#
+# The result is an array of at most one row: `_step: <id>.0` is the value, and is
+# absent when no row matches.
+id:
+  _var: id
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    - $match:
+        _object.assign:
+          - _var: match
+          - organization_id:
+              _module.var: org_slug
+    - $limit: 1
+    - $project:
+        _id: 0
+        roles:
+          $ifNull:
+            - "$app_roles"
+            - []
+        attributes:
+          $ifNull:
+            - "$attributes"
+            - $literal: {}

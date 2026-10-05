@@ -58,7 +58,11 @@ operator console). Both run against the same `contact` / `user` / `member` /
   [Passwordless-primary](concepts/auth-methods.md#passwordless-primary-sign-up-collapses-into-sign-in).
 - **Password + verification flows** — `forgot-password`, `reset-password`, and
   `verify-email` (one page, two renders: the post-signup "check your email"
-  prompt and the emailed-link landing).
+  prompt and the emailed-link landing). Every verification email the module
+  sends (signup, its resend, the login wall's resend and verify-email's own)
+  carries the page's inbound `?callbackUrl=`, and the landing's **Continue to
+  sign in** passes it to login. An invitee who registers from the accept page
+  therefore returns to it after verifying and signing in.
 - **Magic-link landing** (`magic-link` page) — the `authPages.magicLink` target.
   The emailed sign-in link opens here and verifies on a button click, so a
   corporate mail scanner prefetching the link cannot consume its single-use

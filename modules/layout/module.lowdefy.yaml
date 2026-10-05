@@ -140,6 +140,14 @@ vars:
     type: array
     default: []
     description: Footer blocks appended after page content
+  content_style:
+    type: object
+    default: {}
+    description: >-
+      Content area style applied to every page that uses the `page` component,
+      merged over the page block's default `padding: 0 40px 40px 40px`. A
+      page's `full_bleed` and its own `content_style` var are applied over it,
+      key by key.
   card:
     type: object
     default: null

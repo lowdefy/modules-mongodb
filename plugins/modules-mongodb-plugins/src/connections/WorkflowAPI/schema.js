@@ -176,10 +176,12 @@ const schema = {
       type: "string",
       default: "user-contacts",
       description:
-        "Contacts collection name joined by GetWorkflowAction to resolve each " +
-        "contact's avatar (created.user.id → _id, projecting profile.picture). " +
-        'Defaults to "user-contacts" (the shared collection where a user IS a ' +
-        "contact — same _id space). Host apps need only set this when overriding " +
+        "Contacts collection name read by the contact lookups. " +
+        "GetWorkflowAction reads each action assignee's contact by _id " +
+        "(assignees → _id, projecting profile.name and profile.picture); " +
+        "GetEventsTimeline joins each event author's contact " +
+        "(created.user.id → user_id, projecting profile.picture). " +
+        'Defaults to "user-contacts". Host apps need only set this when overriding ' +
         "the collection name.",
     },
   },
