@@ -59,6 +59,23 @@ _ref:
 
 See `apps/demo/modules/layout/vars.yaml` for a worked example.
 
+## Per-page logo
+
+A page can show its own header logo by passing `logo` to the `page` component. It is forwarded to the page block's `logo` property, so it takes `{ src, srcMobile, alt }`, plus `breakpoint` for `header-menu` and `sider-menu` or `style` for `sidebar`. Pages that leave it unset show the public-folder logo.
+
+```yaml
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: brand-dashboard
+    title: Brand Dashboard
+    logo:
+      src: /logo-brand.png
+      alt: Brand
+    blocks: [...]
+```
+
 ## Title bar props
 
 The `page` component renders a shared title bar above the content. Key per-page props (passed via `_ref` vars, not module vars):

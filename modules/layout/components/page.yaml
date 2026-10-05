@@ -110,6 +110,19 @@ properties:
                 key: breadcrumbs
                 default: []
         else: {}
+    # A per-page logo replaces the public-folder logo on this page only. Omitted when
+    # unset, since an explicit null fails the page block's object schema.
+    - _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: logo
+                default: null
+            - null
+        then:
+          logo:
+            _var: logo
+        else: {}
     # sider / siderStorageKey only apply to sider-menu and sidebar variants.
     # PageHeaderMenu rejects them (additionalProperties: false).
     - _build.if:
