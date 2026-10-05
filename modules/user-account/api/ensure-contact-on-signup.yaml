@@ -40,8 +40,10 @@ routine:
             - true
         # A real organization id, not merely "not null": under the tenant
         # policy a contact minted without one is invisible behind the wall.
-        - _type.isString:
-            _payload: session.activeOrganizationId
+        - _type:
+            type: string
+            on:
+              _payload: session.activeOrganizationId
         - _ne:
             - _payload: session.activeOrganizationId
             - ''
