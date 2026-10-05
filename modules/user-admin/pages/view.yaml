@@ -43,6 +43,9 @@ _ref:
             - get_user_accounts
             - get_user_memberships
             - get_user_passkeys
+        # The Attributes tile's member attribute rows show or hide on these
+        # state keys (see actions/seed_access.yaml).
+        - _ref: actions/seed_access.yaml
         # No member row for this user_id in the pinned org → back to the list.
         - id: redirect_if_not_found
           type: Link

@@ -79,7 +79,9 @@ _ref:
                         org_role:
                           _request: get_user_detail.0.org_role
             else: []
-        # Member attributes. Consumer fields.member_attributes (state.member_attributes.*).
+        # Member attributes. Consumer fields.member_attributes. Values come from
+        # the detail read; each field's `visible` reads page state, which
+        # actions/seed_access.yaml keeps equal to the stored member.
         - - id: attributes_view
             type: SmartDescriptions
             properties:
