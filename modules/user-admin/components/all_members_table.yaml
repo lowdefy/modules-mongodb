@@ -24,7 +24,7 @@ properties:
       - - headerName: Name
           field: name
           flex: 2
-          minWidth: 220
+          minWidth: 180
           cell:
             type: avatar
             nameField: name
@@ -33,10 +33,12 @@ properties:
         - headerName: Email
           field: email
           flex: 1
-          minWidth: 220
+          minWidth: 200
         - headerName: Roles
           field: roles
-          minWidth: 200
+          flex: 1
+          minWidth: 160
+          autoHeight: true
           # `roles` arrives pre-resolved as { id, label, description, orphan }
           # items. The read reconciles the member's held ids against the app's
           # role catalog, so a role held in data but absent from the catalog is
@@ -61,19 +63,19 @@ properties:
       - _module.var: components.table_columns
       - - headerName: Created
           field: created
-          width: 120
+          width: 110
           cell:
             type: date
             format: YYYY-MM-DD
         - headerName: Updated
           field: updated
-          width: 120
+          width: 110
           cell:
             type: date
             format: YYYY-MM-DD
         - headerName: Signed up
           field: signed_up
-          width: 120
+          width: 110
           cell:
             type: date
             format: YYYY-MM-DD

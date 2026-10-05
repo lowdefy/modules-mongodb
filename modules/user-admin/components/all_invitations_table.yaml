@@ -37,7 +37,9 @@ properties:
         idField: inviter_id
     - headerName: Roles
       field: roles
+      flex: 1
       minWidth: 160
+      autoHeight: true
       cellRenderer:
         _function:
           __nunjucks:
