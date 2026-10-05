@@ -1,0 +1,21 @@
+# The "Check your email" subtitle after a magic-link send, shared by the login and
+# signup pages. With emailOTP on, the one send carries both the link and the
+# code, so it names both.
+#
+# It states no lifetime. The app sets the link's and the code's lifetimes
+# (auth.magicLink / auth.emailOTP expiresIn), and the email states the code's;
+# `_build.authConfig` cannot read either value, so a figure here could
+# contradict the email.
+#
+# Vars:
+#   email — the address the send went to.
+_nunjucks:
+  template:
+    _build.if:
+      test:
+        _build.authConfig: emailOTP.enabled
+      then: We've emailed a sign-in link and a code to <b>{{ email }}</b>. Click the link, or enter the code below.
+      else: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue.
+  on:
+    email:
+      _var: email

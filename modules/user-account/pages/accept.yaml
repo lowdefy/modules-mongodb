@@ -168,9 +168,12 @@ _ref:
           align: middle
           selfAlign: middle
           gap: 11
+        # Neutral fill and border tokens, not the primary-derived ones: antd
+        # derives primary-bg from the app's primary colour, and a near-black
+        # primary gives a dark grey fill under the dark default text.
         style:
-          background: "var(--ant-color-primary-bg)"
-          border: "1px solid var(--ant-color-primary-border)"
+          background: "var(--ant-color-fill-quaternary)"
+          border: "1px solid var(--ant-color-border-secondary)"
           borderRadius: 10
           padding: 11px 13px
         blocks:
@@ -193,12 +196,24 @@ _ref:
             properties:
               html:
                 _nunjucks:
-                  template: <div class="text-xs opacity-70">{{ inviter }} invited you to</div><div class="text-sm font-semibold">{{ org }}</div>
+                  template: <div class="text-xs" style="color:var(--ant-color-text-secondary);">{{ inviter }} invited you to</div><div class="text-sm font-semibold" style="color:var(--ant-color-text);">{{ org }}</div>
                   on:
                     inviter:
                       _state: invite.inviter_name
+                    # Under pinned the organization is the app itself and its
+                    # name is the slug, so the app's display name stands in.
+                    # Under tenant the invitation names one organization of
+                    # many, and its own name is the right label.
                     org:
-                      _state: invite.org_name
+                      _build.if:
+                        test:
+                          _build.eq:
+                            - _build.authConfig: organizations.policy
+                            - tenant
+                        then:
+                          _state: invite.org_name
+                        else:
+                          _app: name
       - id: accept_nosession_lead
         type: Html
         visible:

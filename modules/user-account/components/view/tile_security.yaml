@@ -1,7 +1,7 @@
 # Security tile (design Decision 5): self-service sign-in management for the
-# caller's own account. Three sign-in rows: password (change), two-factor
-# (manage / turn off), passkeys (add / remove). Every control is a self-service
-# BetterAuth client action on the caller's session.
+# caller's own account. Sign-in rows: email link (display only), password
+# (change), two-factor (manage / turn off), passkeys (add / remove). Every
+# control is a self-service BetterAuth client action on the caller's session.
 #
 # Visibility has two gates (Decision 5): a deployment gate
 # (`_build.authConfig.<method>.enabled`: the method must be configured for the
@@ -69,6 +69,43 @@ _ref:
                   html: '<div style="text-transform:uppercase; letter-spacing:0.08em; font-size:11px; color:var(--ant-color-text-tertiary);">Sign-in</div>'
                 style:
                   marginBottom: 8
+
+            # ── Email link row (deployment gate only) ──
+            # Every account can sign in by email link once the app enables it,
+            # so the row names the method and carries no action. In a
+            # passwordless app it is the card's only sign-in row.
+            - _build.if:
+                test:
+                  _build.authConfig: magicLink.enabled
+                then:
+                  - id: email_link_row
+                    type: Html
+                    style:
+                      padding: 12px 0
+                      borderBottom: 1px solid var(--ant-color-border-secondary)
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            <div style="display:flex; align-items:center; gap:12px; font-size:13px;">
+                              <span style="width:28px; height:28px; border-radius:6px; background:var(--ant-color-primary-bg); color:var(--ant-color-primary); display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;">
+                                <svg viewBox="64 64 896 896" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M928 160H96c-17.7 0-32 14.3-32 32v640c0 17.7 14.3 32 32 32h832c17.7 0 32-14.3 32-32V192c0-17.7-14.3-32-32-32zm-40 110.8V792H136V270.8l-27.6-21.5 39.3-50.5 42.8 33.3h643.1l42.8-33.3 39.3 50.5-27.7 21.5zM833.6 232L512 482 190.4 232l-42.8-33.3-39.3 50.5 27.6 21.5 341.6 265.6a55.99 55.99 0 0068.7 0L888 270.8l27.6-21.5-39.3-50.5-42.7 33.2z"/></svg>
+                              </span>
+                              <span style="flex:1 1 auto; min-width:0;">
+                                <div style="color:var(--ant-color-text);">{{ label }}</div>
+                                <div style="color:var(--ant-color-text-tertiary); font-size:12px;">Sent to {{ email }}</div>
+                              </span>
+                            </div>
+                          on:
+                            label:
+                              _build.if:
+                                test:
+                                  _build.authConfig: emailOTP.enabled
+                                then: Email link or code
+                                else: Email link
+                            email:
+                              _request: get_account.0.email
+                else: []
 
             # ── Password row (deployment gate + per-user credential gate) ──
             - _build.if:

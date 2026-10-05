@@ -449,16 +449,9 @@ _ref:
                       status: info
                       title: Check your email
                       subTitle:
-                        _nunjucks:
-                          # With emailOTP on, the one send carries both the link
-                          # and the code, so the result names both.
-                          template:
-                            _build.if:
-                              test:
-                                _build.authConfig: emailOTP.enabled
-                              then: We've emailed a sign-in link and a code to <b>{{ email }}</b>. Click the link, or enter the code below. The link and code expire in a few minutes.
-                              else: We've emailed a sign-in link to <b>{{ email }}</b>. Open it on this device to continue. The link expires in a few minutes.
-                          on:
+                        _ref:
+                          path: components/link_sent_subtitle.yaml
+                          vars:
                             email:
                               _state: magic_link_sent_email
 

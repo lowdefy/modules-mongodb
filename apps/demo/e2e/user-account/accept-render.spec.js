@@ -1,4 +1,4 @@
-import { test } from "../fixtures.js";
+import { test, expect } from "../fixtures.js";
 
 // The accept page chooses its render once the invitation is read and, when no
 // caller resolved on the server, once the browser's session has been asked
@@ -24,11 +24,15 @@ test.describe("accept page render", () => {
     ]);
   });
 
-  test("offers sign-in with no caller", async ({ ldf }) => {
+  test("offers sign-in with no caller", async ({ ldf, page }) => {
     await ldf.user(null);
     await ldf.goto(`/user-account/accept?invitationId=${INVITATION_ID}`);
     await ldf.block("accept_login").expect.visible();
     await ldf.block("accept_continue").expect.hidden();
+    // Under pinned the invitation names the app by its display name.
+    await expect(
+      page.getByTestId("accept_invite_who").getByText("Module Demo App"),
+    ).toBeVisible();
   });
 
   test("offers accept to the invited address", async ({ ldf }) => {
