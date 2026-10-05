@@ -864,8 +864,6 @@ _ref:
                         color: default
                         on_sent:
                           login_view: link-sent
-                          magic_link_sent_email:
-                            _state: email
                           otp: null
                         visible:
                           _eq:

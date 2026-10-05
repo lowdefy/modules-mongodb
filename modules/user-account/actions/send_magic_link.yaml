@@ -32,8 +32,13 @@ try:
     messages:
       error: false
     params:
+      # On the "check your email" view the `email` input is hidden and Lowdefy
+      # drops a hidden input's value from state, so a resend sends to the
+      # address the first send stored in `magic_link_sent_email`.
       email:
-        _state: email
+        _if_none:
+          - _state: email
+          - _state: magic_link_sent_email
       magicLink: true
       callbackUrl:
         _if:
