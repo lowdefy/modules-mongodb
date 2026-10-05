@@ -117,8 +117,6 @@ _ref:
                           vars:
                             on_sent:
                               signup_view: link-sent
-                              magic_link_sent_email:
-                                _state: email
                               otp: null
             else: []
 
@@ -260,8 +258,6 @@ _ref:
                     icon: mail
                     on_sent:
                       signup_view: link-sent
-                      magic_link_sent_email:
-                        _state: email
                       otp: null
                     visible:
                       _and:
@@ -510,8 +506,6 @@ _ref:
                         color: default
                         on_sent:
                           signup_view: link-sent
-                          magic_link_sent_email:
-                            _state: email
                           otp: null
                         visible:
                           _eq:

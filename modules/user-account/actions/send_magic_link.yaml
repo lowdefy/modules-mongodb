@@ -3,8 +3,8 @@
 # the send is the email's primary action, so click and Enter run the identical
 # sequence. Dispatches the one `Login` action with `magicLink: true` off the
 # canonical `id: email` input the page owns; on success it applies the
-# caller-supplied `on_sent` SetState (the page's own view flip + stored target
-# email). Callback targets and the cooldown are documented on the component.
+# caller-supplied `on_sent` SetState (the page's own view flip). Callback
+# targets and the cooldown are documented on the component.
 try:
   # The button is disabled through the cooldown, but Enter in the email field
   # is not, so the chain itself refuses a send while a cooldown is running.
@@ -23,17 +23,25 @@ try:
     messages:
       error: false
     params: email
+  # The chain owns `magic_link_sent_email`: the send target, the "check your
+  # email" subtitle and the code verify all read it. On that view the `email`
+  # input is hidden and Lowdefy drops a hidden input's value from state, so a
+  # resend keeps the address already stored.
   - id: begin_cooldown
     type: SetState
     params:
       magic_link_cooldown: true
+      magic_link_sent_email:
+        _if_none:
+          - _state: email
+          - _state: magic_link_sent_email
   - id: magic_link_send
     type: Login
     messages:
       error: false
     params:
       email:
-        _state: email
+        _state: magic_link_sent_email
       magicLink: true
       callbackUrl:
         _if:
