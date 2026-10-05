@@ -50,7 +50,7 @@ blocks:
                       <div style="font-weight:600; padding-bottom:6px">{{ parent_heading }}</div>
                       {% for parent in parents %}
                       <div style="padding:4px 0">
-                        <a href="/{{ view_page }}?_id={{ parent._id }}" class="companies-hierarchy-link">
+                        <a data-page-id="{{ view_page }}" data-url-query="_id={{ parent._id | urlencode }}" class="companies-hierarchy-link">
                           {{ parent[name_field] }}
                         </a>
                       </div>
@@ -63,7 +63,7 @@ blocks:
                       <div style="font-weight:600; padding-bottom:6px">{{ children_heading }}</div>
                       {% for child in children %}
                       <div style="padding:4px 0">
-                        <a href="/{{ view_page }}?_id={{ child._id }}" class="companies-hierarchy-link">
+                        <a data-page-id="{{ view_page }}" data-url-query="_id={{ child._id | urlencode }}" class="companies-hierarchy-link">
                           {{ child.display_name }}
                         </a>
                       </div>

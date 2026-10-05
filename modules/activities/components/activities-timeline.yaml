@@ -100,7 +100,7 @@ blocks:
                 {% set color = entry.color or '#8c8c8c' %}
                 {% set type_label = entry.title or a.type %}
                 {% set stage_color = stage_colors[a.current_stage] or '#8c8c8c' %}
-                <a class="activities-timeline-row" href="/{{ view_page }}?_id={{ a._id }}" style="display:flex; flex-direction:column; gap:2px; padding:8px 12px{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}; border-radius:6px; transition:background 0.15s; color:inherit; text-decoration:none">
+                <a class="activities-timeline-row" data-page-id="{{ view_page }}" data-url-query="_id={{ a._id | urlencode }}" style="display:flex; flex-direction:column; gap:2px; padding:8px 12px{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}; border-radius:6px; transition:background 0.15s; color:inherit; text-decoration:none">
                   <div style="display:flex; gap:8px; align-items:center">
                     <span style="font-weight:500; word-break:break-word; flex:1 1 auto; min-width:0">{{ a.title or 'Untitled' }}</span>
                     <span style="display:inline-flex; align-items:center; padding:0 7px; border-radius:999px; font-size:10px; font-weight:600; line-height:16px; color:{{ color }}; background:color-mix(in srgb, {{ color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ color }} 30%, transparent); flex:0 0 auto">{{ type_label }}</span>

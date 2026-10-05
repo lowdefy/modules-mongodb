@@ -446,7 +446,11 @@ _ref:
             - _state: accept_view
             - signedin
         properties:
-          html: Not you? <a href="logout">Sign out</a>
+          html:
+            _string.concat:
+              - 'Not you? <a data-page-id="'
+              - _module.pageId: logout
+              - '">Sign out</a>'
         style:
           textAlign: center
           fontSize: 12

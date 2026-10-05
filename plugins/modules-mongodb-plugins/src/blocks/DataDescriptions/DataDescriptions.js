@@ -12,7 +12,7 @@ const DataDescriptions = ({
   classNames = {},
   content,
   properties,
-  components: { Icon },
+  components: { Icon, Link },
   methods,
   styles = {},
 }) => {
@@ -49,7 +49,7 @@ const DataDescriptions = ({
       >
         {group.fields.map((field, j) => (
           <Descriptions.Item key={j} label={field.label} span={spans[j]}>
-            {renderFieldValue(field, Icon, methods, properties)}
+            {renderFieldValue(field, Icon, Link, methods, properties)}
           </Descriptions.Item>
         ))}
       </Descriptions>

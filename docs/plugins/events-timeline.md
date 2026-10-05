@@ -87,7 +87,7 @@ The matching request resolves each event against its per-app display template â€
       id: "...",
       status: "pending",                     // â†’ actionStatusConfig key
       message: "Awaiting approval",          // optional, falls back to actionStatusConfig[status].title
-      link: { pageId: "...", urlQuery: {...}, title: "Complete" } // optional; title is the button label (default "View")
+      link: { pageId: "...", pathParams: {...}, urlQuery: {...}, title: "Complete" } // optional; pathParams fills a page path placeholder; title is the button label (default "View")
     }
   ],
   files: [                                    // optional; needs s3GetPolicyRequestId

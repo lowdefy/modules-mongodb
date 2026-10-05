@@ -75,6 +75,7 @@
                         "additionalProperties": true,
                         "properties": {
                           "pageId": { "type": "string" },
+                          "pathParams": { "type": "object" },
                           "urlQuery": { "type": "object" },
                           "input": { "type": "object" },
                           "newTab": { "type": "boolean", "default": false },

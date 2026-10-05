@@ -13,7 +13,7 @@ const SmartDescriptions = ({
   classNames = {},
   content,
   properties,
-  components: { Icon },
+  components: { Icon, Link },
   methods,
   styles = {},
 }) => {
@@ -70,7 +70,7 @@ const SmartDescriptions = ({
       <Descriptions {...descProps} title={title} extra={extra}>
         {items.map((item, i) => (
           <Descriptions.Item key={i} label={item.label} span={spans[i]}>
-            {renderValue(item, Icon, methods, properties)}
+            {renderValue(item, Icon, Link, methods, properties)}
           </Descriptions.Item>
         ))}
       </Descriptions>

@@ -53,6 +53,7 @@ const ActionGroup = ({
             <Link
               className="wp-section-link"
               pageId={groupLink.pageId}
+              pathParams={groupLink.pathParams}
               urlQuery={groupLink.urlQuery}
               input={groupLink.input}
               newTab={groupLink.newTab ?? false}

@@ -1,7 +1,7 @@
 id: deal_list_card
 type: Box
-# Full-width browse card for the deals list page. Wrapped in a plain <a href> so
-# the whole card navigates to the deal workspace (full page load). The narrow
+# Full-width browse card for the deals list page. Wrapped in an in-app link so
+# the whole card navigates to the deal workspace. The narrow
 # in-page sidebar variant is the ListSelector on the deal workspace page.
 #
 # Derived display config (stage/outcome palettes) is computed in the `on:`
@@ -19,6 +19,8 @@ blocks:
               on:
                 deal:
                   _var: deal
+                view_page:
+                  _module.pageId: view
                 card_fields:
                   _module.var: card_fields
                 # Stage display config, looked up from the module's `stages`
@@ -56,7 +58,7 @@ blocks:
                           _var: deal
                         key: outcome.reason
               template: |
-                <a href="/deals/view?_id={{ deal._id }}" style="display: block; text-decoration: none; color: inherit;">
+                <a data-page-id="{{ view_page }}" data-url-query="_id={{ deal._id | urlencode }}" style="display: block; text-decoration: none; color: inherit;">
                   <div style="display: flex; gap: 16px; align-items: stretch; padding: 14px 16px; margin-bottom: 10px; background: var(--ant-color-bg-container); border: 1px solid var(--ant-color-border-secondary); border-left: 4px solid {{ stage_p.bd | default('var(--ant-color-border)') }}; border-radius: 10px; transition: box-shadow 0.15s, border-color 0.15s;">
                     <div style="flex: 1 1 auto; min-width: 0;">
                       <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;">

@@ -420,6 +420,7 @@ function EventAction({
       affordance = (
         <Link
           pageId={link.pageId}
+          pathParams={link.pathParams}
           urlQuery={link.urlQuery}
           style={affordanceStyle}
         >

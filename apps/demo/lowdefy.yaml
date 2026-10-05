@@ -296,3 +296,4 @@ pages:
   - _ref: pages/start-company-setup.yaml
   - _ref: pages/walkthroughs/walkthroughs-demo.yaml
   - _ref: pages/walkthroughs/walkthrough-editor-demo.yaml
+  - _ref: pages/path-params-demo/path-params-demo.yaml

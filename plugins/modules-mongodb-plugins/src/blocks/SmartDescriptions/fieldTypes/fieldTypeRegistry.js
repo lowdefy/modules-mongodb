@@ -87,7 +87,7 @@ export const fieldTypeRegistry = {
       "user" in value &&
       value.user?.name &&
       value.user?.id,
-    render: ({ value, properties }) => {
+    render: ({ value, Link, properties }) => {
       const userName = value?.user?.name;
       const userId = value?.user?.id;
       const timestamp = value?.timestamp;
@@ -114,12 +114,13 @@ export const fieldTypeRegistry = {
         <span className="dataview-value">
           by{" "}
           {userId ? (
-            <a
+            <Link
               className="dataview-link"
-              href={`/${contactDetailPageId}?_id=${userId}`}
+              pageId={contactDetailPageId}
+              urlQuery={{ _id: userId }}
             >
               {userName}
-            </a>
+            </Link>
           ) : (
             <span>{userName}</span>
           )}{" "}
@@ -139,7 +140,7 @@ export const fieldTypeRegistry = {
         "work_phone" in value ||
         "identifier_phone_number" in value) &&
       "contact_id" in value,
-    render: ({ value, Icon, properties }) => {
+    render: ({ value, Icon, Link, properties }) => {
       const displayName = value.name ?? value.email ?? "Contact";
       const contactId = value.contact_id ?? value._id;
 
@@ -149,13 +150,14 @@ export const fieldTypeRegistry = {
       if (contactId && !properties?.disableCrmLinks) {
         return (
           <span className="dataview-value">
-            <a
+            <Link
               className="dataview-link"
-              href={`/${contactDetailPageId}?_id=${contactId}`}
+              pageId={contactDetailPageId}
+              urlQuery={{ _id: contactId }}
             >
               <Icon blockId="contact-icon" properties="user" />{" "}
               {displayName}
-            </a>
+            </Link>
           </span>
         );
       }
@@ -174,7 +176,7 @@ export const fieldTypeRegistry = {
     priority: 40,
     detect: (value) =>
       type.isObject(value) && "name" in value && "company_id" in value,
-    render: ({ value, Icon, properties }) => {
+    render: ({ value, Icon, Link, properties }) => {
       const companyId = value.company_id ?? value._id;
       const companyDetailPageId =
         properties?.companyDetailPageId ?? "companies/view";
@@ -182,13 +184,14 @@ export const fieldTypeRegistry = {
       if (companyId && !properties?.disableCrmLinks) {
         return (
           <span className="dataview-value">
-            <a
+            <Link
               className="dataview-link"
-              href={`/${companyDetailPageId}?_id=${companyId}`}
+              pageId={companyDetailPageId}
+              urlQuery={{ _id: companyId }}
             >
               <Icon blockId="company-icon" properties="Waypoints" />{" "}
               {value.name}
-            </a>
+            </Link>
           </span>
         );
       }
