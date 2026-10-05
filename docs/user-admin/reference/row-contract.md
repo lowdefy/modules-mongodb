@@ -21,7 +21,7 @@ build error.
 | `_id`                   | string                                 | member id                                                                                     |
 | `user_id`               | string                                 | auth user id                                                                                  |
 | `organization_id`       | string                                 | the organization named by `org_slug`                                                          |
-| `name`                  | string                                 | `contact.profile.name` ?? `user.name`; `No name` on the list read when that is unset or empty |
+| `name`                  | string                                 | `contact.profile.name` ?? `user.name`; `null` on the list read when that is unset or empty |
 | `email`                 | string                                 | `user.email`                                                                                  |
 | `picture`               | string \| null                         | `contact.profile.picture`                                                                     |
 | `roles`                 | `{ id, label, description, orphan }[]` | `app_roles` resolved against the app's role catalog                                           |

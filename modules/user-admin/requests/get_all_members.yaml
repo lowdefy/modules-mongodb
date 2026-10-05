@@ -85,7 +85,7 @@ properties:
                                   - "$name"
                                   - ""
                               - ""
-                          - No name
+                          - null
                           - "$name"
                 - _module.var: request_stages.get_all_users
                 # Close the row LAST, after the consumer slot, so it still sees
