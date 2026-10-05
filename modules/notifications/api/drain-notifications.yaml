@@ -34,9 +34,9 @@ routine:
           - 50
 
   - id: find_unsent
-    # Cross-org by design: the drain is cron-triggered (caller-less system
-    # context), and it re-sends records the wall already stamped with
-    # organization_id at dispatch time — provenance is the stored record.
+    # Cross-org by design: the drain is a scheduled run with no caller, so it
+    # reads every organization's unsent records here and retries each one
+    # bound to the record's own organization_id below.
     tenant: none
     type: MongoDBFind
     connectionId:
@@ -61,6 +61,10 @@ routine:
 
   # Each record retries through its own endpoint call: step results are
   # index-keyed inside :for, so the claim → send sequence needs fresh steps.
+  # The call is bound to the record's organization, so the retry's writes keep
+  # the tenant wall. Lowdefy accepts the binding only in a trusted system run
+  # (a schedule, a hook, a verified webhook), so the drain runs from a
+  # schedule, not from a signed-in caller's routine.
   - :for: record
     :in:
       _step: find_unsent
@@ -70,6 +74,8 @@ routine:
         properties:
           endpointId:
             _module.endpointId: retry-notification-record
+          organization:
+            _item: record.organization_id
           payload:
             record:
               _item: record
