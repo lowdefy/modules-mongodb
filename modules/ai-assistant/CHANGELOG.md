@@ -1,5 +1,225 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.44.1
+
+## 0.44.0
+
+### Minor Changes
+
+- [#248](https://github.com/lowdefy/modules-mongodb/pull/248) [`fad5d0a`](https://github.com/lowdefy/modules-mongodb/commit/fad5d0a4235374e4449d099f00bf7cad47ce8f5b) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: `composer_note` shows a fixed line under the chat's composer
+
+  An app can now put a standing note under the composer in both the docked panel and the embedded chat, such as a reminder not to share personal information. It stays visible alongside the conversation without becoming a message in it, and nothing is shown by default.
+
+- [#248](https://github.com/lowdefy/modules-mongodb/pull/248) [`48676e9`](https://github.com/lowdefy/modules-mongodb/commit/48676e945078271bf904a8b67432ff4fdbe4a085) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: `title_zero_data_retention` keeps thread titling on zero-data-retention providers
+
+  Titling sends a thread's first question and reply to the title model. An agent can already restrict
+  its routing to providers with a zero data retention policy, but titling had no way to follow, so it
+  could land on a provider that retains what it's sent. The `GenerateChatTitle` request takes
+  `zeroDataRetention`, and the module passes it from the new var, which defaults to off.
+
+## 0.43.1
+
+## 0.43.0
+
+## 0.42.0
+
+## 0.41.0
+
+### Minor Changes
+
+- [#232](https://github.com/lowdefy/modules-mongodb/pull/232) [`c222639`](https://github.com/lowdefy/modules-mongodb/commit/c2226394d747fb08beeb7e210e9a908be7abb592) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: say when the assistant is unavailable
+
+  An app that has stopped the assistant — a workspace out of AI credits, a paused tenant — had
+  nowhere to say so. The chat still offered a composer, and a message sent into it failed on its
+  own terms, which reads as the assistant being broken rather than switched off.
+
+  The new `notice` var takes `{ type, message, description }` and replaces the conversation with
+  that alert, taking the composer with it. The thread list stays reachable, so earlier answers can
+  still be read. Null, the default, shows the chat as normal.
+
+### Patch Changes
+
+- [#232](https://github.com/lowdefy/modules-mongodb/pull/232) [`f4f3ada`](https://github.com/lowdefy/modules-mongodb/commit/f4f3adaac16c47a7f49ffe66e6bed8f636a09cd0) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: run `on_thread_change` when the open thread is deleted
+
+  Deleting the open thread mints a fresh conversation to land in, which is the active thread
+  changing by a user action — but `delete-thread` never ran `on_thread_change`, so a consuming
+  app was not told. Anything derived from the open conversation and rendered outside the chat
+  kept describing the thread that had just been deleted, and stayed that way until the user
+  opened another one. That reads as wrong data rather than as missing data.
+
+  `new-thread` and `select-thread` already ran the seam; this was the third way the active
+  thread can change, and the only one that did not.
+
+- [#232](https://github.com/lowdefy/modules-mongodb/pull/232) [`dbcd7b7`](https://github.com/lowdefy/modules-mongodb/commit/dbcd7b7b23bb084efb0f3b4cce1ac9beb5639c8f) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: survive a turn that is cut off mid-stream
+
+  A reply that stopped early left its tool call with no result. That pairing cannot be sent back
+  to the model, so every later message on the thread failed before it reached one, and the thread
+  could not be opened again either — the stored history no longer validated. One interrupted reply
+  therefore killed the conversation permanently, and the only signal was that nothing happened.
+
+  Unresolved tool calls are now dropped when the history is saved and again when a thread is
+  loaded, along with any message left carrying nothing. The load side is what brings threads
+  already stored in that state back.
+
+  A turn that ends without an answer also says so. This is not an error the chat can report —
+  the stream closes normally and only carries nothing — so it went by in silence, which reads as
+  the assistant ignoring the question and invites the same question again.
+
+  Deleting a single message now keeps the stored thread in step. Regenerating or editing one
+  already did, because each ends in a send the thread is saved from; deleting ends there, so the
+  message came back on the next reload.
+
+- [#232](https://github.com/lowdefy/modules-mongodb/pull/232) [`dc1c696`](https://github.com/lowdefy/modules-mongodb/commit/dc1c6967631b97c371600f83a8f4a80f35334535) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: the threads index on `{ conversationId, user_id }` should be unique
+
+  Saving a thread upserts on that pair. Two saves that race and both find no existing row will
+  both insert, and MongoDB allows it unless the index is unique — so one conversation ends up
+  stored twice, showing twice in the list, with whichever row the query reaches first being the
+  one that reads back. The index was already recommended for speed; it is needed for correctness
+  too. Apps that added it as non-unique should replace it.
+
+## 0.40.0
+
+### Minor Changes
+
+- [#229](https://github.com/lowdefy/modules-mongodb/pull/229) [`82473ca`](https://github.com/lowdefy/modules-mongodb/commit/82473ca1f790082ffeb45920ae8015969f0a335f) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: let an app colour the chat where it currently inherits antd's primary
+
+  Three surfaces took their colour from `--ant-color-primary*` with no way to change it: the
+  selected chat in the thread list, the embedded toolbar's buttons, and the assistant's name chip
+  in the docked panel. That is right where the app's primary IS its accent, and wrong where it is
+  a neutral — an app with a grey `colorPrimary` gets a grey selected chat that looks hovered, and
+  a grey name chip on a grey tint, which is the one thing that chip exists to avoid. Nothing an
+  app could write in its own stylesheet fixed it: the thread list's selected class is generated,
+  and the panel's chip rule lands at the same specificity a consumer can reach, so the two tie
+  and the plugin wins on order.
+
+  - `thread_selection` — `{ border, background }` for the selected chat.
+  - `toolbar` — `{ size, accent, accent_text, secondary }` for the embedded shell's toolbar: the
+    antd button size, the fill marking the primary action, and the fill behind the rest.
+  - `--fp-role-assistant-bg` / `--fp-role-assistant-fg` — CSS custom properties the FloatingPanel
+    stylesheet now reads for the assistant's name chip.
+
+  The chat title's size is also pinned to 1rem. `level: 5` asked for a semantic heading, so the
+  title took whatever the consuming app decided `h5` means — an app that styles h5 as metadata,
+  which is a common choice, rendered the chat title at secondary-text size. A consumer that had
+  deliberately sized the title through `h5` will now see 1rem instead.
+
+  Decisions:
+
+  - Every default is today's value, so no existing consumer changes appearance. `toolbar.size`
+    stays `small` for the same reason, even though 24px is slight for what are the shell's
+    primary actions — an app that wants bigger now says so.
+  - `toolbar` covers the embedded shell only. The panel's buttons are icon-only in a 420px
+    column, where `small` is right and a fill would read as chrome rather than as an action.
+  - The toolbar fills are set on the blocks via their `.element` css key rather than left to a
+    consumer stylesheet. Reaching those buttons from outside means selecting on module-internal
+    block ids, which a release can rename with nothing raising an error on the consumer's side.
+  - The panel chip uses CSS custom properties rather than a var, because the rule lives in the
+    plugin's stylesheet and never passes through the module's var resolution.
+
+- [#229](https://github.com/lowdefy/modules-mongodb/pull/229) [`82473ca`](https://github.com/lowdefy/modules-mongodb/commit/82473ca1f790082ffeb45920ae8015969f0a335f) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: ask before deleting a chat
+
+  Delete chat destroyed the open thread on the click. `delete-thread.yaml` went straight to the
+  delete endpoint, and neither the embedded toolbar's button nor the panel's carried a guard, so
+  one stray click took the conversation and every answer in it, and the control sits directly
+  beside "New chat" and "Manage chats", which is where a mis-click lands.
+
+  Both shells now open a confirm first, naming the thread. (The delete itself is soft as of the
+  accompanying change, so the confirm's wording stops at the chat leaving the user's list rather
+  than claiming the conversation is destroyed.)
+
+  Decisions:
+
+  - No var to switch it off. A confirm nobody opted into is a confirm nobody has, and the cost
+    is one extra click on the rarest action in the shell. That makes this a behaviour change for
+    existing consumers, hence minor rather than patch — a delete that used to happen now waits
+    for an answer.
+  - `ConfirmModal`, not the `Modal` that ai-reporting's delete confirm uses. The panel stacks at
+    1100 and the `Modal` block does not forward `zIndex`, so a `Modal` would open behind the
+    panel that launched it. `ConfirmModal` does forward it; 1200 matches the panel's own
+    tooltips. ai-reporting's modal sits on an ordinary page and never had to clear a panel.
+  - `delete-thread.yaml` is unchanged and runs from `onOk`. It already captures
+    `ai_conversation_id` before replacing it, so nothing is seeded for the confirm and
+    cancelling leaves no state behind.
+
+- [#229](https://github.com/lowdefy/modules-mongodb/pull/229) [`bfe0493`](https://github.com/lowdefy/modules-mongodb/commit/bfe049331c40f5af80517f96ce82d1c6450a4c62) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: deleting a chat no longer destroys it
+
+  Delete chat removed the thread from the collection outright. It was the only hard delete left in
+  the repo — every other module that deletes its own documents marks them with a `deleted` change
+  stamp and filters them out of reads. A chat is the user's own record of what they asked and what
+  they were told, and the confirm added alongside this is a prompt, not a safeguard: it cannot
+  help the person who meant to click it and then wanted the thread back.
+
+  Deleting now sets the `deleted` stamp, which also records who deleted the thread and when, and
+  every read filters on it — the thread list, the resume-on-open lookup, the message replay, and
+  the rename and generated-title writes.
+
+  Decisions:
+
+  - The stamp is written from the module's own `defaults/change_stamp.yaml` rather than the events
+    module's exported component, because this module declares no dependencies. Same choice, and
+    the same shape, as ai-reporting — so a host app reads it with one predicate across every
+    module.
+  - No restore control, and none planned here. The point is that the conversation survives a
+    stray click; recovering one is an operator action against the collection. Adding a deleted-
+    chats view would be a second feature, and pretending to offer recovery in the confirm would
+    be worse than saying nothing.
+  - The confirm's copy changed with it. It used to say the chat was "deleted for good" and could
+    not be undone, which is no longer true — it now says the chat is removed from the user's
+    chats and cannot be opened again, which is what the user actually experiences.
+  - The read predicate is deliberately absent from `save-thread`'s filter. That filter drives an
+    upsert, and `$exists` is not an equality clause, so a no-match would mint a second row under
+    the same conversationId rather than skip the write. A save already in flight when the delete
+    lands therefore rewrites the deleted row's messages but leaves the stamp intact, so the
+    thread stays gone from every read. `deleted: null` is initialised on insert instead, so live
+    threads have one shape.
+  - `disableNoMatchError` is set, and is load-bearing rather than tidy-up. `MongoDBDeleteOne`
+    never complained about matching nothing, but `MongoDBUpdateOne` throws "No matching record to
+    update." on a zero match unless the flag is set or the write is an upsert — so switching to
+    an update would otherwise have turned two harmless cases into errors: deleting a thread that
+    was minted but never sent in (no row exists until the first message is saved), and a repeat
+    delete. Both now report zero modified, and a repeat can no longer overwrite the original
+    stamp's who and when.
+
+  Minor rather than patch: existing rows are untouched and reads treat a missing `deleted` field
+  as live, so nothing needs migrating — but a consumer that counted on the collection shrinking,
+  or that reads the collection itself rather than through the module's endpoints, now sees
+  deleted threads and has to apply the same predicate.
+
+## 0.39.1
+
+## 0.39.0
+
+## 0.38.0
+
+## 0.37.0
+
+### Minor Changes
+
+- [#205](https://github.com/lowdefy/modules-mongodb/pull/205) [`1c35006`](https://github.com/lowdefy/modules-mongodb/commit/1c35006132524afc63671864c18ae31e5d1ec532) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: add a `feedback_values` var so stored ratings come back
+
+  The chat block persists no rating: `on_feedback` hands one to the app and the app stores
+  it. There was no way to hand it back, so a reload or a thread switch showed every message
+  unrated even where the app had recorded the rating — a lost write rather than a display
+  gap, as far as the user could tell.
+
+  `feedback_values` takes a map of message id to `like` or `dislike`, in the same vocabulary
+  `on_feedback` reports. A rating clicked during the visit takes precedence, so the thumb
+  still responds immediately.
+
+  Rebuild the map for the thread being opened, on both seams that open one. `on_thread_change`
+  covers every switch, and a new `on_panel_open` var covers the thread the `panel` resumes when
+  it opens — which nothing could see before, because `enter` runs inside the panel and no
+  consumer actions followed it. Wiring only `on_thread_change` leaves the thumbs missing on the
+  thread the user lands on and appearing once they switch, which is the confusing half-state.
+  The `embedded` shell still has no open moment: a page using it splices its own actions after
+  the `enter` component, as before.
+
+  Requires Lowdefy 5.6.0, the release carrying the AgentChat `feedbackValues` property; on
+  an older build the property is ignored and nothing changes. The plugin package's Lowdefy
+  peer range now accepts `5.6.0` and no longer accepts
+  `0.0.0-experimental-20260827105525` — that build predates the property, so it was only
+  ever the pre-release stand-in for this release.
+
 ## 0.36.0
 
 ## 0.35.0

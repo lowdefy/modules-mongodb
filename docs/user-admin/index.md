@@ -241,7 +241,7 @@ contributes. Neither has a default.
 # lowdefy.yaml
 modules:
   - id: user-admin
-    source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.36.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.44.1"
     vars:
       # Required. The organization this surface administers — the same slug as this
       # app's own `auth.organizations.org` for the app's own users.

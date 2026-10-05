@@ -1,5 +1,104 @@
 # @lowdefy/modules-mongodb-ai-reporting
 
+## 0.44.1
+
+## 0.44.0
+
+## 0.43.1
+
+## 0.43.0
+
+## 0.42.0
+
+## 0.41.0
+
+## 0.40.0
+
+## 0.39.1
+
+### Patch Changes
+
+- [#223](https://github.com/lowdefy/modules-mongodb/pull/223) [`d22dea4`](https://github.com/lowdefy/modules-mongodb/commit/d22dea4bef69e4daf7350db9ab3131694a4a16a2) Thanks [@JohannMoller](https://github.com/JohannMoller)! - ai-reporting: a loading state when switching conversations, a report chip that steps aside once a report exists, and the report header's icons bundled wherever the module is used
+
+  **Switching conversations shows a skeleton.** Selecting a conversation in the rail blanked the transcript and the results panel until the read came back, with nothing to say a read was in flight — an empty chat, or "Nothing here yet", for a conversation full of results. The switch now raises a loading state: a skeleton stands in for the transcript (taking the composer with it, so nothing can be sent into a half-loaded conversation) and for the panel's cards, and only the response for the conversation still selected lowers it, so a rapid A → B → A ends on A's transcript with no flash of B. Switching away from, or starting a new chat over, a reply that is still streaming aborts the stream first, so partial content cannot land in the conversation being opened. A read that fails lowers the state rather than leaving the skeleton up.
+
+  **The "Turn this conversation into a report" chip hides once a report exists.** It kept offering to create one under a conversation that already had, which read as noise and as an invitation to save a duplicate. It is now keyed to the same signal the panel's **Reports from this chat** band renders from: shown while the conversation has no saved report, gone the moment one is saved (from the sheet or by the agent, no reload), back on a conversation that has none. The composer still reaches `generate_report` for a second report. No "update the report" chip replaces it — the agent has no tool that edits a saved report.
+
+  **The report header's icons are bundled.** Lowdefy collects icon imports by scanning the static page config, and the report header is compiled at runtime, so an icon named nowhere else in the consuming app — the ⋯ menu's `AiOutlineEllipsis`, typically — shipped as the exclamation-circle fallback. The report page now lists every icon the compiler emits, so the bundle carries them wherever the module is used; consumers that added a `global` list of these names as a workaround can drop it. The plugin's declared-types test asserts the list stays complete.
+
+## 0.39.0
+
+### Minor Changes
+
+- [#209](https://github.com/lowdefy/modules-mongodb/pull/209) [`b9c4088`](https://github.com/lowdefy/modules-mongodb/commit/b9c40888f8a5ef8449eeff5b10c40ff95337ddd9) Thanks [@JohannMoller](https://github.com/JohannMoller)! - ai-reporting: an opt-in, on-demand AI summary of a report, as currently filtered
+
+  With the new `ai_summary` var on (off by default — sending report rows to a model is the
+  app's call), the report page's header gains an **AI summary** button that opens a drawer. Generate
+  asks the model for a short reading of the report's data and shows it as markdown with a
+  "Generated {time} · {scope}" line. The summary always describes the report **as filtered**:
+  the new `summarize-report` endpoint re-runs every data section's pipeline through the
+  catalog gate under the viewer's roles, with a server-built `$match` from the viewer's
+  active filter values honouring each section's own `filterBy`, and the prose opens by
+  naming that scope in the filters' own labels. Changing a filter (or Reset) marks a shown
+  summary stale rather than re-generating it; Refresh re-runs under the new selection.
+  Sections the viewer cannot query are left out and named in a "Not included" line.
+  Nothing is persisted. Off, no button renders and `summarize-report` rejects every call.
+
+  The module gains an `ai-text` connection (type `AiText`, on the same `AI_GATEWAY_API_KEY`
+  secret as `ai`; remap it alongside `ai` when an app supplies its own gateway). The plugin
+  package gains the `SummarizeReportData` request on `AiText` — the one-shot call, which
+  throws on failure rather than returning null, since it answers a click — and two
+  `_analytics` methods, `summaryQueries` (per-section filter triples derived server-side
+  from the stored spec) and `buildSummaryInput` (capped per-section rows and the scope
+  line). `MAX_SUMMARY_ROWS_PER_SECTION` joins the constants.
+
+  Once on, every saved report gets the feature on next open: no spec grammar, agent
+  vocabulary or stored-report migration changed.
+
+## 0.38.0
+
+### Minor Changes
+
+- [#218](https://github.com/lowdefy/modules-mongodb/pull/218) [`bd9260c`](https://github.com/lowdefy/modules-mongodb/commit/bd9260cb3c13c3104370ec97454239ac7f7e5e1e) Thanks [@JohannMoller](https://github.com/JohannMoller)! - ai-reporting: make a saved report read as a designed page, on Lowdefy 6.0.0
+
+  A saved report rendered as a vertical stack of bare numbers, grids and canvases: every
+  compiled block a sibling in one wrapping area, one number alone on a line, two small
+  charts one under the other, every section the same width whatever it held. Its charts
+  shipped the stock ECharts palette with 10px axis labels, square bars, hairline lines and
+  touching pie slices, laid out for a constant 1100px canvas they were never drawn at.
+
+  **Layout is derived, never authored.** Width, pairing, spans and heights are computed on
+  every open from a section's type, its position in its run of same-type neighbours, and the
+  shape of the rows the first unfiltered resolve returned. Numbers pack into a KPI row, two
+  narrow charts placed together pair up and share one height, an unpaired one is promoted to
+  full width, a table always runs full width. Adjacency in spec order is the agent's only
+  channel into layout. No new spec key was added: a `width: full|half` key was considered and
+  rejected, because an authored width freezes at save and goes wrong the moment the data
+  behind it moves. Existing reports pick the new layout up on their next open.
+
+  **Charts.** A validated 8-slot palette, rounded bar caps capped once per stack, 2px lines
+  with an endpoint symbol, gradient area fills, pie slice gaps with a 6 + neutral `Other`
+  cap, a legend banded above the plot where a vertical one would eat a narrow canvas, and
+  axis-label rotation that only ever relaxes Flint's decision. A shared theme
+  (`defaults/chart_theme.yaml`) carries typography, axis chrome and a transparent
+  background to all three render sites, including the chat card and expand modal, and is
+  inked from the reader's colour mode. Colour identity is scoped to the report rather than
+  the chart: every coloured entity gets one hue in first-appearance order, threaded through
+  the re-query payload so a filter cannot repaint the survivors.
+
+  **Sections.** Each data section compiles into a card with its heading and ⤓ outside it.
+  Markdown and tables take no card. A filter group closes with one muted scope line plus
+  **Reset**, which clears state without re-querying, instead of a note on every control. A
+  run of `download` sections becomes one titled Downloads card.
+
+  **Requires Lowdefy 6.0.0**, the first release on the Vite/Hono line. It carries the
+  `blocks-echarts` theme fix (lowdefy/lowdefy#2358) that charts need to re-ink when dark mode
+  is toggled; on an older build they keep their first-render colours until a reload. The
+  plugin package's Lowdefy peer range now accepts `6.0.0` and no longer accepts the
+  `0.0.0-experimental-*` builds that stood in for it.
+
+## 0.37.0
+
 ## 0.36.0
 
 ### Minor Changes

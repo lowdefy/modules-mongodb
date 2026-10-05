@@ -6,7 +6,11 @@ import {
   REPORT_DECIMALS,
   REPORT_LOCALE,
 } from "./constants.js";
-import buildFlintOption from "./buildFlintOption.js";
+import buildFlintOption, {
+  humanize,
+  PALETTE,
+  pieSliceNames,
+} from "./buildFlintOption.js";
 import { orderedQueries } from "./querySections.js";
 import validateReportSpec, {
   catalogFieldValues,
@@ -67,6 +71,20 @@ import {
  *                included or left out HERE rather than gated by a `_user`
  *                operator in compiled output. Absent reads as false, which
  *                matches an unset share_roles: nothing can be published.
+ *   ai_summary — whether the module's `ai_summary` var is on. Off, nothing
+ *                summary-related is emitted: no header button, and no
+ *                `summary.*` writes from the filters' onChange or Reset — the
+ *                drawer those writes feed is never opened. Decided by the
+ *                endpoint (it holds the var) and passed as a boolean, like
+ *                can_share. Absent reads as off.
+ *   theme      — optional `{ light, dark }` pair of ECharts theme objects. Each
+ *                carries only typography and axis chrome, never a palette:
+ *                ECharts merges a theme under the option, and buildFlintOption
+ *                already pins colours into it, so a palette here would never
+ *                show. Both are emitted into every chart section behind an
+ *                `_if` on `_media: darkMode` — see themeSwitch for why the
+ *                choice cannot be made here. Omitted entirely (not just falsy)
+ *                when absent, matching every caller that predates it.
  *
  * The contract is verified against the actual rows per section: a missing
  * column key or a non-numeric y/KPI value renders that one section as an Alert
@@ -178,14 +196,56 @@ const RIGHT_IN_CELL = {
   marginLeft: "auto",
 };
 
-// Header action widths, on the same 24-column grid. ★ and ⋯ are icons alone; the
-// chat link carries its label, so it needs the wider cell.
-const FAVOURITE_SPAN = 2;
-const MENU_SPAN = 2;
-const CHAT_LINK_SPAN = 5;
+// The title row: the title takes the left of the 24-column grid and ONE cell
+// holds every action, laid out as a right-justified flex group that sizes each
+// action to its content. One cell rather than a cell per action because a grid
+// cell is a fixed fraction of the row: four actions in four cells sat a
+// column's width apart, with a bordered button stranded in the middle of the
+// row and the icons drifting off on their own.
+const TITLE_SPAN = 14;
+const ACTIONS_SPAN = 24 - TITLE_SPAN;
+// An action inside the group shrinks to its content.
+const ACTION_LAYOUT = { size: "auto" };
 
 // The layout engine's column count. A block with no declared span fills the row.
 const GRID_COLUMNS = 24;
+
+// What report.yaml caps the content grid at, and so the widest a section can be
+// drawn. It is the only width a compiled section has to go on: nothing here runs
+// in a browser that could measure the real one.
+const REPORT_CONTENT_WIDTH = 1100;
+
+// The horizontal room a section's card takes out of its span before the canvas
+// inside it starts: the card body's padding on both sides, plus the gap to the
+// card beside it on the same wrap line. Estimated, not measured — nothing here
+// runs in a browser — from antd's 24px card body padding and the content area's
+// row gap.
+//
+// Deducted at every span, including the full-width one where there is no
+// neighbour to gap against, because the error it guards runs one way only: chart
+// assembly reads the width to decide legend orientation and label rotation, and
+// an OVER-stated width leaves labels untilted that then collide, which reads
+// worse than the tilt it skipped. At the full column the deduction is a couple
+// of percent; at half of it, twice the share — which is what makes it worth
+// taking off at all.
+const CARD_HORIZONTAL_CHROME = 64;
+
+// The pixel width a chart laid out at `span` of the grid's columns is drawn at —
+// the width its assembly has to be told, because a chart assembled for one width
+// and laid out at another gets the legend orientation and label rotation of a
+// canvas it is not on.
+export function chartWidthForSpan(span) {
+  return (
+    Math.round((span / GRID_COLUMNS) * REPORT_CONTENT_WIDTH) -
+    CARD_HORIZONTAL_CHROME
+  );
+}
+
+// Two charts to a wrap line, so half the grid each. Half the column also sits
+// well under the width at which Flint funds a right-hand legend column instead
+// of a horizontal band (NARROW_WIDTH in buildFlintOption), which is what keeps a
+// paired chart spending its width on the plot rather than on its legend.
+const PAIRED_CHART_SPAN = GRID_COLUMNS / 2;
 
 // Vertical separation ahead of each section GROUP, on top of the small row gap
 // report.yaml sets on the content area. Two different distances, deliberately: a
@@ -194,11 +254,15 @@ const GRID_COLUMNS = 24;
 // separate sections leaves the heading equidistant, belonging to neither.
 const SECTION_TOP_GAP = 16;
 
-// Stamp the gap on the group's FIRST WRAP LINE, not on its first block. Every
-// compiled block is a sibling in one wrapping flex area — the "rows" are wrap
-// lines, not nested containers — so a margin on one block alone drops its
-// row-mates out of line with it: a heading would part from its ⤓, and the first
-// filter of a shared row from the filters beside it.
+// Stamp the gap on the group's FIRST WRAP LINE, not on its first block. The
+// blocks a group is made of sit side by side in one wrapping flex area — a
+// "row" is a wrap line, not a container — so a margin on one block alone drops
+// its row-mates out of line with it: a heading would part from its ⤓, and the
+// first filter of a shared row from the filters beside it. A section's card is
+// its own wrap line, so it never takes the gap when a head row precedes it, and
+// a pair of half-width chart boxes is ONE line — both boxes take the gap, and
+// nothing inside either of them does, since only the group's own blocks are
+// walked.
 //
 // The group is whatever leads the section: its pending filter controls when it
 // has any, otherwise its head row or its Alert. Anchoring on the group rather
@@ -233,6 +297,37 @@ function filterStateKey(field) {
   return `filter_${field}`;
 }
 
+// The live value of every filter control, as a `field → deferred __state read`
+// map: what the AI summary drawer sends summarize-report so the server can
+// re-resolve the report under the viewer's current selection. Values, not
+// triples — the server derives each op from the stored spec, so the client
+// cannot choose an operator. Written into `summary.filter_values` by the header
+// button on open and by every filter's onChange, so the drawer's payload is
+// always the selection on screen.
+function summaryFilterValues(filterSectionsByField) {
+  const values = {};
+  for (const field of filterSectionsByField.keys()) {
+    values[field] = { __state: filterStateKey(field) };
+  }
+  return values;
+}
+
+// The SetState every filter's onChange ends with: refresh the summary's
+// filter values and mark any summary on screen stale. Mark, not re-generate —
+// a model call per filter change (including each step of a multi-filter
+// selection, with the drawer closed) would spend prose nobody is reading; the
+// drawer shows the stale Alert with Refresh beside it instead.
+function markSummaryStale(filterSectionsByField) {
+  return {
+    id: "mark_summary_stale",
+    type: "SetState",
+    params: {
+      "summary.filter_values": summaryFilterValues(filterSectionsByField),
+      "summary.stale": true,
+    },
+  };
+}
+
 // Filters anchored above the same section sit side by side rather than each
 // taking a full row — a report with a date range and two selects spent three
 // rows on controls before its first number. At most three per row because the
@@ -242,7 +337,18 @@ function filterStateKey(field) {
 // different sections must not be pulled together (see the report-page design).
 const FILTERS_PER_ROW = 3;
 
-// One span per filter in the group, distributed so EVERY wrap line the group
+// A row of KPI tiles takes four rather than three: a tile is a label over a
+// number, which still reads at a quarter of the column where a select showing
+// its selection does not.
+const KPIS_PER_ROW = 4;
+
+// The cell a filter group's Reset takes at the end of its closing line, leaving
+// the rest to the shared scope note. The same 20/4 split a section's head row
+// uses for its heading and its ⤓, for the same reason: an action shrunk to its
+// content needs a cell to be pushed to the right of, not a share of the width.
+const RESET_SPAN = 4;
+
+// One span per block in the group, distributed so EVERY wrap line the group
 // occupies is exactly full. A ragged trailing line is not cosmetic here: all
 // compiled blocks are siblings in one wrapping flex area, so the 16 columns left
 // over after a fourth filter are columns the following section flows into — a
@@ -252,10 +358,10 @@ const FILTERS_PER_ROW = 3;
 //
 // Rows are balanced rather than greedy — four filters are 2+2, not 3+1 — so no
 // filter stretches alone across the page while its neighbours sit at a third of
-// it. Balancing also holds every row to three or fewer, which is what keeps
-// 24/size a whole number of columns.
-function filterSpans(groupSize) {
-  const rows = Math.ceil(groupSize / FILTERS_PER_ROW);
+// it. Balancing also holds every row to `perRow` or fewer, which is what keeps
+// 24/size a whole number of columns: every cap the callers pass divides 24.
+function filterSpans(groupSize, perRow = FILTERS_PER_ROW) {
+  const rows = Math.ceil(groupSize / perRow);
   const base = Math.floor(groupSize / rows);
   const longRows = groupSize % rows;
   const spans = [];
@@ -264,6 +370,172 @@ function filterSpans(groupSize) {
     for (let i = 0; i < size; i += 1) spans.push(GRID_COLUMNS / size);
   }
   return spans;
+}
+
+// Maximal sequences of adjacent same-type sections, in spec order — the unit
+// layout is derived over: n adjacent kpis are one tile row, two adjacent narrow
+// charts are one pair.
+//
+// Section ORDER is the author's only channel into this, and the spec says
+// nothing else about layout: two charts placed adjacent pair up, and the same
+// two with a section of any other type between them do not. Adjacency is
+// therefore read off the spec exactly as written — filter sections included,
+// even though a filter emits nothing at its own position: the control it emits
+// above its first subscriber may be precisely what renders between the two.
+function groupRuns(sections) {
+  const runs = [];
+  for (const section of sections) {
+    const run = runs[runs.length - 1];
+    if (run && run[0].type === section.type) run.push(section);
+    else runs.push([section]);
+  }
+  return runs;
+}
+
+// Past these, half a column stops working: a ninth distinct x label tilts and
+// then collides with its neighbours, and a fifth series funds a legend wider
+// than the plot left beside it.
+const MAX_NARROW_CATEGORIES = 8;
+const MAX_NARROW_SERIES = 4;
+
+// Date.parse is far too permissive in V8 — "FY 2018" parses — so a date-like
+// string has to start with a digit or a month name to count, the same
+// restriction Flint imposes.
+const MONTH_PREFIX = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i;
+
+// Whether Flint will type this column of x values temporal. Mirrored from
+// flint-chart's data-driven inference rather than guessed at, because the
+// consequence has to match what gets DRAWN: Flint tests numeric before temporal,
+// so an all-numeric column — "2024" strings included — is quantitative and gets
+// a category axis, while a column whose every present value is a Date or a
+// date-like string gets the time axis whose dense ticks are what need the room.
+function isTemporalAxis(values) {
+  const present = values.filter(
+    (value) => value !== null && value !== undefined,
+  );
+  if (present.length === 0) return false;
+  if (
+    present.every((value) => !(value instanceof Date) && !Number.isNaN(+value))
+  ) {
+    return false;
+  }
+  return present.every((value) => {
+    if (value instanceof Date) return !Number.isNaN(value.getTime());
+    if (typeof value !== "string") return false;
+    const trimmed = value.trim();
+    return (
+      (/^\d/.test(trimmed) || MONTH_PREFIX.test(trimmed)) &&
+      !Number.isNaN(Date.parse(trimmed))
+    );
+  });
+}
+
+// Whether a chart section needs the whole column, judged from the rows the
+// compiler already holds. Three triggers, each a way for half a column to become
+// unreadable: a temporal x axis, more than eight distinct categories, or more
+// than four series.
+//
+// A pie has none of them — no axis to label, a slice count capped at seven by
+// assembly, and a radius that fills whatever square it is given — so a pie is
+// always narrow enough to pair, however many rows it summarises.
+//
+// A section with no rows is broken or withheld: it renders an Alert, which has
+// no business sitting in a half-column hole, and there is no data to judge
+// anyway. It reads as needing the width.
+export function needsWidth(section, rows) {
+  if (!Array.isArray(rows)) return true;
+  if (section.chart === "pie") return false;
+  if ((section.y ?? []).length > MAX_NARROW_SERIES) return true;
+  const values = rows.map((row) => row?.[section.x]);
+  if (isTemporalAxis(values)) return true;
+  // Keyed by String so two equal dates count once, and so a mixed column cannot
+  // over-count by object identity.
+  return new Set(values.map(String)).size > MAX_NARROW_CATEGORIES;
+}
+
+// Layout is derived here, on every open, from three things and nothing else: the
+// section's type, its position in its run, and the shape of the data the resolve
+// returned. None of it is stored in the spec — the agent authors no widths — so a
+// report follows its data as that grows rather than keeping the shape the data
+// had the day it was saved.
+//
+// The input is the FIRST, UNFILTERED resolve. Its rows are a superset of
+// anything a filter can later narrow them to, so a chart wide enough for all of
+// them stays wide enough for a subset, and a filter re-query swaps only
+// options/rows/heights through state bindings under a block tree that does not
+// move again until the next open. A filter that gained a DEFAULT applied at that
+// first resolve would break the superset assumption, and the derivation input
+// would have to be revisited.
+//
+// Returns the span each kpi/chart section is laid out at (with `boxed` for a
+// chart that is half of a pair), and the groups the section gap leads: one
+// section, except where derivation put several on one wrap line — a pair of
+// charts, a row of KPI tiles — which lead as one.
+function deriveSectionLayout({
+  sections,
+  rowsBySectionId,
+  filtersByFirstSubscriber,
+}) {
+  const spanBySection = new Map();
+  const gapGroups = [];
+  for (const run of groupRuns(sections)) {
+    if (run[0].type === "kpi") {
+      // One tile row for the whole run, balanced so every wrap line it takes is
+      // exactly full. It leads as ONE group: a run of five tiles is two lines,
+      // and a second gap between them would read as two sections of numbers.
+      const spans = filterSpans(run.length, KPIS_PER_ROW);
+      run.forEach((section, index) =>
+        spanBySection.set(section.id, { span: spans[index] }),
+      );
+      gapGroups.push(run);
+      continue;
+    }
+    if (run[0].type === "download") {
+      // The whole run compiles to one Downloads card (see downloadsCard), so
+      // it leads as ONE group — the same reason a kpi run does: a run of five
+      // exports is two button rows, and a gap between them would read as two
+      // separate download sections.
+      gapGroups.push(run);
+      continue;
+    }
+    if (run[0].type === "chart") {
+      let index = 0;
+      while (index < run.length) {
+        const section = run[index];
+        const next = run[index + 1];
+        if (
+          !needsWidth(section, rowsBySectionId.get(section.id)) &&
+          next !== undefined &&
+          !needsWidth(next, rowsBySectionId.get(next.id)) &&
+          // A filter control anchored on the SECOND of the two renders between
+          // them, breaking the wrap line they were paired for and stranding the
+          // first beside a twelve-column hole. Both take the full width instead.
+          !filtersByFirstSubscriber.has(next.id)
+        ) {
+          spanBySection.set(section.id, {
+            span: PAIRED_CHART_SPAN,
+            boxed: true,
+          });
+          spanBySection.set(next.id, { span: PAIRED_CHART_SPAN, boxed: true });
+          gapGroups.push([section, next]);
+          index += 2;
+          continue;
+        }
+        // Alone on its line: a chart that needs the width, or a narrow one with
+        // nothing to pair with. It takes the whole column rather than staying
+        // half of one — a half-width card beside an empty half reads as a
+        // rendering fault, not as a decision.
+        spanBySection.set(section.id, { span: GRID_COLUMNS });
+        gapGroups.push([section]);
+        index += 1;
+      }
+      continue;
+    }
+    // Everything else is full width, one section to a line: a half-width AgGrid
+    // is a horizontal-scroll trap, and prose reads across the column.
+    for (const section of run) gapGroups.push([section]);
+  }
+  return { spanBySection, gapGroups };
 }
 
 function safeFilename(label) {
@@ -395,6 +667,9 @@ function requeryActions({
   filterSectionsByField,
   endpointId,
   chartEndpointId,
+  colors,
+  spanBySection,
+  aiSummary,
 }) {
   const actions = [];
   for (const section of boundSections) {
@@ -406,6 +681,19 @@ function requeryActions({
           endpointId: chartEndpointId,
           payload: {
             ...sectionRef(section),
+            // Re-assembly makes the same width-driven layout decisions the
+            // compiled option was built with, so it has to be told the same
+            // width — the DERIVED span's, not the full column's: a paired chart
+            // re-queried at 24 columns would come back laid out for a canvas
+            // twice the one it is drawn on. Spans do not move mid-session, so
+            // the span decided at this open is the span the re-query will land
+            // in.
+            width: chartWidthForSpan(spanBySection.get(section.id).span),
+            // For the same reason, and one more: the map was decided over the
+            // UNFILTERED rows, so it covers names a filtered re-query can only
+            // narrow. Re-derived from whatever the filter left instead, a series
+            // would take the hue of its new rank rather than its own.
+            colors,
             filters: boundFilters(section, filterSectionsByField),
           },
         },
@@ -443,6 +731,10 @@ function requeryActions({
       },
     });
   }
+  // Last, so a re-query that throws leaves the summary state alone along with
+  // the section it failed to refresh: the on-screen numbers did not change, so
+  // the summary still describes them.
+  if (aiSummary) actions.push(markSummaryStale(filterSectionsByField));
   return actions;
 }
 
@@ -660,6 +952,108 @@ function filterOptions({ filter, sections, catalog, roles, rows }) {
   return capped(catalogOptions() ?? [], MAX_FILTER_OPTIONS);
 }
 
+// Both themes travel to the browser and the browser picks. It has to be this
+// way round: the ink a chart's labels need depends on the card the chart is
+// drawn on, `_media` is a CLIENT operator, and this function runs server-side
+// inside the resolve — so a choice made here would be made blind. Emitted as an
+// operator instead, it resolves per render, which also means toggling dark mode
+// re-inks every chart on the page without re-resolving the report.
+//
+// The doubled payload is a theme object per mode per chart section, around a
+// kilobyte each. Rejected the alternative of one ground-independent grey: the
+// best single ink is ~4:1 against both surfaces, where a per-mode ink is 7:1
+// against each, so it would have spent light mode's contrast to half-fix dark.
+//
+// `_if`/`_media` are allowlisted in report.yaml's `types.operators`; the leading
+// underscore doubles because Dynamic collapses `__x` back to `_x` on resolve.
+function themeSwitch(theme) {
+  if (theme === undefined) return undefined;
+  return {
+    __if: {
+      test: { __media: "darkMode" },
+      then: theme.dark,
+      else: theme.light,
+    },
+  };
+}
+
+// A section's own block sits inside a Card of its own — the container that
+// makes a report read as a stack of panels rather than bare numbers on the page
+// plane. Two section types bring their own frame and take no card: a table (the
+// grid draws one) and markdown (prose is what goes between the panels). The
+// span rides on the CARD, not the block inside it: the
+// card is what the layout places, and a span in both would be two sources for
+// one number. The id convention is load-bearing the other way round — the inner
+// block keeps the section id that every state binding, re-query and chart
+// assembly already names, and the wrapper takes `${id}_card`.
+//
+// `blocks` is the slots.content shorthand, as on the header's DropdownMenu — a
+// resolved fragment is built by the same recursive walk as a static page, so it
+// nests the same way.
+function sectionCard(section, span, block) {
+  return {
+    id: `${section.id}_card`,
+    type: "Card",
+    layout: { span },
+    blocks: [block],
+  };
+}
+
+// A paired chart's WHOLE section — head row and card — inside a half-width
+// wrapper, so the two of a pair sit side by side. It has to be a container and
+// not merely a narrower card: a head row is a full 24-column wrap line, so two
+// paired sections with flat head rows would each put their heading on a line of
+// its own beside a twelve-column hole. Nested, the child spans re-base against
+// the wrapper (`--lf-span` does not inherit), so the 20/4 heading-and-⤓ split
+// still divides this half-width line and the heading still sits above the card.
+function sectionBox(section, blocks) {
+  return {
+    id: `${section.id}_box`,
+    type: "Box",
+    layout: { span: PAIRED_CHART_SPAN },
+    blocks,
+  };
+}
+
+// A run of `download` sections compiles to one Card — the only section type
+// whose panel carries its own title, since every other panel is already named
+// by the head row above it and a download has no head row to put one in.
+// Buttons share the run's row(s) at filterSpans(n), the same balancing a run
+// of filters or kpis gets, rather than each stacking full-width or wrapping
+// ragged at the page's raw width.
+function downloadsCard(run, endpointId) {
+  const spans = filterSpans(run.length);
+  return {
+    id: `${run[0].id}_downloads`,
+    type: "Card",
+    layout: { span: GRID_COLUMNS },
+    properties: { title: "Downloads" },
+    blocks: run.map((section, index) => ({
+      id: section.id,
+      type: "Button",
+      layout: { span: spans[index] },
+      properties: { title: section.label, icon: "download" },
+      events: {
+        onClick: [
+          {
+            id: `query_${section.id}`,
+            type: "CallAPI",
+            params: { endpointId, payload: sectionRef(section) },
+          },
+          {
+            id: `download_${section.id}`,
+            type: "DownloadCsv",
+            params: {
+              data: { __api: `${endpointId}.response` },
+              filename: safeFilename(section.label),
+            },
+          },
+        ],
+      },
+    })),
+  };
+}
+
 // EChart and AgGridBalham have no `title` property (their schemas set
 // additionalProperties: false), so a section's label renders as a preceding
 // Title block — the same pattern the chat results panel uses for charts.
@@ -713,8 +1107,11 @@ function failedSectionBlock(section, description) {
 // is gated server-side, so hiding them from a non-owner only spares them a dead
 // button — it is not the authorization. A non-owner keeps the Alert, which names
 // the owner who can fix it (when known) and offers nothing to click. Blocks stay
-// flat siblings of the Alert — no wrapping Box — so the page's byId lookups reach
-// them.
+// flat siblings of the Alert rather than sharing a container: a failure is not a
+// panel of content, and each recovery is a full-width row of its own. Nesting is
+// available here — a resolved fragment builds with the same recursive machinery
+// as a static page, which is how every healthy section gets its card — so this
+// flat shape is a layout choice and nothing more.
 function brokenSectionBlocks(
   section,
   description,
@@ -884,12 +1281,219 @@ function verifySection(section, rows) {
   }
 }
 
+// Aligns the resolver's per-section step results with querySections() order,
+// which is the only thing that relates the two: a result carries no section id.
+// A missing entry reads as null — the section's AnalyticsPipeline failed inside
+// :try, or the viewer may not read it.
+function rowsBySection(sections, results) {
+  const map = new Map();
+  orderedQueries(sections).forEach((entry, index) => {
+    const rows = results?.[index] ?? null;
+    // An options query's rows are read by key and never inlined: only the
+    // option label and value are, so any key stays usable as a valueKey.
+    map.set(entry.id, entry.type === "filter" ? rows : inertRows(rows));
+  });
+  return map;
+}
+
+// Report-scoped colour identity: one hue per entity name, decided once for the
+// whole report, so an entity is the same colour in every section that names it —
+// a status in a pie and in the stacked bar beside it — rather than taking
+// whichever hue its position in one chart's series list happened to fall on.
+//
+// The union is entity names only: a multi-series chart's series names (its
+// humanized `y` columns) and a pie's slice names (its `x` values, taken as they
+// will be drawn — ranked and capped, the aggregate excluded, since a name the
+// pie folds away needs no hue). Both are names a reader matches from one section
+// to the next; a single-series axis chart's is not, and is left out — see
+// applyPalette.
+//
+// First appearance in spec order wins, and only the first eight names get in.
+// The ninth onward are coloured per chart at assembly from the slots that chart
+// left unused: they lose cross-section stability, which is the whole of what
+// eight hues can buy, but no chart repeats a hue within itself.
+export function assignReportColors({ sections, results }) {
+  const rows = rowsBySection(sections, results);
+  const assigned = new Map();
+  for (const section of sections) {
+    if (section.type !== "chart") continue;
+    // A broken or withheld section has no rows, so a pie's slices are unknowable
+    // and none of its marks will be drawn — it takes no slot rather than
+    // throwing.
+    const sectionRows = rows.get(section.id);
+    if (sectionRows === null || sectionRows === undefined) continue;
+    let names = [];
+    if (section.chart === "pie") {
+      names = pieSliceNames({ x: section.x, y: section.y, rows: sectionRows });
+    } else if (section.y.length > 1) {
+      names = section.y.map(humanize);
+    }
+    for (const name of names) {
+      if (assigned.size >= PALETTE.length) break;
+      const key = String(name);
+      if (assigned.has(key)) continue;
+      assigned.set(key, PALETTE[assigned.size]);
+    }
+  }
+  // Built through a Map so a slice literally named "__proto__" lands as an own
+  // property rather than vanishing into the prototype.
+  return Object.fromEntries(assigned);
+}
+
+// The sections a filter moves BEYOND the one it sits above — position answers
+// for that one. Undefined when position answers for all of them: an empty note
+// would still reserve the line under the control.
+function scopeNote(boundSections) {
+  if (boundSections.length < 2) return undefined;
+  return `Also filters: ${boundSections
+    .slice(1)
+    .map((s) => s.label)
+    .join(", ")}`;
+}
+
+// A filter's bound-section set, as a comparable key. Every filter in a group
+// shares its first subscriber — that is what grouped them — so the sets differ
+// only past the anchor, and two filters driving the same sections key alike
+// because boundSections is always read off the spec in spec order.
+function scopeKey(boundSections) {
+  return boundSections.map((s) => s.id).join("\u0000");
+}
+
+// Which bound-section set, if any, a filter group states ONCE under its controls
+// rather than once per control. Four filters over six sections rendered four
+// identical three-line notes — more vertical space than any chart on the page —
+// for the same sentence four times.
+//
+// The most common set wins and its controls drop their own note; a control whose
+// set differs keeps one, because a shared line cannot speak for it. Nothing wins
+// when every set is distinct: n notes are already the shortest way to say n
+// different scopes. A group of one shares with itself, so a lone filter's note
+// becomes the line too — scope is written in one place at every group size.
+function sharedScopeKey(group) {
+  const counts = new Map();
+  for (const { boundSections } of group) {
+    const key = scopeKey(boundSections);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  let winner = null;
+  for (const [key, count] of counts) {
+    if (winner === null || count > counts.get(winner)) winner = key;
+  }
+  if (winner === null) return null;
+  const count = counts.get(winner);
+  return count === group.length || count > 1 ? winner : null;
+}
+
+// Reset clears state and stops there. It does not re-query: every section
+// binding is an __if_none over its state key and the value the first, unfiltered
+// resolve inlined, so clearing the key IS the unfiltered data — and it is that
+// data exactly, as of the timestamp the header's "Data as of" line states, which
+// a fresh unfiltered query would silently move on.
+//
+// The section keys are the ones a re-query WOULD have written, per type, since
+// those are the only ones a filter change can leave behind. They have to be
+// cleared here rather than left to the controls: SetState fires no onChange, so
+// emptying a control does not run its own re-query.
+function filterResetAction({
+  anchorId,
+  group,
+  boundUnion,
+  filterSectionsByField,
+  aiSummary,
+}) {
+  const params = {};
+  const resetFields = new Set(group.map(({ filter }) => filter.field));
+  for (const field of resetFields) {
+    params[filterStateKey(field)] = null;
+  }
+  // Reset changes what is on screen as surely as a selection does, so the
+  // summary's record of this group's values is cleared with the controls and
+  // any summary on screen is marked stale. The whole map is rewritten, as the
+  // onChange does, because the map is keyed by the field STRING: a dot-path
+  // `summary.filter_values.<field>` would nest a dotted field (owner.user_id)
+  // beside the literal key and leave its old value for the next Generate. The
+  // group's own fields are literal nulls rather than live reads: SetState
+  // evaluates its params before it writes, so a deferred read of a field being
+  // reset would capture the value on its way out.
+  if (aiSummary) {
+    const values = summaryFilterValues(filterSectionsByField);
+    for (const field of resetFields) values[field] = null;
+    params["summary.filter_values"] = values;
+    params["summary.stale"] = true;
+  }
+  for (const section of boundUnion) {
+    if (section.type === "chart") {
+      params[`sections.${section.id}.option`] = null;
+      params[`sections.${section.id}.height`] = null;
+    } else {
+      params[`sections.${section.id}.rows`] = null;
+    }
+  }
+  return { id: `reset_${anchorId}`, type: "SetState", params };
+}
+
+// What closes a filter group: the scope its controls share, said once, and the
+// Reset that puts every section they drive back to the report as it opened.
+//
+// The spans are arithmetic, not decoration. filterSpans fills the controls' wrap
+// lines exactly because leftover columns are columns the next section flows up
+// into — so whatever follows the controls has to fill a line too. These two
+// share one, 20 + 4, and whichever of them is alone takes all 24. Reset shrinks
+// to its content and pushes right inside its cell, so it lands at the end of the
+// group's last line at either span.
+function filterGroupFooter({
+  anchorId,
+  group,
+  boundUnion,
+  note,
+  rowsBySectionId,
+  filterSectionsByField,
+  aiSummary,
+}) {
+  // Nothing to put back: every section these filters drive failed its resolve,
+  // so each renders an Alert that reads no state and would re-query on no
+  // change. The controls degrade the same way when their options cannot be
+  // sourced, and a Reset for a report with nothing to reset is a dead control.
+  const resettable = boundUnion.some(
+    (section) => rowsBySectionId.get(section.id) != null,
+  );
+  const blocks = [];
+  if (note) {
+    blocks.push({
+      id: `filters_${anchorId}_scope`,
+      type: "Paragraph",
+      layout: { span: resettable ? GRID_COLUMNS - RESET_SPAN : GRID_COLUMNS },
+      properties: { content: note, type: "secondary" },
+    });
+  }
+  if (resettable) {
+    blocks.push({
+      id: `filters_${anchorId}_reset`,
+      type: "Button",
+      layout: { span: note ? RESET_SPAN : GRID_COLUMNS },
+      style: RIGHT_IN_CELL,
+      properties: { title: "Reset", type: "text", size: "small" },
+      events: {
+        onClick: [
+          filterResetAction({
+            anchorId,
+            group,
+            boundUnion,
+            filterSectionsByField,
+            aiSummary,
+          }),
+        ],
+      },
+    });
+  }
+  return blocks;
+}
+
 // A filter's control block, built once and placed above the first section it
 // drives (its position answers "what does this move"). Construction is identical
 // to any placement: a DateRangeSelector, a Selector/MultipleSelector sourced via
 // filterOptions, or — when no usable options exist — the same Alert a broken
-// section renders. When the filter drives more than one section it sits above
-// only the first, so it names the others; bound to one, position says it.
+// section renders.
 function filterControlBlock({
   section,
   boundSections,
@@ -900,31 +1504,33 @@ function filterControlBlock({
   endpointId,
   chartEndpointId,
   filterSectionsByField,
+  colors,
+  spanBySection,
   span,
+  showScope,
+  aiSummary,
 }) {
   const onChange = requeryActions({
     boundSections,
     filterSectionsByField,
     endpointId,
     chartEndpointId,
+    colors,
+    spanBySection,
+    aiSummary,
   });
-  // The scope note goes in the label's `extra` — rendered under the control, in
-  // the muted `.ant-form-item-extra` line — rather than appended to the title.
-  // Inline, a filter naming three other sections wrapped its title over two
-  // lines and pushed its input out of alignment with the control beside it,
-  // which is worse now that filters share a row. It is also secondary
-  // information: the label answers "what is this", the note "what else does it
-  // move". Undefined when the filter drives one section, and `showExtra` is
-  // false for an absent extra, so nothing renders. All three control types
-  // spread `properties.label` into their Label wrapper, so this reaches the same
-  // place on each.
-  const scopeExtra =
-    boundSections.length > 1
-      ? `Also filters: ${boundSections
-          .slice(1)
-          .map((s) => s.label)
-          .join(", ")}`
-      : undefined;
+  // A note only this control needs — its scope differs from the one its group
+  // states below, or it is the only thing that would say it. It goes in the
+  // label's `extra`, rendered under the control in the muted
+  // `.ant-form-item-extra` line, rather than appended to the title: inline, a
+  // filter naming three other sections wrapped its title over two lines and
+  // pushed its input out of alignment with the control beside it. It is also
+  // secondary information — the label answers "what is this", the note "what
+  // else does it move". `showExtra` is false for an absent extra, so nothing
+  // renders when there is nothing to say. All three control types spread
+  // `properties.label` into their Label wrapper, so this reaches the same place
+  // on each.
+  const scopeExtra = showScope ? scopeNote(boundSections) : undefined;
   const label = scopeExtra ? { extra: scopeExtra } : undefined;
 
   // The span is the group's, not 24: controls anchored above the same section
@@ -1016,6 +1622,8 @@ function compileBlocks(
     is_favourite,
     can_share,
     conversation_id,
+    theme,
+    ai_summary,
     maxBytes,
   },
   { refused, oversized },
@@ -1053,16 +1661,11 @@ function compileBlocks(
       fail("results must be the resolver's per-section step results.");
     }
   }
-  const rowsBySectionId = new Map();
-  orderedQueries(sections).forEach((entry, index) => {
-    const rows = resultsArray[index] ?? null;
-    // An options query's rows are read by key and never inlined: only the
-    // option label and value are, so any key stays usable as a valueKey.
-    rowsBySectionId.set(
-      entry.id,
-      entry.type === "filter" ? rows : inertRows(rows),
-    );
-  });
+  const rowsBySectionId = rowsBySection(sections, resultsArray);
+
+  // Before any section is emitted: every chart's hues come out of one map, so
+  // the pass that builds it has to have seen the whole spec first.
+  const colors = assignReportColors({ sections, results: resultsArray });
 
   const filterSectionsByField = new Map(
     sections.filter((s) => s.type === "filter").map((s) => [s.field, s]),
@@ -1074,29 +1677,27 @@ function compileBlocks(
   const header = [];
   const bodyBlocks = [];
 
-  // The title row: the title, then its actions right-aligned beside it rather
-  // than stacked underneath. ★ is always there — favouriting is a read-side act,
-  // so a non-owner may star a shared report — and Continue-in-chat only where
-  // there is a conversation to reopen and the viewer owns it. The spans are
-  // decided here, together, because the title takes whatever the actions leave;
-  // that is also why the buttons are pushed immediately after it.
+  // The title row: the title, then its actions grouped at the right beside it
+  // rather than stacked underneath. ★ is always there — favouriting is a
+  // read-side act, so a non-owner may star a shared report — and
+  // Continue-in-chat only where there is a conversation to reopen and the
+  // viewer owns it. The actions are collected here and emitted as one group
+  // after the title.
   const showContinueInChat = Boolean(is_owner && conversation_id);
-  const actionsSpan =
-    FAVOURITE_SPAN + MENU_SPAN + (showContinueInChat ? CHAT_LINK_SPAN : 0);
+  const actions = [];
 
   header.push({
     id: "report_title",
     type: "Title",
-    layout: { span: 24 - actionsSpan },
+    layout: { span: TITLE_SPAN },
     properties: { content: validated.title, level: 3 },
   });
 
   if (showContinueInChat) {
-    header.push({
+    actions.push({
       id: "report_continue_in_chat",
       type: "Button",
-      layout: { span: CHAT_LINK_SPAN },
-      style: RIGHT_IN_CELL,
+      layout: ACTION_LAYOUT,
       properties: {
         title: "Continue in chat",
         icon: "message",
@@ -1118,16 +1719,62 @@ function compileBlocks(
     });
   }
 
+  // AI summary opens the STATIC drawer in report.yaml by id — the same
+  // compiled-header-to-static-sibling path the ⋯ menu's Rename takes to
+  // rename_modal — after seeding the drawer's filter values from the live
+  // controls. The drawer owns generation (its own Generate button calls
+  // summarize-report), so there is one generate implementation and nothing
+  // model-related in compiled output. Only where the module's ai_summary var is
+  // on; when it is, every viewer gets it: reading a report is what the button
+  // serves, and the endpoint resolves under the viewer's own roles.
+  if (ai_summary) {
+    actions.push({
+      id: "report_summary",
+      type: "Button",
+      layout: ACTION_LAYOUT,
+      properties: {
+        title: "AI summary",
+        icon: "Lightbulb",
+        // A bordered button, unlike the text-styled ★, ⋯ and chat link: this is
+        // the header's one call to action, and as a link it read as another
+        // navigation.
+        type: "default",
+        size: "small",
+      },
+      events: {
+        onClick: [
+          {
+            id: "seed_summary_filters",
+            type: "SetState",
+            params: {
+              "summary.filter_values": summaryFilterValues(
+                filterSectionsByField,
+              ),
+            },
+          },
+          {
+            id: "open_summary_drawer",
+            type: "CallMethod",
+            params: {
+              blockId: "report_summary_drawer",
+              method: "setOpen",
+              args: [{ open: true }],
+            },
+          },
+        ],
+      },
+    });
+  }
+
   // set-report-favourite takes the desired state, not a toggle — and the current
   // state is known at compile time, so the payload is a literal rather than a
   // client-side negation. The re-navigation is the refresh, the same mechanism
   // Drop-a-section uses: the report is a server-resolved Dynamic block with no
   // client refetch, so re-opening the page is what re-renders the ★ filled.
-  header.push({
+  actions.push({
     id: "report_favourite",
     type: "Button",
-    layout: { span: FAVOURITE_SPAN },
-    style: RIGHT_IN_CELL,
+    layout: ACTION_LAYOUT,
     properties: {
       title: is_favourite ? "Remove from favourites" : "Add to favourites",
       hideTitle: true,
@@ -1314,23 +1961,20 @@ function compileBlocks(
       ],
     });
   }
-  header.push({
+  actions.push({
     id: "report_menu",
     type: "DropdownMenu",
-    layout: { span: MENU_SPAN },
+    layout: ACTION_LAYOUT,
     properties: {
       trigger: "click",
       placement: "bottomRight",
       links: menuItems.map((item) => item.link),
     },
-    // slots.content — the blocks that trigger the dropdown. RIGHT_IN_CELL goes on the
-    // button rather than on the DropdownMenu: antd's Dropdown renders no element of
-    // its own, so a style on the block has nothing to land on.
+    // slots.content — the blocks that trigger the dropdown.
     blocks: [
       {
         id: "report_menu_trigger",
         type: "Button",
-        style: RIGHT_IN_CELL,
         properties: {
           title: "Report actions",
           hideTitle: true,
@@ -1363,6 +2007,18 @@ function compileBlocks(
         ...menuItems.flatMap((item) => item.actions),
       ],
     },
+  });
+
+  header.push({
+    id: "report_actions",
+    type: "Box",
+    layout: {
+      span: ACTIONS_SPAN,
+      justify: "end",
+      align: "middle",
+      gap: 8,
+    },
+    blocks: actions,
   });
 
   if (validated.description) {
@@ -1436,37 +2092,124 @@ function compileBlocks(
     list.push({ filter, boundSections });
     filtersByFirstSubscriber.set(anchor.id, list);
   }
+  // Between the two filter passes: the anchors are known (a pair of charts will
+  // not form across a control anchored on the second of them), and the spans a
+  // chart's re-query has to carry are not yet needed.
+  const { spanBySection, gapGroups } = deriveSectionLayout({
+    sections,
+    rowsBySectionId,
+    filtersByFirstSubscriber,
+  });
+
+  // Assembly is memoised because a paired chart has to know its neighbour's
+  // canvas height before either of them is emitted, and assembling twice would
+  // mean building the same option twice per open. A section that throws caches
+  // its error, so the failure degrades that one section exactly as it would have
+  // in the emit loop.
+  const assembledCharts = new Map();
+  const assembleChart = (section) => {
+    if (!assembledCharts.has(section.id)) {
+      try {
+        assembledCharts.set(section.id, {
+          assembled: buildFlintOption({
+            chart: section.chart,
+            x: section.x,
+            y: section.y,
+            rows: rowsBySectionId.get(section.id),
+            stacked: section.stacked,
+            width: chartWidthForSpan(spanBySection.get(section.id).span),
+            colors,
+          }),
+        });
+      } catch (error) {
+        assembledCharts.set(section.id, { error: error.message });
+      }
+    }
+    return assembledCharts.get(section.id);
+  };
+
+  // Two charts sharing a wrap line take the taller one's canvas. Height follows
+  // content — rotated labels and a legend band each buy their own room — so a
+  // pair left to itself ends up with ragged bottoms and reads as a rendering
+  // fault rather than as two views of one row. The shorter chart's plot grows
+  // into the extra height instead of sitting above dead space, because the
+  // option positions its grid from the canvas edges rather than at a fixed
+  // plot size.
+  //
+  // Pinned, not bound: the pair's height is decided here and a filtered
+  // re-query does not move it. That cannot clip, because the first resolve is
+  // unfiltered — a filter can only narrow the rows, and fewer categories never
+  // need more room than the height decided over all of them.
+  const pairHeightById = new Map();
+  for (const group of gapGroups) {
+    if (group.length !== 2) continue;
+    if (!group.every((s) => spanBySection.get(s.id)?.boxed)) continue;
+    const heights = group
+      .map((s) => assembleChart(s).assembled?.height)
+      .filter((h) => typeof h === "number");
+    if (heights.length !== 2) continue;
+    const tallest = Math.max(...heights);
+    for (const section of group) pairHeightById.set(section.id, tallest);
+  }
+
   // The filter ids behind each anchor's controls, in the same order, so every
   // compiled block can be traced back to the section it was built for.
   const filterIdsByAnchor = new Map();
   for (const [anchorId, group] of filtersByFirstSubscriber) {
     const spans = filterSpans(group.length);
-    filterIdsByAnchor.set(
-      anchorId,
-      group.map(({ filter }) => filter.id),
+    // Decided once for the whole group: which scope the closing line states, and
+    // therefore which controls have nothing of their own left to say.
+    const sharedKey = sharedScopeKey(group);
+    const shared = group.find(
+      ({ boundSections }) => scopeKey(boundSections) === sharedKey,
     );
-    filtersByFirstSubscriber.set(
-      anchorId,
-      group.map(({ filter, boundSections }, index) =>
-        refused.has(filter.id)
-          ? {
-              ...failedSectionBlock(filter, SECTION_REFUSED_DESCRIPTION),
-              layout: { span: spans[index] },
-            }
-          : filterControlBlock({
-              section: filter,
-              boundSections,
-              sections,
-              catalog,
-              roles,
-              rows: rowsBySectionId.get(filter.id),
-              endpointId,
-              chartEndpointId,
-              filterSectionsByField,
-              span: spans[index],
-            }),
-      ),
+    const sharedNote = shared ? scopeNote(shared.boundSections) : undefined;
+    // Every section any filter in the group drives, in spec order — what Reset
+    // has to put back, which is wider than any one control's bound set.
+    const fields = new Set(group.map(({ filter }) => filter.field));
+    const boundUnion = sections.filter((section) =>
+      (section.filterBy ?? []).some((field) => fields.has(field)),
     );
+    const blocks = group.map(({ filter, boundSections }, index) =>
+      refused.has(filter.id)
+        ? {
+            ...failedSectionBlock(filter, SECTION_REFUSED_DESCRIPTION),
+            layout: { span: spans[index] },
+          }
+        : filterControlBlock({
+            section: filter,
+            boundSections,
+            sections,
+            catalog,
+            roles,
+            rows: rowsBySectionId.get(filter.id),
+            endpointId,
+            chartEndpointId,
+            filterSectionsByField,
+            colors,
+            spanBySection,
+            span: spans[index],
+            showScope: scopeKey(boundSections) !== sharedKey,
+            aiSummary: Boolean(ai_summary),
+          }),
+    );
+    const footer = filterGroupFooter({
+      anchorId,
+      group,
+      boundUnion,
+      note: sharedNote,
+      rowsBySectionId,
+      filterSectionsByField,
+      aiSummary: Boolean(ai_summary),
+    });
+    blocks.push(...footer);
+    // The closing scope line and Reset belong to no one filter, so a refusal in
+    // them is left for the final check, as one in the header is.
+    filterIdsByAnchor.set(anchorId, [
+      ...group.map(({ filter }) => filter.id),
+      ...footer.map(() => null),
+    ]);
+    filtersByFirstSubscriber.set(anchorId, blocks);
   }
 
   // One section's own blocks, returned rather than pushed so the caller can
@@ -1526,40 +2269,40 @@ function compileBlocks(
         if (display.style === "currency") {
           properties.prefix = `${seps.symbol} `;
         }
-        out.push({
-          id: section.id,
-          type: "Statistic",
-          layout: { span: 6 },
-          properties,
-        });
+        // The tile's share of its run's row, so n adjacent kpis read as one row
+        // of numbers rather than as n sections that happen to be narrow.
+        out.push(
+          sectionCard(section, spanBySection.get(section.id).span, {
+            id: section.id,
+            type: "Statistic",
+            properties,
+          }),
+        );
       }
 
       if (section.type === "chart") {
+        const { span, boxed } = spanBySection.get(section.id);
         // Assembly reads the rows: it inlines them and sizes the canvas to the
         // labels it lays out, and it rejects a spec it cannot render — so a
         // throw here degrades this one section rather than the report, the way
         // a contract mismatch does.
-        let assembled;
-        try {
-          assembled = buildFlintOption({
-            chart: section.chart,
-            x: section.x,
-            y: section.y,
-            rows,
-            stacked: section.stacked,
-          });
-        } catch (error) {
-          out.push(...brokenSectionBlocks(section, error.message, brokenCtx));
+        const { assembled, error } = assembleChart(section);
+        if (error !== undefined) {
+          out.push(...brokenSectionBlocks(section, error, brokenCtx));
           return out;
         }
-        out.push(sectionHeading(section, rows));
-        out.push(sectionDownload(section, endpointId));
-        // Both keys move together: the re-assembled option's height belongs to
-        // the labels in it, so binding one without the other would draw new
-        // data at the old canvas size.
+        // A paired chart wears its pair's height so the two line up; anything
+        // else is sized by its own labels.
+        const pinned = pairHeightById.get(section.id);
+        const height = pinned ?? assembled.height;
+        // Option and height move together where height is the chart's own: the
+        // re-assembled option's height belongs to the labels in it, so binding
+        // one without the other would draw new data at the old canvas size. A
+        // pinned pair height is the exception and stays put, so a re-query
+        // cannot break the pair's alignment.
         const properties =
           (section.filterBy ?? []).length === 0
-            ? { height: assembled.height, option: assembled.option }
+            ? { height, option: assembled.option }
             : {
                 option: {
                   __if_none: [
@@ -1567,35 +2310,54 @@ function compileBlocks(
                     assembled.option,
                   ],
                 },
-                height: {
+                height: pinned ?? {
                   __if_none: [
                     { __state: `sections.${section.id}.height` },
                     assembled.height,
                   ],
                 },
               };
-        out.push({
-          id: section.id,
-          type: "EChart",
-          layout: { span: 24 },
-          properties,
-        });
+        // A filtered re-query swaps option/height only (see chart-data), so a
+        // theme set here at compile time keeps applying across refetches.
+        const chartTheme = themeSwitch(theme);
+        if (chartTheme !== undefined) {
+          properties.theme = chartTheme;
+        }
+        const parts = [
+          sectionHeading(section, rows),
+          sectionDownload(section, endpointId),
+          // Inside a box the card re-bases against the wrapper, so it fills the
+          // half-width line rather than taking half of it again.
+          sectionCard(section, boxed ? GRID_COLUMNS : span, {
+            id: section.id,
+            type: "EChart",
+            properties,
+          }),
+        ];
+        out.push(...(boxed ? [sectionBox(section, parts)] : parts));
       }
 
       if (section.type === "table") {
         out.push(sectionHeading(section, rows));
         out.push(sectionDownload(section, endpointId));
+        // No card: a grid already draws the panel — a header band, row rules and
+        // a border on all four sides — so a card around it is a second frame
+        // holding nothing the first doesn't. The grid IS this section's panel.
         out.push({
           id: section.id,
           type: "AgGridBalham",
-          layout: { span: 24 },
+          layout: { span: GRID_COLUMNS },
           properties: {
             height: tableHeight(rows),
             rowData: dataBinding(section, rows),
             columnDefs: section.columns.map((column) =>
               tableColumnDef(column, rows),
             ),
-            defaultColDef: { sortable: true, resizable: true },
+            // flex fills the report column whatever the column count — without
+            // it a narrow table left hundreds of pixels of blank space beside
+            // its columns, and a wide one clipped its header mid-word instead
+            // of shrinking to fit.
+            defaultColDef: { sortable: true, resizable: true, flex: 1 },
           },
         });
       }
@@ -1604,6 +2366,9 @@ function compileBlocks(
     // Filter sections emit no block at their own position — their control was
     // placed above its first subscribing section in the interleave pass above.
 
+    // No card: prose is what narrates BETWEEN the panels, so putting it in one
+    // of its own would read as another result rather than as the text around
+    // them.
     if (section.type === "markdown") {
       out.push({
         id: section.id,
@@ -1613,31 +2378,8 @@ function compileBlocks(
       });
     }
 
-    if (section.type === "download") {
-      out.push({
-        id: section.id,
-        type: "Button",
-        layout: { span: 6 },
-        properties: { title: section.label, icon: "download" },
-        events: {
-          onClick: [
-            {
-              id: `query_${section.id}`,
-              type: "CallAPI",
-              params: { endpointId, payload: sectionRef(section) },
-            },
-            {
-              id: `download_${section.id}`,
-              type: "DownloadCsv",
-              params: {
-                data: { __api: `${endpointId}.response` },
-                filename: safeFilename(section.label),
-              },
-            },
-          ],
-        },
-      });
-    }
+    // download sections never reach here: a whole run compiles to one
+    // Downloads card in the emit loop below, before sectionBlocks is called.
     return out;
   };
 
@@ -1657,28 +2399,53 @@ function compileBlocks(
   const owners = header.map(() => null);
   const leftOut = new Set();
   let bytes = blockBytes(header);
-  for (const section of sections) {
-    // A filter renders directly above its first subscribing section, and leads
-    // that section's group — so the two are separated by the small row gap and
-    // the whole group is pushed off what precedes it.
-    const controls = filtersByFirstSubscriber.get(section.id) ?? [];
-    const controlOwners = filterIdsByAnchor.get(section.id) ?? [];
-    let own = oversized.has(section.id)
-      ? oversizedBlocks(section)
-      : sectionBlocks(section);
-    let placed = withTopGap([...controls, ...own]);
-    if (
-      own.length > 0 &&
-      (oversized.has(section.id) ||
-        (typeof maxBytes === "number" && bytes + blockBytes(placed) > maxBytes))
-    ) {
-      own = oversizedBlocks(section);
-      placed = withTopGap([...controls, ...own]);
-      leftOut.add(section.id);
+  // Emitted a gap group at a time — one section, or the several derivation put
+  // on a single wrap line. A filter renders directly above its first subscribing
+  // section and leads that section's group, so the two are separated by the
+  // small row gap while the whole group is pushed off what precedes it.
+  for (const group of gapGroups) {
+    // A download run has no filter to interleave (filterBy is not a download
+    // field) and compiles as one card rather than one block per section, so it
+    // bypasses sectionBlocks entirely. The card is owned by the run's first
+    // section, so a refusal anywhere in it costs the run its card.
+    if (group[0].type === "download") {
+      const placed = withTopGap([
+        refused.has(group[0].id)
+          ? failedSectionBlock(group[0], SECTION_REFUSED_DESCRIPTION)
+          : downloadsCard(group, endpointId),
+      ]);
+      bytes += blockBytes(placed);
+      bodyBlocks.push(...placed);
+      owners.push(group[0].id);
+      continue;
     }
-    bytes += blockBytes(placed);
-    bodyBlocks.push(...placed);
-    owners.push(...controlOwners, ...own.map(() => section.id));
+    const blocks = [];
+    for (const section of group) {
+      const controls = filtersByFirstSubscriber.get(section.id) ?? [];
+      let own = oversized.has(section.id)
+        ? oversizedBlocks(section)
+        : sectionBlocks(section);
+      if (
+        own.length > 0 &&
+        (oversized.has(section.id) ||
+          (typeof maxBytes === "number" &&
+            bytes + blockBytes(withTopGap([...blocks, ...controls, ...own])) >
+              maxBytes))
+      ) {
+        own = oversizedBlocks(section);
+        leftOut.add(section.id);
+      }
+      blocks.push(...controls, ...own);
+      owners.push(
+        ...(filterIdsByAnchor.get(section.id) ?? []),
+        ...own.map(() => section.id),
+      );
+    }
+    if (blocks.length > 0) {
+      const placed = withTopGap(blocks);
+      bytes += blockBytes(placed);
+      bodyBlocks.push(...placed);
+    }
   }
 
   return { blocks: [...header, ...bodyBlocks], owners, oversized: leftOut };

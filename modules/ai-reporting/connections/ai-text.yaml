@@ -1,0 +1,16 @@
+# Gateway key only, no database — the one-shot LLM call behind the report page's
+# AI summary (summarize-report → SummarizeReportData). The `ai` connection is an
+# AI gateway for the AGENT: AIGateway/AIGatewayAgent own conversations, and a
+# plain "ask the model once, get text back" has nowhere to live there, which is
+# why the AiText connection type exists (see it in @lowdefy/modules-mongodb-plugins).
+# Same secret as `ai`, so an app that supplies AI_GATEWAY_API_KEY has both. An app
+# that remapped `ai` to its own gateway remaps this one the same way:
+#   modules:
+#     - id: ai-reporting
+#       connections:
+#         ai-text: my-ai-text-connection
+id: ai-text
+type: AiText
+properties:
+  apiKey:
+    _secret: AI_GATEWAY_API_KEY

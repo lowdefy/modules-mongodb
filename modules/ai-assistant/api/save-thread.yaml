@@ -22,13 +22,24 @@ payloadSchema:
       description: Full UIMessage history (user + assistant) from the chat block.
     title:
       type: string
+      maxLength: 120
     scope:
       type: string
       description: Partition key — threads are listed per (scope, user).
     tag:
-      type: string
+      # Null when the `tag` var is left at its default.
+      type:
+        - string
+        - "null"
       description: Display label accumulated onto the thread as a chip.
 routine:
+  - _ref: api/routines/require_user.yaml
+  # Every writer comes through here — the chat persists on send as well as on completion — so
+  # an unreplayable history is filtered once, at the write, rather than at each call site.
+  - :set_state:
+      raw_messages:
+        _payload: messages
+  - _ref: api/routines/sanitize_messages.yaml
   - id: upsert_thread
     type: MongoDBUpdateOne
     connectionId:
@@ -44,9 +55,7 @@ routine:
       update:
         $set:
           messages:
-            _payload: messages
-          title:
-            _payload: title
+            _state: replayable_messages
           scope:
             _payload: scope
           user_id:
@@ -81,6 +90,18 @@ routine:
         $setOnInsert:
           created:
             _date: now
+          # Named once, when the row is created: after that rename-thread and title-thread own
+          # it, so a save from a tab holding an older name cannot put that name back.
+          title:
+            _payload: title
+          # Initialised so live threads have one shape — see
+          # docs/shared/soft-delete.md. Deliberately NOT in the filter above:
+          # this is an upsert, and $exists is not an equality clause, so a
+          # no-match would mint a SECOND row under the same conversationId
+          # rather than skipping the write. An in-flight save landing after a
+          # delete therefore rewrites the deleted row's messages, but leaves the
+          # stamp intact, so it stays filtered out of every read.
+          deleted: null
       options:
         upsert: true
   - :return:

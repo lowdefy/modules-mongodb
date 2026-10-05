@@ -49,7 +49,7 @@ The sheet can only assemble what the conversation rendered as a tickable card, a
 
 ### Authoring filters
 
-The **Filters** section adds a filter from a field in the report's data — a control that renders at the top of the saved report and scopes every section built on a collection that has that field. You author only the filter's _definition_; its selectable values resolve live when the report opens and are never previewed in the sheet.
+The **Filters** section adds a filter from a field in the report's data — a control that renders in the saved report directly above the first section it scopes, and scopes every section built on a collection that has that field. You author only the filter's _definition_; its selectable values resolve live when the report opens and are never previewed in the sheet.
 
 Only fields the picker can complete are offered, drawn from the collections your chosen sections query:
 
@@ -76,3 +76,7 @@ This is the chat side of the conversation link below: the section is how a conve
 Reports **link back to their source chat** — the report records the `conversation_id` of the conversation it was assembled from, and the report page offers a continue-in-chat affordance that returns you there.
 
 Both creation routes now carry this link. A report saved from the sheet records the conversation directly. A report the agent builds with `generate_report` is tied back at the end of the turn: the tool itself runs server-side with only its input in hand and never sees the conversation, so it creates the report unlinked, and the turn-end hook — which does hold the conversation — populates `conversation_id` a moment later. Either way the report ends up linked, shows up in **Reports from this chat**, and offers continue-in-chat.
+
+### The report chip
+
+Below the transcript, whenever the assistant is idle, a suggestion chip offers to **Turn this conversation into a report**. Clicking it sends that request as a message, so it is the guided way onto the `generate_report` route. The chip shows only while the conversation has **no saved report**: it goes the moment one is saved — from the sheet or by the assistant, without a reload — and comes back if you open a conversation that has none. It reads from the same signal as **Reports from this chat**, so the band and the chip flip together. Once a report exists, the band's rows are the way to it, and the composer still reaches `generate_report` if you want the assistant to build a second one. There is no "update the report" chip, because the assistant has no tool that edits a saved report.

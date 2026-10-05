@@ -3,6 +3,11 @@
   vars:
     _ref: modules/activities/vars.yaml
 
+- id: ai-assistant
+  source: "file:../../modules/ai-assistant"
+  vars:
+    _ref: modules/ai-assistant/vars.yaml
+
 # workflows must be listed before companies: the companies entry vars
 # cross-module _ref workflows components, and the experimental build's
 # entry-vars resolve is order-sensitive (target module entry must be

@@ -17,6 +17,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm docs:check
+      - run: pnpm check:patches
 
   # The two apps sit on opposite sides of the searchable modules' atlas_search
   # flag, so building both compiles each branch of the shared search builder.

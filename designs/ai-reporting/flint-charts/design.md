@@ -416,6 +416,13 @@ it actually has; the percentage `barGap`/`barCategoryGap` that keep the grouping
 replaces a numeric `legend.left` with the `right: 10` the bar templates already use. Pie is
 unaffected (percentage `center`, small fixed `radius`).
 
+`right: 10` is now only the wide-canvas answer. The visual-polish work threads the real drawn
+width into assembly, and below 700px the legend moves to a horizontal band above the plot — the
+vertical column costs 79–163px of `grid.right`, which is a third of the chat panel's 420px. The
+fix above still stands where it was aimed (a numeric `legend.left` is never right); it is the
+`right: 10` half of it that a narrow canvas supersedes. Finding 7's "width is layout-inert" is
+also narrower than it reads: Flint derives no layout from width, but the post-pass now does.
+
 ### Pin exactly, and snapshot the output
 
 `flint-chart` is at `0.5.0` — eleven releases, pre-1.0 and moving. Its whole value is that it makes

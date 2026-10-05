@@ -55,6 +55,12 @@
       properties:
         title: AI Assistant
         icon: bot
+    - id: walkthroughs
+      type: MenuLink
+      pageId: walkthroughs-demo
+      properties:
+        title: Walkthroughs
+        icon: SquarePlay
     - id: admin-group
       type: MenuGroup
       properties:

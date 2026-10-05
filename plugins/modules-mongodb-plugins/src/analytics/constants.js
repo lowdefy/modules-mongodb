@@ -17,6 +17,11 @@ export const MAX_DATA_PARTS_SPECS = 8;
 // total, so a card can say "first 200 of 964", and export_data is the
 // affordance for the whole result.
 export const MAX_DATA_PART_ROWS = 200;
+// Rows per data section handed to the model for a report summary. The same
+// figure as MAX_DATA_PART_ROWS on purpose: both bound what one model-facing
+// unit may carry. Truncation is disclosed to the model as "first N of M rows"
+// so the prose can hedge rather than describe a partial result as the whole.
+export const MAX_SUMMARY_ROWS_PER_SECTION = 200;
 export const MAX_FILTER_OPTIONS = 50;
 // Options cap for a filter whose options are resolved server-side from a
 // query (not typed into the persisted spec). MAX_FILTER_OPTIONS bounds what

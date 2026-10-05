@@ -14,6 +14,7 @@ payloadSchema:
     scope:
       type: string
 routine:
+  - _ref: api/routines/require_user.yaml
   - id: list_threads
     type: MongoDBAggregation
     connectionId:
@@ -28,6 +29,8 @@ routine:
             conversationId:
               $exists: true
               $ne: null
+            deleted.timestamp:
+              $exists: false
         - $sort:
             updated: -1
         # Bounded: without this the pipeline grows with the user's whole history for the

@@ -14,22 +14,22 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 
 ## Modules
 
-| Module                                              | One-liner                                                                                                            |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| [layout](../modules/layout/README.md)               | Page wrapper — header, sider, menu, profile, notifications, dark mode, auth pages                                    |
-| [events](../modules/events/README.md)               | Audit event log — `new-event` API, timeline panel, `change_stamp` template                                           |
-| [files](../modules/files/README.md)                 | File attachments backed by S3 — upload, download, file cards, file lists                                             |
-| [notifications](../modules/notifications/README.md) | Bell, inbox, deep-link routing, configurable send routine                                                            |
-| [user-account](../modules/user-account/README.md)   | Self-service auth pages (login, signup, password reset, verify email, 2FA, accept, logout) + account workspace       |
-| [user-admin](../modules/user-admin/README.md)       | Operator console for a person's access lifecycle in one organization — members/invitations list, user detail, invite |
-| [organizations](../modules/organizations/README.md) | Self-serve org workspace for tenant apps — members, invites, rename, org switcher (per-org, tenant policy only)      |
-| [contacts](../modules/contacts/README.md)           | Contact management — list, detail, edit, create, selector                                                            |
-| [companies](../modules/companies/README.md)         | Company management — list, detail, edit, create, selector                                                            |
-| [activities](../modules/activities/README.md)       | CRM activities — calls, meetings, emails logged against contacts and companies                                       |
-| [ai-assistant](../modules/ai-assistant/README.md)   | Agent chat with persisted, per-user threads — docked corner panel or embedded in a page                              |
-| [workflows](../modules/workflows/README.md)         | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions          |
-| [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                                        |
-| [ai-reporting](../modules/ai-reporting/README.md)   | AI chat over your data — open query engine, charts, CSV exports, saved reports                                       |
+| Module                                              | One-liner                                                                                                   |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [layout](../modules/layout/README.md)               | Page wrapper — header, sider, menu, profile, notifications, dark mode, auth pages                           |
+| [events](../modules/events/README.md)               | Audit event log — `new-event` API, timeline panel, `change_stamp` template                                  |
+| [files](../modules/files/README.md)                 | File attachments backed by S3 — upload, download, file cards, file lists                                    |
+| [notifications](../modules/notifications/README.md) | Bell, inbox, deep-link routing, configurable send routine                                                   |
+| [user-account](../modules/user-account/README.md)   | Login, email verification, profile view/edit/create                                                         |
+| [user-admin](../modules/user-admin/README.md)       | User administration — list, edit, invite                                                                    |
+| [contacts](../modules/contacts/README.md)           | Contact management — list, detail, edit, create, selector                                                   |
+| [companies](../modules/companies/README.md)         | Company management — list, detail, edit, create, selector                                                   |
+| [activities](../modules/activities/README.md)       | CRM activities — calls, meetings, emails logged against contacts and companies                              |
+| [ai-assistant](../modules/ai-assistant/README.md)   | Agent chat with persisted, per-user threads — docked corner panel or embedded in a page                     |
+| [workflows](../modules/workflows/README.md)         | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions |
+| [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                               |
+| [ai-reporting](../modules/ai-reporting/README.md)   | AI chat over your data — open query engine, charts, CSV exports, saved reports                              |
+| [walkthroughs](../modules/walkthroughs/README.md) | Step-by-step walkthroughs stored and played in-app — native player, draft/publish editor, screen capture |
 
 ## Dependency graph
 
@@ -58,6 +58,7 @@ graph TD
   activities --> events
   activities --> contacts
   ai-assistant
+  walkthroughs
   workflows --> layout
   workflows --> events
   workflows --> notifications
@@ -103,22 +104,22 @@ slug: my-app # kebab-case; the scope every app-scoped module reads via `_build.a
 
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v0.36.0"
+    source: "github:lowdefy/modules-mongodb/modules/events@v0.44.1"
     # display_key defaults to the app's slug — set it only to render
     # another app's event display strings.
 
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.36.0"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v0.44.1"
     # Drop logo-{light,dark}-theme.png and logo-square-{light,dark}-theme.png
     # into the app's public/ folder — the layout reads them by convention.
 
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.36.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.44.1"
     # Method enablement is read from the app's auth: config via _build.authConfig
     # — no method mirror vars. See docs/user-account/.
 
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.36.0"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.44.1"
 ```
 
 Each entry pins a `source` (GitHub ref or local `file:` path), passes `vars`, and optionally remaps `dependencies` and `connections` when entry IDs don't match the names declared in the module manifest. See <https://docs.lowdefy.com/modules> for the full module-system reference.

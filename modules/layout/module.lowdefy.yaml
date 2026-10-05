@@ -1,5 +1,5 @@
 name: Layout
-version: 0.36.0
+version: 0.44.1
 description: Page layout module supporting three page block variants — PageHeaderMenu (top header + inline menu, default), PageSiderMenu (top header + collapsible sider), and PageSidebarLayout (full-height sider) — selected via the page_type var.
 
 dependencies:
@@ -21,18 +21,23 @@ vars:
     description: "Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only. Ignored for page_type 'header-menu' (PageHeaderMenu has no sider)."
     properties:
       width:
+        default: null
         description: Width of the expanded sider (number in pixels or CSS length string).
       initialCollapsed:
+        default: null
         description: >-
           Initial collapsed state on first load. Subsequent visits read the
           persisted state from localStorage (see `sider_storage_key`).
       collapsible:
+        default: null
         description: >-
           Whether the sider can be collapsed by the user. PageSidebarLayout
           only.
       hideToggleButton:
+        default: null
         description: Hide the collapse toggle button rendered in the sider.
       collapsedWidth:
+        default: null
         description: Width of the collapsed sider in pixels.
   sider_open_blocks:
     type: array
@@ -65,11 +70,13 @@ vars:
         description: >-
           Logo rendered in the auth-page brand panel and mobile auth view.
       style:
+        default: null
         description: >-
           Inline style object applied to the header logo (mapped to the
           `.logo` cssKey on the page block).
   menu:
     type: object
+    default: null
     description: >-
       Menu config passed to the page block. When unset, the page falls back to
       the app's "default" menu (resolved client-side via `_menu`).

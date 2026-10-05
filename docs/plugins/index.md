@@ -90,14 +90,30 @@ Names a chat thread from its **first exchange** — the opening question and the
 
 Best-effort by design: every failure returns `{ title: null }` so the caller keeps whatever provisional title it already shows — a cosmetic call must never be the reason a thread has no name.
 
-| Property          | Type   | Default             | Description                                                                  |
-| ----------------- | ------ | ------------------- | ---------------------------------------------------------------------------- |
-| `prompt`          | string | —                   | The user's first message. Required.                                          |
-| `reply`           | string | —                   | The assistant's first reply. Required.                                       |
-| `context`         | string | —                   | One-line hint, e.g. the record in view.                                      |
-| `domain`          | string | —                   | Description of the app, to ground the title vocabulary.                      |
-| `model`           | string | `openai/gpt-5-mini` | Gateway model id. Small and fast is the right choice.                        |
-| `reasoningEffort` | string | `low`               | Passed to the model provider; this runs on a cosmetic path, latency matters. |
+| Property            | Type    | Default             | Description                                                                  |
+| ------------------- | ------- | ------------------- | ---------------------------------------------------------------------------- |
+| `prompt`            | string  | —                   | The user's first message. Required.                                          |
+| `reply`             | string  | —                   | The assistant's first reply. Required.                                       |
+| `context`           | string  | —                   | One-line hint, e.g. the record in view.                                      |
+| `domain`            | string  | —                   | Description of the app, to ground the title vocabulary.                      |
+| `model`             | string  | `openai/gpt-5-mini` | Gateway model id. Small and fast is the right choice.                        |
+| `reasoningEffort`   | string  | `low`               | Passed to the model provider; this runs on a cosmetic path, latency matters. |
+| `zeroDataRetention` | boolean | —                   | Route only to gateway providers with a zero data retention policy.           |
+
+### `SummarizeReportData` request
+
+A one-shot reading of a report's data — the call behind the `ai-reporting` module's [AI summary](../ai-reporting/concepts/ai-summary.md) drawer and its `summarize-report` endpoint. Takes the report's title and description, the per-section rows the endpoint re-resolved under the viewer's roles and filters (shaped by `_analytics.buildSummaryInput`), and the human-readable filter scope; owns the prompt (grounding rules, open by naming the scope, concise markdown out). Returns `{ text }`.
+
+Unlike `GenerateChatTitle` it **throws** on failure — a missing key, a gateway error, an empty reply. It answers a button click, and the viewer who clicked is owed an error rather than an empty drawer.
+
+| Property      | Type    | Default                     | Description                                                                                 |
+| ------------- | ------- | --------------------------- | ------------------------------------------------------------------------------------------- |
+| `title`       | string  | —                           | The report's title. Required.                                                               |
+| `description` | string  | —                           | The report's description.                                                                   |
+| `scope`       | string  | —                           | The filter scope the rows were resolved under, as `buildSummaryInput` renders it. Required. |
+| `hasFilters`  | boolean | `false`                     | When true the reading opens by naming the scope.                                            |
+| `sections`    | array   | —                           | The shaped per-section data from `_analytics.buildSummaryInput`. Required.                  |
+| `model`       | string  | `anthropic/claude-sonnet-5` | Gateway model id (provider/model).                                                          |
 
 ## Reporting analytics
 
@@ -108,7 +124,7 @@ The `ai-reporting` module's query engine ships here. These are documented with t
 | `ReportingData` connection   | Read-only MongoDB connection carrying the collections catalog — the engine's authorization boundary                                                        |
 | `AnalyticsPipeline` request  | The single path from an AI-authored aggregation pipeline to the driver: validate against the catalog and three default-deny grammars, reconstruct, execute |
 | `DownloadCsv` action         | Client action turning request rows into a CSV download                                                                                                     |
-| `_analytics` server operator | Server-side spec validation and block compilation (`buildDataParts`, `compileReport`, `querySections`)                                                     |
+| `_analytics` server operator | Server-side spec validation and block compilation (`buildDataParts`, `compileReport`, `querySections`, `summaryQueries`, `buildSummaryInput`)              |
 
 See [AI Chat Reporting](../ai-reporting/index.md), and [the open query engine](../ai-reporting/concepts/open-query-engine.md) for the validation model and caps.
 

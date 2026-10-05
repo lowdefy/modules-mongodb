@@ -48,6 +48,7 @@
 
 ## ai-reporting
 
+- docs/ai-reporting/concepts/ai-summary.md: The AI summary — A report shows the numbers; the AI summary says what they mean. With the `ai_summary` var on, every report page carries an **AI summary** button in its header, beside ★ and ⋯. It opens a drawer where the viewer generates, on demand, a short model-written reading of the report's data — "sales are ...
 - docs/ai-reporting/concepts/implementation-walkthrough.md: Implementation walkthrough — An end-to-end trace of the module as built: chat message in, rendered output out, with the file and line references for each hop. This is a contributor-facing page — it describes _how the code is wired_, not how to author against the module. For authoring, start at the [module index](../index.md)...
 - docs/ai-reporting/concepts/open-query-engine.md: The open query engine — The reporting agent answers questions by authoring **near-arbitrary read-only MongoDB aggregation pipelines** — `$lookup`, `$unwind`, array work, window functions, faceting — over the collections you declare in the [catalog](../reference/catalog.md). Chat, charts, saved reports, and CSV exports a...
 - docs/ai-reporting/concepts/ownership.md: Report ownership, visibility and retirement — A saved report has an owner, an audience and a life cycle. This page covers who can see a report, who can change it, and what happens when it is retired.
@@ -127,6 +128,11 @@
 - docs/user-admin/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Host apps must add the following index to the collection backing the `user-members` connection, before the members list carries production traffic.
 - docs/user-admin/reference/row-contract.md: Members row contract — Every members read — the Members list, the user detail read, and the Excel export — returns rows with the same set of keys. **This is the set a [`components.table_columns`](vars.md) `field:` or a `components.download_columns` `value:` may bind.** A path outside it renders an empty column, silentl...
 - docs/user-admin/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
+
+## walkthroughs
+
+- docs/walkthroughs/index.md: Walkthroughs — A walkthrough is a title, an overview and an ordered list of steps. A step is a caption, optionally a screenshot, and optionally a focus point marking where on that screenshot the highlight belongs. The module owns that data model and the player that renders one step at a time. Whether it also au...
+- docs/walkthroughs/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## workflows
 

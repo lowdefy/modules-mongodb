@@ -1,0 +1,12 @@
+# Abort a reply still streaming into the conversation being left. AgentChat
+# clears its messages on a conversationId change but does not abort the stream,
+# so left running it would keep appending to the transcript after the id changed
+# under it. One copy, shared by both switch paths (the rail's select and New
+# chat), so neither can forget it. Not part of load_conversation itself: the
+# page-mount deep link has no stream to abort, and the method is only guaranteed
+# registered once the chat block has mounted. `stop` on an idle chat is a no-op.
+- id: stop_stream
+  type: CallMethod
+  params:
+    blockId: chat
+    method: stop

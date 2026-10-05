@@ -1,0 +1,35 @@
+# composer_note.yaml — the `composer_note` var, when set: a short fixed note under the composer,
+# e.g. what not to type into the chat. It shows with the conversation only, not the thread list.
+#
+# vars:
+#   id     — both shells mount this, so each passes its own (see notice.yaml).
+#   height — a fixed height inside the panel, whose chat subtracts it to keep the composer in
+#            view; null in the embedded shell, where the page grows to fit.
+id:
+  _var: id
+type: Paragraph
+visible:
+  _and:
+    - _ne:
+        - _state: ai_view
+        - threads
+    - _eq:
+        - _module.var: notice
+        - null
+    - _ne:
+        - _module.var: composer_note
+        - null
+style:
+  .element:
+    margin: 0
+    fontSize: 12px
+    lineHeight: 1.4
+    height:
+      _var:
+        key: height
+        default: null
+    overflow: hidden
+properties:
+  type: secondary
+  content:
+    _module.var: composer_note

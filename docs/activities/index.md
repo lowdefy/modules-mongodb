@@ -32,7 +32,7 @@ Add `activities` when an app needs a CRM-style log of past external interactions
 # lowdefy.yaml
 modules:
   - id: activities
-    source: "github:lowdefy/modules-mongodb/modules/activities@v0.36.0"
+    source: "github:lowdefy/modules-mongodb/modules/activities@v0.44.1"
     vars:
       label: Activity
       label_plural: Activities

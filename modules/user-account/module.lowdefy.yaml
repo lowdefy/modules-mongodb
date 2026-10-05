@@ -291,4 +291,4 @@ secrets:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.36.0"
+    version: "^0.44.1"

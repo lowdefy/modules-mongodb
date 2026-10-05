@@ -1,0 +1,10 @@
+# Write is a var because the endpoints compile into every consumer, and some must never author.
+id: walkthroughs-collection
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection:
+    _module.var: collection
+  write:
+    _module.var: writable

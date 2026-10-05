@@ -1,0 +1,19 @@
+# `vars.steps` in, `resolved_steps` out: each image key as a URL, the key dropped. Here because the
+# bucket is a secret that differs per environment under one build.
+- :set_state:
+    resolved_steps:
+      _js:
+        fn: |
+          const { steps, bucket, region } = args[0] || {};
+          const origin = `https://${bucket}.s3.${region}.amazonaws.com/`;
+          return (steps || []).map(({ image, ...step }) => ({
+            ...step,
+            image: image ? { width: image.width, height: image.height, url: origin + image.key } : null,
+          }));
+        args:
+          - steps:
+              _var: steps
+            bucket:
+              _secret: FILES_S3_BUCKET_PUB
+            region:
+              _module.var: region

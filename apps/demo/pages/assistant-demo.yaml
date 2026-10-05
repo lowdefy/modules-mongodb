@@ -37,6 +37,11 @@ _ref:
             list, rename and delete as the docked panel on the home page — and
             the same thread history, because both shells share one store per
             (scope, user).
+      - id: demo_assistant_paused
+        type: Switch
+        properties:
+          title: Pause the assistant
+          size: small
       - id: assistant_card
         type: Card
         blocks:

@@ -1,0 +1,98 @@
+# Loads the draft named by `walkthrough_id`, or starts a new one when it is null. Rerun after
+# each write. Splice it in with `_build.array.concat`.
+- id: walkthrough_editor_reset
+  type: SetState
+  params:
+    walkthrough_editor_loaded: false
+    walkthrough_draft: null
+    walkthrough_edit_step: null
+    walkthrough_edit_index: null
+    walkthrough_draft_steps_held: null
+    walkthrough_preview: false
+    # Preview mounts the player, which reads this; `open` sets it everywhere else.
+    walkthrough_missing: false
+- id: walkthrough_load_draft
+  type: CallAPI
+  skip:
+    _eq:
+      - _state: walkthrough_id
+      - null
+  params:
+    endpointId:
+      _module.endpointId: get-draft
+    payload:
+      walkthrough_id:
+        _state: walkthrough_id
+- id: walkthrough_seed_draft
+  type: SetState
+  skip:
+    _eq:
+      - _state: walkthrough_id
+      - null
+  params:
+    walkthrough_draft:
+      _js:
+        fn: |
+          const { draft, walkthroughId } = args[0] || {};
+          // Params are evaluated before `skip`, so this runs with no draft whenever the fetch
+          // above was skipped.
+          if (!draft) return null;
+          // `get-draft` returns URLs but `save-draft` stores keys, so the key is rebuilt from the
+          // module's own layout rather than the URL, whose origin is the app's bucket.
+          return {
+            title: draft.title,
+            overview: draft.overview,
+            steps: (draft.steps || []).map((step) => ({
+              ...step,
+              image: step.image
+                ? {
+                    ...step.image,
+                    key: `walkthroughs/${walkthroughId}/${step.image.url.split('/').pop()}`,
+                  }
+                : null,
+            })),
+          };
+        args:
+          - draft:
+              _actions: walkthrough_load_draft.response.response
+            walkthroughId:
+              _state: walkthrough_id
+    walkthrough_updated:
+      _actions: walkthrough_load_draft.response.response.updated_timestamp
+    walkthrough_has_draft:
+      _actions: walkthrough_load_draft.response.response.has_draft
+    walkthrough_published:
+      _actions: walkthrough_load_draft.response.response.published
+    walkthrough_edit_index: 0
+    walkthrough_editor_loaded: true
+# After the fetch, which skips on the id this sets. Nothing is stored until the first save, so an
+# editor opened and abandoned leaves no walkthrough behind.
+- id: walkthrough_start_draft
+  type: SetState
+  skip:
+    _ne:
+      - _state: walkthrough_id
+      - null
+  params:
+    walkthrough_id:
+      _uuid: true
+    walkthrough_draft:
+      title: null
+      overview: null
+      steps: []
+    walkthrough_updated: null
+    walkthrough_has_draft: false
+    walkthrough_published: null
+    walkthrough_edit_index: 0
+    walkthrough_editor_loaded: true
+- _ref:
+    path: actions/sync-step.yaml
+    vars:
+      sync_id: walkthrough_sync_step_loaded
+# What the screen is compared with to tell whether anything is unsaved.
+- id: walkthrough_snapshot_draft
+  type: SetState
+  params:
+    walkthrough_draft_saved:
+      _json.stringify:
+        - _ref: actions/draft-payload.yaml

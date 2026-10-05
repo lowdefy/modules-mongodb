@@ -7,6 +7,7 @@
  * smuggled into a domain connection that carries a database and its secrets.
  */
 import GenerateChatTitle from "./GenerateChatTitle.js";
+import SummarizeReportData from "./SummarizeReportData.js";
 
 export default {
   schema: {
@@ -27,7 +28,11 @@ export default {
       },
     },
   },
+  // Holds no data, so there is nothing for the tenant wall to scope: declared
+  // non-scopable, the same capability the framework's AI connections declare.
+  meta: { tenant: false },
   requests: {
     GenerateChatTitle,
+    SummarizeReportData,
   },
 };

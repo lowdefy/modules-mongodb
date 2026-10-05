@@ -1,0 +1,28 @@
+# Loads the walkthrough named by `walkthrough_id` and plays it from step 1; a consumer sets only
+# that key. Splice it in with `_build.array.concat`.
+- id: walkthrough_reset
+  type: SetState
+  params:
+    walkthrough: null
+    walkthrough_missing: false
+    walkthrough_geometry: null
+- id: walkthrough_load
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: get-walkthrough
+    payload:
+      walkthrough_id:
+        _state: walkthrough_id
+- id: walkthrough_seed
+  type: SetState
+  params:
+    walkthrough:
+      _actions: walkthrough_load.response.response
+    walkthrough_missing:
+      _eq:
+        - _actions: walkthrough_load.response.response
+        - null
+    walkthrough_step: 0
+    walkthrough_whole: false
+- _ref: actions/recalc-geometry.yaml
