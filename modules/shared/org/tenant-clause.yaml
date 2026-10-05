@@ -6,8 +6,8 @@
 # scope: a pipeline-leading $search, $graphLookup anywhere, $lookup
 # sub-pipelines, plus the system-context contact mint) therefore `_ref`s this
 # fragment, which resolves AT BUILD TIME to the clause under `tenant` and to
-# an empty splice/merge under `pinned`. The policy read lives here and nowhere
-# else in module config.
+# an empty splice/merge under `pinned`. No authored clause reads the policy
+# anywhere else.
 #
 # Mis-branching is fail-closed in the direction that matters: under `tenant`
 # the wall audits every authored clause at runtime (present, right field,
