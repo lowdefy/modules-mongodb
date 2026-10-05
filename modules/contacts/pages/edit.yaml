@@ -4,7 +4,7 @@ _ref:
   vars:
     id: edit
     type:
-      _string.concat:
+      _build.string.concat:
         - "Edit "
         - _module.var: label
     title:

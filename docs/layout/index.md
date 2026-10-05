@@ -75,7 +75,7 @@ The `page` component renders a shared title bar above the content. Key per-page 
 | `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                                       |
 | `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                          |
 
-The browser-tab title is `title` when it is a string at build time. A `title` that is a runtime operator (`_request`, `_state`) is not used there, because the server writes the tab title without evaluating operators; the tab shows `type` instead, or the page id when `type` is not set.
+The browser-tab title is `title` when it is a string at build time. A `title` that is a runtime operator (`_request`, `_state`) is not used there, because the server writes the tab title without evaluating operators; the tab shows `type` instead when that is a string at build time, and otherwise the page id. Build `type` from `_build.*` operators (for example `_build.string.concat` over a module var) so it can serve as the tab title.
 
 ## App-wide seams
 
