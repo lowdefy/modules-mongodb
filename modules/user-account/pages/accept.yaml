@@ -316,13 +316,17 @@ _ref:
             type: Avatar
             layout:
               flex: 0 1 auto
+            # A new invitee's user row carries no name until onboarding, so
+            # the initial falls back to the signed-in address.
             properties:
               content:
                 _nunjucks:
-                  template: "{{ (name or '?') | first | upper }}"
+                  template: "{{ (name or email or '?') | first | upper }}"
                   on:
                     name:
                       _user: name
+                    email:
+                      _user: email
               size: small
               color: "#0e7490"
           - id: accept_signed_in_text
