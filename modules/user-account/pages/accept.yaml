@@ -1,27 +1,13 @@
-# Accept-invitation page, task 15. Serves authPages.acceptInvitation. Public,
-# thin, engine-trusting (Decision 4): its job is session-ensuring + one client
-# call. Renders via `accept_view` (nosession | signedin | member | invalid |
-# link_expired | withdrawn | wrong_email).
+# Accept-invitation page. Serves authPages.acceptInvitation. Public, thin,
+# engine-trusting: its job is session-ensuring + one client call. Renders via
+# `accept_view` (noinvite | nosession | signedin | member | invalid |
+# link_expired | withdrawn | wrong_email), chosen by components/accept_view.yaml.
 #
 # The invitation is read natively (get_invitation) by the invitationId query
 # parameter, display only (org / inviter / invited email / status / expiry).
-# Render selection: no invitation row -> invalid; no session -> nosession;
-# status accepted -> member; status rejected/canceled -> withdrawn; status
-# pending but past expires_at -> link_expired; email mismatch -> wrong_email;
-# else signedin. BetterAuth's AcceptInvitation still enforces the
-# session-email <-> invitation-email match and expiry itself server-side, so a
-# slipped-through mismatch fails safely — but this page's OWN pre-check was
-# stricter than BetterAuth's: a raw, case-sensitive string compare rejected an
-# otherwise-valid invite whenever the invitee's account email differed only in
-# case/whitespace from what the admin typed (BetterAuth lowercases the
-# invitation's stored email at creation, but never touches the invitee's
-# account email — an existing account created with any other casing would
-# never match). Both sides are now normalized (trim + lower-case) before
-# comparing, matching BetterAuth's own `.toLowerCase()` check. In the field
-# this surfaced as an invite the invitee swore was valid failing silently:
-# server logs showed only get_invitation 200s and no AcceptInvitation attempts
-# at all — the reject happened here, before the accept button ever became
-# reachable.
+# BetterAuth's AcceptInvitation enforces the session-email <-> invitation-email
+# match and expiry itself server-side, so a mismatch that slips past the render
+# choice fails safely.
 #
 # Each rejecting view is logged server-side (best-effort, non-blocking) via
 # log-invitation-rejection so a report can be traced without reproducing it.
@@ -40,110 +26,91 @@ _ref:
     requests:
       - _ref: requests/get_invitation.yaml
     events:
-      # A missing invitationId gets its own render; a read failure is left
-      # uncaught (Lowdefy's error screen); a found-but-empty result is a genuine
+      # A missing invitationId gets its own render; a read failure shows its
+      # error and renders nothing; a found-but-empty result is a genuine
       # bad/consumed link.
+      #
+      # The render is chosen only once the browser's session is known. Under
+      # `policy: pinned` the server resolves an invitee who has signed in but
+      # not yet accepted to no caller (their session has no active
+      # organization), so `_user` starts empty and fills in from the browser's
+      # session store when its fetch settles. Choosing before that sends a
+      # signed-in invitee back to sign in. When `_user` is empty, settle_session
+      # waits for the store; it fails exactly in that pinned case ("a session
+      # is active but the server resolved no user"), and the catch chooses the
+      # render then, with `_user` read from the settled store.
       onInit:
-        - :if:
-            _eq:
-              - _url_query: invitationId
-              - null
-          :then:
-            - id: no_invitation_id
-              type: SetState
-              params:
-                accept_view: noinvite
-          :else:
-            - id: fetch_invitation
-              type: Request
-              params: get_invitation
-            # Read the row through `_request`, which indexes into the response
-            # array as expected. An `_actions: fetch_invitation.response.0` path
-            # does NOT — it yields the whole array, which renders as a blank
-            # inviter/org/email and makes every status branch below miss.
-            - id: set_invite
-              type: SetState
-              params:
-                invite:
-                  _request: get_invitation.0
-            - id: select_accept_view
-              type: SetState
-              params:
-                accept_view:
-                  _switch:
-                    branches:
-                      - if:
-                          _eq:
-                            - _state: invite
-                            - null
-                        then: invalid
-                      - if:
-                          _eq:
-                            - _user: id
-                            - null
-                        then: nosession
-                      - if:
-                          _eq:
-                            - _state: invite.status
-                            - accepted
-                        then: member
-                      - if:
-                          _or:
-                            - _eq:
-                                - _state: invite.status
-                                - rejected
-                            - _eq:
-                                - _state: invite.status
-                                - canceled
-                        then: withdrawn
-                      - if:
-                          _and:
-                            - _eq:
-                                - _state: invite.status
-                                - pending
-                            - _lt:
-                                - _state: invite.expires_at
-                                - _date: now
-                        then: link_expired
-                      # Normalized (trim + lower-case) comparison — see the
-                      # header note. BetterAuth's own accept-invitation check
-                      # is case-insensitive; this page's used to be a raw
-                      # strict compare and rejected a matching, existing
-                      # account whose stored email differed only in case.
-                      - if:
-                          _ne:
-                            - _string.toLowerCase:
-                                _string.trim:
-                                  _state: invite.email
-                            - _string.toLowerCase:
-                                _string.trim:
-                                  _user: email
-                        then: wrong_email
-                    default: signedin
-            - id: log_joined_on_member
-              type: CallAPI
-              async: true
-              skip:
-                _ne:
-                  - _state: accept_view
-                  - member
-              messages:
-                error: false
-              params:
-                endpointId:
-                  _module.endpointId: log-member-joined
-                payload:
-                  invitationId:
-                    _url_query: invitationId
+        try:
+          - :if:
+              _eq:
+                - _url_query: invitationId
+                - null
+            :then:
+              - id: no_invitation_id
+                type: SetState
+                params:
+                  accept_view: noinvite
+            :else:
+              - id: fetch_invitation
+                type: Request
+                params: get_invitation
+              # Read the row through `_request`, which indexes into the
+              # response array as expected. An `_actions:
+              # fetch_invitation.response.0` path does NOT — it yields the whole
+              # array, which renders as a blank inviter/org/email and makes
+              # every status branch miss.
+              - id: set_invite
+                type: SetState
+                params:
+                  invite:
+                    _request: get_invitation.0
+              - id: settle_session
+                type: UpdateSession
+                skip:
+                  _ne:
+                    - _user: id
+                    - null
+                messages:
+                  error: false
+              - id: select_accept_view
+                type: SetState
+                params:
+                  accept_view:
+                    _ref: components/accept_view.yaml
+              - id: log_joined_on_member
+                type: CallAPI
+                async: true
+                skip:
+                  _ne:
+                    - _state: accept_view
+                    - member
+                messages:
+                  error: false
+                params:
+                  endpointId:
+                    _module.endpointId: log-member-joined
+                  payload:
+                    invitationId:
+                      _url_query: invitationId
+        catch:
+          - :if:
+              _eq:
+                - _error: actionId
+                - settle_session
+            :then:
+              - id: select_accept_view_settled
+                type: SetState
+                params:
+                  accept_view:
+                    _ref: components/accept_view.yaml
       # Best-effort diagnostic: one server-side log line naming which guard
       # rejected the attempt, so a "can't be used" report is traceable
       # without reproducing it. Runs on onInitAsync (not onInit) and
       # wrapped in try/catch so a logging hiccup never blocks or errors the
-      # page — onInit is not a valid nesting point for try/catch (it is only
-      # valid as an event's whole value, per the events-and-actions schema).
-      # log-invitation-rejection is an AUTHENTICATED endpoint (not public), so
-      # only the three views that structurally require a session (they come
-      # after the nosession branch in select_accept_view) are logged;
+      # page. log-invitation-rejection is an AUTHENTICATED endpoint (not
+      # public), so only the three views that structurally require a session
+      # (they come after the nosession branch in components/accept_view.yaml)
+      # are logged;
       # `invalid` is skipped since it can occur with no session at all and
       # the call would just fail closed there.
       onInitAsync:
@@ -201,9 +168,12 @@ _ref:
           align: middle
           selfAlign: middle
           gap: 11
+        # Neutral fill and border tokens, not the primary-derived ones: antd
+        # derives primary-bg from the app's primary colour, and a near-black
+        # primary gives a dark grey fill under the dark default text.
         style:
-          background: "var(--ant-color-primary-bg)"
-          border: "1px solid var(--ant-color-primary-border)"
+          background: "var(--ant-color-fill-quaternary)"
+          border: "1px solid var(--ant-color-border-secondary)"
           borderRadius: 10
           padding: 11px 13px
         blocks:
@@ -226,12 +196,24 @@ _ref:
             properties:
               html:
                 _nunjucks:
-                  template: <div class="text-xs opacity-70">{{ inviter }} invited you to</div><div class="text-sm font-semibold">{{ org }}</div>
+                  template: <div class="text-xs" style="color:var(--ant-color-text-secondary);">{{ inviter }} invited you to</div><div class="text-sm font-semibold" style="color:var(--ant-color-text);">{{ org }}</div>
                   on:
                     inviter:
                       _state: invite.inviter_name
+                    # Under pinned the organization is the app itself and its
+                    # name is the slug, so the app's display name stands in.
+                    # Under tenant the invitation names one organization of
+                    # many, and its own name is the right label.
                     org:
-                      _state: invite.org_name
+                      _build.if:
+                        test:
+                          _build.eq:
+                            - _build.authConfig: organizations.policy
+                            - tenant
+                        then:
+                          _state: invite.org_name
+                        else:
+                          _app: name
       - id: accept_nosession_lead
         type: Html
         visible:
@@ -349,13 +331,17 @@ _ref:
             type: Avatar
             layout:
               flex: 0 1 auto
+            # A new invitee's user row carries no name until onboarding, so
+            # the initial falls back to the signed-in address.
             properties:
               content:
                 _nunjucks:
-                  template: "{{ (name or '?') | first | upper }}"
+                  template: "{{ (name or email or '?') | first | upper }}"
                   on:
                     name:
                       _user: name
+                    email:
+                      _user: email
               size: small
               color: "#0e7490"
           - id: accept_signed_in_text

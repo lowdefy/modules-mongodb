@@ -9,21 +9,37 @@
 # without a reload, then navigates into the app.
 #
 # All inputs are `profile.`-prefixed so they bind state.profile.*; onInit seeds
-# state.profile from the caller's denormalized _user.profile bag so an invited /
-# OAuth user's name prefills (a bare contact simply starts blank).
+# state.profile from the caller's contact (get_account) laid over their
+# denormalized _user.profile bag, so a name an admin entered at invite or an
+# OAuth user's name prefills (a bare contact simply starts blank). The contact
+# is read because an invitation writes the captured profile onto the contact
+# only: the invitee has no user row at invite time, and nothing copies the
+# profile onto the user before this page saves.
 _ref:
   module: layout
   component: auth-page
   vars:
     id: onboarding
     title: ""
+    requests:
+      - _ref: requests/get_account.yaml
     events:
       onInit:
+        - id: fetch_onboarding_account
+          type: Request
+          params: get_account
         - id: seed_onboarding
           type: SetState
           params:
             profile:
-              _user: profile
+              _object.assign:
+                - {}
+                - _if_none:
+                    - _user: profile
+                    - {}
+                - _if_none:
+                    - _request: get_account.0.profile
+                    - {}
             # Seeded false, not left undefined: `visible` hides a block only
             # when it evaluates to exactly false, so an unseeded flag would
             # show BOTH the Add button and the "Passkey added" tag on load.

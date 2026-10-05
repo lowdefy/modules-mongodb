@@ -1,0 +1,55 @@
+# The accept page's render, from the invitation row in `invite` and the caller.
+# Order matters: no row -> invalid; no session -> nosession; accepted ->
+# member; rejected/canceled -> withdrawn; pending past expires_at ->
+# link_expired; email mismatch -> wrong_email; else signedin.
+#
+# The email comparison is trimmed and lower-cased on both sides. BetterAuth
+# lowercases the invitation's email when it stores it but never touches the
+# invitee's account email, and its own accept check is case-insensitive, so a
+# strict compare here would refuse an existing account whose stored email
+# differs only in case.
+_switch:
+  branches:
+    - if:
+        _eq:
+          - _state: invite
+          - null
+      then: invalid
+    - if:
+        _eq:
+          - _user: id
+          - null
+      then: nosession
+    - if:
+        _eq:
+          - _state: invite.status
+          - accepted
+      then: member
+    - if:
+        _or:
+          - _eq:
+              - _state: invite.status
+              - rejected
+          - _eq:
+              - _state: invite.status
+              - canceled
+      then: withdrawn
+    - if:
+        _and:
+          - _eq:
+              - _state: invite.status
+              - pending
+          - _lt:
+              - _state: invite.expires_at
+              - _date: now
+      then: link_expired
+    - if:
+        _ne:
+          - _string.toLowerCase:
+              _string.trim:
+                _state: invite.email
+          - _string.toLowerCase:
+              _string.trim:
+                _user: email
+      then: wrong_email
+  default: signedin

@@ -31,15 +31,15 @@ challenge are handled.
 **Which** methods exist is the app's `auth:` config's decision, read at build time
 through `_build.authConfig`:
 
-| `_build.authConfig` field      | Enables                                                                       |
-| ------------------------------ | ----------------------------------------------------------------------------- |
-| `emailAndPassword.enabled`     | Password form (login + signup) and change-password / reset flows              |
-| `magicLink.enabled`            | Magic-link send (email → "send me a link"); passwordless when password is off |
-| `emailOTP.enabled`             | A sign-in code in the same email, entered on the "check your email" render    |
-| `passkey.enabled`              | Passkey button (login) and passkey management (workspace)                     |
-| `twoFactor.enabled`            | 2FA enrolment in the Security tile                                            |
-| `twoFactor.trustDevice`        | The "trust this device 30 days" switch on the 2FA challenge (off ⇒ hidden)    |
-| `providers` (`[{ id, type }]`) | One OAuth button per configured provider                                      |
+| `_build.authConfig` field      | Enables                                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `emailAndPassword.enabled`     | Password form (login + signup) and change-password / reset flows                                                   |
+| `magicLink.enabled`            | Magic-link send (email → "send me a link"); passwordless when password is off; Email link row in the Security tile |
+| `emailOTP.enabled`             | A sign-in code in the same email, entered on the "check your email" render                                         |
+| `passkey.enabled`              | Passkey button (login) and passkey management (workspace)                                                          |
+| `twoFactor.enabled`            | 2FA enrolment in the Security tile                                                                                 |
+| `twoFactor.trustDevice`        | The "trust this device 30 days" switch on the 2FA challenge (off ⇒ hidden)                                         |
+| `providers` (`[{ id, type }]`) | One OAuth button per configured provider                                                                           |
 
 There are **no `methods` / `two_factor` / `passkeys` module vars**. Restating an
 `auth:` fact as a module var is exactly the drift `_build.authConfig` exists to
