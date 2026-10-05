@@ -174,7 +174,7 @@ blocks:
         getHref:
           _function:
             __string.concat:
-              - /contacts/view?_id=
+              - "#contact-"
               - __args: 0.value.contact_id
         options:
           _var: mentionable_users

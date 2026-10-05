@@ -1,4 +1,4 @@
-contact_page_url: "/contacts/view?_id={id}"
+contact_page_id: contacts/view
 actions_collection: actions
 contacts_collection: user-contacts
 event_types:

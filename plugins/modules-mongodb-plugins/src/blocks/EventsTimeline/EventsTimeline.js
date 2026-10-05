@@ -16,10 +16,9 @@
 
 import React, { useState, useMemo } from "react";
 import { Timeline, Modal, Tooltip, Card, Button } from "antd";
-import { withBlockDefaults } from "@lowdefy/block-utils";
+import { withBlockDefaults, HtmlComponent } from "@lowdefy/block-utils";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration.js";
-import DOMPurify from "dompurify";
 import "./style.module.css";
 
 dayjs.extend(duration);
@@ -29,11 +28,6 @@ dayjs.extend(duration);
 // ---------------------------------------------------------------------------
 
 const DEFAULT_DOT_COLOR = "var(--ant-color-border)";
-
-function sanitize(html) {
-  if (html == null) return "";
-  return DOMPurify.sanitize(String(html));
-}
 
 /**
  * Build initials from a name string.  Takes the first letter of the first
@@ -76,7 +70,7 @@ function stringToColor(str) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function Avatar({ user, contactPageUrl, disableContactLink, compact }) {
+function Avatar({ user, contactLink, compact }) {
   if (!user) return null;
 
   const size = compact ? 16 : 26;
@@ -124,41 +118,80 @@ function Avatar({ user, contactPageUrl, disableContactLink, compact }) {
   }
 
   const tooltipTitle = user.name || "Unknown user";
-  const href = !disableContactLink
-    ? buildContactHref(contactPageUrl, user.id)
-    : null;
-
-  const wrapper = href ? (
-    <a
-      href={href}
+  const wrapper = (
+    <ContactLink
+      contactLink={contactLink}
+      userId={user.id}
       style={{ display: "inline-block", lineHeight: 0, flexShrink: 0 }}
     >
       {visual}
-    </a>
-  ) : (
-    <span style={{ display: "inline-block", lineHeight: 0, flexShrink: 0 }}>
-      {visual}
-    </span>
+    </ContactLink>
   );
 
   return <Tooltip title={tooltipTitle}>{wrapper}</Tooltip>;
 }
 
-function buildContactHref(contactPageUrl, userId) {
-  if (!contactPageUrl || !userId) return null;
-  const id = encodeURIComponent(userId);
-  if (contactPageUrl.includes("{id}"))
-    return contactPageUrl.replace(/\{id\}/g, id);
-  const sep = contactPageUrl.includes("?") ? "&" : "?";
-  return `${contactPageUrl}${sep}_id=${id}`;
+function contactPageLink(contactLink, userId) {
+  if (!contactLink || !userId) return null;
+  const { pageId, idQueryKey, idPathKey } = contactLink;
+  return {
+    pageId,
+    pathParams: idPathKey ? { [idPathKey]: userId } : undefined,
+    urlQuery: idQueryKey ? { [idQueryKey]: userId } : undefined,
+  };
+}
+
+function ContactLink({ contactLink, userId, style, children }) {
+  const target = contactPageLink(contactLink, userId);
+  const Link = contactLink?.Link;
+  if (!target || !Link) return <span style={style}>{children}</span>;
+  return (
+    <Link
+      pageId={target.pageId}
+      pathParams={target.pathParams}
+      urlQuery={target.urlQuery}
+      style={style}
+    >
+      {children}
+    </Link>
+  );
+}
+
+// The note editor stores each mention as `<a class="tiptap-mention"
+// href="#contact-<id>">`; the timeline turns it into a link to the contact page.
+const MENTION_HREF_PREFIX = "#contact-";
+
+function linkMentions(html, contactLink) {
+  if (html == null) return "";
+  const markup = String(html);
+  if (!markup.includes(MENTION_HREF_PREFIX)) return markup;
+  const doc = new DOMParser().parseFromString(markup, "text/html");
+  doc.querySelectorAll(`a[href^="${MENTION_HREF_PREFIX}"]`).forEach((a) => {
+    const id = a.getAttribute("href").slice(MENTION_HREF_PREFIX.length);
+    a.removeAttribute("href");
+    const target = contactPageLink(contactLink, id);
+    if (!target) return;
+    a.setAttribute("data-page-id", target.pageId);
+    if (target.pathParams)
+      a.setAttribute("data-path-params", JSON.stringify(target.pathParams));
+    if (target.urlQuery)
+      a.setAttribute(
+        "data-url-query",
+        new URLSearchParams(target.urlQuery).toString(),
+      );
+  });
+  return doc.body.innerHTML;
+}
+
+function Html({ html, contactLink, ...props }) {
+  return <HtmlComponent html={linkMentions(html, contactLink)} {...props} />;
 }
 
 function TimeAgo({
   timestamp,
   userName,
   userId,
-  contactPageUrl,
-  disableContactLink,
+  contactLink,
 }) {
   if (!timestamp) return null;
 
@@ -192,21 +225,19 @@ function TimeAgo({
     .filter(Boolean)
     .join(" ");
 
-  const href = !disableContactLink
-    ? buildContactHref(contactPageUrl, userId)
-    : null;
-  const baseStyle = {
-    color: "var(--ant-color-text-tertiary)",
-    fontSize: 12,
-    whiteSpace: "nowrap",
-  };
-
-  const content = href ? (
-    <a href={href} style={{ ...baseStyle, textDecoration: "none" }}>
+  const content = (
+    <ContactLink
+      contactLink={contactLink}
+      userId={userId}
+      style={{
+        color: "var(--ant-color-text-tertiary)",
+        fontSize: 12,
+        whiteSpace: "nowrap",
+        textDecoration: "none",
+      }}
+    >
       {label}
-    </a>
-  ) : (
-    <span style={baseStyle}>{label}</span>
+    </ContactLink>
   );
 
   return <Tooltip title={tooltipTitle}>{content}</Tooltip>;
@@ -217,21 +248,16 @@ function EventTitle({
   timestamp,
   userName,
   userId,
-  contactPageUrl,
-  disableContactLink,
+  contactLink,
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span
-        dangerouslySetInnerHTML={{ __html: sanitize(title) }}
-        style={{ fontWeight: 500 }}
-      />
+      <Html html={title} contactLink={contactLink} style={{ fontWeight: 500 }} />
       <TimeAgo
         timestamp={timestamp}
         userName={userName}
         userId={userId}
-        contactPageUrl={contactPageUrl}
-        disableContactLink={disableContactLink}
+        contactLink={contactLink}
       />
     </div>
   );
@@ -240,8 +266,7 @@ function EventTitle({
 function EventDescription({
   event,
   typeConfig,
-  contactPageUrl,
-  disableContactLink,
+  contactLink,
   compact,
 }) {
   const user = event.created?.user;
@@ -269,8 +294,7 @@ function EventDescription({
       >
         <Avatar
           user={user}
-          contactPageUrl={contactPageUrl}
-          disableContactLink={disableContactLink}
+          contactLink={contactLink}
           compact={compact}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -279,11 +303,12 @@ function EventDescription({
             timestamp={event.created?.timestamp}
             userName={user?.name}
             userId={user?.id}
-            contactPageUrl={contactPageUrl}
-            disableContactLink={disableContactLink}
+            contactLink={contactLink}
           />
-          <div
-            dangerouslySetInnerHTML={{ __html: sanitize(event.description) }}
+          <Html
+            div
+            html={event.description}
+            contactLink={contactLink}
             style={{ marginTop: 4, fontSize: 13 }}
           />
         </div>
@@ -312,8 +337,7 @@ function EventInfoModal({
   onClose,
   event,
   typeConfig,
-  contactPageUrl,
-  disableContactLink,
+  contactLink,
   compact,
 }) {
   const user = event?.created?.user;
@@ -328,26 +352,28 @@ function EventInfoModal({
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
         <Avatar
           user={user}
-          contactPageUrl={contactPageUrl}
-          disableContactLink={disableContactLink}
+          contactLink={contactLink}
           compact={compact}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            dangerouslySetInnerHTML={{ __html: sanitize(event?.title) }}
+          <Html
+            div
+            html={event?.title}
+            contactLink={contactLink}
             style={{ fontWeight: 500 }}
           />
           <TimeAgo
             timestamp={event?.created?.timestamp}
             userName={user?.name}
             userId={user?.id}
-            contactPageUrl={contactPageUrl}
-            disableContactLink={disableContactLink}
+            contactLink={contactLink}
           />
         </div>
       </div>
-      <div
-        dangerouslySetInnerHTML={{ __html: sanitize(event?.info) }}
+      <Html
+        div
+        html={event?.info}
+        contactLink={contactLink}
         style={{ marginTop: 16 }}
       />
     </Modal>
@@ -452,12 +478,8 @@ function EventAction({
             flexWrap: "wrap",
           }}
         >
-          <span
-            dangerouslySetInnerHTML={{
-              __html: sanitize(
-                action.message || statusConf.title || action.status,
-              ),
-            }}
+          <Html
+            html={action.message || statusConf.title || action.status}
             // Use the fixed-dark status accent for the text, matching the
             // fixed-light `statusConf.color` card background. Without it the
             // span inherits the theme text color, which is light in dark mode
@@ -512,8 +534,7 @@ function EventTimelineItem({
   typeConfig,
   actionStatusConfig,
   s3GetPolicyRequestId,
-  contactPageUrl,
-  disableContactLink,
+  contactLink,
   compact,
   methods,
   events,
@@ -538,8 +559,7 @@ function EventTimelineItem({
         <EventDescription
           event={event}
           typeConfig={typeConfig}
-          contactPageUrl={contactPageUrl}
-          disableContactLink={disableContactLink}
+          contactLink={contactLink}
           compact={compact}
         />
       ) : (
@@ -552,8 +572,7 @@ function EventTimelineItem({
         >
           <Avatar
             user={event.created?.user}
-            contactPageUrl={contactPageUrl}
-            disableContactLink={disableContactLink}
+            contactLink={contactLink}
             compact={compact}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -562,8 +581,7 @@ function EventTimelineItem({
               timestamp={event.created?.timestamp}
               userName={event.created?.user?.name}
               userId={event.created?.user?.id}
-              contactPageUrl={contactPageUrl}
-              disableContactLink={disableContactLink}
+              contactLink={contactLink}
             />
           </div>
         </div>
@@ -582,8 +600,7 @@ function EventTimelineItem({
           onClose={() => setModalVisible(false)}
           event={event}
           typeConfig={typeConfig}
-          contactPageUrl={contactPageUrl}
-          disableContactLink={disableContactLink}
+          contactLink={contactLink}
           compact={compact}
         />
       )}
@@ -629,12 +646,28 @@ const EventsTimeline = ({
     eventTypeConfig = {},
     actionStatusConfig,
     s3GetPolicyRequestId,
-    contactPageUrl,
+    contactPageId,
+    contactIdQueryKey,
+    contactIdPathKey,
     disableContactLink = false,
     compact = false,
     reverse = false,
     mode = "left",
   } = properties || {};
+
+  const Link = components?.Link;
+  const contactLink = useMemo(
+    () =>
+      !disableContactLink && contactPageId
+        ? {
+            Link,
+            pageId: contactPageId,
+            idQueryKey: contactIdQueryKey,
+            idPathKey: contactIdPathKey,
+          }
+        : null,
+    [Link, contactPageId, contactIdQueryKey, contactIdPathKey, disableContactLink],
+  );
 
   const enrichedData = useMemo(() => {
     if (!Array.isArray(data)) return [];
@@ -661,8 +694,7 @@ const EventsTimeline = ({
             typeConfig={_typeConfig}
             actionStatusConfig={actionStatusConfig}
             s3GetPolicyRequestId={s3GetPolicyRequestId}
-            contactPageUrl={contactPageUrl}
-            disableContactLink={disableContactLink}
+            contactLink={contactLink}
             compact={compact}
             methods={methods}
             events={events}
@@ -686,8 +718,7 @@ const EventsTimeline = ({
     enrichedData,
     actionStatusConfig,
     s3GetPolicyRequestId,
-    contactPageUrl,
-    disableContactLink,
+    contactLink,
     compact,
     methods,
     events,

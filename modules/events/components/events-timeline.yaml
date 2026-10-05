@@ -117,11 +117,21 @@ blocks:
         _var:
           key: s3GetPolicyRequestId
           default: null
-      contactPageUrl:
+      contactPageId:
         _var:
-          key: contact_page_url
+          key: contact_page_id
           default:
-            _module.var: contact_page_url
+            _module.var: contact_page_id
+      contactIdQueryKey:
+        _var:
+          key: contact_id_query_key
+          default:
+            _module.var: contact_id_query_key
+      contactIdPathKey:
+        _var:
+          key: contact_id_path_key
+          default:
+            _module.var: contact_id_path_key
       disableContactLink:
         _var:
           key: disable_contact_link

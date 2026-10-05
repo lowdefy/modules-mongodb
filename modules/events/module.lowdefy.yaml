@@ -64,16 +64,27 @@ vars:
     description: >
       Additional event type display metadata. Merged with built-in types.
       Keys are type strings, values have color, title, icon.
-  contact_page_url:
+  contact_page_id:
     type: string
     default: ""
     description: >
-      URL template for linking a user avatar/timestamp to their profile page.
-      Use `{id}` as the placeholder for the user id; if omitted, the id is
-      appended as `?_id=<id>`. Leave empty to render the timestamp/avatar
-      without a link. Example: `/user-admin/view?user_id={id}`.
-      Per-call overrides via `contact_page_url` and `disable_contact_link`
-      vars on the events-timeline component.
+      Page id of the contact page that a user avatar, a timestamp and an
+      @mention in a note link to, such as `contacts/view`. Leave empty to
+      render them without a link. Per-call overrides via `contact_page_id`
+      and `disable_contact_link` vars on the events-timeline component.
+  contact_id_query_key:
+    type: string
+    default: _id
+    description: >
+      URL query key that carries the contact id to the contact page. Leave
+      empty to omit the id from the query string.
+  contact_id_path_key:
+    type: string
+    default: ""
+    description: >
+      Path parameter that carries the contact id, when the contact page has a
+      `path` like `contacts/{contact_id}` (here `contact_id`). Set
+      `contact_id_query_key` to an empty string to pass the id only in the path.
   actions_collection:
     type: string
     default: actions
