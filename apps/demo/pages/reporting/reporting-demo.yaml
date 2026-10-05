@@ -8,6 +8,9 @@ _ref:
   vars:
     id: reporting-demo
     title: AI Chat Reporting
+    logo:
+      src: /logo-square-light-theme.png
+      alt: Reporting
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
