@@ -66,7 +66,6 @@ The `page` component renders a shared title bar above the content. Key per-page 
 | Prop               | Type    | Default | Purpose                                                                                                                                        |
 | ------------------ | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `title`            | string  | `null`  | Entity name/identifier — the `<h2>` heading. Never concatenate type + name here.                                                               |
-| `page_title`       | string  | `title` | Browser-tab title. Pass a static string when `title` is a `_request` read: the tab title resolves before request data exists.                  |
 | `type`             | string  | `null`  | Entity-type "eyebrow" rendered uppercase above the title. Convention: view → entity type; edit → `Edit {type}`; create → `New {type}`.         |
 | `avatar_src`       | string  | `null`  | Image src for a 48px subject avatar left of the status pill. Wire it on pages about a person; falls back to a user icon when the src is empty. |
 | `status`           | string  | `null`  | Status slug looked up in `status_enum`.                                                                                                        |
@@ -75,6 +74,8 @@ The `page` component renders a shared title bar above the content. Key per-page 
 | `loading`          | boolean | `false` | Shimmer skeletons on title/subtitle/pill while data loads.                                                                                     |
 | `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                                       |
 | `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                          |
+
+The browser-tab title is `title` when it is a string at build time. A `title` that is a runtime operator (`_request`, `_state`) is not used there, because the server writes the tab title without evaluating operators; the tab shows `type` instead, or the page id when `type` is not set.
 
 ## App-wide seams
 

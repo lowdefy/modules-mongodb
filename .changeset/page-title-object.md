@@ -1,7 +1,5 @@
 ---
 "@lowdefy/modules-mongodb-layout": patch
-"@lowdefy/modules-mongodb-user-admin": patch
-"@lowdefy/modules-mongodb-user-account": patch
 ---
 
-**The user view page and the account page no longer show "[object Object]" as the browser-tab title.** Both set the page title from the user's name, a request read that has no value when the tab title is resolved. The layout page component takes a `page_title` var for a static tab title, and these two pages pass one.
+**Pages whose title comes from a runtime operator no longer show "[object Object]" as the browser-tab title.** The server writes the tab title without evaluating operators, so the layout page component now uses `title` only when it is a string at build time, and otherwise the page's `type` (for example "Company"), or the page id when there is none.

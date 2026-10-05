@@ -22,15 +22,36 @@ type:
     default: PageHeaderMenu
 properties:
   _build.object.assign:
-    # `page_title` is the browser-tab title and must resolve without request data.
-    # A page whose `title` is a runtime `_request` read passes a static `page_title`,
-    # otherwise the tab shows "[object Object]".
-    - title:
-        _var:
-          key: page_title
-          default:
+    # The server writes `properties.title` into the HTML <title> without
+    # evaluating it, so a runtime operator there (`_request`, `_state`, ...) shows
+    # as "[object Object]". Only a title that is a string at build time is used;
+    # otherwise the entity-type eyebrow, otherwise none (the server then uses the
+    # page id).
+    - _build.if:
+        test:
+          _build.type:
+            type: string
+            on:
+              _var:
+                key: title
+                default: null
+        then:
+          title:
             _var: title
-      menu:
+        else:
+          _build.if:
+            test:
+              _build.type:
+                type: string
+                on:
+                  _var:
+                    key: type
+                    default: null
+            then:
+              title:
+                _var: type
+            else: {}
+    - menu:
         _var:
           key: menu
           default:

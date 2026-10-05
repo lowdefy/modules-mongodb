@@ -40,7 +40,6 @@ _ref:
     type: Account
     title:
       _request: get_account.0.name
-    page_title: Account
     avatar_src:
       _request: get_account.0.profile.picture
     loading:
