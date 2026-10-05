@@ -35,6 +35,7 @@ _js:
             background: 'color-mix(in srgb, ' + border + ' 18%, transparent)',
             link_page_id: link ? link.pageId : null,
             link_url_query: link ? link.urlQuery || {} : null,
+            link_path_params: link ? link.pathParams || {} : null,
             due_date: null,
             task: null,
           });
@@ -59,6 +60,7 @@ _js:
         background: 'var(--ant-color-bg-container)',
         link_page_id: null,
         link_url_query: null,
+        link_path_params: null,
         due_date: t.due_date || null,
         task: t,
       });

@@ -27,7 +27,8 @@ entity: # required — the workflow's entity wiring
   connection_id: <slug> # required — Lowdefy connection id for the entity (e.g. leads-collection)
   ref_key: <key> # required — event-references key (e.g. lead_ids)
   page_id: <page> # required — host-app page id the back-link navigates to
-  id_query_key: <key> # optional — URL query key for the entity id (default _id)
+  id_query_key: <key> # optional — URL query key for the entity id (default _id unless id_path_key is set)
+  id_path_key: <key> # optional — path placeholder for the entity id, for a page with a path like deals/{deal_id}
   title: <Label> # required — singular entity-kind label (e.g. Lead)
   data: # optional — inline routine ({ routine: [...] }, like a hook) returning entity data;
     routine: [...] #   reserved `name` key → breadcrumb instance name; other keys host-owned (replaces name_field)
@@ -311,12 +312,14 @@ The post-hook payload `context` carries the committed workflow + action docs; `r
 
 ## Tracker `tracker:` block
 
-| Field                 | Required | Description                                                     |
-| --------------------- | -------- | --------------------------------------------------------------- |
-| `child_workflow_type` | yes      | Child workflow type to mirror                                   |
-| `start_link`          | no       | Navigation target before child exists — `{ pageId, urlQuery? }` |
+| Field                 | Required | Description                                                                  |
+| --------------------- | -------- | ---------------------------------------------------------------------------- |
+| `child_workflow_type` | yes      | Child workflow type to mirror                                                |
+| `start_link`          | no       | Navigation target before child exists — `{ pageId, urlQuery?, pathParams? }` |
 
-### `start_link.urlQuery` reserved keys
+### `start_link.urlQuery` and `start_link.pathParams` reserved keys
+
+The same keys are reserved in both. A path placeholder named `action_id` or `entity_id` on the target page takes the sentinel through `pathParams`.
 
 | Key               | Resolves to                                |
 | ----------------- | ------------------------------------------ |

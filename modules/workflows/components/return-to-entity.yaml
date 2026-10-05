@@ -20,9 +20,10 @@
 #     a standalone deep link, so it returns to the entity like the form pages).
 #
 # Vars (all operator-position, so this is a plain .yaml consumed with `_var`):
-#   entity_page_id   — the action's entity_link.pageId (null when unresolvable).
-#   entity_url_query — the action's entity_link.urlQuery.
-#   success_message  — toast content (default "Submitted successfully.").
+#   entity_page_id     — the action's entity_link.pageId (null when unresolvable).
+#   entity_url_query   — the action's entity_link.urlQuery.
+#   entity_path_params — the action's entity_link.pathParams.
+#   success_message    — toast content (default "Submitted successfully.").
 - id: submit_success_message
   type: DisplayMessage
   params:
@@ -42,6 +43,8 @@
       then:
         pageId:
           _var: entity_page_id
+        pathParams:
+          _var: entity_path_params
         urlQuery:
           _var: entity_url_query
       else:

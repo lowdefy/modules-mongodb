@@ -94,7 +94,7 @@ status_map:
       link: { pageId: contract-review, urlQuery: { action_id: true } }
 ```
 
-**Author-owned links.** You write a `status_map.{stage}.{slug}.link` cell (and optional `view_link:`) pointing at an app page id. The engine routes the working `link` into the stage's active working verb slot (`edit` / `review` / `error`, or `view` at `done`) and fills the `view` slot with your `view_link` or — absent it — the shared `{workflow_type}-action` page, so an observer always lands on a read-only status surface. The `action_id` / `entity_id` sentinels in `urlQuery` are substituted per action at render time.
+**Author-owned links.** You write a `status_map.{stage}.{slug}.link` cell (and optional `view_link:`) pointing at an app page id. The engine routes the working `link` into the stage's active working verb slot (`edit` / `review` / `error`, or `view` at `done`) and fills the `view` slot with your `view_link` or — absent it — the shared `{workflow_type}-action` page, so an observer always lands on a read-only status surface. The `action_id` / `entity_id` sentinels in `urlQuery` or `pathParams` are substituted per action at render time.
 
 **No module pages.** Custom emits no per-action pages — your app supplies the working page, which calls the `{workflow_type}-submit` endpoint to advance the workflow. See the [Build a custom action](../how-to/custom-actions.md) how-to.
 
@@ -148,7 +148,7 @@ tracker:
       source: onboarding # static params pass through verbatim
 ```
 
-`action_id: true` and `entity_id: true` are the two reserved `urlQuery` keys. They substitute runtime values at render time. All other keys pass through as-is.
+`action_id: true` and `entity_id: true` are the two reserved `urlQuery` keys. They substitute runtime values at render time. All other keys pass through as-is. `start_link` also takes `pathParams`, with the same reserved keys, for a target page whose path has an `{action_id}` or `{entity_id}` placeholder.
 
 The link is active while the tracker is `action-required` with no `child_workflow_id`. Once a child is started (via `start-workflow` with `parent_action_id`), the link switches to the child entity's view page.
 

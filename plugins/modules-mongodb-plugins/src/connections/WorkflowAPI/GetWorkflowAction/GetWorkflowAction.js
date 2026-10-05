@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import entityPageLink from "../../shared/render/entityPageLink.js";
 import parseNunjucks from "../../shared/render/parseNunjucks.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
 import resolveUniversalFields from "../../shared/render/resolveUniversalFields.js";
@@ -25,7 +26,7 @@ import {
  *     _id, type, workflow_type, workflow_id, kind, key, status, action_group, description, due_date,
  *     assignees, assignee_docs, universal_fields, show_comment, created, updated,
  *     entity,               // { ...entity.data routine result, id } — host fields + the always-present instance id
- *     entity_link,          // { pageId, urlQuery, title, name } from the workflow config's `entity` block (name from the routine), or null
+ *     entity_link,          // { pageId, urlQuery?, pathParams?, title, name } from the workflow config's `entity` block (name from the routine), or null
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
  *     allowed,              // { view, edit, review, error }
@@ -250,8 +251,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const entityConfig = wfConfig?.entity;
   const entity_link = entityConfig
     ? {
-        pageId: entityConfig.page_id,
-        urlQuery: { [entityConfig.id_query_key]: action.entity.id },
+        ...entityPageLink(entityConfig, action.entity.id),
         title: entityConfig.title ?? null,
         name: entityData?.name ?? null,
       }

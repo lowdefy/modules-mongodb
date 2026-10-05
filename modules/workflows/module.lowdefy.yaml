@@ -77,7 +77,11 @@ vars:
         written into event docs so events surface on the entity.
       - `page_id` (required) — host-app page id rendering the entity (the entity
         breadcrumb crumb links here).
-      - `id_query_key` (optional, default `_id`) — URL query-string key for the entity's primary id.
+      - `id_query_key` (optional) — URL query-string key for the entity's primary id.
+        Defaults to `_id` when `id_path_key` is not set.
+      - `id_path_key` (optional) — path placeholder for the entity's primary id, when
+        the entity page has a `path` like `deals/{deal_id}` (here `deal_id`). Set
+        `id_query_key` as well to also pass the id in the query string.
       - `title` (required) — singular human-readable entity-kind label (e.g. "Lead").
       - `data` (optional) — an inline routine, authored exactly like a hook
         (`{ routine: [ ... ] }`), that returns an object describing the entity

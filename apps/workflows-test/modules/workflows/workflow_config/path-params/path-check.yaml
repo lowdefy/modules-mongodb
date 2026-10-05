@@ -1,0 +1,17 @@
+# A plain check: submitting it on the shared action page returns to the entity
+# page at its path.
+type: path-check
+kind: check
+sort_order: 10
+description: A check on a thing served at a path.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Complete the path check.
+  done:
+    test:
+      message: Path check complete.

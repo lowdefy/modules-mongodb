@@ -90,9 +90,9 @@ const schema = {
         "Each entry is one workflow with its actions and action_groups. " +
         "Consumed by the engine at runtime. " +
         "Workflow shape: { type, entity, display_order?, starting_actions, actions, action_groups? }. " +
-        "entity is a nested block { connection_id, ref_key, page_id, id_query_key, title } carrying the workflow's entity routing wholesale: " +
+        "entity is a nested block { connection_id, ref_key, page_id, id_query_key?, id_path_key?, title } carrying the workflow's entity routing wholesale: " +
         'connection_id is the entity\'s Lowdefy connection id; ref_key is the event-references key (e.g. "lead_ids") — written into event docs so events surface on the entity; ' +
-        'page_id is the host-app page id rendering the entity; id_query_key is the URL query-string key for the entity\'s primary id (default "_id"); title is the singular entity-kind label. ' +
+        "page_id is the host-app page id rendering the entity; id_query_key is the URL query-string key for the entity's primary id (default \"_id\" unless id_path_key is set); id_path_key is the entity page's path placeholder for that id; title is the singular entity-kind label. " +
         "starting_actions entries: { type: string, status: string } where type matches an actions[].type and status is a key in actionsEnum.",
       items: {
         type: "object",

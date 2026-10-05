@@ -80,6 +80,8 @@ try:
     params:
       pageId:
         _event: action.link.pageId
+      pathParams:
+        _event: action.link.pathParams
       urlQuery:
         _event: action.link.urlQuery
 catch:
@@ -90,5 +92,7 @@ catch:
     params:
       pageId:
         _event: action.link.pageId
+      pathParams:
+        _event: action.link.pathParams
       urlQuery:
         _event: action.link.urlQuery

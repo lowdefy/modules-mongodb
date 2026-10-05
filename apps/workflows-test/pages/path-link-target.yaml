@@ -1,0 +1,29 @@
+# Landing page for the `path-params` workflow's engine links, served at
+# `path-link/{source}/{action_id}`. Shows the values the link carried so the
+# e2e spec can check each link reached its own page instance.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: path-link-target
+    path: path-link/{source}/{action_id}
+    title: Path link target
+    blocks:
+      - id: link_values
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: >
+                <dl id="link-values">
+                  <dt>source</dt><dd id="link-source">{{ source }}</dd>
+                  <dt>action_id</dt><dd id="link-action-id">{{ action_id }}</dd>
+                  <dt>entity_id</dt><dd id="link-entity-id">{{ entity_id }}</dd>
+                </dl>
+              on:
+                source:
+                  _path_params: source
+                action_id:
+                  _path_params: action_id
+                entity_id:
+                  _url_query: entity_id

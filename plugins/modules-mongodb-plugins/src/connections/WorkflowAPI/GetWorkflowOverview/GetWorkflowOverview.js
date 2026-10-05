@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import entityPageLink from "../../shared/render/entityPageLink.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
 import {
   computeAllowed,
@@ -226,8 +227,7 @@ async function GetWorkflowOverview(lowdefyContext) {
   );
   const entity_link = entityConfig
     ? {
-        pageId: entityConfig.page_id,
-        urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
+        ...entityPageLink(entityConfig, wfDoc.entity.id),
         title: entityConfig.title ?? null,
         name: entityData?.name ?? null,
         // Part 63: the optional entity-list breadcrumb crumb. Runtime-driven
