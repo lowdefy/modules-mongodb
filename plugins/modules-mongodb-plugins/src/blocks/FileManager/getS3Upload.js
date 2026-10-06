@@ -72,11 +72,18 @@ const getS3Upload = ({
           });
         }
       };
+      // S3 answers a refused post (a file over the policy's size cap, an
+      // expired policy) with a 4xx and fires no "error", so only a 2xx "load"
+      // is a stored file.
+      xhr.addEventListener("load", async () => {
+        const stored = xhr.status >= 200 && xhr.status < 300;
+        await setFileList({ event: stored ? "onSuccess" : "onError", file });
+      });
       xhr.addEventListener("error", async () => {
         await setFileList({ event: "onError", file });
       });
-      xhr.addEventListener("loadend", async () => {
-        await setFileList({ event: "onSuccess", file });
+      xhr.addEventListener("abort", async () => {
+        await setFileList({ event: "onError", file });
       });
       xhr.open("post", url);
       xhr.send(formData);

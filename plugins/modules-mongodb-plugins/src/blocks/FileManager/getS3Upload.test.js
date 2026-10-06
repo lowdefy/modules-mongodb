@@ -2,6 +2,8 @@ import { jest } from "@jest/globals";
 import getS3Upload from "./getS3Upload.js";
 
 const sent = [];
+// How the fake S3 answers the next post: a status for "load", or "error".
+let s3Answer = 204;
 
 class FakeXhr {
   constructor() {
@@ -15,8 +17,14 @@ class FakeXhr {
     this.method = method;
     this.url = url;
   }
-  send(body) {
+  async send(body) {
     sent.push({ method: this.method, url: this.url, body });
+    if (s3Answer === "error") {
+      await this.listeners.error?.();
+    } else {
+      this.status = s3Answer;
+      await this.listeners.load?.();
+    }
     return this.listeners.loadend?.();
   }
 }
@@ -74,6 +82,7 @@ const makeSetup = ({ usePolicyEvent, answer, success = true }) => {
 
 beforeEach(() => {
   sent.length = 0;
+  s3Answer = 204;
   global.XMLHttpRequest = FakeXhr;
 });
 
@@ -302,4 +311,23 @@ test("a held upload resumed during another upload's policy event is sent, and th
   expect(b.key).toBeUndefined();
   expect(uploadsRef.current.held.has("a")).toBe(false);
   expect(uploadsRef.current.held.has("b")).toBe(true);
+});
+
+test("a post S3 refuses is an error, not a stored file", async () => {
+  const { block, setFileList } = makeSetup({ usePolicyEvent: false });
+  s3Answer = 403;
+  const file = makeFile();
+  await block.upload({ file });
+  expect(sent).toHaveLength(1);
+  expect(setFileList).toHaveBeenCalledWith({ event: "onError", file });
+  expect(setFileList).not.toHaveBeenCalledWith({ event: "onSuccess", file });
+});
+
+test("a network error is reported once, as an error", async () => {
+  const { block, setFileList } = makeSetup({ usePolicyEvent: false });
+  s3Answer = "error";
+  const file = makeFile();
+  await block.upload({ file });
+  expect(setFileList).toHaveBeenCalledTimes(1);
+  expect(setFileList).toHaveBeenCalledWith({ event: "onError", file });
 });
