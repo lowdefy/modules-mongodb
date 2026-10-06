@@ -1,0 +1,56 @@
+# Display metadata (title, colour, icon) for the organisation events: those the
+# module's write endpoints log, and org-member-joined, which the account
+# module's accept page logs. An app registers them with the events module by
+# passing this file's component (`event_types`) into that module's
+# `event_types` var.
+org-invited:
+  title: Invited
+  color: "#1890ff"
+  icon: mail
+org-invitation-resent:
+  title: Invitation resent
+  color: "#1890ff"
+  icon: Redo
+org-invitation-cancelled:
+  title: Invitation cancelled
+  color: "#8c8c8c"
+  icon: Ban
+org-app-roles-changed:
+  title: App roles changed
+  color: "#13c2c2"
+  icon: Shield
+org-authority-changed:
+  title: Authority changed
+  color: "#722ed1"
+  icon: Key
+org-member-removed:
+  title: Removed
+  color: "#f5222d"
+  icon: UserMinus
+org-member-left:
+  title: Left
+  color: "#fa8c16"
+  icon: logout
+org-renamed:
+  title: Renamed
+  color: "#8c8c8c"
+  icon: edit
+org-logo-changed:
+  title: Logo changed
+  color: "#8c8c8c"
+  icon: image
+org-ownership-transferred:
+  title: Ownership transferred
+  color: "#722ed1"
+  icon: Crown
+org-created:
+  title:
+    _build.string.concat:
+      - _module.var: label
+      - ' created'
+  color: "#52c41a"
+  icon: add-circle
+org-member-joined:
+  title: Joined
+  color: "#52c41a"
+  icon: UserPlus

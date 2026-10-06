@@ -2,7 +2,11 @@ contact_page_id: contacts/view
 actions_collection: actions
 contacts_collection: user-contacts
 event_types:
-  _ref: modules/events/event_types.yaml
+  _build.object.assign:
+    - _ref: modules/events/event_types.yaml
+    - _ref:
+        module: organizations
+        component: event_types
 change_stamp:
   timestamp:
     _date: now

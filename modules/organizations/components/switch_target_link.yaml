@@ -1,0 +1,13 @@
+# Link params for the switch page's target: `to` when it is a relative app
+# path, else home. Worked out before the Link runs, since anything read after it
+# sees the new page's address.
+_if:
+  test:
+    _ref: components/switch_target_is_safe.yaml
+  then:
+    url:
+      _url_query: to
+    replace: true
+  else:
+    home: true
+    replace: true

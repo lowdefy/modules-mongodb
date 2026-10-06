@@ -1,6 +1,8 @@
-# The caller's ACTIVE organization row — the name the settings page edits and
-# the switcher displays. Scoped by the session's active organization id, so it
-# can only ever read the organization the caller is acting in.
+# The caller's ACTIVE organization's name, slug and created date, for the
+# General settings page. Scoped by the session's active organization id, so it
+# can only ever read the organization the caller is acting in. The logo is left
+# out: the page draws it from get_settings_organization, the settings header's
+# read.
 id: get_active_organization
 type: MongoDBFindOne
 connectionId:
@@ -9,3 +11,8 @@ properties:
   query:
     _id:
       _user: organization_id
+  options:
+    projection:
+      name: 1
+      slug: 1
+      created_at: 1

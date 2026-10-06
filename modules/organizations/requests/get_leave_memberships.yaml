@@ -1,0 +1,20 @@
+# The caller's memberships, oldest first: { organization_id, joined } each.
+# The member page uses it to lock Leave on a person's only organization and to
+# pick where to go after leaving. Scoped by `user_id: { _user: id }`, the
+# caller's own member rows, which is what makes this read safe on the shared
+# connection.
+id: get_leave_memberships
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    - $match:
+        user_id:
+          _user: id
+    - $sort:
+        created_at: 1
+    - $project:
+        _id: 0
+        organization_id: 1
+        joined: "$created_at"

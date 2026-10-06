@@ -1,0 +1,8 @@
+# True on the member page when the form must not be used: the person is an
+# owner and the caller is not.
+_and:
+  - _eq:
+      - _request: get_member.0.authority
+      - Owner
+  - _not:
+      _ref: components/caller_is_org_owner.yaml

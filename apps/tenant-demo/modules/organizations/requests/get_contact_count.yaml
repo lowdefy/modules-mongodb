@@ -1,0 +1,8 @@
+# How many contacts the active organization has: [{ count }], or [] when it has
+# none. The tenant wall scopes the read to the active organization.
+id: get_contact_count
+type: MongoDBAggregation
+connectionId: demo-contacts
+properties:
+  pipeline:
+    - $count: count

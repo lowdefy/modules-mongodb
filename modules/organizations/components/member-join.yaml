@@ -1,0 +1,60 @@
+# member-join — the members of the caller's active organisation as flat rows,
+# a pipeline for an aggregation on this module's `user-members` connection:
+#
+#   pipeline:
+#     _ref:
+#       module: organizations
+#       component: member-join
+#       vars:
+#         match: { user_id: { $in: [...] } }      # optional
+#         project: { department: "$attributes.department" } # optional
+#
+# Each row: { member_id, user_id, name, email, picture, org_role, app_roles,
+# joined } plus the `project` fields. The join and the name and picture rules
+# are the shared members base (auth user for the email, the organisation's
+# user-contacts record for the name and picture). `user-members` is not
+# tenant-walled, so the base's $match and $lookups name the organisation
+# themselves.
+#
+# Vars:
+#   match     extra $match fields on the member row, applied before the joins;
+#             the caller's organization_id is always matched
+#   project   extra fields for the row, as $project expressions over the
+#             joined member row
+_build.array.concat:
+  - _ref:
+      path: ../shared/org/members_base.yaml
+      vars:
+        org_value:
+          _user: organization_id
+        pre_join_stages:
+          - $match:
+              _var:
+                key: match
+                default: {}
+  - - $project:
+        _object.assign:
+          - _id: 0
+            member_id: "$_id"
+            user_id: 1
+            name:
+              $ifNull:
+                - "$name"
+                - null
+            email:
+              $ifNull:
+                - "$email"
+                - null
+            picture: 1
+            org_role:
+              $ifNull:
+                - "$role"
+                - member
+            app_roles:
+              $ifNull:
+                - "$app_roles"
+                - []
+            joined: "$created_at"
+          - _var:
+              key: project
+              default: {}

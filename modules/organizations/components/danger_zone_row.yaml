@@ -1,0 +1,82 @@
+# One line of the member page's danger zone: what the action is and what it
+# does, with its button on the right.
+#
+# Vars:
+#   id        block id prefix
+#   visible   optional, default true
+#   title     the action, e.g. "Remove from organization"
+#   line      what happens, evaluated on the page
+#   button    the button's text
+#   icon      the button's icon
+#   disabled  optional, evaluated on the page
+#   onClick   the button's actions
+id:
+  _build.string.concat:
+    - _var: id
+    - _row
+type: Box
+visible:
+  _var:
+    key: visible
+    default: true
+layout:
+  gap: 12
+  align: middle
+blocks:
+  - id:
+      _build.string.concat:
+        - _var: id
+        - _text
+    type: Box
+    class: min-w-0
+    layout:
+      flex: 1 1 160px
+      direction: column
+      gap: 2
+    blocks:
+      - id:
+          _build.string.concat:
+            - _var: id
+            - _title
+        type: Paragraph
+        style:
+          .element:
+            margin: 0
+        properties:
+          strong: true
+          content:
+            _var: title
+      - id:
+          _build.string.concat:
+            - _var: id
+            - _line
+        type: Paragraph
+        style:
+          .element:
+            margin: 0
+            fontSize: 13
+        properties:
+          type: secondary
+          content:
+            _var: line
+  - id:
+      _build.string.concat:
+        - _var: id
+        - _btn
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title:
+        _var: button
+      icon:
+        _var: icon
+      danger: true
+      variant: outlined
+      disabled:
+        _var:
+          key: disabled
+          default: false
+    events:
+      onClick:
+        _var: onClick

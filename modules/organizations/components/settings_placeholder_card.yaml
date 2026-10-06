@@ -1,0 +1,77 @@
+# A card holding a settings section's place until it is built: an icon,
+# "Not set up yet", a line on what will live here and a list of what is to come.
+#
+# Vars: id, icon, text, items (markdown list)
+_ref:
+  module: layout
+  component: card
+  vars:
+    id:
+      _var: id
+    hide_title: true
+    blocks:
+      - id:
+          _build.string.concat:
+            - _var: id
+            - _row
+        type: Box
+        layout:
+          gap: 24
+          align: top
+          wrap: nowrap
+        style:
+          padding: 8px
+        blocks:
+          - id:
+              _build.string.concat:
+                - _var: id
+                - _glyph
+            type: Avatar
+            layout:
+              flex: 0 0 auto
+            class: '!rounded-xl'
+            properties:
+              shape: square
+              size: 48
+              color: var(--ant-color-fill-tertiary)
+              icon:
+                name:
+                  _var: icon
+                size: 22
+                color: var(--ant-color-text)
+          - id:
+              _build.string.concat:
+                - _var: id
+                - _text
+            type: Box
+            layout:
+              flex: 1 1 0
+              direction: column
+              gap: 4
+            blocks:
+              - id:
+                  _build.string.concat:
+                    - _var: id
+                    - _heading
+                type: Span
+                class: text-base font-bold block
+                properties:
+                  content: Not set up yet
+              - id:
+                  _build.string.concat:
+                    - _var: id
+                    - _line
+                type: Span
+                class: text-text-secondary block
+                properties:
+                  content:
+                    _var: text
+              - id:
+                  _build.string.concat:
+                    - _var: id
+                    - _items
+                type: Markdown
+                class: text-[13px] text-text-secondary
+                properties:
+                  content:
+                    _var: items

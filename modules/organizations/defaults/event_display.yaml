@@ -1,0 +1,33 @@
+# Default title templates (Nunjucks) for the organization events, keyed by event
+# type. Each receives `actor` (the caller's name), `subject` ({ user_id, email,
+# name, member_id, invitation_id }), `from` and `to`. An app overrides any of
+# them through the `event_display` module var.
+org-invited: "{{ actor }} invited {{ subject.email }}"
+org-invitation-resent: "{{ actor }} resent the invitation for {{ subject.email }}"
+org-invitation-cancelled: "{{ actor }} cancelled the invitation for {{ subject.email }}"
+org-app-roles-changed: "{{ actor }} changed the app roles of {{ subject.name or subject.email }}"
+org-authority-changed: "{{ actor }} changed the authority of {{ subject.name or subject.email }} from {{ from }} to {{ to }}"
+org-member-removed: "{{ actor }} removed {{ subject.name or subject.email }}"
+org-member-left:
+  _build.string.concat:
+    - '{{ actor }} left the '
+    - _build.string.toLowerCase:
+        _module.var: label
+org-ownership-transferred: "{{ actor }} transferred ownership to {{ subject.name or subject.email }} and became an admin"
+org-created:
+  _build.string.concat:
+    - '{{ actor }} created the '
+    - _build.string.toLowerCase:
+        _module.var: label
+org-renamed:
+  _build.string.concat:
+    - '{{ actor }} renamed the '
+    - _build.string.toLowerCase:
+        _module.var: label
+    - ' from {{ from }} to {{ to }}'
+org-logo-changed:
+  _build.string.concat:
+    - "{{ actor }} {{ 'removed' if to == 'removed' else 'changed' }} the "
+    - _build.string.toLowerCase:
+        _module.var: label
+    - ' logo'

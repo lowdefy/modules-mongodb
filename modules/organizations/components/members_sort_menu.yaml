@@ -1,0 +1,45 @@
+# The members sort: an icon button whose menu picks the order of
+# `members_table`, kept in `members_sort`. The current order is selected.
+id: members_sort_menu
+type: DropdownMenu
+layout:
+  flex: 0 0 auto
+properties:
+  trigger: click
+  placement: bottomRight
+  selectable: true
+  selectedKeys:
+    - _state: members_sort
+  links:
+    - id: name_asc
+      type: MenuLink
+      properties:
+        title: 'Name, A to Z'
+    - id: name_desc
+      type: MenuLink
+      properties:
+        title: 'Name, Z to A'
+    - id: joined_desc
+      type: MenuLink
+      properties:
+        title: Newest first
+    - id: joined_asc
+      type: MenuLink
+      properties:
+        title: Oldest first
+events:
+  onClick:
+    - id: set_members_sort
+      type: SetState
+      params:
+        members_sort:
+          _event: key
+blocks:
+  - id: members_sort_button
+    type: Button
+    properties:
+      type: text
+      icon: ArrowUpDown
+      title: Sort
+      hideTitle: true
+      tooltip: Sort

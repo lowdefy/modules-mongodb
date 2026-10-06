@@ -2,47 +2,71 @@ id: router
 type: Box
 events:
   onMount:
-    # A signed-in caller with no organization yet is an invitee who has not
-    # accepted. Every protected page refuses them, so they go to the public
-    # accept page, carrying their pending invitation.
-    - id: router_accept
-      type: Link
-      skip:
-        _ne:
-          - _user: awaiting_organization
-          - true
-      params:
-        pageId:
-          _module.pageId:
-            module: user-account
-            id: accept
-        urlQuery:
-          invitationId:
-            _user: pending_invitation_id
-    - id: router
-      type: Link
-      skip:
-        _eq:
-          - _user: awaiting_organization
-          - true
-      params:
-        pageId:
-          _switch:
-            branches:
-              - if:
-                  _eq:
+    _build.array.concat:
+      # A signed-in member goes back to the organization they last switched to
+      # in this browser: the switch page checks the membership and goes on
+      # home. When it hands off, the routing below skips.
+      - _ref:
+          module: organizations
+          component: restore-last-organization
+          vars:
+            to: /home
+            skip:
+              _or:
+                - _eq:
                     - _user: true
                     - null
-                then:
-                  _module.pageId:
-                    module: user-account
-                    id: login
-              - if:
-                  _ne:
+                - _eq:
+                    - _user: awaiting_organization
+                    - true
+                - _ne:
                     - _user: profile.profile_created
                     - true
-                then:
-                  _module.pageId:
-                    module: user-account
-                    id: onboarding
-            default: home
+      # A signed-in caller with no organization yet is an invitee who has not
+      # accepted. Every protected page refuses them, so they go to the public
+      # accept page, carrying their pending invitation.
+      - - id: router_accept
+          type: Link
+          skip:
+            _ne:
+              - _user: awaiting_organization
+              - true
+          params:
+            pageId:
+              _module.pageId:
+                module: user-account
+                id: accept
+            urlQuery:
+              invitationId:
+                _user: pending_invitation_id
+        - id: router
+          type: Link
+          skip:
+            _or:
+              - _eq:
+                  - _user: awaiting_organization
+                  - true
+              - _eq:
+                  - _state: last_organization_restore
+                  - true
+          params:
+            pageId:
+              _switch:
+                branches:
+                  - if:
+                      _eq:
+                        - _user: true
+                        - null
+                    then:
+                      _module.pageId:
+                        module: user-account
+                        id: login
+                  - if:
+                      _ne:
+                        - _user: profile.profile_created
+                        - true
+                    then:
+                      _module.pageId:
+                        module: user-account
+                        id: onboarding
+                default: home

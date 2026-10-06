@@ -1,6 +1,10 @@
 # Pending invitations for the caller's ACTIVE organization, soonest expiry
 # first. The org scope, the pending filter, and the Invited/Expired derivation
-# all come from the shared stages.
+# all come from the shared stages. `expiry` is the line the list shows:
+# "Expires in 13 days", "Expires within a day" or "Expired".
+#
+# Owners and admins only: invitee emails are personal and nobody else can act
+# on an invitation, so the read itself returns nothing to anyone else.
 id: get_invitations
 type: MongoDBAggregation
 connectionId:
@@ -8,10 +12,52 @@ connectionId:
 properties:
   pipeline:
     _build.array.concat:
+      - - $match:
+            _if:
+              test:
+                _ref: components/caller_is_org_admin.yaml
+              then: {}
+              else:
+                $expr: false
       - _ref:
           path: ../shared/org/invitations_base.yaml
           vars:
             org_value:
               _user: organization_id
-      - - $sort:
+      - - $addFields:
+            days_left:
+              $ceil:
+                $divide:
+                  - $subtract:
+                      - "$expires_at"
+                      - _date: now
+                  - 86400000
+        - $project:
+            email: 1
+            app_roles:
+              $ifNull:
+                - "$app_roles"
+                - []
+            status: 1
+            expires_at: 1
+            inviter_name: 1
+            expiry:
+              $switch:
+                branches:
+                  - case:
+                      $eq:
+                        - "$status"
+                        - Expired
+                    then: Expired
+                  - case:
+                      $lte:
+                        - "$days_left"
+                        - 1
+                    then: Expires within a day
+                default:
+                  $concat:
+                    - 'Expires in '
+                    - $toString: "$days_left"
+                    - ' days'
+        - $sort:
             expires_at: 1

@@ -1,0 +1,158 @@
+# transfer-ownership: an owner of the caller's ACTIVE organization hands
+# ownership to another member. Two engine writes: the member becomes owner,
+# then the caller becomes admin. Promoting first means the organization always
+# has an owner; if the step down is refused, both stay owners and the caller
+# can step down from their own member page.
+#
+# `organizationId` is explicit: under the `tenant` policy there is no pinned
+# organization for the steps to default to.
+#
+# Payload: { member_id }
+# Returns { success: true }, or { refused: { rule, message }, promoted } with
+# rule `owner_only`, `not_a_member`, `self`, `already_owner`,
+# `promote_refused` (nothing changed) or `step_down_refused` (promoted is
+# true: the member is an owner and so is the caller).
+id: transfer-ownership
+type: Api
+routine:
+  - :if:
+      _not:
+        _ref: components/caller_is_org_owner.yaml
+    :then:
+      - :return:
+          refused:
+            rule: owner_only
+            message: Only owners can transfer ownership.
+          promoted: false
+
+  - _ref:
+      path: api/parts/read-member.yaml
+      vars:
+        id: read_member
+        member_id:
+          _payload: member_id
+
+  - :if:
+      _eq:
+        - _step: read_member.0
+        - null
+    :then:
+      - :return:
+          refused:
+            rule: not_a_member
+            message:
+              _build.string.concat:
+                - 'That person is no longer in this '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - .
+          promoted: false
+
+  - :if:
+      _eq:
+        - _step: read_member.0.user_id
+        - _user: id
+    :then:
+      - :return:
+          refused:
+            rule: self
+            message: Choose someone else to hand ownership to.
+          promoted: false
+
+  - :if:
+      _eq:
+        - _ref:
+            path: components/authority_rank.yaml
+            vars:
+              role:
+                _step: read_member.0.org_role
+        - 3
+    :then:
+      - :return:
+          refused:
+            rule: already_owner
+            message: They are already an owner. To step down, lower your own authority on your page.
+          promoted: false
+
+  - id: read_self
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-members
+    properties:
+      pipeline:
+        _ref:
+          path: components/member-join.yaml
+          vars:
+            match:
+              user_id:
+                _user: id
+
+  - :try:
+      - id: promote_member
+        type: UpdateMemberOrgRole
+        properties:
+          memberId:
+            _payload: member_id
+          orgRole: owner
+          organizationId:
+            _user: organization_id
+    :catch:
+      - :return:
+          refused:
+            rule: promote_refused
+            message:
+              _error: message
+          promoted: false
+
+  - :try:
+      - id: step_down
+        type: UpdateMemberOrgRole
+        properties:
+          memberId:
+            _step: read_self.0.member_id
+          orgRole: admin
+          organizationId:
+            _user: organization_id
+    :catch:
+      - _ref:
+          path: api/parts/log-event.yaml
+          vars:
+            type: org-authority-changed
+            subject:
+              user_id:
+                _step: read_member.0.user_id
+              email:
+                _step: read_member.0.email
+              name:
+                _step: read_member.0.name
+              member_id:
+                _payload: member_id
+            from:
+              _step: read_member.0.org_role
+            to: owner
+      - :return:
+          refused:
+            rule: step_down_refused
+            message:
+              _error: message
+          promoted: true
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-ownership-transferred
+        subject:
+          user_id:
+            _step: read_member.0.user_id
+          email:
+            _step: read_member.0.email
+          name:
+            _step: read_member.0.name
+          member_id:
+            _payload: member_id
+        from:
+          _step: read_member.0.org_role
+        to: owner
+
+  - :return:
+      success: true

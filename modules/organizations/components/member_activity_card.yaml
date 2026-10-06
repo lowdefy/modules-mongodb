@@ -1,0 +1,29 @@
+# The member page's Activity card: the audit log's entries by or about this
+# person (get_member_activity), for owners and admins, and for the person on
+# their own page. Owners and admins get a link to the full Audit log. The read
+# checks the same rule itself.
+id: member_activity_card
+type: Card
+visible:
+  _or:
+    - _ref: components/caller_is_org_admin.yaml
+    - _request: get_member.0.is_self
+properties:
+  title: Activity
+slots:
+  extra:
+    blocks:
+      - id: member_activity_audit_log_link
+        type: Anchor
+        visible:
+          _ref: components/caller_is_org_admin.yaml
+        properties:
+          title: Full audit log
+          pageId:
+            _module.pageId: audit-log
+blocks:
+  - _ref:
+      path: components/audit_log_list.yaml
+      vars:
+        request: get_member_activity
+        empty: Nothing recorded for this person yet.

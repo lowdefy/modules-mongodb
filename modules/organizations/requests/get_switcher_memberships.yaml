@@ -1,9 +1,8 @@
-# Every organization the caller belongs to, for the switcher. Scoped by
-# `user_id: { _user: id }` — the caller's own member rows by definition, which is
-# what makes this read safe on an unwalled connection.
-#
-# A single-membership caller still gets one row: the switcher renders the active
-# organization's name as plain context and offers no dropdown.
+# Every organization the caller belongs to, for an app's account menu:
+# { organization_id, organization_name, organization_logo, role (owner, admin
+# or member), is_active }, by name. Scoped by `user_id: { _user: id }`, the
+# caller's own member rows by definition, which is what makes this read safe
+# on an unwalled connection.
 id: get_switcher_memberships
 type: MongoDBAggregation
 connectionId:
@@ -18,16 +17,51 @@ properties:
         localField: organization_id
         foreignField: _id
         as: organization
+        pipeline:
+          - $project:
+              name: 1
+              logo: 1
     - $unwind: "$organization"
-    - $addFields:
+    - $project:
+        _id: 0
+        organization_id: 1
         organization_name: "$organization.name"
+        # A cleared logo is stored as an empty string.
+        organization_logo:
+          $cond:
+            - $eq:
+                - $ifNull:
+                    - "$organization.logo"
+                    - ''
+                - ''
+            - null
+            - "$organization.logo"
+        role:
+          $let:
+            vars:
+              tiers:
+                $split:
+                  - $ifNull:
+                      - "$role"
+                      - ''
+                  - ','
+            in:
+              $switch:
+                branches:
+                  - case:
+                      $in:
+                        - owner
+                        - "$$tiers"
+                    then: owner
+                  - case:
+                      $in:
+                        - admin
+                        - "$$tiers"
+                    then: admin
+                default: member
         is_active:
           $eq:
             - "$organization_id"
             - _user: organization_id
-    - $project:
-        organization_id: 1
-        organization_name: 1
-        is_active: 1
     - $sort:
         organization_name: 1

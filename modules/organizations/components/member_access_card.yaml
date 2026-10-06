@@ -1,0 +1,209 @@
+# The member page's Access card, for owners and admins while the person is a
+# member: authority and app roles in one form with one Save
+# (update-member-access). It never offers what the engine refuses:
+#   - Owner is offered only to owners;
+#   - an admin on an owner's page sees the form disabled, with a line saying
+#     only owners can change or remove an owner;
+#   - the only owner cannot lower their own authority: it is locked, with a
+#     line saying to hand ownership to someone first.
+# On your own row a warning shows first, and saving re-syncs the session.
+id: member_access_card
+type: Card
+visible:
+  _and:
+    - _ref: components/caller_is_org_admin.yaml
+    - _request: get_member.0.is_member
+properties:
+  title: Access
+blocks:
+  - id: member_access_fields
+    type: Box
+    layout:
+      direction: column
+      gap: 12
+    blocks:
+      - id: member_access_self_warning
+        type: Alert
+        visible:
+          _request: get_member.0.is_self
+        properties:
+          type: warning
+          showIcon: true
+          message:
+            _build.string.concat:
+              - 'You are changing your own access. You may lose the ability to manage this '
+              - _build.string.toLowerCase:
+                  _module.var: label
+              - .
+      - id: member_access_owner_only
+        type: Alert
+        visible:
+          _ref: components/member_access_disabled.yaml
+        properties:
+          type: info
+          showIcon: true
+          message: Only owners can change or remove an owner.
+      - id: member_access.org_role
+        type: ButtonSelector
+        properties:
+          title:
+            _build.string.concat:
+              - _module.var: label
+              - ' authority'
+          variant: solid
+          disabled:
+            _or:
+              - _ref: components/member_access_disabled.yaml
+              - _ref: components/member_authority_locked.yaml
+          options:
+            _array.concat:
+              - - value: member
+                  label: No authority
+                - value: admin
+                  label: Admin
+              - _if:
+                  test:
+                    _or:
+                      - _ref: components/caller_is_org_owner.yaml
+                      - _eq:
+                          - _request: get_member.0.authority
+                          - Owner
+                  then:
+                    - value: owner
+                      label: Owner
+                  else: []
+          label:
+            extra:
+              _if:
+                test:
+                  _ref: components/member_authority_locked.yaml
+                then:
+                  _build.string.concat:
+                    - 'You are the only owner. Hand ownership to someone else before you lower your authority.'
+                else:
+                  _ref:
+                    path: components/authority_description.yaml
+                    vars:
+                      role:
+                        _state: member_access.org_role
+      - id: member_access.roles
+        type: TagMultipleSelector
+        properties:
+          title: Roles
+          disabled:
+            _ref: components/member_access_disabled.yaml
+          options:
+            _ref: components/role_options.yaml
+          label:
+            extra:
+              _build.string.concat:
+                - 'What they can do in the app. Separate from their '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - ' authority.'
+      - id: member_access_buttons
+        type: Box
+        layout:
+          gap: 8
+          justify: end
+        blocks:
+          - id: member_access_reset
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Reset
+              color: default
+              variant: outlined
+              disabled:
+                _ref: components/member_access_disabled.yaml
+            events:
+              onClick:
+                _ref: actions/seed_member_access.yaml
+          - id: member_access_save
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title:
+                _if:
+                  test:
+                    _request: get_member.0.is_self
+                  then: Save my access
+                  else: Save
+              color: primary
+              variant: solid
+              disabled:
+                _ref: components/member_access_disabled.yaml
+            events:
+              onClick:
+                _build.array.concat:
+                  - - id: save_member_access
+                      type: CallAPI
+                      messages:
+                        loading: Saving…
+                      params:
+                        endpointId:
+                          _module.endpointId: update-member-access
+                        payload:
+                          member_id:
+                            _request: get_member.0.member_id
+                          org_role:
+                            _state: member_access.org_role
+                          roles:
+                            _if_none:
+                              - _state: member_access.roles
+                              - []
+                    - id: show_member_access_refusal
+                      type: DisplayMessage
+                      skip:
+                        _eq:
+                          - _actions: save_member_access.response.response.refused
+                          - null
+                      params:
+                        status: error
+                        duration: 8
+                        content:
+                          _string.concat:
+                            - _if:
+                                test:
+                                  _array.includes:
+                                    on:
+                                      _if_none:
+                                        - _actions: save_member_access.response.response.saved
+                                        - []
+                                    value: authority
+                                then: 'Authority saved. '
+                                else:
+                                  _if:
+                                    test:
+                                      _array.includes:
+                                        on:
+                                          _if_none:
+                                            - _actions: save_member_access.response.response.saved
+                                            - []
+                                        value: roles
+                                    then: 'Roles saved. '
+                                    else: 'Nothing was changed. '
+                            - _actions: save_member_access.response.response.refused.message
+                    - id: show_member_access_saved
+                      type: DisplayMessage
+                      skip:
+                        _ne:
+                          - _actions: save_member_access.response.response.refused
+                          - null
+                      params:
+                        status: success
+                        content: Access saved.
+                    - id: resync_own_session
+                      type: UpdateSession
+                      skip:
+                        _not:
+                          _request: get_member.0.is_self
+                    - id: refetch_member
+                      type: Request
+                      params:
+                        - get_member
+                        - get_owner_count
+                        - get_member_activity
+                  - _ref: actions/seed_member_access.yaml

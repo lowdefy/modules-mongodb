@@ -1,9 +1,8 @@
-# Members of the caller's ACTIVE organization. The join, the org scope, and the
-# display flattening all come from the shared stages; this request only adds
-# what the members page itself needs: the member row id (the handle the role
-# writes and RemoveMember take), a self marker so the page can offer "leave"
-# instead of "remove", the app-role id list, and the organization-authority
-# tier (`member.role`) the member modal seeds its selector from.
+# Members of the caller's ACTIVE organization, through the module's member join,
+# with a self marker so the page can offer "leave" instead of "remove", and
+# `authority`: Owner, Admin or null, from the member row's role (which may
+# carry comma-joined tiers). `sort_name` and `search_text` (name and email,
+# lowercased) are for the page's own sort and search.
 id: get_members
 type: MongoDBAggregation
 connectionId:
@@ -12,23 +11,50 @@ properties:
   pipeline:
     _build.array.concat:
       - _ref:
-          path: ../shared/org/members_base.yaml
+          path: components/member-join.yaml
           vars:
-            org_value:
-              _user: organization_id
+            project:
+              is_self:
+                $eq:
+                  - "$user_id"
+                  - _user: id
+              authority:
+                $switch:
+                  branches:
+                    - case:
+                        $in:
+                          - owner
+                          - $split:
+                              - $ifNull:
+                                  - "$role"
+                                  - ''
+                              - ','
+                      then: Owner
+                    - case:
+                        $in:
+                          - admin
+                          - $split:
+                              - $ifNull:
+                                  - "$role"
+                                  - ''
+                              - ','
+                      then: Admin
+                  default: null
       - - $addFields:
-            member_id: "$_id"
-            is_self:
-              $eq:
-                - "$user_id"
-                - _user: id
-            roles_list:
-              $ifNull:
-                - "$app_roles"
-                - []
-            org_role:
-              $ifNull:
-                - "$role"
-                - member
+            sort_name:
+              $toLower:
+                $ifNull:
+                  - "$name"
+                  - "$email"
+            search_text:
+              $toLower:
+                $concat:
+                  - $ifNull:
+                      - "$name"
+                      - ''
+                  - ' '
+                  - $ifNull:
+                      - "$email"
+                      - ''
         - $sort:
             name: 1

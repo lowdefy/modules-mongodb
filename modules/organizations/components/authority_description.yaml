@@ -1,0 +1,29 @@
+# What an organization authority level allows, as the line under an authority
+# picker.
+#
+# Vars:
+#   role  the chosen level (owner, admin or member), evaluated on the page
+_if:
+  test:
+    _eq:
+      - _var: role
+      - owner
+  then: Owners can do everything admins can, make other owners and transfer ownership.
+  else:
+    _if:
+      test:
+        _eq:
+          - _var: role
+          - admin
+      then:
+        _build.string.concat:
+          - 'Admins invite and remove people, change roles and rename the '
+          - _build.string.toLowerCase:
+              _module.var: label
+          - '. Only owners can make other owners or transfer ownership.'
+      else:
+        _build.string.concat:
+          - 'No authority: they use the app with their roles, and cannot change the '
+          - _build.string.toLowerCase:
+              _module.var: label
+          - ' or its members.'

@@ -1,0 +1,80 @@
+# `security` settings page, owners and admins only: holds security's place in
+# the settings menu, with a danger zone naming deletion as not yet available.
+_ref:
+  path: components/settings-page.yaml
+  vars:
+    id: security
+    title: Security
+    group: Security
+    description:
+      _build.string.concat:
+        - 'How people sign in to this '
+        - _build.string.toLowerCase:
+            _module.var: label
+        - ', and what cannot be undone. Owners and admins only.'
+    owners_and_admins_only: true
+    blocks:
+      - _ref:
+          path: components/settings_placeholder_card.yaml
+          vars:
+            id: security_placeholder
+            icon: lock
+            text:
+              _build.string.concat:
+                - 'Everyone signs in with an email link today. The '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - '''s own sign-in rules will live here.'
+            items: |
+              - Sign-in methods allowed
+              - Session length
+              - Required two-factor
+              - Allowed email domains for new members
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            id: danger_zone
+            title: Danger zone
+            blocks:
+              - id: delete_organization_row
+                type: Box
+                layout:
+                  gap: 16
+                  align: middle
+                  wrap: nowrap
+                blocks:
+                  - id: delete_organization_text
+                    type: Box
+                    layout:
+                      flex: 1 1 0
+                      direction: column
+                      gap: 2
+                    blocks:
+                      - id: delete_organization_title
+                        type: Span
+                        class: block
+                        properties:
+                          content:
+                            _build.string.concat:
+                              - 'Delete '
+                              - _build.string.toLowerCase:
+                                  _module.var: label
+                      - id: delete_organization_note
+                        type: Span
+                        class: block text-[12px] text-[var(--ant-color-text-tertiary)]
+                        properties:
+                          content: Not available yet. Deleting it and its data comes with billing.
+                  - id: delete_organization_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title:
+                        _build.string.concat:
+                          - 'Delete '
+                          - _build.string.toLowerCase:
+                              _module.var: label
+                      color: danger
+                      variant: outlined
+                      disabled: true

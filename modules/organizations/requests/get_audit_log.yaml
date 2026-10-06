@@ -1,0 +1,138 @@
+# get_audit_log: the active organization's audit log, newest first. Each entry:
+#   { at, type, title, detail, expires_at, actor: { user_id, name },
+#     subject: { user_id, email, name }, change: { from, to } }
+#
+# Every entry is an event saved when the thing happened: the organization's
+# events of this module's types (enums/event_types.yaml), logged by the module's
+# write endpoints, and org-member-joined, logged by the account module's accept
+# page. Nothing is built from member or invitation rows. `expires_at` is the
+# invitation's expiry on the invited and resent lines, else null.
+#
+# Payload (each field optional):
+#   user_id  only entries by or about this person
+#   types    only entries of these types
+#
+# The read checks authority itself: owners and admins of the active
+# organization get any entries; anyone else gets entries only when `user_id`
+# is their own, and nothing otherwise.
+#
+# Vars:
+#   id       request id (default get_audit_log)
+#   user_id  the mapping for the user_id payload field
+#   types    the mapping for the types payload field
+id:
+  _var:
+    key: id
+    default: get_audit_log
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId:
+    id: events-collection
+    module: events
+payload:
+  user_id:
+    _var:
+      key: user_id
+      default: null
+  types:
+    _var:
+      key: types
+      default: null
+properties:
+  pipeline:
+    - $match:
+        type:
+          $in:
+            _build.object.keys:
+              _ref: enums/event_types.yaml
+    - $project:
+        _id: 0
+        at: "$date"
+        type: 1
+        title:
+          _build.string.concat:
+            - '$'
+            - _build.app: slug
+            - .title
+        detail:
+          $switch:
+            branches:
+              - case:
+                  $eq:
+                    - "$type"
+                    - org-app-roles-changed
+                then:
+                  _ref: components/audit_log_roles_detail.yaml
+              - case:
+                  $and:
+                    - $eq:
+                        - "$type"
+                        - org-member-joined
+                    - $ifNull:
+                        - "$metadata.inviter_name"
+                        - false
+                then:
+                  $concat:
+                    - 'Invited by '
+                    - "$metadata.inviter_name"
+            default: null
+        expires_at:
+          $ifNull:
+            - "$metadata.expires_at"
+            - null
+        actor:
+          user_id: "$metadata.actor_user_id"
+          name: "$created.user.name"
+        subject:
+          user_id: "$metadata.subject_user_id"
+          email: "$metadata.subject_email"
+          name: "$metadata.subject_name"
+        change:
+          from: "$metadata.from"
+          to: "$metadata.to"
+    # Authority: owners and admins see everything; anyone else only their
+    # own entries, and only when they asked for them.
+    - $match:
+        _if:
+          test:
+            _ref: components/caller_is_org_admin.yaml
+          then: {}
+          else:
+            _if:
+              test:
+                _eq:
+                  - _payload: user_id
+                  - _user: id
+              then: {}
+              else:
+                $expr: false
+    - $match:
+        _if:
+          test:
+            _eq:
+              - _if_none:
+                  - _payload: user_id
+                  - null
+              - null
+          then: {}
+          else:
+            $or:
+              - actor.user_id:
+                  _payload: user_id
+              - subject.user_id:
+                  _payload: user_id
+    - $match:
+        _if:
+          test:
+            _eq:
+              - _if_none:
+                  - _payload: types
+                  - null
+              - null
+          then: {}
+          else:
+            type:
+              $in:
+                _payload: types
+    - $sort:
+        at: -1

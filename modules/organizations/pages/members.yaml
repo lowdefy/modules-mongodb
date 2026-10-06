@@ -1,25 +1,34 @@
-# `members` page — the active organization's members and pending invitations.
+# `members` settings page: the active organization's members and pending
+# invitations.
 #
 # Everything here is per-org: the reads scope themselves to the caller's active
 # organization, and every mutation is a per-org client action BetterAuth
 # authorizes against the caller's member role in that organization. The
 # owner/admin gate below only decides what renders; it is not the boundary.
 _ref:
-  module: layout
-  component: page
+  path: components/settings-page.yaml
   vars:
     id: members
-    content_width: 1200
     title: Members
-    breadcrumbs:
-      - home: true
-        icon: home
-      - label: Members
+    group:
+      _module.var: label
+    description:
+      _build.string.concat:
+        - 'Who is in the '
+        - _build.string.toLowerCase:
+            _module.var: label
+        - ', and the invitations waiting to be accepted.'
     requests:
       - _ref: requests/get_members.yaml
       - _ref: requests/get_invitations.yaml
       - _ref: requests/get_my_member.yaml
+      - _ref: requests/get_invite_address.yaml
     events:
+      onInit:
+        - id: init_members_sort
+          type: SetState
+          params:
+            members_sort: name_asc
       onMountAsync:
         - id: fetch_my_member
           type: Request
@@ -50,22 +59,63 @@ _ref:
                 blockId: invite_modal
                 method: toggleOpen
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            id: members_card
-            title: Members
+      - id: members_tabs
+        type: Tabs
+        properties:
+          # Invitations are for owners and admins only; get_invitations
+          # returns nothing to anyone else.
+          tabs:
+            _array.concat:
+              - - key: members
+                  title:
+                    _nunjucks:
+                      template: 'Members <span data-tone="secondary">{{ n }}</span>'
+                      on:
+                        n:
+                          _array.length:
+                            _if_none:
+                              - _request: get_members
+                              - []
+              - _if:
+                  test:
+                    _ref: components/caller_is_org_admin.yaml
+                  then:
+                    - key: invitations
+                      title:
+                        _nunjucks:
+                          template: 'Invitations <span data-tone="secondary">{{ n }}</span>'
+                          on:
+                            n:
+                              _array.length:
+                                _if_none:
+                                  - _request: get_invitations
+                                  - []
+                  else: []
+        slots:
+          members:
             blocks:
+              - id: members_toolbar
+                type: Box
+                layout:
+                  gap: 8
+                  align: middle
+                style:
+                  marginBottom: 12
+                blocks:
+                  - id: members_search
+                    type: TextInput
+                    layout:
+                      flex: 0 1 320px
+                    properties:
+                      label:
+                        disabled: true
+                      placeholder: Search by name or email
+                      prefixIcon: search
+                      allowClear: true
+                  - _ref: components/members_sort_menu.yaml
               - _ref: components/members_table.yaml
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            id: invitations_card
-            title: Pending invitations
+          invitations:
             blocks:
               - _ref: components/invitations_table.yaml
       - _ref: components/invite_modal.yaml
-      - _ref: components/member_modal.yaml
       - _ref: components/cancel_invitation_modal.yaml

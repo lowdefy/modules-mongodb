@@ -1,0 +1,58 @@
+# The demo's own settings page, in the organizations module's settings menu
+# (modules/organizations/vars.yaml settings_sections): the active
+# organization's members through the module's member-join pipeline, with the
+# department the invite form's own field sets.
+_ref:
+  module: organizations
+  component: settings-page
+  vars:
+    id: team-directory
+    title: Team directory
+    group: Demo
+    description: Everyone in this organization and their department.
+    requests:
+      - id: get_team_directory
+        type: MongoDBAggregation
+        connectionId:
+          _module.connectionId:
+            id: user-members
+            module: organizations
+        properties:
+          pipeline:
+            _ref:
+              module: organizations
+              component: member-join
+              vars:
+                project:
+                  department: "$attributes.department"
+    events:
+      onMountAsync:
+        - id: fetch_team_directory
+          type: Request
+          params: get_team_directory
+    blocks:
+      - id: team_directory_table
+        type: Table
+        properties:
+          rowKey: member_id
+          emptyText: No members
+          loading:
+            _not:
+              _request: get_team_directory
+          data:
+            _if_none:
+              - _request: get_team_directory
+              - []
+          columns:
+            - key: name
+              title: Person
+              type: avatar
+              cell:
+                nameField: name
+                srcField: picture
+                idField: user_id
+                descriptionField: email
+            - key: org_role
+              title: Authority
+            - key: department
+              title: Department

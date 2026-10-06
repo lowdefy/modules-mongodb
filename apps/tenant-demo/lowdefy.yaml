@@ -214,3 +214,4 @@ pages:
   - _ref: pages/files/files-demo.yaml
   - _ref: pages/quote-builder.yaml
   - _ref: pages/start-company-setup.yaml
+  - _ref: pages/team-directory.yaml

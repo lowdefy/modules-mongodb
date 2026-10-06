@@ -1,0 +1,52 @@
+# update-member-access: write the member's app roles when they changed, then
+# log org-app-roles-changed. A refusal returns `roles_refused` with the engine's
+# message and what was already saved. Submitted ids are not checked against the
+# catalog: an unrecognised entry grants nothing.
+- :if:
+    _state: roles_changed
+  :then:
+    - :try:
+        - id: set_roles
+          type: UpdateMemberRoles
+          properties:
+            memberId:
+              _payload: member_id
+            organizationId:
+              _user: organization_id
+            appRoles:
+              _if_none:
+                - _payload: roles
+                - []
+      :catch:
+        - :return:
+            refused:
+              rule: roles_refused
+              message:
+                _error: message
+            saved:
+              _state: saved
+    - _ref:
+        path: api/parts/log-event.yaml
+        vars:
+          type: org-app-roles-changed
+          step_id: log_roles_event
+          subject:
+            user_id:
+              _step: read_member.0.user_id
+            email:
+              _step: read_member.0.email
+            name:
+              _step: read_member.0.name
+            member_id:
+              _payload: member_id
+          from:
+            _step: read_member.0.app_roles
+          to:
+            _if_none:
+              - _payload: roles
+              - []
+    - :set_state:
+        saved:
+          _array.concat:
+            - _state: saved
+            - - roles

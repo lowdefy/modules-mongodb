@@ -1,0 +1,25 @@
+# Fill the member page's access form from the stored member row: the highest
+# authority tier (owner, admin or member) and the app roles.
+- id: seed_member_access
+  type: SetState
+  params:
+    member_access:
+      org_role:
+        _if:
+          test:
+            _eq:
+              - _request: get_member.0.authority
+              - Owner
+          then: owner
+          else:
+            _if:
+              test:
+                _eq:
+                  - _request: get_member.0.authority
+                  - Admin
+              then: admin
+              else: member
+      roles:
+        _if_none:
+          - _request: get_member.0.app_roles
+          - []

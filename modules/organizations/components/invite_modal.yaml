@@ -1,14 +1,36 @@
-# Invite someone into the active organization, via the invite endpoint (contact
-# mint + InviteMember, both server-side — see api/invite.yaml).
-#
-# BetterAuth sends the invitation email itself (auth.email + the invitation
-# template); this module ships no email wiring.
+# Invite someone into the active organization. The address is checked first
+# (get_invite_address, as the address is typed) and the modal shows one of:
+#   member   they are already in: Open member
+#   pending  a live invitation: Resend, Cancel invitation, or Change it
+#   change   the form, filled from the live invitation; sending re-issues it
+#   expired  the form, filled from the expired invitation; sending re-issues it
+#   new      the form
+# The form sets authority, app roles and the app's own member fields
+# (`invite_fields`, under `invite.attributes`). BetterAuth sends the email.
 id: invite_modal
 type: Modal
 properties:
   title: Invite a member
-  width: 480
-  okText: Send invitation
+  width: 520
+  okText:
+    _if:
+      test:
+        _array.includes:
+          on:
+            - change
+            - expired
+          value:
+            _ref: components/invite_address_state.yaml
+      then: Send new invitation
+      else: Send invitation
+  okButtonProps:
+    disabled:
+      _array.includes:
+        on:
+          - member
+          - pending
+        value:
+          _ref: components/invite_address_state.yaml
 events:
   onOk:
     _build.array.concat:
@@ -21,20 +43,82 @@ events:
           type: CallAPI
           messages:
             loading: Inviting…
-            success: Invitation sent.
           params:
             endpointId:
               _module.endpointId: invite
             payload:
               email:
                 _state: invite.email
+              org_role:
+                _if_none:
+                  - _state: invite.org_role
+                  - member
               roles:
-                _state: invite.roles
-        - id: clear_invite_form
-          type: SetState
+                _if_none:
+                  - _state: invite.roles
+                  - []
+              # A member field left empty (null or an empty list) is not
+              # written onto the invitation.
+              attributes:
+                _js:
+                  fn: |
+                    return Object.fromEntries(
+                      Object.entries(args.attributes || {}).filter(
+                        ([, value]) => value !== null && !(Array.isArray(value) && value.length === 0)
+                      )
+                    );
+                  args:
+                    attributes:
+                      _state: invite.attributes
+        - id: show_invite_refusal
+          type: DisplayMessage
+          skip:
+            _eq:
+              - _actions: send_invitation.response.response.refused
+              - null
           params:
-            invite: null
+            status: error
+            duration: 8
+            content:
+              _actions: send_invitation.response.response.refused.message
+        # A refused re-issue has already withdrawn the earlier invitation:
+        # re-read the list and the address, which now has none.
+        - id: refetch_after_withdrawn_invite
+          type: Request
+          skip:
+            _ne:
+              - _actions: send_invitation.response.response.refused.withdrawn
+              - true
+          params:
+            - get_invitations
+            - get_invite_address
+        - id: stop_on_invite_refusal
+          type: Throw
+          messages:
+            error: false
+          params:
+            throw:
+              _ne:
+                - _actions: send_invitation.response.response.refused
+                - null
+            message:
+              _if_none:
+                - _actions: send_invitation.response.response.refused.message
+                - ''
+        - id: show_invitation_sent
+          type: DisplayMessage
+          params:
+            status: success
+            content:
+              _if:
+                test:
+                  _actions: send_invitation.response.response.reissued
+                then: New invitation sent. The earlier link no longer works.
+                else: Invitation sent.
+        - _ref: actions/clear_invite.yaml
       - _ref: actions/refetch_members.yaml
+  onCancel:
+    - _ref: actions/clear_invite.yaml
 blocks:
   - id: invite.email
     type: TextInput
@@ -43,17 +127,309 @@ blocks:
       title: Email address
       placeholder: person@example.com
       type: email
-  - id: invite.roles
-    type: TagMultipleSelector
+    events:
+      onChange:
+        debounce:
+          ms: 300
+        try:
+          - id: reset_invite_change
+            type: SetState
+            params:
+              invite_change: false
+          - id: check_invite_address
+            type: Request
+            params: get_invite_address
+          - _ref: actions/fill_invite_from_invitation.yaml
+  - id: invite_member_found
+    type: Box
+    visible:
+      _eq:
+        - _ref: components/invite_address_state.yaml
+        - member
+    layout:
+      gap: 12
+      align: middle
+    style:
+      marginBottom: 16
+    blocks:
+      - id: invite_member_found_text
+        type: Alert
+        layout:
+          flex: 1 1 240px
+        properties:
+          type: info
+          message:
+            _string.concat:
+              - _if_none:
+                  - _request: get_invite_address.0.name
+                  - _request: get_invite_address.0.email
+              - ' is already a member of this '
+              - _build.string.toLowerCase:
+                  _module.var: label
+              - .
+      - id: invite_open_member
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Open member
+          icon: user
+        events:
+          onClick:
+            - id: close_invite_for_member
+              type: CallMethod
+              params:
+                blockId: invite_modal
+                method: toggleOpen
+            - _ref: actions/clear_invite.yaml
+            - id: open_member_page
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: member
+                urlQuery:
+                  user_id:
+                    _request: get_invite_address.0.user_id
+  - id: invite_pending
+    type: Box
+    visible:
+      _eq:
+        - _ref: components/invite_address_state.yaml
+        - pending
+    layout:
+      direction: column
+      gap: 8
+    style:
+      marginBottom: 16
+    blocks:
+      - id: invite_pending_text
+        type: Alert
+        properties:
+          type: warning
+          message:
+            _string.concat:
+              - _if_none:
+                  - _request: get_invite_address.0.inviter_name
+                  - Someone
+              - ' invited '
+              - _request: get_invite_address.0.email
+              - '. The invitation is still open and '
+              - _string.toLowerCase:
+                  _if_none:
+                    - _request: get_invite_address.0.expiry
+                    - ''
+              - .
+      - id: invite_pending_actions
+        type: Box
+        layout:
+          gap: 8
+        blocks:
+          - id: invite_resend
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Resend
+              icon: Redo
+            events:
+              onClick:
+                - id: resend_invitation
+                  type: CallAPI
+                  messages:
+                    loading: Resending…
+                  params:
+                    endpointId:
+                      _module.endpointId: resend-invitation
+                    payload:
+                      invitation_id:
+                        _request: get_invite_address.0.invitation_id
+                - id: show_resend_refusal
+                  type: DisplayMessage
+                  skip:
+                    _eq:
+                      - _actions: resend_invitation.response.response.refused
+                      - null
+                  params:
+                    status: error
+                    duration: 8
+                    content:
+                      _actions: resend_invitation.response.response.refused.message
+                - id: stop_on_resend_refusal
+                  type: Throw
+                  messages:
+                    error: false
+                  params:
+                    throw:
+                      _ne:
+                        - _actions: resend_invitation.response.response.refused
+                        - null
+                    message:
+                      _if_none:
+                        - _actions: resend_invitation.response.response.refused.message
+                        - ''
+                - id: show_resent
+                  type: DisplayMessage
+                  params:
+                    status: success
+                    content: Invitation resent.
+                - id: close_invite_after_resend
+                  type: CallMethod
+                  params:
+                    blockId: invite_modal
+                    method: toggleOpen
+                - _ref: actions/clear_invite.yaml
+                - id: refetch_invitations_after_resend
+                  type: Request
+                  params: get_invitations
+          - id: invite_change_btn
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Change and re-send
+              icon: edit
+              variant: outlined
+              color: default
+            events:
+              onClick:
+                - id: set_invite_change
+                  type: SetState
+                  params:
+                    invite_change: true
+          - id: invite_cancel_invitation
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Cancel invitation
+              variant: text
+              color: danger
+            events:
+              onClick:
+                - id: select_invitation_to_cancel
+                  type: SetState
+                  params:
+                    selected_invitation:
+                      _id:
+                        _request: get_invite_address.0.invitation_id
+                      email:
+                        _request: get_invite_address.0.email
+                - id: close_invite_for_cancel
+                  type: CallMethod
+                  params:
+                    blockId: invite_modal
+                    method: toggleOpen
+                - _ref: actions/clear_invite.yaml
+                - id: open_cancel_from_invite
+                  type: CallMethod
+                  params:
+                    blockId: cancel_invitation_modal
+                    method: toggleOpen
+  - id: invite_reissue_hint
+    type: Alert
+    visible:
+      _array.includes:
+        on:
+          - change
+          - expired
+        value:
+          _ref: components/invite_address_state.yaml
+    style:
+      marginBottom: 16
     properties:
-      title: Roles
-      options:
-        _ref: components/role_options.yaml
-  - id: invite_hint
-    type: Html
-    properties:
-      html: >-
-        <div style="font-size:13px; color:var(--ant-color-text-secondary)">They
-        will receive an email with a link to join this organization. The link
-        expires; you can cancel or re-send from the list below until they
-        accept.</div>
+      type: info
+      message:
+        _if:
+          test:
+            _eq:
+              - _ref: components/invite_address_state.yaml
+              - expired
+          then: Their invitation has expired. Sending replaces it with a new one.
+          else: Sending replaces the open invitation with a new one, and the link already sent stops working.
+  - id: invite_form
+    type: Box
+    visible:
+      _array.includes:
+        on:
+          - new
+          - change
+          - expired
+        value:
+          _ref: components/invite_address_state.yaml
+    layout:
+      direction: column
+    blocks:
+      _build.array.concat:
+        - - id: invite.org_role
+            type: ButtonSelector
+            properties:
+              title:
+                _build.string.concat:
+                  - _module.var: label
+                  - ' authority'
+              variant: solid
+              options:
+                _array.concat:
+                  - - value: member
+                      label: No authority
+                    - value: admin
+                      label: Admin
+                  - _if:
+                      test:
+                        _ref: components/caller_is_org_owner.yaml
+                      then:
+                        - value: owner
+                          label: Owner
+                      else: []
+              label:
+                extra:
+                  _ref:
+                    path: components/authority_description.yaml
+                    vars:
+                      role:
+                        _if_none:
+                          - _state: invite.org_role
+                          - member
+          - id: invite.roles
+            type: TagMultipleSelector
+            properties:
+              title: Roles
+              options:
+                _ref: components/role_options.yaml
+              label:
+                extra:
+                  _if:
+                    test:
+                      _eq:
+                        - _ref: components/invite_address_state.yaml
+                        - new
+                    then:
+                      _build.string.concat:
+                        - 'What they can do in the app. Separate from their '
+                        - _build.string.toLowerCase:
+                            _module.var: label
+                        - ' authority.'
+                    else: Carried over from the invitation.
+        - _module.var: invite_fields
+        - - id: invite_hint
+            type: Alert
+            properties:
+              type: info
+              message:
+                _build.string.concat:
+                  - 'They get an email with a link to join this '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+                  - _build.if:
+                      test:
+                        _build.eq:
+                          - _module.var: invitation_expiry_days
+                          - null
+                      then: '. The link expires after a while'
+                      else:
+                        _build.string.concat:
+                          - '. The link lasts '
+                          - _build.json.stringify:
+                              - _module.var: invitation_expiry_days
+                          - ' days'
+                  - '; you can resend or cancel it from the Invitations tab until they accept.'

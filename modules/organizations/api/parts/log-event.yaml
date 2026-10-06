@@ -1,0 +1,220 @@
+# The organization event a write endpoint logs as its last step. People are
+# named by user id.
+#
+# By default it goes through the events module's `new-event` endpoint, whose
+# connection is walled, so the event lands in the caller's active organization.
+# With `organization_id` set it is written straight to log-events through the
+# shared org-events-system connection with that organization stamped: for an
+# event about an organization the caller has just left.
+#
+# Event shape (besides _id, date, created, type and organization_id; the
+# display and references are spread onto the event):
+#   <app slug>.title           the rendered line, e.g. "Ana Audit renamed the organization from A to B"
+#   user_ids                   the actor, and the subject when it is another person with an account
+#   metadata:
+#     actor_user_id            the caller
+#     subject_user_id          the person the change is about, or null (an invitee with no account yet)
+#     subject_email            the subject's email, or null
+#     subject_name             the subject's display name at the time, or null
+#     member_id                the member row, or null
+#     invitation_id            the invitation, or null
+#     from, to                 the value before and after (app roles, authority, name), or null
+#     expires_at               the invitation's expiry (invited, resent), or null
+#
+# The line is the app's `event_display` template for the type, else the
+# module's default in defaults/event_display.yaml. Templates receive actor,
+# subject, from and to.
+#
+# Vars:
+#   type             event type id from enums/event_types.yaml
+#   subject          { user_id, email, name, member_id, invitation_id }; any may be absent
+#   from, to         optional
+#   expires_at       optional: the invitation's expiry
+#   organization_id  optional: write through org-events-system, stamped with this organization
+#   changed          optional, default true: false logs nothing (the write changed nothing)
+#   step_id          optional, default log_event: the step's id, for an endpoint that logs twice
+:if:
+  _var:
+    key: changed
+    default: true
+:then:
+  _build.if:
+    test:
+      _build.eq:
+        - _var:
+            key: organization_id
+            default: null
+        - null
+    then:
+      - id:
+          _var:
+            key: step_id
+            default: log_event
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type:
+              _var: type
+            display:
+              _ref:
+                path: api/parts/event-content.yaml
+                key: display
+                vars:
+                  type:
+                    _var: type
+                  subject:
+                    _var:
+                      key: subject
+                      default: {}
+                  from:
+                    _var:
+                      key: from
+                      default: null
+                  to:
+                    _var:
+                      key: to
+                      default: null
+                  expires_at:
+                    _var:
+                      key: expires_at
+                      default: null
+            references:
+              _ref:
+                path: api/parts/event-content.yaml
+                key: references
+                vars:
+                  type:
+                    _var: type
+                  subject:
+                    _var:
+                      key: subject
+                      default: {}
+                  from:
+                    _var:
+                      key: from
+                      default: null
+                  to:
+                    _var:
+                      key: to
+                      default: null
+                  expires_at:
+                    _var:
+                      key: expires_at
+                      default: null
+            metadata:
+              _ref:
+                path: api/parts/event-content.yaml
+                key: metadata
+                vars:
+                  type:
+                    _var: type
+                  subject:
+                    _var:
+                      key: subject
+                      default: {}
+                  from:
+                    _var:
+                      key: from
+                      default: null
+                  to:
+                    _var:
+                      key: to
+                      default: null
+                  expires_at:
+                    _var:
+                      key: expires_at
+                      default: null
+    else:
+      - id:
+          _var:
+            key: step_id
+            default: log_event
+        type: MongoDBInsertOne
+        connectionId:
+          _module.connectionId: org-events-system
+        properties:
+          doc:
+            _object.assign:
+              - _ref:
+                  path: api/parts/event-content.yaml
+                  key: display
+                  vars:
+                    type:
+                      _var: type
+                    subject:
+                      _var:
+                        key: subject
+                        default: {}
+                    from:
+                      _var:
+                        key: from
+                        default: null
+                    to:
+                      _var:
+                        key: to
+                        default: null
+                    expires_at:
+                      _var:
+                        key: expires_at
+                        default: null
+              - _ref:
+                  path: api/parts/event-content.yaml
+                  key: references
+                  vars:
+                    type:
+                      _var: type
+                    subject:
+                      _var:
+                        key: subject
+                        default: {}
+                    from:
+                      _var:
+                        key: from
+                        default: null
+                    to:
+                      _var:
+                        key: to
+                        default: null
+                    expires_at:
+                      _var:
+                        key: expires_at
+                        default: null
+              - _id:
+                  _uuid: true
+                date:
+                  _date: now
+                created:
+                  _ref:
+                    module: events
+                    component: change_stamp
+                type:
+                  _var: type
+                organization_id:
+                  _var: organization_id
+                metadata:
+                  _ref:
+                    path: api/parts/event-content.yaml
+                    key: metadata
+                    vars:
+                      type:
+                        _var: type
+                      subject:
+                        _var:
+                          key: subject
+                          default: {}
+                      from:
+                        _var:
+                          key: from
+                          default: null
+                      to:
+                        _var:
+                          key: to
+                          default: null
+                      expires_at:
+                        _var:
+                          key: expires_at
+                          default: null

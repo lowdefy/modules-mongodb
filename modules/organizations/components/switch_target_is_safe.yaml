@@ -1,0 +1,16 @@
+# True when the switch page's `to` is a relative app path: it starts with one
+# slash and the next character is not a slash or backslash (which a browser
+# reads as another host), nor a tab or line break (which a browser strips before
+# reading the address, so `/<tab>/host` is read as `//host`).
+_regex:
+  pattern: '^/(?![/\\\t\n\r])'
+  on:
+    _if:
+      test:
+        _type:
+          type: string
+          on:
+            _url_query: to
+      then:
+        _url_query: to
+      else: ''

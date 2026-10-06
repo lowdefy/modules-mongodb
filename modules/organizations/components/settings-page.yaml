@@ -1,0 +1,184 @@
+# A settings page: the layout's page with `shell: { mode: settings, ... }`. A
+# layout that reads `shell` draws the settings sections in place of the side
+# menu (components/settings_sections.yaml) with Back to the app heading them;
+# one that does not shows the page with its usual menu. Every page has the same
+# header (the group, the title and a line on what the page is for).
+#
+# Vars:
+#   id, title, description   the page id, its title and its header line
+#   path                     the page's address pattern (default the page id)
+#   group                    the header's group line
+#   blocks, requests, events the page's own content (events: onInit,
+#                            onInitAsync, onMount, onMountAsync,
+#                            onMountAsyncCatch)
+#   page_actions             blocks at the right of the header
+#   content_width            the content column's max width (default 960)
+#   owners_and_admins_only   true: anyone who is not an owner or admin of the
+#                            active organization sees a no-access line in place
+#                            of the blocks, and the page's event actions are
+#                            skipped for them, so the page never fires its
+#                            requests. Both happen in the browser: a request
+#                            that returns owner-and-admin data still checks
+#                            the caller's authority itself
+#   selected                 the settings link to light (default the page id);
+#                            an app's own section passes the id its link has
+#   breadcrumbs              the crumbs after the organisation's name (default
+#                            Settings / the title)
+#   subscriptions            the page's websocket subscriptions
+_ref:
+  module: layout
+  component: page
+  vars:
+    id:
+      _var: id
+    path:
+      _var:
+        key: path
+        default: null
+    title:
+      _var: title
+    type:
+      _var:
+        key: group
+        default: null
+    description:
+      _var:
+        key: description
+        default: null
+    page_actions:
+      _var:
+        key: page_actions
+        default: []
+    content_width:
+      _var:
+        key: content_width
+        default: 960
+    breadcrumbs:
+      _var:
+        key: breadcrumbs
+        default:
+          - label: Settings
+          - label:
+              _var: title
+    subscriptions:
+      _var:
+        key: subscriptions
+        default: []
+    shell:
+      mode: settings
+      back:
+        title:
+          _module.var: settings_back_title
+        pageId:
+          _module.var: settings_back_page_id
+      settings_sections:
+        _ref: components/settings_sections.yaml
+      selected:
+        _var:
+          key: selected
+          default:
+            _location: pageId
+    requests:
+      _build.array.concat:
+        - - _ref: requests/get_settings_organization.yaml
+        - _module.var: settings_requests
+        - _var:
+            key: requests
+            default: []
+    events:
+      onInit:
+        _ref:
+          path: components/settings_page_actions.yaml
+          vars:
+            owners_and_admins_only:
+              _var:
+                key: owners_and_admins_only
+                default: false
+            actions:
+              _var:
+                key: events.onInit
+                default: []
+      onInitAsync:
+        _ref:
+          path: components/settings_page_actions.yaml
+          vars:
+            owners_and_admins_only:
+              _var:
+                key: owners_and_admins_only
+                default: false
+            actions:
+              _var:
+                key: events.onInitAsync
+                default: []
+      onMount:
+        _ref:
+          path: components/settings_page_actions.yaml
+          vars:
+            owners_and_admins_only:
+              _var:
+                key: owners_and_admins_only
+                default: false
+            actions:
+              _var:
+                key: events.onMount
+                default: []
+      # The header's organization and the app groups' requests, in one call,
+      # then the page's own.
+      onMountAsync:
+        _build.array.concat:
+          - - id: fetch_settings_requests
+              type: Request
+              params:
+                _build.array.concat:
+                  - - get_settings_organization
+                  - _build.array.map:
+                      on:
+                        _module.var: settings_requests
+                      callback:
+                        _build.function:
+                          __build.args: 0.id
+          - _ref:
+              path: components/settings_page_actions.yaml
+              vars:
+                owners_and_admins_only:
+                  _var:
+                    key: owners_and_admins_only
+                    default: false
+                actions:
+                  _var:
+                    key: events.onMountAsync
+                    default: []
+      onMountAsyncCatch:
+        _var:
+          key: events.onMountAsyncCatch
+          default: []
+    blocks:
+      _build.if:
+        test:
+          _var:
+            key: owners_and_admins_only
+            default: false
+        then:
+          - id: settings_no_access
+            type: Result
+            visible:
+              _not:
+                _ref: components/caller_is_org_admin.yaml
+            properties:
+              status: info
+              icon: lock
+              title: Only owners and admins can see this
+          - id: settings_admin_content
+            type: Box
+            visible:
+              _ref: components/caller_is_org_admin.yaml
+            layout:
+              gap: 12
+            blocks:
+              _var:
+                key: blocks
+                default: []
+        else:
+          _var:
+            key: blocks
+            default: []

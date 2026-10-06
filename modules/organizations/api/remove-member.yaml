@@ -1,21 +1,89 @@
-# remove-member — end someone else's membership of the caller's ACTIVE
-# organization. Leaving your OWN organization is a different engine call
-# (LeaveOrganization, still a client action) — the members page swaps the
-# control by `is_self`.
+# remove-member: end someone else's membership of the caller's ACTIVE
+# organization. Leaving your own is the `leave` endpoint.
 #
 # The write goes through the organization plugin so its last-owner guard runs;
-# its refusal carries its own message, which the page surfaces rather than
-# replaces. `organizationId` is explicit: under the `tenant` policy there is no
-# pinned organization for the step to default to.
+# its refusal carries its own message, which the page shows as written.
+# `organizationId` is explicit: under the `tenant` policy there is no pinned
+# organization for the step to default to.
+#
+# The member is read first so the `org-member-removed` event can name them
+# after their row is gone.
 #
 # Payload: { member_id }
+# Returns { success: true }, or { refused: { rule, message } } with rule
+# `not_a_member`, `owner_only` or `remove_refused`.
 id: remove-member
 type: Api
 routine:
-  - id: remove_member
-    type: RemoveMember
-    properties:
-      memberIdOrEmail:
-        _payload: member_id
-      organizationId:
-        _user: organization_id
+  - _ref:
+      path: api/parts/read-member.yaml
+      vars:
+        id: read_member
+        member_id:
+          _payload: member_id
+
+  - :if:
+      _eq:
+        - _step: read_member.0
+        - null
+    :then:
+      - :return:
+          refused:
+            rule: not_a_member
+            message:
+              _build.string.concat:
+                - 'That person is no longer in this '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - .
+
+  # The engine's refusal for an admin removing an owner names the last-owner
+  # rule, so the owner-only rule is checked here first.
+  - :if:
+      _and:
+        - _eq:
+            - _ref:
+                path: components/authority_rank.yaml
+                vars:
+                  role:
+                    _step: read_member.0.org_role
+            - 3
+        - _not:
+            _ref: components/caller_is_org_owner.yaml
+    :then:
+      - :return:
+          refused:
+            rule: owner_only
+            message: Only owners can change or remove an owner.
+
+  - :try:
+      - id: remove_member
+        type: RemoveMember
+        properties:
+          memberIdOrEmail:
+            _payload: member_id
+          organizationId:
+            _user: organization_id
+    :catch:
+      - :return:
+          refused:
+            rule: remove_refused
+            message:
+              _error: message
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-member-removed
+        subject:
+          user_id:
+            _step: read_member.0.user_id
+          email:
+            _step: read_member.0.email
+          name:
+            _step: read_member.0.name
+          member_id:
+            _payload: member_id
+
+  - :return:
+      success: true

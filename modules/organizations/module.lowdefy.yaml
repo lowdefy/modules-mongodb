@@ -38,8 +38,147 @@ dependencies:
     description: >-
       Invitation-accept page, cross-linked from the pending invitations list so
       an admin can copy the link the invitee received.
+  - id: events
+    description: >-
+      Every write endpoint logs an organization event through its new-event
+      endpoint (leave writes its event straight into log-events), and the audit
+      log reads them through its events-collection connection. Register this
+      module's `event_types` component in the events module's `event_types` var
+      so the events show with their titles and icons.
 
 vars:
+  label:
+    type: string
+    default: Organization
+    description: >-
+      The word the module's pages, messages and event titles use for an
+      organization, capitalised. It is lowercased mid-sentence, and no text
+      puts "a" or "an" before it, so any noun reads right ("Team",
+      "Workspace").
+  label_plural:
+    type: string
+    default: Organizations
+    description: >-
+      The plural of `label`, capitalised, for the my-organizations page
+      ("Your organizations").
+  my_organizations_note:
+    default: null
+    description: >-
+      The app's own line under the list on the my-organizations page (for
+      example what switching does and does not change).
+  event_display:
+    type: object
+    default: {}
+    description: >-
+      Title templates (Nunjucks) for the organization events, keyed by event
+      type, replacing the module's defaults in defaults/event_display.yaml type
+      by type. Templates receive `actor`, `subject` ({ user_id, email, name,
+      member_id, invitation_id }), `from` and `to`.
+  allow_create_organization:
+    type: boolean
+    default: false
+    description: >-
+      Lets anyone signed in create an organization and become its owner. When
+      false the create-organization page and endpoint are left out of the build.
+  creator_app_roles:
+    type: array
+    default: []
+    description: >-
+      App role ids granted to the owner of an organization created through the
+      create-organization page.
+  settings_sections:
+    default: []
+    description: >-
+      The app's own sections in the settings menu, after the organisation's:
+      an array of { id, title, links: [{ id, title, pageId, pathParams,
+      urlQuery }] }, evaluated on the page, so it may read the requests in
+      `settings_requests`. Each section reaches the layout as it is, so a
+      layout may read more fields on it.
+  settings_requests:
+    type: array
+    default: []
+    description: >-
+      Requests loaded and fetched on every settings page, for the links in
+      `settings_sections`.
+  general_facts:
+    type: array
+    default: []
+    description: >-
+      The app's own facts on the General settings page, between the pending
+      invitations and the caller's authority: an array of { id, title, value,
+      request }, where request is a request definition the page loads and
+      fetches, and value is what the card shows, evaluated on the page (it may
+      read that request, for example `_request: <request id>.0.count`).
+  member_page_blocks:
+    type: array
+    default: []
+    description: >-
+      The app's own blocks on the member page, above the danger zone in the
+      side column. The page's `user_id` (the person the page is about) is in
+      state as `user_id`.
+  member_page_requests:
+    type: array
+    default: []
+    description: >-
+      Requests loaded and fetched on the member page, for `member_page_blocks`.
+      They can read the person's id from the page's `?user_id=` query.
+  member_page_on_mount:
+    type: array
+    default: []
+    description: >-
+      Actions the member page runs on mount after its own requests are
+      fetched, for `member_page_blocks` that load through actions (an API
+      call into state, for example). The page's `user_id` is in state.
+  setup_steps:
+    type: array
+    default: []
+    description: >-
+      The app's own steps on the setup page, before the logo and invite steps:
+      one block per step, each usually the module's `setup-step` component,
+      numbered from 1 in order. A step marks itself done by setting
+      `setup_status.<step id>` to the line to show (for example "Project
+      created").
+  setup_requests:
+    type: array
+    default: []
+    description: >-
+      Requests loaded and fetched on the setup page, for `setup_steps`.
+  invite_fields:
+    type: array
+    default: []
+    description: >-
+      The app's own member fields on the invite form, after the app roles:
+      input blocks with ids under `invite.attributes.` (for example
+      `invite.attributes.department`). Their values are sent as the invitation's
+      attributes, which the engine copies onto the member row when the
+      invitation is accepted; re-issuing an invitation fills them from it.
+  invitation_expiry_days:
+    default: null
+    description: >-
+      How many days an invitation link lasts, for the invite form's hint. Set
+      it to match the app's `auth.organizations.invitationExpiresIn`; when
+      unset the hint says only that the link expires.
+  remove_confirmation_note:
+    default: null
+    description: >-
+      The app's own line in the confirmation for removing someone on the member
+      page, under the module's text (what else they lose, what happens to their
+      work). Evaluated on the page, so it may read the member page's requests.
+  leave_confirmation_note:
+    default: null
+    description: >-
+      The app's own line in the confirmation for leaving on your own member
+      page, under the module's text. Evaluated on the page.
+  settings_back_title:
+    type: string
+    default: Back
+    description: >-
+      The text of the row heading the settings menu that leads back to the app
+      (for example "Back to Acme").
+  settings_back_page_id:
+    type: string
+    default: home
+    description: The page the settings menu's back row opens.
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
@@ -47,20 +186,87 @@ vars:
 
 exports:
   pages:
+    - id: general
+      description: Settings page with the active organization's name, logo and facts
     - id: members
-      description: Members table, invite form, and pending invitations for the active organization
-    - id: settings
-      description: Rename the active organization
+      description: Settings page with the members table, invite form, and pending invitations for the active organization
+    - id: member
+      description: >-
+        Settings page for one person in the active organization,
+        `member?user_id=<user id>`: identity, access (authority and app roles,
+        one Save), their activity, the app's own section, transfer
+        ownership, and remove or leave.
+        A former member shows their name and activity.
+    - id: audit-log
+      description: >-
+        Settings page listing who changed what in the active organization,
+        grouped by day and filterable by person and kind, owners and admins only
+    - id: billing
+      description: Settings page holding billing's place, owners and admins only
+    - id: security
+      description: Settings page holding security's place with a danger zone, owners and admins only
+    - id: create-organization
+      description: >-
+        Name a new organization and become its owner, then switch into it and
+        go on to its setup. Present only when `allow_create_organization` is true.
+    - id: my-organizations
+      description: >-
+        Every organization the caller belongs to, with their authority and the
+        member count: Settings on the active one, Switch on the others, Leave
+        (through the caller's own member page) except on their only
+        membership, and Create organization when creation is on.
+    - id: setup
+      description: >-
+        A new organization's setup, where its creator lands: mints the owner's
+        contact and logs the creation once, then optional steps (the app's
+        `setup_steps`, a logo, inviting people) and Done to home.
+    - id: switch-organization
+      description: >-
+        Switch the browser's active organization, after checking the caller is
+        a member: `switch-organization?org=<id>&to=<app path>`. `to` must be a
+        relative app path; anything else goes home.
   components:
+    - id: settings-page
+      description: >-
+        A settings page: the layout's page with a `shell` var asking for
+        settings mode (the settings sections in place of the side menu under
+        Back, for a layout that reads `shell`), and one header (group, title, description) on every page. Vars `id`, `title`,
+        `description`, `group`, `blocks`, `requests`, `events`,
+        `page_actions`, `content_width`, `owners_and_admins_only`,
+        `selected` and `breadcrumbs`.
     - id: org-switcher
       description: >-
-        Header widget showing the active organization's name; a dropdown to
-        switch when the caller belongs to more than one. Wire into the layout's
-        `header_extra.blocks`, together with `org-switcher-requests`.
+        Header widget showing the active organization, with a dropdown to
+        switch through the switch-organization page when the caller has more
+        than one. Wire into the layout's `header_extra.blocks`, with
+        `org-switcher-requests` in `header_extra.requests`.
     - id: org-switcher-requests
       description: >-
-        The reads org-switcher depends on. Wire into the layout's
-        `header_extra.requests` — the block cannot carry its own.
+        The active organization and the caller's memberships, for an app's
+        account menu or the `org-switcher` block. Wire into the layout's
+        `requests` (or `header_extra.requests`).
+    - id: restore-last-organization
+      description: >-
+        Actions for an app's landing page: when this browser's last organization
+        differs from the session's, hand off to the switch page. Vars `to` (the
+        path to go on to) and `skip`; sets `last_organization_restore` in state
+        when it hands off.
+    - id: setup-step
+      description: >-
+        One step of the setup page, for the app's `setup_steps`: vars `id`,
+        `number`, `title`, `description`, `blocks` and `skip_title`. Its
+        outcome is `setup_status.<id>` in state: null while open, `skipped`,
+        or the line shown once done.
+    - id: member-join
+      description: >-
+        Aggregation pipeline for the `user-members` connection: the active
+        organization's members as flat rows { member_id, user_id, name, email,
+        picture, org_role, app_roles, joined }. Vars `match` (extra member-row
+        $match fields) and `project` (extra row fields).
+    - id: event_types
+      description: >-
+        Display metadata (title, colour, icon) for the organization events,
+        keyed by event type, for the events module's `event_types` var.
   connections:
     - id: user-members
       description: Read-only connection for the auth `user-members` collection
@@ -72,46 +278,107 @@ exports:
       description: Walled app connection for the user-contacts records — writable, used by the invite-time contact mint
   api:
     - id: invite
-      description: Mint or link the invitee's contact in the active organization, then send the invitation with its app roles
-    - id: update-member-roles
-      description: Set a member's app roles (member.app_roles) in the active organization
-    - id: update-org-role
-      description: Set a member's organization-authority tier (member.role) in the active organization
+      description: >-
+        Invite an address into the active organization with its authority, app
+        roles and the app's member fields, re-issuing a pending invitation for
+        the same address
+    - id: resend-invitation
+      description: Send a live pending invitation to the active organization again with a fresh expiry
+    - id: update-member-access
+      description: Set a member's organization authority and app roles together in the active organization
     - id: remove-member
       description: Remove another member from the active organization
+    - id: leave
+      description: >-
+        Leave the active organization: refuses the caller's only membership and
+        the only owner, leaves through the server-side leave step, then logs the
+        leave in the organization left
+    - id: transfer-ownership
+      description: >-
+        Make another member an owner of the active organization and step the
+        calling owner down to admin
     - id: cancel-invitation
       description: Withdraw a pending invitation to the active organization
     - id: update-organization
-      description: Rename the active organization
+      description: Rename the active organization and set or clear its logo
+    - id: setup-organization
+      description: >-
+        The setup page's first step, idempotent: mints the owner's contact in
+        the active organization with their profile and logs its creation once.
+        Owners only.
+    - id: create-organization
+      description: >-
+        Create an organization with the caller as its owner. Present only when
+        `allow_create_organization` is true.
   menus:
     - id: default
-      description: Menu group linking the members and settings pages
+      description: Menu group linking the members and general settings pages
 
 connections:
   - _ref: connections/user-members.yaml
   - _ref: connections/user-organizations.yaml
   - _ref: connections/user-invitations.yaml
   - _ref: connections/user-contacts-collection.yaml
+  - _ref: connections/org-events-system.yaml
 
 api:
-  - _ref: api/invite.yaml
-  - _ref: api/update-member-roles.yaml
-  - _ref: api/update-org-role.yaml
-  - _ref: api/remove-member.yaml
-  - _ref: api/cancel-invitation.yaml
-  - _ref: api/update-organization.yaml
+  _build.array.concat:
+    - - _ref: api/invite.yaml
+      - _ref: api/update-member-access.yaml
+      - _ref: api/remove-member.yaml
+      - _ref: api/leave.yaml
+      - _ref: api/transfer-ownership.yaml
+      - _ref: api/resend-invitation.yaml
+      - _ref: api/cancel-invitation.yaml
+      - _ref: api/update-organization.yaml
+      - _ref: api/setup-organization.yaml
+    - _build.if:
+        test:
+          _module.var: allow_create_organization
+        then:
+          - _ref: api/create-organization.yaml
+        else: []
 
 pages:
-  - _ref: pages/members.yaml
-  - _ref: pages/settings.yaml
+  _build.array.concat:
+    - - _ref: pages/general.yaml
+      - _ref: pages/members.yaml
+      - _ref: pages/member.yaml
+      - _ref: pages/audit-log.yaml
+      - _ref: pages/billing.yaml
+      - _ref: pages/security.yaml
+      - _ref: pages/switch-organization.yaml
+      - _ref: pages/my-organizations.yaml
+      - _ref: pages/setup.yaml
+    - _build.if:
+        test:
+          _module.var: allow_create_organization
+        then:
+          - _ref: pages/create-organization.yaml
+        else: []
 
 components:
+  - id: settings-page
+    component:
+      _ref: components/settings-page.yaml
   - id: org-switcher
     component:
       _ref: components/org-switcher.yaml
   - id: org-switcher-requests
     component:
       _ref: components/org-switcher-requests.yaml
+  - id: restore-last-organization
+    component:
+      _ref: components/restore-last-organization.yaml
+  - id: setup-step
+    component:
+      _ref: components/setup_step.yaml
+  - id: member-join
+    component:
+      _ref: components/member-join.yaml
+  - id: event_types
+    component:
+      _ref: enums/event_types.yaml
 
 menus:
   - _ref: menu.yaml
@@ -128,4 +395,4 @@ plugins:
   # @lowdefy/community-plugin-mongodb pin is needed — the built-in is
   # auto-included.
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.17.0"
+    version: "^0.44.1"

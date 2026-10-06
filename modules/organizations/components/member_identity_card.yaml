@@ -1,0 +1,101 @@
+# The member page's identity card: picture, name, authority, email and joined
+# date, or "Former member" for someone no longer in the organization.
+id: member_identity_card
+type: Card
+blocks:
+  - id: member_identity_row
+    type: Box
+    layout:
+      gap: 16
+      align: middle
+      wrap: nowrap
+    blocks:
+      - id: member_avatar
+        type: Avatar
+        layout:
+          flex: 0 0 auto
+        properties:
+          size: 56
+          src:
+            _request: get_member.0.picture
+          content:
+            _string.charAt:
+              - _if_none:
+                  - _request: get_member.0.name
+                  - _if_none:
+                      - _request: get_member.0.email
+                      - ' '
+              - 0
+      - id: member_identity_text
+        type: Box
+        class: min-w-0
+        layout:
+          flex: 1 1 0
+          direction: column
+          gap: 2
+        blocks:
+          - id: member_identity_name_row
+            type: Box
+            layout:
+              gap: 8
+              align: middle
+            blocks:
+              - id: member_name
+                type: Title
+                layout:
+                  flex: 0 1 auto
+                style:
+                  margin: 0
+                properties:
+                  level: 4
+                  content:
+                    _if_none:
+                      - _request: get_member.0.name
+                      - _if_none:
+                          - _request: get_member.0.email
+                          - ''
+              - id: member_authority_tag
+                type: Tag
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _ne:
+                    - _request: get_member.0.authority
+                    - null
+                properties:
+                  title:
+                    _request: get_member.0.authority
+                  color:
+                    _if:
+                      test:
+                        _eq:
+                          - _request: get_member.0.authority
+                          - Owner
+                      then: purple
+                      else: blue
+              - id: member_former_tag
+                type: Tag
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _eq:
+                    - _request: get_member.0.is_member
+                    - false
+                properties:
+                  title: Former member
+          - id: member_meta
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: >-
+                    <span data-tone="secondary">{{ email }}{% if joined %}{% if email %} ·
+                    {% endif %}joined <time datetime="{{ joined }}" data-time="D MMMM
+                    YYYY"></time>{% endif %}</span>
+                  on:
+                    email:
+                      _if_none:
+                        - _request: get_member.0.email
+                        - ''
+                    joined:
+                      _request: get_member.0.joined

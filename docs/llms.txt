@@ -102,7 +102,8 @@
 
 ## organizations
 
-- docs/organizations/index.md: Organizations — The **self-serve workspace for one organization**: see which organization you're working in, switch between the ones you belong to, name it, and manage its members. Everything here is per-organization — every read is scoped to the caller's **active** organization, and every write is a per-org cli...
+- docs/organizations/how-to/extend-settings.md: Extending the settings pages — The organization's pages hold the app's own content through module vars. Each var below has a worked example in `apps/tenant-demo/modules/organizations/vars.yaml`. Every var is listed in [vars](../reference/vars.md).
+- docs/organizations/index.md: Organizations — The **self-serve workspace for one organization**: see which organization you're working in, switch between the ones you belong to, name it and give it a logo, manage its members, read who changed what, and create a new one. Everything here is per-organization: every read is scoped to the caller'...
 - docs/organizations/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## release-notes

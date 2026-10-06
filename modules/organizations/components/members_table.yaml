@@ -1,70 +1,98 @@
-# Members of the active organization. Row click opens the member modal, which
-# is where the role change and the removal live — the grid itself stays a
-# read surface.
+# Members of the active organization, narrowed by the search box
+# (`members_search`, name or email) and ordered by `members_sort`, which the
+# sort menu sets. A row links to the person's member page.
 id: members_table
-type: AgGridBalham
-loading:
-  _not:
-    _request: get_members
+type: Table
 properties:
-  height: 45vh
-  overlayNoRowsTemplate: No members
-  rowStyle:
-    cursor: pointer
-  defaultColDef:
+  size: comfortable
+  headerMenu: false
+  reorderable: false
+  emptyText: No members
+  rowKey: member_id
+  loading:
+    _not:
+      _request: get_members
+  defaultColumn:
     sortable: false
-    filter: false
-    resizable: true
-    cellStyle:
-      display: flex
-      alignItems: center
-  columnDefs:
-    - headerName: Person
-      field: name
+    filterable: false
+  rowLink:
+    pageId:
+      _module.pageId: member
+    urlQuery:
+      user_id: user_id
+  columns:
+    - key: name
+      title: Person
+      type: avatar
       flex: 2
-      minWidth: 200
+      minWidth: 240
       cell:
-        type: avatar
         nameField: name
         srcField: picture
         idField: user_id
-    - headerName: Email
-      field: email
-      flex: 2
-      minWidth: 220
-    - headerName: Role
-      field: roles_list
-      flex: 1
-      minWidth: 180
-      cellRenderer:
-        _function:
-          __nunjucks:
-            template: >
-              <span style="display:inline-flex; gap:4px; flex-wrap:wrap; align-items:center">{% for r in roles %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-color-border); background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary)">{{ r }}</span>{% else %}<span style="color:var(--ant-color-text-quaternary)">No role</span>{% endfor %}</span>
-            on:
-              roles:
-                __args: 0.data.roles_list
-    - headerName: Joined
-      field: signed_up
-      width: 130
+        descriptionField: email
+    - key: authority
+      title: Authority
+      type: tag
+      width: 110
+      options:
+        Owner:
+          color: purple
+        Admin:
+          color: blue
+    - key: app_roles
+      title: Roles
+      type: tags
+      flex: 3
+      minWidth: 200
+      options:
+        _ref: components/role_options.yaml
+    - key: joined
+      title: Joined
+      type: date
+      width: 120
       cell:
-        type: date
-        format: YYYY-MM-DD
-  rowData:
-    _request: get_members
-events:
-  onRowClick:
-    - id: set_selected_member
-      type: SetState
-      params:
-        selected_member:
-          _event: row
-        member_roles:
-          _event: row.roles_list
-        member_org_role:
-          _event: row.org_role
-    - id: open_member_modal
-      type: CallMethod
-      params:
-        blockId: member_modal
-        method: toggleOpen
+        format: D MMM YYYY
+      rules:
+        - color: var(--ant-color-text-secondary)
+  data:
+    _mql.aggregate:
+      on:
+        _array.filter:
+          on:
+            _if_none:
+              - _request: get_members
+              - []
+          callback:
+            _function:
+              __string.includes:
+                - __args: 0.search_text
+                - __string.toLowerCase:
+                    __string.trim:
+                      __if_none:
+                        - __state: members_search
+                        - ''
+      pipeline:
+        - $sort:
+            _switch:
+              branches:
+                - if:
+                    _eq:
+                      - _state: members_sort
+                      - name_desc
+                  then:
+                    sort_name: -1
+                - if:
+                    _eq:
+                      - _state: members_sort
+                      - joined_desc
+                  then:
+                    joined: -1
+                - if:
+                    _eq:
+                      - _state: members_sort
+                      - joined_asc
+                  then:
+                    joined: 1
+              default:
+                sort_name: 1
