@@ -6,3 +6,4 @@ export { default as WorkflowAPI } from "./connections/WorkflowAPI/WorkflowAPI.js
 export { default as EventsTimeline } from "./connections/EventsTimeline/EventsTimeline.js";
 export { default as AiText } from "./connections/AiText/AiText.js";
 export { default as ReportingData } from "./connections/ReportingData/ReportingData.js";
+export { default as SupportWebhook } from "./connections/SupportWebhook/SupportWebhook.js";

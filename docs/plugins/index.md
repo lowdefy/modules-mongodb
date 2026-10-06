@@ -116,6 +116,10 @@ Unlike `GenerateChatTitle` it **throws** on failure — a missing key, a gateway
 | `sections`    | array   | —                           | The shaped per-section data from `_analytics.buildSummaryInput`. Required.                  |
 | `model`       | string  | `anthropic/claude-sonnet-5` | Gateway model id (provider/model).                                                          |
 
+## `SupportWebhook` connection
+
+Verifies that a webhook delivery from Pelican's support desk was signed with the app's webhook secret within the last five minutes. Its `SupportWebhookVerify` request is the verifier the `support` module's webhook endpoint runs in its `webhook: { verify }` gate. See [SupportWebhook](support-webhook.md).
+
 ## Reporting analytics
 
 The `ai-reporting` module's query engine ships here. These are documented with the module rather than duplicated:

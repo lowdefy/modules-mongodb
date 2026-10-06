@@ -17,6 +17,7 @@ export default {
   connectionMetas: {
     AiText: { tenant: false },
     EventsTimeline: { tenant: true },
+    SupportWebhook: { tenant: false },
     WorkflowAPI: { tenant: true },
   },
   requests: Object.keys(connections).flatMap((c) =>
