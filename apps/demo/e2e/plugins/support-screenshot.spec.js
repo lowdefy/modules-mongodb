@@ -98,7 +98,7 @@ test.describe("SupportScreenshot", () => {
     ldf,
   }) => {
     const password = await innerBox(page.locator('input[type="password"]'));
-    const masked = await innerBox(page.locator("[data-support-mask]"));
+    const masked = await innerBox(page.locator("div[data-support-mask]"));
     const hidden = await innerBox(page.locator(".support-demo-hidden"));
     const sider = await page.locator("aside.ant-layout-sider").boundingBox();
     const menu = { x: sider.x + 10, y: sider.y + 30, w: 160, h: 150 };
@@ -154,6 +154,37 @@ test.describe("SupportScreenshot", () => {
       size: expect.any(Number),
       type: "image/png",
     });
+  });
+
+  test("masks a password shown in plain text and a marked canvas", async ({
+    page,
+  }) => {
+    await page.locator(".ant-input-password-icon").click();
+    await expect(page.locator(".ant-input-password input")).toHaveAttribute(
+      "type",
+      "text",
+    );
+    await page.locator(".support-demo-canvas").evaluate((canvas) => {
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ff00ff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    });
+    const password = await innerBox(page.locator(".ant-input-password input"));
+    const canvas = await innerBox(page.locator(".support-demo-canvas"));
+    const dpr = await page.evaluate(() => window.devicePixelRatio);
+
+    await page.getByTestId("support_screenshot").click();
+    await page.getByTestId("support_screenshot_use").click();
+    await expect(page.getByText(`Uploaded ${KEY}`)).toBeVisible();
+
+    const shot = await readPng(page, pngFromMultipart(uploads[0]), {
+      password: scale(password, dpr),
+      canvas: scale(canvas, dpr),
+    });
+    expect(close(shot.stats.password.rgb, MASK_FILL)).toBe(true);
+    expect(shot.stats.password.std).toBeLessThan(1);
+    expect(close(shot.stats.canvas.rgb, MASK_FILL)).toBe(true);
+    expect(shot.stats.canvas.std).toBeLessThan(1);
   });
 
   test("a blur box and a crop survive into the uploaded PNG", async ({

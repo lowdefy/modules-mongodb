@@ -410,8 +410,8 @@ _ref:
           type: secondary
           content: >
             Takes a screenshot of this page and uploads it to the files bucket.
-            The password below and the box marked `data-support-mask` show as
-            solid grey boxes in the screenshot, and the badge passed in
+            The password below, the box and the canvas marked `data-support-mask`
+            show as solid grey boxes in the screenshot, and the badge passed in
             `hideSelectors` is left out of it. In the editor, Blur blurs each box
             you drag and Crop keeps only the box you drag.
       - id: support_screenshot_row
@@ -447,6 +447,16 @@ _ref:
               html: >-
                 <div class="support-demo-hidden" style="display: inline-block; padding: 8px 12px; background: #ff00ff; color: #fff; border-radius: 6px">
                 Not in the screenshot</div>
+          - id: support_demo_canvas
+            type: Html
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              html: >-
+                <canvas class="support-demo-canvas" data-support-mask width="240" height="40"
+                style="display: block; border: 1px solid #d9d9d9; border-radius: 6px"></canvas>
       - id: support_screenshot
         type: SupportScreenshot
         properties:

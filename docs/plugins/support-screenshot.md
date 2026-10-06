@@ -11,7 +11,7 @@ A **Take screenshot** button that draws the visible part of the page to a PNG, l
 
 Three behaviours worth knowing:
 
-- **Passwords and marked fields never reach the image.** Before the page is drawn, every `input[type="password"]`, every element carrying a `data-support-mask` attribute and every match of `maskSelectors` is replaced in the drawing by a solid grey box the size of the element: its text, value, children and background are not drawn. An invalid selector fails the capture rather than letting something through unmasked.
+- **Passwords and marked fields never reach the image.** Before the page is drawn, every password input (also one the user has toggled to show), every element carrying a `data-support-mask` attribute and every match of `maskSelectors` is replaced in the drawing by a solid grey box the size of the element: its text, value, children and background are not drawn. A masked `canvas`, `video` or `iframe` is also painted over on the finished image, where it shows on screen. An invalid selector fails the capture rather than letting something through unmasked.
 - **The page itself does not change.** The masking and hiding happen on the copy that is drawn. The live page only carries marker attributes while the capture runs, removed again when it ends or fails.
 - **What the user sees is what is drawn.** The capture is the viewport at the current scroll position, at the device pixel ratio (at most 2). Fixed and sticky elements, such as a side menu, are drawn where they show on screen.
 
@@ -86,7 +86,7 @@ To mask a field in app config, put `data-support-mask` on it (in an `Html` block
 | `fileName`              | string   | `"screenshot.png"`  | The uploaded file's name.                                                                   |
 | `disabled`              | boolean  | `false`             | Disables the button and the `capture` method.                                               |
 
-Built-in masks: `input[type="password"]` and `[data-support-mask]`.
+Built-in masks: `input[type="password"]`, the input inside antd's password field (`.ant-input-password input`, which is `type="text"` while its value is shown) and `[data-support-mask]`.
 
 ## The editor
 

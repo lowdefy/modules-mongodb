@@ -24,7 +24,7 @@ export default {
         type: "array",
         items: { type: "string" },
         description:
-          'CSS selectors drawn as solid boxes in the screenshot, beside the built-in input[type="password"] and [data-support-mask].',
+          "CSS selectors drawn as solid boxes in the screenshot, beside the built-in password inputs (also one toggled to show) and [data-support-mask].",
       },
       s3PostPolicyRequestId: {
         type: "string",

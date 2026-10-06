@@ -1,6 +1,13 @@
 import { domToCanvas } from "modern-screenshot";
 
-export const BUILT_IN_MASKS = ['input[type="password"]', "[data-support-mask]"];
+// A password the user has toggled to show is an input of type text inside
+// antd's password wrapper.
+export const BUILT_IN_MASKS = [
+  'input[type="password"]',
+  ".ant-input-password input",
+  "input.ant-input-password",
+  "[data-support-mask]",
+];
 export const MASK_FILL = "#bfbfbf";
 
 // Marks set on the live page for the length of one capture. The clone keeps
@@ -22,6 +29,11 @@ const queryAll = (selectors) => {
 };
 
 const px = (n) => `${Math.round(n * 100) / 100}px`;
+
+// modern-screenshot draws these as a new element that does not carry the
+// source's attributes, so the clone hook never sees their mask. They are
+// painted over on the finished canvas instead.
+const REPLACED_TAGS = new Set(["CANVAS", "VIDEO", "IFRAME"]);
 
 // The box a position: absolute element is placed against: the nearest
 // ancestor that is positioned or transformed. body is transformed in the clone
@@ -47,11 +59,21 @@ const markPage = ({ hideSelectors, maskSelectors }) => {
     marked.push([el, attr]);
     el.setAttribute(attr, value);
   };
-  for (const el of queryAll(hideSelectors)) mark(el, HIDE_ATTR, "");
+  const hidden = queryAll(hideSelectors);
+  for (const el of hidden) mark(el, HIDE_ATTR, "");
+  const fills = [];
   for (const el of queryAll([...BUILT_IN_MASKS, ...maskSelectors])) {
     const rect = el.getBoundingClientRect();
     const inline = getComputedStyle(el).display === "inline" ? "1" : "0";
     mark(el, MASK_ATTR, `${rect.width},${rect.height},${inline}`);
+    if (
+      REPLACED_TAGS.has(el.tagName) &&
+      rect.width > 0 &&
+      rect.height > 0 &&
+      !hidden.some((h) => h.contains(el))
+    ) {
+      fills.push(rect);
+    }
   }
   // The clone is drawn from the top of the document, with body shifted up by
   // the scroll offset. A fixed element would move with it, so each one is
@@ -106,9 +128,25 @@ const markPage = ({ hideSelectors, maskSelectors }) => {
       if (dx !== 0 || dy !== 0) mark(el, STICKY_ATTR, `${dx},${dy}`);
     });
   }
-  return () => {
+  const unmark = () => {
     for (const [el, attr] of marked) el.removeAttribute(attr);
   };
+  return { unmark, fills };
+};
+
+const paintFills = (canvas, fills, width) => {
+  if (fills.length === 0) return;
+  const ctx = canvas.getContext("2d");
+  const ratio = canvas.width / width;
+  ctx.fillStyle = MASK_FILL;
+  for (const rect of fills) {
+    ctx.fillRect(
+      Math.floor(rect.left * ratio),
+      Math.floor(rect.top * ratio),
+      Math.ceil(rect.width * ratio) + 1,
+      Math.ceil(rect.height * ratio) + 1,
+    );
+  }
 };
 
 const blankClone = (cloned, value) => {
@@ -180,17 +218,19 @@ const onCloneEachNode = (cloned) => {
 // (at most 2). The live page only gains marker attributes, removed again
 // before this returns or throws.
 const capturePage = async ({ hideSelectors = [], maskSelectors = [] } = {}) => {
-  const unmark = markPage({ hideSelectors, maskSelectors });
+  const { unmark, fills } = markPage({ hideSelectors, maskSelectors });
   try {
     const width = document.documentElement.clientWidth;
     const height = window.innerHeight;
-    return await domToCanvas(document.documentElement, {
+    const canvas = await domToCanvas(document.documentElement, {
       width,
       height,
       scale: Math.min(window.devicePixelRatio || 1, 2),
       features: { restoreScrollPosition: true },
       onCloneEachNode,
     });
+    paintFills(canvas, fills, width);
+    return canvas;
   } finally {
     unmark();
   }
