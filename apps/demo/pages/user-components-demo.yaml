@@ -11,6 +11,30 @@ _ref:
     # A component gallery wants a bare header: drop the module-wide header
     # blocks (search, switcher) on this page only.
     header_blocks: []
+    requests:
+      # Fails on the server (unknown pipeline stage), so the SupportContext
+      # card can show a failed request in its error list.
+      - id: support_demo_failing_request
+        type: MongoDBAggregation
+        connectionId: demo-contacts
+        properties:
+          pipeline:
+            - $supportDemoNotAStage: {}
+    events:
+      # With ?support_demo_error=1, logs an error while the page initialises,
+      # before any block has rendered. The SupportContext snapshot still has it.
+      onInit:
+        - id: log_support_demo_error
+          type: SetState
+          params:
+            support_demo_logged:
+              _js:
+                fn: |
+                  if (String(args[0]) !== "1") return false;
+                  console.error("SupportContext demo: logged from onInit");
+                  return true;
+                args:
+                  - _url_query: support_demo_error
     blocks:
       - _ref:
           module: layout
@@ -118,3 +142,51 @@ _ref:
                         - name: removed-file.pdf
                           mime: application/pdf
                           url: null
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: SupportContext
+            blocks:
+              # Renders nothing. Its snapshot method reads the browser's
+              # details and the tab's recent errors into its value.
+              - id: support_context
+                type: SupportContext
+              - id: support_context_buttons
+                type: Box
+                layout:
+                  gap: 8
+                blocks:
+                  - id: support_context_snapshot
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Take a snapshot
+                    events:
+                      onClick:
+                        - id: take_snapshot
+                          type: CallMethod
+                          params:
+                            blockId: support_context
+                            method: snapshot
+                  - id: support_context_fail_request
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Run a failing request
+                    events:
+                      onClick:
+                        - id: run_failing_request
+                          type: Request
+                          params: support_demo_failing_request
+              - id: support_context_value
+                type: Html
+                properties:
+                  html:
+                    _nunjucks:
+                      template: '<pre style="white-space: pre-wrap; font-size: 12px">{{ snapshot | dump(2) }}</pre>'
+                      on:
+                        snapshot:
+                          _state: support_context
