@@ -8,10 +8,10 @@
 # in a tenant app knowing which organization you are in is worth the space even
 # when there is nowhere to switch to.
 #
-# Switching writes the session's active organization, which is what the wall and
-# role resolution both read, so UpdateSession re-syncs the client and the app
-# navigates home rather than leaving the current page showing another
-# organization's data mid-flight.
+# Switching goes through the switch-organization page, which checks the
+# membership, sets the session's active organization (what the wall and role
+# resolution both read), records it as the browser's last and goes home rather
+# than leaving the current page showing another organization's data.
 id: org_switcher
 type: Box
 layout:
@@ -67,8 +67,8 @@ blocks:
       trigger: click
       placement: bottomRight
       # One link per membership, keyed by organization id — the clicked key is
-      # exactly what SetActiveOrganization takes. The active one is disabled
-      # rather than hidden, so the list always reads as the full set.
+      # the switch page's `org`. The active one is disabled rather than
+      # hidden, so the list always reads as the full set.
       links:
         _array.map:
           - _if_none:
@@ -87,20 +87,13 @@ blocks:
     events:
       onClick:
         - id: switch_active_organization
-          type: SetActiveOrganization
-          messages:
-            loading: Switching…
-          params:
-            organizationId:
-              _event: key
-        # Roles, the wall, and every walled read resolve from the session's
-        # active organization, so it has to be re-read before anything renders.
-        - id: resync_session_after_switch
-          type: UpdateSession
-        - id: go_home_after_switch
           type: Link
           params:
-            home: true
+            pageId:
+              _module.pageId: switch-organization
+            urlQuery:
+              org:
+                _event: key
     blocks:
       - id: org_switcher_trigger
         type: Button

@@ -1,53 +1,240 @@
-# invite — ensure the invitee has a contact in the caller's ACTIVE organization,
-# then send the invitation. One endpoint for both halves: member writes are
-# server-side auth steps (the engine floors each against the caller's member row
-# in the organization the step names), so the invitation no longer needs a
-# client-action half split off from the contact mint.
+# invite: invite an address into the caller's ACTIVE organization with an
+# authority (`org_role`), app roles and the app's own member fields
+# (`attributes`, which the engine copies onto the member row on accept).
 #
-# The mint runs first because it is the idempotent half — it reconciles on
-# duplicate key, so a failure at InviteMember leaves nothing to undo and a retry
-# converges. Minting at all is what makes the invited person visible in this
-# org's contact lists immediately rather than only once they accept.
+# In order:
+#   - Only owners and admins invite. The engine checks this on InviteMember,
+#     but the address checks, the cancellations and the contact mint run
+#     before it.
+#   - Owner is granted only by owners, and one address is invited once: an
+#     existing member is refused.
+#   - A pending invitation for the address, live or expired, is cancelled
+#     first (logging org-invitation-cancelled), so sending again re-issues it
+#     with the values given; the link already sent stops working.
+#   - The invitee's contact is minted in this organization (idempotent: it
+#     reconciles on duplicate key), so they show in its contact lists before
+#     they accept. The shared fragment takes no `organization_id` var: the
+#     walled connection stamps it.
+#   - InviteMember, then org-invited naming the invitee by email (and user id
+#     when they already have an account). When InviteMember fails after an
+#     earlier invitation was cancelled, the refusal says the earlier one was
+#     withdrawn.
 #
-# The shared fragment is spliced with NO `organization_id` var: the connection
-# is walled, the caller is a logged-in member with the target org active, so the
-# wall stamps the organization mechanically. Passing one here would be rejected.
-# Nothing is written onto the invitee's auth user, here or at accept — a contact
-# is addressed by {organization_id, lowercase_email}, so the row minted here is
-# already the one that resolves for them once they are in this organization.
+# BetterAuth sends the invitation email itself. `organizationId` is explicit:
+# under the `tenant` policy there is no pinned organization for the steps to
+# default to.
 #
-# `appRoles` is the app-role id array the member row is minted with at accept;
-# the organization-authority tier is granted afterwards from the member modal,
-# so no `orgRole` rides the invitation (the engine defaults the tier to
-# `member`, no authority). `organizationId` is explicit: under the `tenant`
-# policy there is no pinned organization for the step to default to.
-#
-# BetterAuth sends the invitation email itself (auth.email + the invitation
-# template); this module ships no email wiring.
-#
-# Payload: { email, roles (array of app-role ids) }
+# Payload: { email, org_role (owner, admin or member), roles (app-role ids),
+#   attributes (object) }
+# Returns { success: true, invitation_id, reissued }, or
+# { refused: { rule, message } } with rule `admin_only`, `owner_only`, `already_member`,
+# `cancel_refused` or `invite_refused` (with `withdrawn`).
 id: invite
 type: Api
 routine:
+  - :if:
+      _not:
+        _ref: components/caller_is_org_admin.yaml
+    :then:
+      - :return:
+          refused:
+            rule: admin_only
+            message: Only owners and admins can invite people.
+
+  - :set_state:
+      email:
+        _string.toLowerCase:
+          _string.trim:
+            _if_none:
+              - _payload: email
+              - ''
+      org_role:
+        _if_none:
+          - _payload: org_role
+          - member
+
+  - :if:
+      _and:
+        - _eq:
+            - _state: org_role
+            - owner
+        - _not:
+            _ref: components/caller_is_org_owner.yaml
+    :then:
+      - :return:
+          refused:
+            rule: owner_only
+            message: Only owners can make someone an owner.
+
+  - id: read_address_member
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-members
+    properties:
+      pipeline:
+        _build.array.concat:
+          - _ref: components/member-join.yaml
+          - - $match:
+                $expr:
+                  $eq:
+                    - $toLower:
+                        $ifNull:
+                          - "$email"
+                          - ''
+                    - _state: email
+
+  - :if:
+      _ne:
+        - _step: read_address_member.0
+        - null
+    :then:
+      - :return:
+          refused:
+            rule: already_member
+            message:
+              _build.string.concat:
+                - 'They are already a member of this '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - .
+
+  - id: read_pending_invitations
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-invitations
+    properties:
+      pipeline:
+        - $match:
+            organization_id:
+              _user: organization_id
+            status: pending
+            $expr:
+              $eq:
+                - $toLower: "$email"
+                - _state: email
+        - $project:
+            _id: 1
+            email: 1
+
+  - :for: pending
+    :in:
+      _if_none:
+        - _step: read_pending_invitations
+        - []
+    :do:
+      - :try:
+          - id: cancel_pending
+            type: CancelInvitation
+            properties:
+              invitationId:
+                _item: pending._id
+              organizationId:
+                _user: organization_id
+        :catch:
+          - :return:
+              refused:
+                rule: cancel_refused
+                message:
+                  _error: message
+      - _ref:
+          path: api/parts/log-event.yaml
+          vars:
+            type: org-invitation-cancelled
+            step_id: log_cancel_event
+            subject:
+              email:
+                _item: pending.email
+              invitation_id:
+                _item: pending._id
+
   - _ref:
       path: ../shared/contact/ensure-contact.yaml
       vars:
         connection_id:
           _module.connectionId: user-contacts-collection
         email:
-          _payload: email
+          _state: email
 
-  - id: invite_member
-    type: InviteMember
-    properties:
-      email:
-        _payload: email
-      organizationId:
-        _user: organization_id
-      appRoles:
-        _if_none:
-          - _payload: roles
-          - []
+  - :try:
+      - id: invite_member
+        type: InviteMember
+        properties:
+          email:
+            _state: email
+          organizationId:
+            _user: organization_id
+          orgRole:
+            _state: org_role
+          appRoles:
+            _if_none:
+              - _payload: roles
+              - []
+          attributes:
+            _if_none:
+              - _payload: attributes
+              - {}
+    # The earlier invitation is already cancelled when this fails, so the
+    # refusal says so and carries `withdrawn: true`.
+    :catch:
+      - :return:
+          refused:
+            rule: invite_refused
+            withdrawn:
+              _gt:
+                - _array.length:
+                    _if_none:
+                      - _step: read_pending_invitations
+                      - []
+                - 0
+            message:
+              _if:
+                test:
+                  _gt:
+                    - _array.length:
+                        _if_none:
+                          - _step: read_pending_invitations
+                          - []
+                    - 0
+                then:
+                  _string.concat:
+                    - _error: message
+                    - ' The earlier invitation was already withdrawn, so its link no longer works. Invite them again.'
+                else:
+                  _error: message
+
+  - _ref:
+      path: api/parts/read-invitation.yaml
+      vars:
+        id: read_invitation
+        invitation_id:
+          _step: invite_member.id
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-invited
+        subject:
+          user_id:
+            _step: read_invitation.0.user_id
+          email:
+            _step: read_invitation.0.email
+          invitation_id:
+            _step: invite_member.id
+        expires_at:
+          _step: read_invitation.0.expires_at
+        to:
+          _if_none:
+            - _payload: roles
+            - []
 
   - :return:
       success: true
+      invitation_id:
+        _step: invite_member.id
+      reissued:
+        _gt:
+          - _array.length:
+              _if_none:
+                - _step: read_pending_invitations
+                - []
+          - 0

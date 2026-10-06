@@ -1,0 +1,352 @@
+# `setup` page: where a new organization's owner lands after creating it (the
+# create page hands off here through the switch page). On load it runs
+# setup-organization, which mints the owner's contact in the organization and
+# logs its creation, once. Then optional steps, each skippable: the app's own
+# (`setup_steps`, one block each, numbered from 1, with their requests in
+# `setup_requests`), a logo, and inviting people one address at a time through
+# the Members page's invite form. Done goes home. Nothing forces setup: General
+# and Members do the same things later.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: setup
+    content_width: 720
+    title:
+      _build.string.concat:
+        - 'Set up your '
+        - _build.string.toLowerCase:
+            _module.var: label
+    hide_title: true
+    breadcrumbs:
+      - label: Setup
+    requests:
+      _build.array.concat:
+        - - _ref: requests/get_settings_organization.yaml
+          - _ref: requests/get_members.yaml
+          - _ref: requests/get_invitations.yaml
+          - _ref: requests/get_invite_address.yaml
+        - _module.var: setup_requests
+    events:
+      onMountAsync:
+        - id: run_setup_organization
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: setup-organization
+        - id: set_setup_refused
+          type: SetState
+          params:
+            setup_refused:
+              _if_none:
+                - _actions: run_setup_organization.response.response.refused.message
+                - null
+        - id: fetch_setup
+          type: Request
+          params:
+            _build.array.concat:
+              - - get_settings_organization
+                - get_invitations
+              - _build.array.map:
+                  on:
+                    _module.var: setup_requests
+                  callback:
+                    _build.function:
+                      __build.args: 0.id
+    blocks:
+      - id: setup_intro
+        type: Box
+        layout:
+          gap: 16
+          align: middle
+          wrap: nowrap
+        style:
+          marginBottom: 16
+        blocks:
+          - id: setup_logo_preview
+            type: Avatar
+            layout:
+              flex: 0 0 auto
+            properties:
+              shape: square
+              size: 48
+              src:
+                _if:
+                  test:
+                    _eq:
+                      - _if_none:
+                          - _request: get_settings_organization.logo
+                          - ''
+                      - ''
+                  then: null
+                  else:
+                    _request: get_settings_organization.logo
+              content:
+                _string.charAt:
+                  - _if_none:
+                      - _request: get_settings_organization.name
+                      - ' '
+                  - 0
+              color:
+                _if:
+                  test:
+                    _media: darkMode
+                  then: '#3A4654'
+                  else: '#17212C'
+          - id: setup_intro_text
+            type: Box
+            class: min-w-0
+            layout:
+              flex: 1 1 0
+              direction: column
+              gap: 0
+            blocks:
+              - id: setup_heading
+                type: Title
+                style:
+                  margin: 0
+                properties:
+                  level: 3
+                  content:
+                    _string.concat:
+                      - 'Set up '
+                      - _if_none:
+                          - _request: get_settings_organization.name
+                          - _build.string.concat:
+                              - 'your '
+                              - _build.string.toLowerCase:
+                                  _module.var: label
+              - id: setup_subheading
+                type: Span
+                class: text-[var(--ant-color-text-secondary)]
+                properties:
+                  content:
+                    _build.string.concat:
+                      - 'A few things most '
+                      - _build.string.toLowerCase:
+                          _module.var: label_plural
+                      - ' do first. Each one is optional.'
+      - id: setup_refused_alert
+        type: Alert
+        visible:
+          _ne:
+            - _state: setup_refused
+            - null
+        style:
+          marginBottom: 16
+        properties:
+          type: warning
+          showIcon: true
+          message:
+            _state: setup_refused
+      - id: setup_card
+        type: Card
+        visible:
+          _eq:
+            - _state: setup_refused
+            - null
+        blocks:
+          - id: setup_step_list
+            type: Box
+            class: divide-y divide-[var(--ant-color-border-secondary)]
+            layout:
+              direction: column
+              gap: 0
+            blocks:
+              _build.array.concat:
+                - _module.var: setup_steps
+                - - _ref:
+                      path: components/setup_step.yaml
+                      vars:
+                        id: logo
+                        number:
+                          _build.sum:
+                            - _build.array.length:
+                                _module.var: setup_steps
+                            - 1
+                        title: Add a logo
+                        description: >-
+                          Click the square to pick an image, or drop one on it.
+                          It is cropped square and resized to 128px.
+                        blocks:
+                          - id: setup_logo_row
+                            type: Box
+                            layout:
+                              flex: 0 1 auto
+                              gap: 16
+                              align: middle
+                            blocks:
+                              - _ref:
+                                  path: components/organization_logo_input.yaml
+                                  vars:
+                                    id: setup_logo
+                                    initials:
+                                      _string.charAt:
+                                        - _if_none:
+                                            - _request: get_settings_organization.name
+                                            - ' '
+                                        - 0
+                              - id: setup_logo_save
+                                type: Button
+                                layout:
+                                  flex: 0 0 auto
+                                properties:
+                                  title: Save logo
+                                  size: small
+                                  color: primary
+                                  variant: solid
+                                  disabled:
+                                    _eq:
+                                      - _if_none:
+                                          - _state: setup_logo
+                                          - null
+                                      - null
+                                events:
+                                  onClick:
+                                    - id: save_setup_logo
+                                      type: CallAPI
+                                      messages:
+                                        loading: Saving…
+                                      params:
+                                        endpointId:
+                                          _module.endpointId: update-organization
+                                        payload:
+                                          name:
+                                            _request: get_settings_organization.name
+                                          logo:
+                                            _state: setup_logo
+                                    - id: show_setup_logo_refusal
+                                      type: DisplayMessage
+                                      skip:
+                                        _eq:
+                                          - _actions: save_setup_logo.response.response.refused
+                                          - null
+                                      params:
+                                        status: error
+                                        duration: 8
+                                        content:
+                                          _actions: save_setup_logo.response.response.refused.message
+                                    - id: stop_on_setup_logo_refusal
+                                      type: Throw
+                                      messages:
+                                        error: false
+                                      params:
+                                        throw:
+                                          _ne:
+                                            - _actions: save_setup_logo.response.response.refused
+                                            - null
+                                        message:
+                                          _if_none:
+                                            - _actions: save_setup_logo.response.response.refused.message
+                                            - ''
+                                    - id: mark_setup_logo_done
+                                      type: SetState
+                                      params:
+                                        setup_status.logo: Logo added
+                                    - id: refetch_setup_organization
+                                      type: Request
+                                      params: get_settings_organization
+                  - _ref:
+                      path: components/setup_step.yaml
+                      vars:
+                        id: invite
+                        number:
+                          _build.sum:
+                            - _build.array.length:
+                                _module.var: setup_steps
+                            - 2
+                        title: Invite people
+                        description: >-
+                          One address at a time. Owners and admins can manage
+                          members and settings; everyone else works in the app
+                          with their roles.
+                        blocks:
+                          - id: setup_invited
+                            type: Span
+                            visible:
+                              _gt:
+                                - _array.length:
+                                    _if_none:
+                                      - _request: get_invitations
+                                      - []
+                                - 0
+                            class: text-[13px]
+                            properties:
+                              content:
+                                _string.concat:
+                                  - 'Invited: '
+                                  - _array.join:
+                                      - _array.map:
+                                          on:
+                                            _if_none:
+                                              - _request: get_invitations
+                                              - []
+                                          callback:
+                                            _function:
+                                              __args: 0.email
+                                      - ', '
+                          - id: setup_invite_open
+                            type: Button
+                            layout:
+                              flex: 0 0 auto
+                            properties:
+                              title:
+                                _if:
+                                  test:
+                                    _gt:
+                                      - _array.length:
+                                          _if_none:
+                                            - _request: get_invitations
+                                            - []
+                                      - 0
+                                  then: Invite someone else
+                                  else: Invite someone
+                              icon: add
+                              size: small
+                            events:
+                              onClick:
+                                - id: open_setup_invite
+                                  type: CallMethod
+                                  params:
+                                    blockId: invite_modal
+                                    method: toggleOpen
+      - id: setup_foot
+        type: Box
+        layout:
+          gap: 16
+          align: middle
+          justify: end
+        style:
+          marginTop: 16
+        blocks:
+          - id: setup_later_hint
+            type: Span
+            visible:
+              _eq:
+                - _state: setup_refused
+                - null
+            layout:
+              flex: 0 1 auto
+            class: text-[13px] text-[var(--ant-color-text-tertiary)]
+            properties:
+              content:
+                _build.string.concat:
+                  - 'You can do all of this later from '
+                  - _module.var: label
+                  - ' settings.'
+          - id: setup_done
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Done
+              color: primary
+              variant: solid
+            events:
+              onClick:
+                - id: finish_setup
+                  type: Link
+                  params:
+                    home: true
+      - _ref: components/invite_modal.yaml
+      - _ref: components/cancel_invitation_modal.yaml

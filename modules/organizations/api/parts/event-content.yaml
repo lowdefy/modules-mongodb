@@ -1,0 +1,119 @@
+# The content of an organization event, shared by the two ways
+# api/parts/log-event.yaml writes one: `display` (the rendered line under the
+# app slug), `references` (user_ids) and `metadata`. Reached with `key`.
+#
+# Vars: those of api/parts/log-event.yaml (type, subject, from, to, expires_at).
+display:
+  _build.object.fromEntries:
+    - - _build.app: slug
+      - title:
+          _nunjucks:
+            template:
+              _build.if_none:
+                - _build.get:
+                    from:
+                      _module.var: event_display
+                    key:
+                      _var: type
+                - _build.get:
+                    from:
+                      _ref: defaults/event_display.yaml
+                    key:
+                      _var: type
+            on:
+              actor:
+                _if_none:
+                  - _user: name
+                  - _user: email
+              subject:
+                _var:
+                  key: subject
+                  default: {}
+              from:
+                _var:
+                  key: from
+                  default: null
+              to:
+                _var:
+                  key: to
+                  default: null
+        description: null
+references:
+  user_ids:
+    _if:
+      test:
+        _or:
+          - _eq:
+              - _if_none:
+                  - _var:
+                      key: subject.user_id
+                      default: null
+                  - null
+              - null
+          - _eq:
+              - _if_none:
+                  - _var:
+                      key: subject.user_id
+                      default: null
+                  - null
+              - _user: id
+      then:
+        - _user: id
+      else:
+        - _user: id
+        - _if_none:
+            - _var:
+                key: subject.user_id
+                default: null
+            - null
+metadata:
+  actor_user_id:
+    _user: id
+  subject_user_id:
+    _if_none:
+      - _var:
+          key: subject.user_id
+          default: null
+      - null
+  subject_email:
+    _if_none:
+      - _var:
+          key: subject.email
+          default: null
+      - null
+  subject_name:
+    _if_none:
+      - _var:
+          key: subject.name
+          default: null
+      - null
+  member_id:
+    _if_none:
+      - _var:
+          key: subject.member_id
+          default: null
+      - null
+  invitation_id:
+    _if_none:
+      - _var:
+          key: subject.invitation_id
+          default: null
+      - null
+  from:
+    _if_none:
+      - _var:
+          key: from
+          default: null
+      - null
+  to:
+    _if_none:
+      - _var:
+          key: to
+          default: null
+      - null
+  expires_at:
+    _if_none:
+      - _var:
+          key: expires_at
+          default: null
+      - null

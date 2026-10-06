@@ -1,0 +1,311 @@
+# `switch-organization` page: every change of the browser's active
+# organisation goes through here. Opened as
+# `switch-organization?org=<organisation id>&to=<app path>`.
+#
+# It reads the caller's own membership of `org` first. Not a member: it says so,
+# names nothing about the organisation, and leaves the session alone
+# (BetterAuth clears the session's organisation before refusing a switch the
+# caller may not make). A member: SetActiveOrganization and UpdateSession
+# (skipped when `org` is already active), the organisation recorded as the
+# browser's last (components/last_organization_key.yaml; async with no error
+# message, so a blocked or full store keeps nothing and the switch goes on),
+# then on to `to`. A refused organisation that is the stored last one is
+# forgotten.
+#
+# With `restore=true` (the landing page's restore-last-organization step) a
+# refusal shows nothing: the stale stored organisation is forgotten and the page
+# goes on to `to`.
+#
+# If any step after the membership check fails, the page shows a message and a
+# way home instead of the spinner.
+#
+# `to` is a relative app path with its query (`/projects/view?id=...`). Anything that
+# does not start with exactly one slash (a full URL, `//host`, `/\host`,
+# `/<tab>/host`, empty or absent) goes home instead.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: switch-organization
+    title:
+      _build.string.concat:
+        - 'Switching '
+        - _build.string.toLowerCase:
+            _module.var: label
+    hide_title: true
+    requests:
+      - _ref: requests/get_switch_membership.yaml
+    events:
+      onMountAsync:
+        - id: read_switch_membership
+          type: Request
+          params: get_switch_membership
+        - id: set_switch_refused
+          type: SetState
+          skip:
+            _ne:
+              - _request: get_switch_membership.0
+              - null
+          params:
+            switch_refused: true
+        # A refused organisation that is the browser's stored last one is
+        # forgotten, so the landing page does not try it again.
+        - id: read_stored_last_organization
+          type: GetLocalStorage
+          skip:
+            _not:
+              _state: switch_refused
+          params:
+            key:
+              _ref: components/last_organization_key.yaml
+            default: null
+        - id: forget_refused_last_organization
+          type: RemoveLocalStorage
+          skip:
+            _or:
+              - _not:
+                  _state: switch_refused
+              - _ne:
+                  - _actions: read_stored_last_organization.response
+                  - _url_query: org
+          params:
+            key:
+              _ref: components/last_organization_key.yaml
+        # Restoring the last organisation (`restore=true`) never strands anyone
+        # on the refusal: the stale value is forgotten and the page goes on.
+        - id: go_on_after_refused_restore
+          type: Link
+          skip:
+            _or:
+              - _not:
+                  _state: switch_refused
+              - _ne:
+                  - _url_query: restore
+                  - true
+          params:
+            _ref: components/switch_target_link.yaml
+        - id: switch_active_organization
+          type: SetActiveOrganization
+          messages:
+            error: false
+          skip:
+            _or:
+              - _state: switch_refused
+              - _eq:
+                  - _request: get_switch_membership.0.organization_id
+                  - _user: organization_id
+          params:
+            organizationId:
+              _request: get_switch_membership.0.organization_id
+        - id: resync_session_after_switch
+          type: UpdateSession
+          messages:
+            error: false
+          skip:
+            _or:
+              - _state: switch_refused
+              - _eq:
+                  - _request: get_switch_membership.0.organization_id
+                  - _user: organization_id
+        - id: record_last_organization
+          type: SetLocalStorage
+          async: true
+          messages:
+            error: false
+          skip:
+            _state: switch_refused
+          params:
+            key:
+              _ref: components/last_organization_key.yaml
+            value:
+              _request: get_switch_membership.0.organization_id
+        # One Link, its target worked out before it runs: a second Link after it
+        # would read the new page's address.
+        - id: go_to_switch_target
+          type: Link
+          skip:
+            _state: switch_refused
+          params:
+            _ref: components/switch_target_link.yaml
+      # Any action above that throws (the engine refusing the switch, the
+      # session re-sync or the navigation failing) leaves the spinner for a
+      # message and a way home. When the switch itself failed it says so.
+      onMountAsyncCatch:
+        - id: show_switch_failed
+          type: SetState
+          params:
+            switch_failed:
+              _if:
+                test:
+                  _eq:
+                    - _error: actionId
+                    - switch_active_organization
+                then: switch
+                else: other
+    blocks:
+      - id: switch_status
+        type: Box
+        visible:
+          _not:
+            _or:
+              - _ne:
+                  - _if_none:
+                      - _state: switch_failed
+                      - null
+                  - null
+              - _and:
+                  - _state: switch_refused
+                  - _ne:
+                      - _url_query: restore
+                      - true
+        layout:
+          gap: 12
+        class:
+          .block: pt-[18vh]
+        blocks:
+          - id: switch_spinner
+            type: Spinner
+            layout:
+              span: 24
+            class:
+              .block: flex justify-center text-center
+          - id: switch_status_title
+            type: Title
+            layout:
+              span: 24
+            class:
+              .block: flex justify-center text-center
+            properties:
+              level: 4
+              content:
+                _if:
+                  test:
+                    _eq:
+                      - _request: get_switch_membership.0.organization_name
+                      - null
+                  then:
+                    _build.string.concat:
+                      - 'Switching '
+                      - _build.string.toLowerCase:
+                          _module.var: label
+                      - '…'
+                  else:
+                    _string.concat:
+                      - 'Switching to '
+                      - _request: get_switch_membership.0.organization_name
+                      - …
+      - id: switch_refused_box
+        type: Box
+        visible:
+          _and:
+            - _state: switch_refused
+            - _ne:
+                - _url_query: restore
+                - true
+        layout:
+          gap: 12
+        class:
+          .block: pt-[18vh]
+        blocks:
+          - id: switch_refused_title
+            type: Title
+            layout:
+              span: 24
+            class:
+              .block: flex justify-center text-center
+            properties:
+              level: 4
+              content:
+                _build.string.concat:
+                  - 'You are not a member of that '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+          - id: switch_refused_text
+            type: Paragraph
+            layout:
+              span: 24
+            class:
+              .block: flex justify-center text-center
+            properties:
+              type: secondary
+              content:
+                _build.string.concat:
+                  - 'The link may be old, or you may have left or been removed. You are still working in your current '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+                  - '.'
+          - id: switch_refused_home
+            type: Button
+            layout:
+              span: 24
+            class:
+              .block: flex justify-center text-center
+            properties:
+              title: Go home
+              type: primary
+              icon: home
+            events:
+              onClick:
+                - id: switch_refused_go_home
+                  type: Link
+                  params:
+                    home: true
+      - id: switch_failed_box
+        type: Box
+        visible:
+          _ne:
+            - _if_none:
+                - _state: switch_failed
+                - null
+            - null
+        layout:
+          gap: 12
+        class:
+          .block: pt-[18vh]
+        blocks:
+          - id: switch_failed_title
+            type: Title
+            layout:
+              span: 24
+            class:
+              .block: flex justify-center text-center
+            properties:
+              level: 4
+              content:
+                _if:
+                  test:
+                    _eq:
+                      - _state: switch_failed
+                      - switch
+                  then: The switch did not happen
+                  else: Something went wrong while switching
+          - id: switch_failed_text
+            type: Paragraph
+            layout:
+              span: 24
+            class:
+              .block: flex justify-center text-center
+            properties:
+              type: secondary
+              content:
+                _build.string.concat:
+                  - 'Go home and try again. If it keeps happening, ask an owner or admin of the '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+                  - ' to check your membership.'
+          - id: switch_failed_home
+            type: Button
+            layout:
+              span: 24
+            class:
+              .block: flex justify-center text-center
+            properties:
+              title: Go home
+              type: primary
+              icon: home
+            events:
+              onClick:
+                - id: switch_failed_go_home
+                  type: Link
+                  params:
+                    home: true

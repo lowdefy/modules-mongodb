@@ -1,0 +1,32 @@
+# `billing` settings page, owners and admins only: holds billing's place in the
+# settings menu until billing is designed.
+_ref:
+  path: components/settings-page.yaml
+  vars:
+    id: billing
+    title: Billing
+    group: Billing
+    description:
+      _build.string.concat:
+        - 'How this '
+        - _build.string.toLowerCase:
+            _module.var: label
+        - ' pays. Owners and admins only.'
+    owners_and_admins_only: true
+    blocks:
+      - _ref:
+          path: components/settings_placeholder_card.yaml
+          vars:
+            id: billing_placeholder
+            icon: CreditCard
+            text:
+              _build.string.concat:
+                - 'Billing is not set up here yet. When it arrives, this is where the '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - '''s plan and payments will live.'
+            items: |
+              - Plan and seats
+              - Payment method
+              - Invoices
+              - Billing contact

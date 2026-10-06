@@ -1,58 +1,67 @@
-# Pending invitations for the active organization. Row click opens the cancel
-# confirm. Expired rows stay listed rather than being hidden: an admin needs to
-# see that the link they sent has lapsed, and cancelling one is how they clear
-# the way for a fresh invitation.
+# Pending invitations for the active organization. A row opens the invite
+# form on its address: Resend, Cancel or change a live one, re-issue an
+# expired one. Expired rows stay listed: an admin needs to see that the link
+# they sent has lapsed.
 id: invitations_table
-type: AgGridBalham
-loading:
-  _not:
-    _request: get_invitations
+type: Table
 properties:
-  height: 28vh
-  overlayNoRowsTemplate: No pending invitations
-  rowStyle:
-    cursor: pointer
-  defaultColDef:
+  size: compact
+  headerMenu: false
+  reorderable: false
+  emptyText: No pending invitations
+  loading:
+    _not:
+      _request: get_invitations
+  defaultColumn:
     sortable: false
-    filter: false
-    resizable: true
-    cellStyle:
-      display: flex
-      alignItems: center
-  columnDefs:
-    - headerName: Email
-      field: email
+    filterable: false
+  rowRules:
+    - style:
+        cursor: pointer
+  columns:
+    - key: email
+      title: Email
       flex: 2
       minWidth: 220
-    - headerName: Invited by
-      field: inviter_name
+    - key: app_roles
+      title: Roles
+      type: tags
       flex: 1
       minWidth: 160
-    - headerName: Status
-      field: status
-      width: 120
-      cell:
-        type: tag
-        colorMap:
-          Invited: blue
-          Expired: orange
-    - headerName: Expires
-      field: expires_at
-      width: 130
-      cell:
-        type: date
-        format: YYYY-MM-DD
-  rowData:
-    _request: get_invitations
+      options:
+        _ref: components/role_options.yaml
+    - key: inviter_name
+      title: Invited by
+      flex: 1
+      minWidth: 160
+    - key: expiry
+      title: Expires
+      width: 170
+      rules:
+        - color: var(--ant-color-text-secondary)
+        - when:
+            key: status
+            op: eq
+            value: Expired
+          color: warning
+  data:
+    _if_none:
+      - _request: get_invitations
+      - []
 events:
   onRowClick:
-    - id: set_selected_invitation
+    - id: set_invite_from_row
       type: SetState
       params:
-        selected_invitation:
-          _event: row
-    - id: open_cancel_modal
+        invite.email:
+          _event: row.email
+        invite_change: false
+    - id: check_row_address
+      type: Request
+      params: get_invite_address
+    - _ref: actions/fill_invite_from_invitation.yaml
+    - id: open_invite_from_row
       type: CallMethod
       params:
-        blockId: cancel_invitation_modal
+        blockId: invite_modal
         method: toggleOpen

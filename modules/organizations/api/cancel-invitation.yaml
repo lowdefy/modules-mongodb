@@ -5,10 +5,20 @@
 # `organizationId` is explicit: under the `tenant` policy there is no pinned
 # organization for the step to default to.
 #
+# The invitation is read first so the `org-invitation-cancelled` event can
+# name the invitee.
+#
 # Payload: { invitation_id }
 id: cancel-invitation
 type: Api
 routine:
+  - _ref:
+      path: api/parts/read-invitation.yaml
+      vars:
+        id: read_invitation
+        invitation_id:
+          _payload: invitation_id
+
   - id: cancel_invitation
     type: CancelInvitation
     properties:
@@ -16,3 +26,15 @@ routine:
         _payload: invitation_id
       organizationId:
         _user: organization_id
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-invitation-cancelled
+        subject:
+          user_id:
+            _step: read_invitation.0.user_id
+          email:
+            _step: read_invitation.0.email
+          invitation_id:
+            _payload: invitation_id

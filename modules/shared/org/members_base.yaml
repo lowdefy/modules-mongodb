@@ -49,6 +49,9 @@
 # it wrong. It defaults to [], so the two reads that filter nothing are as they
 # were.
 #
+# The contact $lookup keeps one contact, so a person matched by both their
+# user id and their email still gives one row.
+#
 # Co-location precondition (Decision 1): the user-contacts $lookup returns empty
 # if the read connection and the auth adapter resolve to different databases.
 # Blank contact data is a co-location violation, not a wiring bug.
@@ -89,6 +92,7 @@ _build.array.concat:
                             contact_email_expr: "$lowercase_email"
                             person_id_expr: "$$member_user_id"
                             person_email_expr: "$$member_email"
+          - $limit: 1
         as: contact
     - $unwind:
         path: "$contact"

@@ -13,4 +13,24 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
+| `label` | string | `Organization` |  | The word the module's pages, messages and event titles use for an organization, capitalised. It is lowercased mid-sentence, and no text puts "a" or "an" before it, so any noun reads right ("Team", "Workspace"). |
+| `label_plural` | string | `Organizations` |  | The plural of `label`, capitalised, for the my-organizations page ("Your organizations"). |
+| `my_organizations_note` |  |  |  | The app's own line under the list on the my-organizations page (for example what switching does and does not change). |
+| `event_display` | object | `{}` |  | Title templates (Nunjucks) for the organization events, keyed by event type, replacing the module's defaults in defaults/event_display.yaml type by type. Templates receive `actor`, `subject` ({ user_id, email, name, member_id, invitation_id }), `from` and `to`. |
+| `allow_create_organization` | boolean | `false` |  | Lets anyone signed in create an organization and become its owner. When false the create-organization page and endpoint are left out of the build. |
+| `creator_app_roles` | array | `[]` |  | App role ids granted to the owner of an organization created through the create-organization page. |
+| `settings_sections` |  | `[]` |  | The app's own sections in the settings menu, after the organisation's: an array of { id, title, links: [{ id, title, pageId, pathParams, urlQuery }] }, evaluated on the page, so it may read the requests in `settings_requests`. Each section reaches the layout as it is, so a layout may read more fields on it. |
+| `settings_requests` | array | `[]` |  | Requests loaded and fetched on every settings page, for the links in `settings_sections`. |
+| `general_facts` | array | `[]` |  | The app's own facts on the General settings page, between the pending invitations and the caller's authority: an array of { id, title, value, request }, where request is a request definition the page loads and fetches, and value is what the card shows, evaluated on the page (it may read that request, for example `_request: <request id>.0.count`). |
+| `member_page_blocks` | array | `[]` |  | The app's own blocks on the member page, above the danger zone in the side column. The page's `user_id` (the person the page is about) is in state as `user_id`. |
+| `member_page_requests` | array | `[]` |  | Requests loaded and fetched on the member page, for `member_page_blocks`. They can read the person's id from the page's `?user_id=` query. |
+| `member_page_on_mount` | array | `[]` |  | Actions the member page runs on mount after its own requests are fetched, for `member_page_blocks` that load through actions (an API call into state, for example). The page's `user_id` is in state. |
+| `setup_steps` | array | `[]` |  | The app's own steps on the setup page, before the logo and invite steps: one block per step, each usually the module's `setup-step` component, numbered from 1 in order. A step marks itself done by setting `setup_status.<step id>` to the line to show (for example "Project created"). |
+| `setup_requests` | array | `[]` |  | Requests loaded and fetched on the setup page, for `setup_steps`. |
+| `invite_fields` | array | `[]` |  | The app's own member fields on the invite form, after the app roles: input blocks with ids under `invite.attributes.` (for example `invite.attributes.department`). Their values are sent as the invitation's attributes, which the engine copies onto the member row when the invitation is accepted; re-issuing an invitation fills them from it. |
+| `invitation_expiry_days` |  |  |  | How many days an invitation link lasts, for the invite form's hint. Set it to match the app's `auth.organizations.invitationExpiresIn`; when unset the hint says only that the link expires. |
+| `remove_confirmation_note` |  |  |  | The app's own line in the confirmation for removing someone on the member page, under the module's text (what else they lose, what happens to their work). Evaluated on the page, so it may read the member page's requests. |
+| `leave_confirmation_note` |  |  |  | The app's own line in the confirmation for leaving on your own member page, under the module's text. Evaluated on the page. |
+| `settings_back_title` | string | `Back` |  | The text of the row heading the settings menu that leads back to the app (for example "Back to Acme"). |
+| `settings_back_page_id` | string | `home` |  | The page the settings menu's back row opens. |
 | `avatar_colors` |  | `{"_ref":"../shared/profile/avatar_colors.yaml"}` |  | Gradient pairs for avatar backgrounds. Each entry: { from, to }. |

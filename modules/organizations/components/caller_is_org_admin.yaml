@@ -1,0 +1,15 @@
+# True when the caller is an owner or admin of the active organization
+# (`_user: org_roles`). Works in page requests and in the browser.
+_or:
+  - _array.includes:
+      on:
+        _if_none:
+          - _user: org_roles
+          - []
+      value: owner
+  - _array.includes:
+      on:
+        _if_none:
+          - _user: org_roles
+          - []
+      value: admin

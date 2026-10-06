@@ -1,0 +1,15 @@
+# The active organization's id, name and logo, for the settings pages' header
+# above the settings menu. Projects only what the header draws, so the logo
+# travels only here.
+id: get_settings_organization
+type: MongoDBFindOne
+connectionId:
+  _module.connectionId: user-organizations
+properties:
+  query:
+    _id:
+      _user: organization_id
+  options:
+    projection:
+      name: 1
+      logo: 1

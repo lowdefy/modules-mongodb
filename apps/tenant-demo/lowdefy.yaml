@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260928120643
+lowdefy: 0.0.0-experimental-20261006081525
 name: Tenant Demo App
 slug: tenant-demo
 
@@ -42,7 +42,7 @@ plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
   - name: "@lowdefy/connection-ai-gateway"
-    version: 0.0.0-experimental-20260928120643
+    version: 0.0.0-experimental-20261006081525
 
 auth:
   secret:
@@ -214,3 +214,4 @@ pages:
   - _ref: pages/files/files-demo.yaml
   - _ref: pages/quote-builder.yaml
   - _ref: pages/start-company-setup.yaml
+  - _ref: pages/team-directory.yaml

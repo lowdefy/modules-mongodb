@@ -1,20 +1,145 @@
-# update-organization — rename the caller's ACTIVE organization. The write goes
-# through the organization plugin, which authorizes it against the caller's
-# member row in the organization named here. Only the display name is offered:
-# the slug is the organization's identity (and, under the pinned policy
-# elsewhere in a suite, its id), so it is not self-serve editable.
+# update-organization: rename the caller's ACTIVE organization and set or clear
+# its logo. The write goes through the organization plugin, which authorizes it
+# against the caller's member row in the organization named here. The slug is
+# the organization's identity (and, under the pinned policy elsewhere in a
+# suite, its id), so it is not offered.
 #
 # `organizationId` is explicit: under the `tenant` policy there is no pinned
 # organization for the step to default to.
 #
-# Payload: { name }
+# The name is trimmed, and an empty one or one over the length limit is refused
+# as data before anything is written. The logo is written only when the payload
+# carries a `logo` key: a data URL sets it and null clears it (stored as an
+# empty string, since the engine skips a null field). A logo that is not an
+# image data URL, or is longer than components/organization_logo_max_length.yaml,
+# is refused as data.
+#
+# `org-renamed` carries the name before and after and `org-logo-changed` whether
+# the logo was set or removed; each is left out when that field did not change.
+#
+# Payload: { name, logo? }. Returns { success: true }, or
+# { refused: { rule, message } } with rule `name_required`, `name_too_long`,
+# `logo_not_image` or `logo_too_large`.
 id: update-organization
 type: Api
 routine:
+  - _ref: api/parts/check-organization-name.yaml
+
+  - :set_state:
+      logo_given:
+        _array.includes:
+          on:
+            _object.keys:
+              _if_none:
+                - _payload: true
+                - {}
+          value: logo
+      logo:
+        _if:
+          test:
+            _type:
+              type: string
+              on:
+                _payload: logo
+          then:
+            _payload: logo
+          else: ''
+
+  - :if:
+      _and:
+        - _state: logo_given
+        - _ne:
+            - _state: logo
+            - ''
+        - _not:
+            _string.startsWith:
+              - _state: logo
+              - 'data:image/'
+    :then:
+      - :return:
+          refused:
+            rule: logo_not_image
+            message: The logo must be an image.
+
+  - :if:
+      _and:
+        - _state: logo_given
+        - _gt:
+            - _string.length:
+                _state: logo
+            - _ref: components/organization_logo_max_length.yaml
+    :then:
+      - :return:
+          refused:
+            rule: logo_too_large
+            message: The logo is too large. Pick a smaller image.
+
+  - id: read_organization
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-organizations
+    properties:
+      query:
+        _id:
+          _user: organization_id
+      options:
+        projection:
+          name: 1
+          logo: 1
+
+  - :set_state:
+      logo_changed:
+        _and:
+          - _state: logo_given
+          - _ne:
+              - _if_none:
+                  - _step: read_organization.logo
+                  - ''
+              - _state: logo
+
   - id: update_organization
     type: UpdateOrganization
     properties:
       name:
-        _payload: name
+        _state: name
+      logo:
+        _if:
+          test:
+            _state: logo_changed
+          then:
+            _state: logo
+          else: null
       organizationId:
         _user: organization_id
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-renamed
+        from:
+          _step: read_organization.name
+        to:
+          _state: name
+        changed:
+          _ne:
+            - _step: read_organization.name
+            - _state: name
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-logo-changed
+        step_id: log_logo_event
+        to:
+          _if:
+            test:
+              _eq:
+                - _state: logo
+                - ''
+            then: removed
+            else: set
+        changed:
+          _state: logo_changed
+
+  - :return:
+      success: true

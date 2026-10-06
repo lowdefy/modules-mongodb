@@ -1,7 +1,6 @@
-# The reads the org-switcher block needs, exported separately because a block
-# cannot declare its own request: the app wires this into the layout's
-# `header_extra.requests` alongside the block in `header_extra.blocks`, and the
-# layout loads them with every page.
+# The active organization and the caller's memberships, for an app's account
+# menu: the app wires this into the layout's `requests`, and the layout loads
+# them with every page.
 #
 # Both are cheap and narrowly scoped — one findOne on the active organization,
 # one join over the caller's own member rows — and both carry switcher-specific

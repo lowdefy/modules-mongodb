@@ -1,0 +1,6 @@
+# Empty the invite form, so the next open starts from a blank address.
+id: clear_invite
+type: SetState
+params:
+  invite: null
+  invite_change: false

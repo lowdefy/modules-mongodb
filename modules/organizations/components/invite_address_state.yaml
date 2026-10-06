@@ -1,0 +1,38 @@
+# What the invite form shows for the address typed so far, from the address
+# check (get_invite_address): member, pending, change (the caller chose to
+# change a pending invitation), expired, or new. A check for an earlier
+# address counts as new.
+_if:
+  test:
+    _ne:
+      - _if_none:
+          - _request: get_invite_address.0.email
+          - null
+      - _string.toLowerCase:
+          _string.trim:
+            _if_none:
+              - _state: invite.email
+              - ''
+  then: new
+  else:
+    _if:
+      test:
+        _eq:
+          - _request: get_invite_address.0.kind
+          - member
+      then: member
+      else:
+        _if:
+          test:
+            _eq:
+              - _request: get_invite_address.0.status
+              - Expired
+          then: expired
+          else:
+            _if:
+              test:
+                _eq:
+                  - _state: invite_change
+                  - true
+              then: change
+              else: pending

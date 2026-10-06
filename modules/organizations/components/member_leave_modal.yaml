@@ -1,0 +1,152 @@
+# Confirms leaving the organization from your own member page. The `leave`
+# endpoint does the leave on the server (it refuses an only membership and the
+# only owner, leaves, and logs the leave) and a refusal shows as written. The
+# session still names the organization left, so the page makes another one
+# active before it re-reads the session: the one the person last switched to in
+# this browser if they are still in it, else their oldest remaining one. The
+# switch page then records it and goes home. The app adds its own line through
+# the `leave_confirmation_note` module var.
+id: member_leave_modal
+type: Modal
+properties:
+  title:
+    _string.concat:
+      - 'Leave '
+      - _if_none:
+          - _request: get_settings_organization.name
+          - _build.string.concat:
+              - 'this '
+              - _build.string.toLowerCase:
+                  _module.var: label
+      - '?'
+  width: 440
+  okText:
+    _build.string.concat:
+      - 'Leave '
+      - _build.string.toLowerCase:
+          _module.var: label
+  cancelText: Stay
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    # Where to go is worked out before the leave, while the session and the
+    # memberships still name the organization being left.
+    - id: read_last_organization
+      type: GetLocalStorage
+      params:
+        key:
+          _ref: components/last_organization_key.yaml
+        default: null
+    - id: note_leave_target
+      type: SetState
+      params:
+        leave_target_organization_id:
+          _js:
+            fn: |
+              const others = (args.memberships || [])
+                .map((m) => m.organization_id)
+                .filter((id) => id !== args.left);
+              return others.includes(args.last) ? args.last : others[0] ?? null;
+            args:
+              memberships:
+                _request: get_leave_memberships
+              left:
+                _user: organization_id
+              last:
+                _actions: read_last_organization.response
+    - id: leave
+      type: CallAPI
+      messages:
+        loading: Leaving…
+      params:
+        endpointId:
+          _module.endpointId: leave
+    - id: show_leave_refusal
+      type: DisplayMessage
+      skip:
+        _eq:
+          - _actions: leave.response.response.refused
+          - null
+      params:
+        status: error
+        duration: 8
+        content:
+          _actions: leave.response.response.refused.message
+    - id: stop_on_leave_refusal
+      type: Throw
+      messages:
+        error: false
+      params:
+        throw:
+          _ne:
+            - _actions: leave.response.response.refused
+            - null
+        message:
+          _if_none:
+            - _actions: leave.response.response.refused.message
+            - ''
+    - id: activate_after_leave
+      type: SetActiveOrganization
+      params:
+        organizationId:
+          _state: leave_target_organization_id
+    # Membership drives the wall and role resolution, so the session is re-read
+    # before anything else renders.
+    - id: resync_after_leave
+      type: UpdateSession
+    - id: show_left
+      type: DisplayMessage
+      params:
+        status: success
+        content:
+          _build.string.concat:
+            - 'You have left the '
+            - _build.string.toLowerCase:
+                _module.var: label
+            - .
+    - id: switch_after_leave
+      type: Link
+      params:
+        pageId:
+          _module.pageId: switch-organization
+        replace: true
+        urlQuery:
+          org:
+            _state: leave_target_organization_id
+blocks:
+  - id: member_leave_message
+    type: Paragraph
+    style:
+      .element:
+        margin: 0
+    properties:
+      type: secondary
+      content:
+        _string.concat:
+          - 'You will lose access to '
+          - _if_none:
+              - _request: get_settings_organization.name
+              - _build.string.concat:
+                  - 'this '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+          - ' and everything in it. To come back, someone here has to invite you again.'
+  - id: member_leave_note
+    type: Paragraph
+    visible:
+      _ne:
+        - _if_none:
+            - _module.var: leave_confirmation_note
+            - null
+        - null
+    style:
+      .element:
+        margin: 0
+        marginTop: 8
+    properties:
+      type: secondary
+      content:
+        _if_none:
+          - _module.var: leave_confirmation_note
+          - ''

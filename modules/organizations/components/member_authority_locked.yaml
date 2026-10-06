@@ -1,0 +1,14 @@
+# True on the member page when the caller is looking at their own row as the
+# organization's only owner: their authority cannot be lowered.
+_and:
+  - _eq:
+      - _request: get_member.0.is_self
+      - true
+  - _eq:
+      - _request: get_member.0.authority
+      - Owner
+  - _lte:
+      - _if_none:
+          - _request: get_owner_count.0.count
+          - 0
+      - 1

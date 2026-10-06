@@ -1,0 +1,5 @@
+# The local storage key holding the organisation the signed-in person last
+# switched to in this browser.
+_string.concat:
+  - organizations_last_organization_
+  - _user: id

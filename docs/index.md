@@ -43,6 +43,7 @@ graph TD
   user-admin --> events
   organizations --> layout
   organizations --> user-account
+  organizations --> events
   notifications --> layout
   contacts --> layout
   contacts --> events
@@ -81,7 +82,7 @@ A few notes on the shape:
 | --------------------------------------------------------------------------- | ------------------------------------------- |
 | A login page and a profile page                                             | `layout`, `events`, `user-account`          |
 | To invite and manage users                                                  | + `user-admin`                              |
-| Tenants managing their own members, roles, and org name                     | + `organizations` (needs `policy: tenant`)  |
+| Tenants managing their own members, roles, settings, and organizations      | + `organizations` (needs `policy: tenant`)  |
 | A bell and inbox for in-app messages                                        | + `notifications`                           |
 | Contact management with company links                                       | + `contacts`, `companies`, `files`          |
 | File attachments on any entity                                              | + `files`                                   |
@@ -130,7 +131,7 @@ Each module's `docs/{module}/` folder covers the vars, exports, and worked examp
 
 `apps/demo/` wires the modules together against MongoDB under `auth.organizations.policy: pinned`. It's the canonical worked example — match its `vars.yaml` files in `apps/demo/modules/{module}/vars.yaml` for each module's input.
 
-`apps/tenant-demo/` is the same module set under `policy: tenant`, and additionally wires the [`organizations`](organizations/) module (workspace switcher, members, settings) — the surface that only exists in a multi-organization deployment. See [organization scoping](shared/org-scoping.md) for what changes between the two.
+`apps/tenant-demo/` is the same module set under `policy: tenant`, and additionally wires the [`organizations`](organizations/) module (switcher, members, settings pages, organization create and setup) — the surface that only exists in a multi-organization deployment. See [organization scoping](shared/org-scoping.md) for what changes between the two.
 
 ## Plugins
 

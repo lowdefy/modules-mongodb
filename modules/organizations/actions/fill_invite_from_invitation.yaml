@@ -1,0 +1,33 @@
+# After the address check finds a pending invitation for the typed address,
+# fill the form from it, so re-issuing carries its authority, app roles and
+# member fields unless the caller changes them. Each of the app's fields
+# (`invite_fields`) is set by its own id, null when the invitation has no
+# value for it: an input keeps what was picked when only its parent object
+# is replaced.
+id: fill_invite_from_invitation
+type: SetState
+skip:
+  _ne:
+    - _request: get_invite_address.0.kind
+    - invitation
+params:
+  _build.object.assign:
+    - invite.org_role:
+        _request: get_invite_address.0.org_role
+      invite.roles:
+        _request: get_invite_address.0.app_roles
+    - _build.object.fromEntries:
+        _build.array.map:
+          on:
+            _module.var: invite_fields
+          callback:
+            _build.function:
+              - __build.args: 0.id
+              - _get:
+                  from:
+                    invite:
+                      attributes:
+                        _request: get_invite_address.0.member_attributes
+                  key:
+                    __build.args: 0.id
+                  default: null

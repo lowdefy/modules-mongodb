@@ -10,7 +10,7 @@ links:
   - id: organization-settings
     type: MenuLink
     pageId:
-      _module.pageId: settings
+      _module.pageId: general
     properties:
       title: Organization
       icon: Landmark

@@ -1,0 +1,88 @@
+# resend-invitation: send a live pending invitation to the caller's ACTIVE
+# organization again. InviteMember with `resend: true` gives the invitation a
+# fresh expiry and emails the same link again; it carries the invitation's own
+# authority, app roles and attributes. An expired invitation is not resent:
+# inviting the address again re-issues it (see invite).
+#
+# `organizationId` is explicit: under the `tenant` policy there is no pinned
+# organization for the step to default to.
+#
+# Payload: { invitation_id }
+# Returns { success: true }, or { refused: { rule, message } } with rule
+# `not_pending`, `expired` or `resend_refused`.
+id: resend-invitation
+type: Api
+routine:
+  - _ref:
+      path: api/parts/read-invitation.yaml
+      vars:
+        id: read_invitation
+        invitation_id:
+          _payload: invitation_id
+
+  - :if:
+      _ne:
+        - _step: read_invitation.0.status
+        - pending
+    :then:
+      - :return:
+          refused:
+            rule: not_pending
+            message: That invitation is no longer waiting to be accepted.
+
+  - :if:
+      _step: read_invitation.0.expired
+    :then:
+      - :return:
+          refused:
+            rule: expired
+            message: That invitation has expired. Invite the address again to send a new one.
+
+  - :try:
+      - id: resend_invitation
+        type: InviteMember
+        properties:
+          email:
+            _step: read_invitation.0.email
+          organizationId:
+            _user: organization_id
+          orgRole:
+            _if_none:
+              - _step: read_invitation.0.role
+              - member
+          appRoles:
+            _step: read_invitation.0.app_roles
+          attributes:
+            _step: read_invitation.0.attributes
+          resend: true
+    :catch:
+      - :return:
+          refused:
+            rule: resend_refused
+            message:
+              _error: message
+
+  # Re-read for the fresh expiry the resend gave it.
+  - _ref:
+      path: api/parts/read-invitation.yaml
+      vars:
+        id: read_resent_invitation
+        invitation_id:
+          _payload: invitation_id
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-invitation-resent
+        subject:
+          user_id:
+            _step: read_invitation.0.user_id
+          email:
+            _step: read_invitation.0.email
+          invitation_id:
+            _payload: invitation_id
+        expires_at:
+          _step: read_resent_invitation.0.expires_at
+
+  - :return:
+      success: true

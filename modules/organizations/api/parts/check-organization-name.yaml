@@ -1,0 +1,45 @@
+# Routine steps shared by the endpoints that take an organisation name: set
+# `name` in routine state to the payload's `name`, trimmed, and return a
+# refusal as data when it is empty (`name_required`) or longer than the limit
+# in components/organization_name_max_length.yaml (`name_too_long`).
+- :set_state:
+    name:
+      _if:
+        test:
+          _type:
+            type: string
+            on:
+              _payload: name
+        then:
+          _string.trim:
+            _payload: name
+        else: ''
+
+- :if:
+    _eq:
+      - _state: name
+      - ''
+  :then:
+    - :return:
+        refused:
+          rule: name_required
+          message:
+            _build.string.concat:
+              - 'Give the '
+              - _build.string.toLowerCase:
+                  _module.var: label
+              - ' a name.'
+
+- :if:
+    _gt:
+      - _string.length:
+          _state: name
+      - _ref: components/organization_name_max_length.yaml
+  :then:
+    - :return:
+        refused:
+          rule: name_too_long
+          message:
+            _string.format:
+              - Keep the name to {0} characters or fewer.
+              - _ref: components/organization_name_max_length.yaml

@@ -1,0 +1,76 @@
+# Anyone signed in may create another organization and becomes its owner,
+# with the admin app role.
+allow_create_organization: true
+creator_app_roles:
+  - admin
+
+settings_back_title: Back to the demo
+settings_back_page_id: home
+
+# The demo's own settings section, after the organization's: one page built on
+# the module's settings-page component (pages/team-directory.yaml).
+settings_sections:
+  - id: settings_demo
+    title: Demo
+    links:
+      - id: team-directory
+        title: Team directory
+        pageId: team-directory
+
+# A fact on the General page after the module's own.
+general_facts:
+  - id: contacts
+    title: Contacts
+    value:
+      _if_none:
+        - _request: get_contact_count.0.count
+        - 0
+    request:
+      _ref: modules/organizations/requests/get_contact_count.yaml
+
+# The invite form's own field. Its value is copied onto the member row as
+# `attributes.department` when the invitation is accepted.
+invite_fields:
+  - id: invite.attributes.department
+    type: TextInput
+    properties:
+      title: Department
+      placeholder: Optional
+
+# The member page's own section, above the danger zone.
+member_page_blocks:
+  - id: member_demo_slot
+    type: Alert
+    properties:
+      type: info
+      showIcon: false
+      message: The app's own blocks for this person go here.
+
+remove_confirmation_note: Their contacts and deals stay in the organization.
+leave_confirmation_note: Your contacts and deals stay in the organization.
+my_organizations_note: Switching changes the organization every page shows.
+
+# Setup's first step, before the logo and invite steps.
+setup_steps:
+  - _ref:
+      module: organizations
+      component: setup-step
+      vars:
+        id: welcome
+        number: 1
+        title: Read the welcome
+        description: Each card on the home page opens a working demo of one module.
+        blocks:
+          - id: setup_welcome_done
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Done
+              size: small
+            events:
+              onClick:
+                - id: set_welcome_done
+                  type: SetState
+                  params:
+                    setup_status.welcome: Welcome read
