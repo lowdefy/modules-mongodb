@@ -3,6 +3,10 @@
 # retry-notification-record (drain retry), so transport and bookkeeping
 # behavior cannot drift between them.
 #
+# Its writes keep the tenant wall in both paths: a dispatch runs as the
+# signed-in caller, and a drain retry runs bound to the record's organization
+# (drain-notifications calls retry-notification-record with `organization`).
+#
 # Payload contract:
 #   record_id: string        required — the notification record _id
 #   notification_id: string  required — the record's type; the email
@@ -88,10 +92,6 @@ routine:
               html:
                 _payload: html
       - id: mark_sent
-        # Shared by dispatch (caller context) and the caller-less drain path:
-        # the record's organization_id was wall-stamped at insert; this update
-        # is keyed by _id, so no org filter is re-derivable here.
-        tenant: none
         type: MongoDBUpdateOne
         connectionId:
           _module.connectionId: notifications-collection
@@ -135,10 +135,6 @@ routine:
       # A send failure never fails the caller — the record stays
       # sent: false with the attempt recorded, ready for a drain retry.
       - id: record_send_failure
-        # Shared by dispatch (caller context) and the caller-less drain path:
-        # the record's organization_id was wall-stamped at insert; this update
-        # is keyed by _id, so no org filter is re-derivable here.
-        tenant: none
         type: MongoDBUpdateOne
         connectionId:
           _module.connectionId: notifications-collection

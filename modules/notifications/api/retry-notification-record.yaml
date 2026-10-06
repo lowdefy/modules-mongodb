@@ -5,6 +5,9 @@
 # Payload contract:
 #   record: object  required — the notification document from the drain's find
 #
+# The drain calls this bound to the record's organization, so the claim and
+# the send's bookkeeping keep the tenant wall.
+#
 # The claim is an optimistic lock: the update only matches while the record
 # is still unsent AND last_attempt equals the value the drain read. The
 # claim's own $set last_attempt invalidates any concurrent claimant, so
@@ -13,10 +16,6 @@ id: retry-notification-record
 type: InternalApi
 routine:
   - id: claim
-    # Callable from the caller-less drain path; the record's organization_id
-    # was stamped by the wall at dispatch time and the claim is keyed by _id
-    # plus an optimistic lock, so no org filter is re-derivable here.
-    tenant: none
     type: MongoDBUpdateOne
     connectionId:
       _module.connectionId: notifications-collection

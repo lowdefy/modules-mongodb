@@ -88,13 +88,15 @@ items: # one notification per item (or `item`, a single object)
 
 Per item the pipeline: mints the record id → `RenderNotification` (interpolates and renders the app's template; `{ pageId, urlQuery }` links resolve to landing URLs `{server_url}/{link page}?_id=<record>&option=<dataPath>`) → inserts the record — **before** sending, so the dedup key is claimed and concurrent dispatches cannot double-send (duplicate key → skip) → sends over `notifications-email` (or `notifications-email-sendgrid` when `transport: sendgrid`) → marks `sent` + `email_result`. A send failure never fails the dispatch: the record stays `sent: false` with `send_attempts` bumped and `last_attempt` set, ready for a drain retry.
 
-The typical `send_routine` is one aggregation per event type that shapes items (recipient contact embed, template data, links) followed by a `CallApi` to `dispatch-notifications`. (The demo app's `apps/demo/modules/notifications/send-routine.yaml` shows the shaping half with an inbox-only `$merge`; a dispatch-pipeline routine replaces the `$merge` with the `CallApi`.)
+The typical `send_routine` is one aggregation per event type that shapes items (recipient contact embed, template data, links) followed by a `CallApi` to `dispatch-notifications`. (The demo app's `apps/demo/modules/notifications/send-routine.yaml` shows the shaping half with an inbox-only `MongoDBInsertMany`; a dispatch-pipeline routine replaces the insert with the `CallApi`.)
 
 ## Drain retry
 
 `drain-notifications` (exported InternalApi) re-sends records left at `sent: false` by a failed send. Records store their render outputs, so a retry sends the stored email without re-rendering. Payload (all optional): `max_attempts` (default 5) — records at or past this many failed attempts are left alone; `limit` (default 50) — max records per run, oldest attempt first.
 
 Each record is claimed with an optimistic lock (an update conditional on the `last_attempt` value the drain read) before sending, so overlapping drain runs cannot double-send. Only records with at least one failed attempt (`send_attempts >= 1`) drain — a record whose first send is still in flight is never raced, and legacy (Lambda-era) records, which lack the field, are never picked up.
+
+Under `policy: tenant` the drain reads unsent records across organizations and retries each one bound to the record's `organization_id` (a `CallApi` with `organization`), so the claim and the send bookkeeping keep the tenant wall and their change-log rows carry the record's organization. Lowdefy accepts that binding only in a trusted system run, so call the drain from a schedule; called from a signed-in caller's routine, the retry of a record that carries an `organization_id` is refused. This needs a Lowdefy version whose `CallApi` takes `organization`.
 
 The module ships no schedule of its own — apps choose the cadence with a small cron-only endpoint:
 
