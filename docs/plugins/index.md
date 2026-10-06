@@ -21,6 +21,7 @@ Custom Lowdefy blocks, actions, and connections used by the modules in this repo
 | [FileManager](file-manager.md)             | `container`       | Drag-drop S3 upload with thumbnails, paste-to-upload, optional metadata form, download, and delete. Backs the `files` module.                                                      |
 | [FloatingPanel](floating-panel.md)         | `container`       | Intercom-style corner launcher + floating panel over a `pointer-events: none` wrapper — the page stays clickable. Backs the `ai-assistant` module.                                 |
 | [SmartDescriptions](smart-descriptions.md) | `display`         | Antd `Descriptions` view with auto type detection from the data — no schema required. Use `DataDescriptions` instead when you need explicit grouping.                              |
+| [SupportScreenshot](support-screenshot.md) | `display`         | Take screenshot button: draws the visible page to a PNG with passwords and marked fields blanked, lets the user blur or crop it, and uploads it to S3.                             |
 | [WorkflowProgress](workflow-progress.md)   | `display`         | Collapsible per-workflow sections of grouped, status-colored action buttons — a presentation variant of `ActionSteps`. Backs the workflows module's `workflow-progress` component. |
 
 ## `FetchRequest` action

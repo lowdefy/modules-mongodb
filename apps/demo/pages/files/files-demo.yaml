@@ -13,6 +13,26 @@ _ref:
       - home: true
         icon: home
       - label: Files
+    requests:
+      - id: support_screenshot_policy
+        type: AwsS3PresignedPostPolicy
+        connectionId: files/files-bucket
+        payload:
+          name:
+            _event: file.name
+        properties:
+          key:
+            _string.concat:
+              - files-demo/support-screenshot/
+              - _uuid: true
+              - /
+              - _payload: name
+          fields:
+            Content-Type: image/png
+          conditions:
+            - - content-length-range
+              - 1
+              - 10485760
     blocks:
       - id: intro
         type: Paragraph
@@ -377,6 +397,86 @@ _ref:
                   on:
                     name:
                       _state: held_upload.name
+
+      # ── support screenshot ──────────────────────────────────────────────
+      - id: support_screenshot_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: SupportScreenshot
+      - id: support_screenshot_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            Takes a screenshot of this page and uploads it to the files bucket.
+            The password below and the box marked `data-support-mask` show as
+            solid grey boxes in the screenshot, and the badge passed in
+            `hideSelectors` is left out of it. In the editor, Blur blurs each box
+            you drag and Crop keeps only the box you drag.
+      - id: support_screenshot_row
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: support_demo_password
+            type: PasswordInput
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Password
+          - id: support_demo_masked
+            type: Html
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              html: >-
+                <div data-support-mask style="padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 6px">
+                Account number: 4000 1234 5678 9010</div>
+          - id: support_demo_hidden
+            type: Html
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              html: >-
+                <div class="support-demo-hidden" style="display: inline-block; padding: 8px 12px; background: #ff00ff; color: #fff; border-radius: 6px">
+                Not in the screenshot</div>
+      - id: support_screenshot
+        type: SupportScreenshot
+        properties:
+          s3PostPolicyRequestId: support_screenshot_policy
+          hideSelectors:
+            - .support-demo-hidden
+        events:
+          onUse:
+            - id: set_last_screenshot
+              type: SetState
+              params:
+                support_last_screenshot:
+                  _event: file
+            - id: screenshot_uploaded
+              type: DisplayMessage
+              params:
+                status: success
+                content:
+                  _nunjucks:
+                    template: "Uploaded {{ file.key }}"
+                    on:
+                      file:
+                        _event: file
+          onError:
+            - id: screenshot_failed
+              type: DisplayMessage
+              params:
+                status: error
+                content:
+                  _event: message
 
       # ── file-list ───────────────────────────────────────────────────────
       - id: file_list_divider
