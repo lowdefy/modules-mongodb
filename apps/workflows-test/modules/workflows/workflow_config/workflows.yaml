@@ -12,3 +12,4 @@
 - _ref: modules/workflows/workflow_config/custom-action/custom-action.yaml
 - _ref: modules/workflows/workflow_config/knob-behaviors/knob-behaviors.yaml
 - _ref: modules/workflows/workflow_config/wide-layout/wide-layout.yaml
+- _ref: modules/workflows/workflow_config/path-params/path-params.yaml

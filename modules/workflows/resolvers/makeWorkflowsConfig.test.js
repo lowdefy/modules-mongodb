@@ -42,6 +42,40 @@ test("makeWorkflowsConfig: an explicit id_query_key flows through verbatim", () 
   expect(out.entity.id_query_key).toBe("lead_id");
 });
 
+test("makeWorkflowsConfig: with id_path_key set, id_query_key takes no default", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, id_path_key: "lead_id" },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.entity.id_path_key).toBe("lead_id");
+  expect("id_query_key" in out.entity).toBe(false);
+});
+
+test("makeWorkflowsConfig: id_path_key and an explicit id_query_key both flow through", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: {
+      ...validWorkflow.entity,
+      id_path_key: "lead_id",
+      id_query_key: "_id",
+    },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.entity.id_path_key).toBe("lead_id");
+  expect(out.entity.id_query_key).toBe("_id");
+});
+
+test("makeWorkflowsConfig: rejects an empty entity.id_path_key when present", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, id_path_key: "" },
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /entity\.id_path_key must be a non-empty string when present/,
+  );
+});
+
 test("makeWorkflowsConfig: an unknown entity field survives the wholesale carry", () => {
   const workflow = {
     ...validWorkflow,
@@ -1374,6 +1408,57 @@ test("validateTrackerStartLink: full shape (pageId + urlQuery with sentinels and
   });
 });
 
+test("validateTrackerStartLink: pathParams with sentinels and a static string passes and flows through", () => {
+  const wf = workflowWithTracker({
+    child_workflow_type: "device-installation",
+    start_link: {
+      pageId: "ticket-new",
+      pathParams: { entity_id: true, space: "support" },
+      urlQuery: { action_id: true },
+    },
+  });
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [wf, deviceInstallationStub],
+  });
+  expect(out.actions[0].tracker.start_link).toEqual({
+    pageId: "ticket-new",
+    pathParams: { entity_id: true, space: "support" },
+    urlQuery: { action_id: true },
+  });
+});
+
+test("validateTrackerStartLink: rejects pathParams that is not an object", () => {
+  const wf = workflowWithTracker({
+    child_workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", pathParams: ["entity_id"] },
+  });
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
+  ).toThrow(/tracker\.start_link\.pathParams must be a plain object/);
+});
+
+test("validateTrackerStartLink: rejects pathParams with a static string on reserved key entity_id", () => {
+  const wf = workflowWithTracker({
+    child_workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", pathParams: { entity_id: "foo" } },
+  });
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
+  ).toThrow(
+    /tracker\.start_link\.pathParams\.entity_id is a reserved sentinel key/,
+  );
+});
+
+test("validateTrackerStartLink: rejects pathParams with a non-string static", () => {
+  const wf = workflowWithTracker({
+    child_workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", pathParams: { space: true } },
+  });
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
+  ).toThrow(/tracker\.start_link\.pathParams\.space must be a string/);
+});
+
 test("validateTrackerStartLink: minimal shape (pageId only, no urlQuery) passes", () => {
   const wf = workflowWithTracker({
     child_workflow_type: "device-installation",
@@ -1436,7 +1521,7 @@ test("validateTrackerStartLink: rejects unknown key — specifically title:", ()
   ).toThrow(/tracker\.start_link has unknown key "title"/);
   expect(() =>
     makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
-  ).toThrow(/only pageId and urlQuery are allowed/);
+  ).toThrow(/only pageId, urlQuery and pathParams are allowed/);
 });
 
 test("validateTrackerStartLink: rejects start_link that is a string", () => {

@@ -32,6 +32,7 @@
 #                          else the type.
 #   - entity_page_id       operator → the entity (view) page id (entity_link.pageId).
 #   - entity_url_query     operator → the entity deep-link query (entity_link.urlQuery).
+#   - entity_path_params   operator → the entity page's path values (entity_link.pathParams).
 #   - workflow_id          operator → the parent workflow id (for the overview link).
 #   - workflow_title       baked string — the workflow-title label.
 #   - action_label         baked string — the current action's title (no link).
@@ -67,6 +68,8 @@ _build.array.concat:
             _var: entity_title
       pageId:
         _var: entity_page_id
+      pathParams:
+        _var: entity_path_params
       urlQuery:
         _var: entity_url_query
   # Workflow — links to the workflow-overview page (D9).

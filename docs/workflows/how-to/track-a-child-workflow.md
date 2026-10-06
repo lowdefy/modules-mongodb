@@ -59,7 +59,7 @@ Key fields:
 - `tracker.start_link.urlQuery.action_id: true` — substituted with the tracker action's `_id` at render time. The child-creation page passes this to `start-workflow` as `parent_action_id`.
 - `tracker.start_link.urlQuery.entity_id: true` — substituted with the parent workflow's entity `_id` at render time. Use this to prefill the child entity's parent reference.
 
-`action_id: true` and `entity_id: true` are the two reserved `urlQuery` keys that receive runtime substitution. Any other key is passed through verbatim.
+`action_id: true` and `entity_id: true` are the two reserved `urlQuery` keys that receive runtime substitution. Any other key is passed through verbatim. When the child-creation page has a path placeholder named `action_id` or `entity_id`, put the sentinel under `start_link.pathParams` instead; it takes the same reserved keys.
 
 ### 2. Add the tracker to the workflow's `starting_actions`
 

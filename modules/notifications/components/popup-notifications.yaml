@@ -159,5 +159,9 @@ blocks:
                   params:
                     pageId:
                       _state: popup_notifications.$.links.button.pageId
+                    pathParams:
+                      _state:
+                        key: popup_notifications.$.links.button.pathParams
+                        default: {}
                     urlQuery:
                       _state: popup_notifications.$.links.button.urlQuery

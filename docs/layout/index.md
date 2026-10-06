@@ -59,6 +59,24 @@ _ref:
 
 See `apps/demo/modules/layout/vars.yaml` for a worked example.
 
+## Path placeholders
+
+Pass `path` to serve the page at a URL pattern instead of its id. Each `{name}` segment is a value the page reads with `_path_params`, and links to the page fill it with `pathParams`. A `path` that starts with a placeholder must be quoted in YAML. Leave `path` out to serve the page at its id.
+
+```yaml
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: ticket
+    path: tickets/{ticket_id}
+    title:
+      _path_params: ticket_id
+    blocks: [...]
+```
+
+`apps/demo/pages/path-params-demo/path-params-demo.yaml` is a worked example, opened from notification links.
+
 ## Per-page logo
 
 A page can show its own header logo by passing `logo` to the `page` component. It is forwarded to the page block's `logo` property, so it takes `{ src, srcMobile, alt }`, plus `breakpoint` for `header-menu` and `sider-menu` or `style` for `sidebar`. Pages that leave it unset show the public-folder logo.

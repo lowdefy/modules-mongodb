@@ -71,6 +71,8 @@ Two vars point the engine at the app's collections. Both default to `null` on th
 - **`actions_collection`** (default `null` → engine falls back to `actions`) — the actions collection the timeline joins to enrich events with action cards. Enrichment shows up wherever events carry `action_ids`; the join is inert when they don't.
 - **`contacts_collection`** (default `null` → engine falls back to `user-contacts`) — the contacts collection joined to resolve each event author's avatar (`created.user.id` → `user_id`). It falls back to author initials when an author has no matching contact, so it only ever adds an avatar and never breaks rendering.
 
+- **`contact_page_id`** (default empty) — the page id of the contact page that an event's avatar, its timestamp and an `@mention` in a note link to, such as `contacts/view`. **Breaking:** it replaces the `contact_page_url` URL template. The contact id travels in the URL query as `contact_id_query_key` (default `_id`), in a path parameter named by `contact_id_path_key` when the page has a `path` like `contacts/{contact_id}`, or both. Leave `contact_page_id` empty to render them without a link.
+
 ### Worked example — turn on enrichment for the whole app
 
 ```yaml

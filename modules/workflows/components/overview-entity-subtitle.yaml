@@ -6,15 +6,16 @@
 # thing no other element on the page does: the entity's own id, linked straight
 # to its record.
 #
-#   C-00042            →  /companies/view?_id=C-00042
+#   C-00042            →  the entity's view page, from entity_link
 #
 # Deliberately the id alone, with no type prefix: the eyebrow directly above
 # already reads "{entity type}: {entity name}" (overview-entity-eyebrow.yaml), so
 # labelling it here would state the same thing twice in one title block.
 #
-# The href is hand-built from entity_link.{pageId,urlQuery} because `description`
-# is a string var the title-block pipes through `| safe`; a real Link block can't
-# go there (the breadcrumb above carries that). The id stays autoescaped.
+# An HTML page link (`data-page-id`) built from entity_link.{pageId,pathParams,
+# urlQuery}, because `description` is a string var the title-block pipes through
+# `| safe`; a real Link block can't go there (the breadcrumb above carries that).
+# Lowdefy turns it into the page's URL. The id stays autoescaped.
 #
 # Renders null until the API response lands, and null when the workflow declares
 # no `entity:` block at all (entity_link is then null) — the title-block simply
@@ -28,18 +29,9 @@ _if:
   else:
     _nunjucks:
       template: >-
-        <a href="{{ href }}">{{ id }}</a>
+        <a data-page-id="{{ link.pageId }}" data-path-params="{{ (link.pathParams or {}) | dump }}" data-url-query="{{ (link.urlQuery or {}) | urlencode }}">{{ id }}</a>
       on:
         id:
           _state: workflow.entity.id
-        href:
-          _js:
-            args:
-              link:
-                _state: workflow.entity_link
-            fn: |
-              const link = args.link || {};
-              const query = Object.entries(link.urlQuery || {})
-                .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-                .join('&');
-              return `/${link.pageId}${query ? `?${query}` : ''}`;
+        link:
+          _state: workflow.entity_link

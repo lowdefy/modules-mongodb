@@ -47,7 +47,7 @@ App code triggers notifications identically in both worlds: log an event, then `
 ## Migrating one type
 
 1. **Add the template** to the app's `notifications:` config section (subject/title/message/button), replacing the Lambda's template config for that type.
-2. **Add a `send_routine` branch** for the type: `$match` the event type, embed the recipient contact, project the dedup `key`, template data, and `{ pageId, urlQuery }` links, then `CallApi` `dispatch-notifications`. See [the dispatch pipeline](../index.md#the-dispatch-pipeline).
+2. **Add a `send_routine` branch** for the type: `$match` the event type, embed the recipient contact, project the dedup `key`, template data, and `{ pageId, pathParams?, urlQuery?, input? }` links, then `CallApi` `dispatch-notifications`. See [the dispatch pipeline](../index.md#the-dispatch-pipeline).
 3. **Remove the type from the Lambda's job registry** in the same release — this is the ownership handover; skipping it double-sends.
 4. Add the type to the app's `event_types` enum additions for inbox badges.
 

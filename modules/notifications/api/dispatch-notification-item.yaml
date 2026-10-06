@@ -7,7 +7,7 @@
 #   key: string                    optional — deduplication key
 #   send_email: boolean            optional — default true; false = inbox only
 #   cc, bcc: [string]              optional
-#   links.*, <template dataKeys>   optional — { pageId, urlQuery } page links
+#   links.*, <template dataKeys>   optional — { pageId, pathParams?, urlQuery?, input? } page links
 #   ...everything else is template data
 id: dispatch-notification-item
 type: InternalApi
@@ -46,7 +46,7 @@ routine:
 
   # Render subject/title/preview/html/text from the app's notifications:
   # config. Page links in the item resolve to landing URLs:
-  # <server_url><basePath><link page>?_id=<record_id>&option=<dotpath>
+  # <server_url><basePath>/<link page path>?_id=<record_id>&option=<dotpath>
   - id: render
     type: RenderNotification
     properties:
@@ -57,9 +57,7 @@ routine:
       serverUrl:
         _module.var: server_url
       landingPage:
-        _string.concat:
-          - "/"
-          - _module.pageId: link
+        _module.pageId: link
       recordId:
         _state: record_id
 
@@ -113,7 +111,7 @@ routine:
               _step: render.html
             text:
               _step: render.text
-            # Store the ORIGINAL item — the link page reads { pageId, urlQuery }
+            # Store the ORIGINAL item — the link page reads { pageId, pathParams, urlQuery }
             # targets back out of data at the ?option dot-path. Never store the
             # render result's data (its links point back at the landing page).
             data:

@@ -50,6 +50,8 @@ _array.concat:
             _state: workflow.entity_link.title
       pageId:
         _state: workflow.entity_link.pageId
+      pathParams:
+        _state: workflow.entity_link.pathParams
       urlQuery:
         _state: workflow.entity_link.urlQuery
   # Page-specific terminal crumbs (workflow [/ group]).

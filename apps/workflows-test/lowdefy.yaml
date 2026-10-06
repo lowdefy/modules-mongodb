@@ -35,3 +35,6 @@ pages:
   - _ref: pages/thing-view.yaml
   # App-owned working page for the custom-action workflow (Part 28).
   - _ref: pages/custom-thing-review.yaml
+  # Entity page and link target of the path-params workflow (page paths).
+  - _ref: pages/thing-at-path.yaml
+  - _ref: pages/path-link-target.yaml

@@ -143,6 +143,8 @@ _ref:
             _state: current_action.entity_link.pageId
           entity_url_query:
             _state: current_action.entity_link.urlQuery
+          entity_path_params:
+            _state: current_action.entity_link.pathParams
           workflow_id:
             _state: current_action.workflow_id
           workflow_title:
@@ -382,6 +384,8 @@ _ref:
                               _state: current_action.entity_link.pageId
                             entity_url_query:
                               _state: current_action.entity_link.urlQuery
+                            entity_path_params:
+                              _state: current_action.entity_link.pathParams
                             success_message: Changes requested.
                   onClose:
                     - id: reset_comment
@@ -582,6 +586,8 @@ _ref:
                               _state: current_action.entity_link.pageId
                             entity_url_query:
                               _state: current_action.entity_link.urlQuery
+                            entity_path_params:
+                              _state: current_action.entity_link.pathParams
                             success_message: Marked as not required.
               - id: button_submit
                 type: Button
@@ -630,6 +636,8 @@ _ref:
                               _state: current_action.entity_link.pageId
                             entity_url_query:
                               _state: current_action.entity_link.urlQuery
+                            entity_path_params:
+                              _state: current_action.entity_link.pathParams
                             success_message: Submitted successfully.
               - id: button_request_changes
                 type: Button
@@ -708,6 +716,8 @@ _ref:
                               _state: current_action.entity_link.pageId
                             entity_url_query:
                               _state: current_action.entity_link.urlQuery
+                            entity_path_params:
+                              _state: current_action.entity_link.pathParams
                             success_message: Approved.
               - id: button_resolve_error
                 type: Button
@@ -756,6 +766,8 @@ _ref:
                               _state: current_action.entity_link.pageId
                             entity_url_query:
                               _state: current_action.entity_link.urlQuery
+                            entity_path_params:
+                              _state: current_action.entity_link.pathParams
                             success_message: Resolved.
       # Universal-fields edit modal — opened by the title-bar ✎ chip. Sourced from
       # the loaded action; the Update calls {workflow_type}-update-fields and then

@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import entityPageLink from "../../shared/render/entityPageLink.js";
 import {
   computeAllowed,
   collapseLink,
@@ -184,8 +185,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     const entityConfig = wfConfig?.entity;
     const entity_link = entityConfig
       ? {
-          pageId: entityConfig.page_id,
-          urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
+          ...entityPageLink(entityConfig, wfDoc.entity.id),
           title: entityConfig.title ?? null,
         }
       : null;

@@ -122,6 +122,16 @@ _ref:
           - _ref:
               path: pages/components/explore_card.yaml.njk
               vars:
+                id: path_params
+                icon: Link
+                title: Path parameters
+                description: A page whose address carries its item id, opened from notification links.
+                pageId: path-params-demo
+                pathParams:
+                  item_id: item-1
+          - _ref:
+              path: pages/components/explore_card.yaml.njk
+              vars:
                 id: user_admin
                 icon: users
                 title: User Admin

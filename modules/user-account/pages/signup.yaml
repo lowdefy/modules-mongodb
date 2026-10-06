@@ -542,4 +542,8 @@ _ref:
             - _state: signup_view
             - form
         properties:
-          html: Already have an account? <a href="login">Sign in</a>
+          html:
+            _string.concat:
+              - 'Already have an account? <a data-page-id="'
+              - _module.pageId: login
+              - '">Sign in</a>'

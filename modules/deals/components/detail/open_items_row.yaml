@@ -166,6 +166,8 @@ blocks:
               params:
                 pageId:
                   _state: open_items.$.link_page_id
+                pathParams:
+                  _state: open_items.$.link_path_params
                 urlQuery:
                   _state: open_items.$.link_url_query
         blocks:

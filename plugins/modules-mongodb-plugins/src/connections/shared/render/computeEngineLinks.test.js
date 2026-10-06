@@ -194,6 +194,33 @@ test("tracker start_link: edit emitted at action-required with null child + decl
   expect(links.demo.view).toBeNull();
 });
 
+test("tracker start_link: pathParams sentinels substituted", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: {
+      _id: "action-abc",
+      entity: { connection_id: "tickets", id: "entity-xyz" },
+      kind: "tracker",
+      status: [{ stage: "action-required" }],
+      child_workflow_id: null,
+      access: { demo: { edit: true } },
+      tracker: {
+        workflow_type: "device-installation",
+        start_link: {
+          pageId: "ticket-new",
+          pathParams: { entity_id: true },
+          urlQuery: { action_id: true },
+        },
+      },
+    },
+  });
+  expect(links.demo.edit).toEqual({
+    pageId: "ticket-new",
+    pathParams: { entity_id: "entity-xyz" },
+    urlQuery: { action_id: "action-abc" },
+  });
+});
+
 test("tracker start_link: edit null when edit verb not declared", () => {
   const links = computeEngineLinks({
     entry_id: ENTRY,
@@ -428,6 +455,32 @@ test("custom: entity_id sentinel substituted from action.entity.id", () => {
   expect(links.demo.edit.urlQuery).toEqual({
     action_id: "c1",
     entity_id: "ent-9",
+  });
+});
+
+test("custom: pathParams sentinels substituted, statics verbatim, on link and view_link", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction("action-required", {
+      link: {
+        pageId: "contract-review",
+        pathParams: { action_id: true, space: "legal" },
+      },
+      view_link: {
+        pageId: "contract-view",
+        pathParams: { entity_id: true },
+        urlQuery: { action_id: true },
+      },
+    }),
+  });
+  expect(links.demo.edit).toEqual({
+    pageId: "contract-review",
+    pathParams: { action_id: "c1", space: "legal" },
+  });
+  expect(links.demo.view).toEqual({
+    pageId: "contract-view",
+    pathParams: { entity_id: "ent-9" },
+    urlQuery: { action_id: "c1" },
   });
 });
 

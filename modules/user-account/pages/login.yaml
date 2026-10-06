@@ -901,5 +901,9 @@ _ref:
           - id: login_footer
             type: Html
             properties:
-              html: Need an account? <a href="signup">Create one</a>
+              html:
+                _string.concat:
+                  - 'Need an account? <a data-page-id="'
+                  - _module.pageId: signup
+                  - '">Create one</a>'
         else: []

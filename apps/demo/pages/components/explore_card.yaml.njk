@@ -6,6 +6,7 @@
      title       (string, required) — module / section name.
      description (string, required) — one-line summary.
      pageId      (string, required) — Link target page id.
+     pathParams  (object, optional) — Link target path values, for a page with a path placeholder.
      note        (string, optional) — muted footnote (e.g. "Demonstrates the Workflows module").
 #}
 id: {{ id }}_card
@@ -19,6 +20,10 @@ events:
       params:
         pageId:
           _var: pageId
+        pathParams:
+          _var:
+            key: pathParams
+            default: {}
 blocks:
   _build.array.concat:
     - - id: {{ id }}_header

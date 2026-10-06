@@ -1,6 +1,6 @@
 import React from "react";
 
-function renderArray(structure, config, Icon, methods, properties) {
+function renderArray(structure, config, Icon, Link, methods, properties) {
   const { value, fieldType, enumMap } = structure;
 
   // Empty array
@@ -13,6 +13,7 @@ function renderArray(structure, config, Icon, methods, properties) {
     return config.renderArray({
       value,
       Icon,
+      Link,
       methods,
       properties,
       fieldType,
@@ -27,6 +28,7 @@ function renderArray(structure, config, Icon, methods, properties) {
       return config.render({
         value: value[0],
         Icon,
+        Link,
         methods,
         properties,
         enumMap,
@@ -41,6 +43,7 @@ function renderArray(structure, config, Icon, methods, properties) {
             {config.render({
               value: item,
               Icon,
+              Link,
               methods,
               properties,
               enumMap,

@@ -55,7 +55,7 @@ blocks:
                   {% set parts = name.split(' ') %}
                   {% set initials = '' %}
                   {% for p in parts %}{% if p.length > 0 and initials.length < 2 %}{% set initials = initials + p[0] %}{% endif %}{% endfor %}
-                  <a href="/{{ contact_detail_page }}?_id={{ contact._id }}" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: inherit; text-decoration: none;">
+                  <a data-page-id="{{ contact_detail_page }}" data-url-query="_id={{ contact._id | urlencode }}" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: inherit; text-decoration: none;">
                     <div style="width: 26px; height: 26px; border-radius: 50%; background: {{ bg }}; color: {{ color }}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0;">{{ initials | upper }}</div>
                     <div style="flex: 1; min-width: 0;">
                       <div style="font-size: 12px; font-weight: 600; color: var(--ant-color-text); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ name }}</div>

@@ -131,7 +131,7 @@ The group's effective status is derived from its actions in this order:
 `onActionClick` lets a host page handle a clicked action in-context (e.g. open a check action in a modal) rather than navigating to the action's link.
 
 - **When wired**, clicking a linked action row fires `onActionClick` with the clicked `action` object and does not navigate.
-- **When not wired** (the default), each action row is a `Link` to its server-resolved `action.link` (`pageId` / `urlQuery`).
+- **When not wired** (the default), each action row is a `Link` to its server-resolved `action.link` (`pageId` / `pathParams` / `urlQuery`).
 - **Linkless rows stay inert in both modes.** A row whose `action.link` is missing or has `disabled: true` never fires the event.
 
 Group-title links (`actionGroupConfig[group].link`) are unaffected; `onActionClick` is per-action, not per-group.
