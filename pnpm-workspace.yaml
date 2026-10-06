@@ -2,7 +2,6 @@ packages:
   - "apps/*"
   - "plugins/*"
   - "modules/*"
-  - "apps/*/.lowdefy/*"
 
 # Force a single dayjs copy across the tree. antd@6 resolves dayjs ^1.11.11
 # (→ 1.11.19) while @lowdefy/blocks-antd pins dayjs 1.11.20 exactly, so pnpm
