@@ -65,3 +65,56 @@ _ref:
                       on:
                         ids:
                           _state: user-multi-selector
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: ChatThread
+            blocks:
+              # Two author types (reporter is own, team is the other side),
+              # an image attachment, a file chip and a chip with no url.
+              - id: demo_chat_thread
+                type: ChatThread
+                properties:
+                  ownAuthorType: reporter
+                  maxHeight: 360
+                  emptyText: No messages yet
+                  messages:
+                    - _id: m1
+                      author_type: reporter
+                      author:
+                        name: Ada Lovelace
+                      body: The export button on the reports page does nothing.
+                      seq: "2026-01-12T09:02:00.000Z"
+                    - _id: m2
+                      author_type: reporter
+                      author:
+                        name: Ada Lovelace
+                      body: Here is what I see.
+                      seq: "2026-01-12T09:03:00.000Z"
+                      attachments:
+                        - name: reports-page.svg
+                          mime: image/svg+xml
+                          key: demo/m2/reports-page.svg
+                          url: "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'240'%20height%3D'140'%3E%3Crect%20width%3D'240'%20height%3D'140'%20fill%3D'%23ede9fe'%2F%3E%3Crect%20x%3D'16'%20y%3D'16'%20width%3D'120'%20height%3D'14'%20rx%3D'4'%20fill%3D'%237c3aed'%2F%3E%3Crect%20x%3D'16'%20y%3D'44'%20width%3D'208'%20height%3D'80'%20rx%3D'6'%20fill%3D'white'%2F%3E%3C%2Fsvg%3E"
+                    - _id: m3
+                      author_type: team
+                      author:
+                        name: Grace Hopper
+                        avatar_color: green
+                      body: Thanks. Could you send the file you were exporting? The steps are at https://example.com/help/export
+                      seq: "2026-01-12T10:15:00.000Z"
+                    - _id: m4
+                      author_type: reporter
+                      author:
+                        name: Ada Lovelace
+                      body: Attached.
+                      seq: "2026-01-13T08:40:00.000Z"
+                      attachments:
+                        - name: quarterly-report.pdf
+                          mime: application/pdf
+                          key: demo/m4/quarterly-report.pdf
+                          url: https://example.com/quarterly-report.pdf
+                        - name: removed-file.pdf
+                          mime: application/pdf
+                          url: null
