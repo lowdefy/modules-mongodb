@@ -79,6 +79,17 @@ describe("verifySignature", () => {
     ).toBe(false);
   });
 
+  test("passes 300 seconds in the future and fails at 301", () => {
+    const at300 = String(Number(NOW_SECONDS) + 300);
+    const at301 = String(Number(NOW_SECONDS) + 301);
+    expect(
+      check({ timestamp: at300, signature: sign(SECRET, at300, BODY) }),
+    ).toBe(true);
+    expect(
+      check({ timestamp: at301, signature: sign(SECRET, at301, BODY) }),
+    ).toBe(false);
+  });
+
   test("fails on a missing or non-numeric timestamp", () => {
     for (const timestamp of [undefined, null, "", "abc", "12.5", "-5", " 1"]) {
       expect(

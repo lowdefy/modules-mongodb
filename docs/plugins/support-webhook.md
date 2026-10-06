@@ -59,7 +59,7 @@ The connection holds no data, so the tenant wall never scopes it.
 Returns `{ verified: true }` when both hold, otherwise `{ verified: false }`:
 
 - **A signature matches.** Any `sha256=<hex>` entry equals the HMAC-SHA256, in hex, of `"{timestamp}.{rawBody}"` keyed with `secret`. Entries are compared in constant time. Pelican sends one entry per live secret, newest first, so while a rotated secret's old value is still live, a deployment holding either value verifies.
-- **The timestamp is recent.** It is no more than 300 seconds old, so a captured delivery cannot be replayed later. A clock more than five minutes behind Pelican's fails every delivery.
+- **The timestamp is recent.** It is within 300 seconds of the server's clock, either side, so a captured delivery cannot be replayed later. A clock more than five minutes off Pelican's, ahead or behind, fails every delivery.
 
 It never throws on bad input. A missing header, a non-numeric timestamp, an entry without `sha256=`, hex of the wrong length and a missing secret all fail verification.
 

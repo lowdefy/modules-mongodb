@@ -1,8 +1,8 @@
 /**
  * SupportWebhookVerify — passes a delivery when any `sha256=<hex>` entry in
  * the Pelican-Signature header is the HMAC-SHA256 of "{timestamp}.{rawBody}"
- * with the connection's secret, and the Pelican-Timestamp (Unix seconds) is no
- * more than five minutes old. Pelican sends one entry per live secret, so a
+ * with the connection's secret, and the Pelican-Timestamp (Unix seconds) is
+ * within five minutes of now, either side. Pelican sends one entry per live secret, so a
  * rotated secret keeps verifying while the old one is still listed.
  *
  * Never throws on bad input: a malformed or missing header is a failed
@@ -27,7 +27,7 @@ export function verifySignature({
   if (typeof signature !== "string" || signature.length === 0) return false;
 
   const age = Math.floor(now / 1000) - Number(timestamp);
-  if (age > MAX_AGE_SECONDS) return false;
+  if (Math.abs(age) > MAX_AGE_SECONDS) return false;
 
   const expected = createHmac("sha256", secret)
     .update(`${timestamp}.${rawBody}`)
