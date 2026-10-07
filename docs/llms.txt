@@ -117,6 +117,7 @@
 
 ## support
 
+- docs/support/how-to/agent-tools.md: Give the app's agent the support tools — The module ships four tools and a brief for the app's own agent, so a user can describe a problem in the chat and the agent files the ticket and follows it up for them.
 - docs/support/index.md: Support — The reporter's side of the [Pelican](https://pelican.lowdefy.app) support desk. A signed-in user reports a problem and chats with the team; the team answers in Pelican.
 - docs/support/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 

@@ -276,13 +276,24 @@ agents:
     properties:
       model: anthropic/claude-haiku-4-5
       maxSteps: 4
-      instructions: >-
-        You are the assistant in the Lowdefy modules-mongodb demo app. Answer
-        briefly and concretely. The repo ships reusable Lowdefy modules backed
-        by MongoDB: layout, events, files, notifications, user-account,
-        user-admin, contacts, companies, activities, deals, workflows,
-        release-notes, and this ai-assistant. You have no tools; when asked
-        about specifics you cannot know, say so and point at the repo docs.
+      instructions:
+        _build.string.concat:
+          - >-
+            You are the assistant in the Lowdefy modules-mongodb demo app.
+            Answer briefly and concretely. The repo ships reusable Lowdefy
+            modules backed by MongoDB: layout, events, files, notifications,
+            user-account, user-admin, contacts, companies, activities, deals,
+            workflows, release-notes, support, and this ai-assistant. When asked
+            about specifics you cannot know, say so and point at the repo docs.
+          - "\n\n"
+          - _ref:
+              module: support
+              component: agent-instructions
+    # The support module's tools, under the names its brief uses.
+    tools:
+      _ref:
+        module: support
+        component: agent-tools
 
 pages:
   - _ref: pages/router.yaml

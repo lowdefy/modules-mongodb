@@ -113,6 +113,14 @@ vars:
       { id, name }, or null. Sent as the ticket's `context.organization` and
       recorded on the copy. Null (the default) sends the session's active
       organisation, or null for a user with none.
+  chat_files_prefix:
+    default: null
+    description: >-
+      Runtime operator resolving to the storage key prefix of the caller's own
+      chat uploads, such as `_string.concat: [ai-assistant/, _user: id, /]`.
+      The agent tools send a file the user attached in the chat only when its
+      key starts with it, since the browser builds the chat request. Null (the
+      default) sends no chat files.
 
 exports:
   connections:
@@ -150,6 +158,27 @@ exports:
         list them newest first
     - id: mark-read
       description: Mark one of the user's tickets read
+    - id: agent-file-ticket
+      description: >-
+        Agent tool: file a ticket for the session user, with the images and
+        PDFs they attached in the chat
+    - id: agent-list-my-tickets
+      description: "Agent tool: the session user's tickets, lean"
+    - id: agent-read-ticket
+      description: "Agent tool: one of the session user's tickets with its thread"
+    - id: agent-post-message
+      description: >-
+        Agent tool: add a message to one of the session user's tickets, with
+        chat files not on it yet
+  components:
+    - id: agent-instructions
+      description: >-
+        Markdown brief for an app's agent that has the agent tools: when to file,
+        how to write a ticket up, follow-ups, and what a failed call means
+    - id: agent-tools
+      description: >-
+        The four agent tools, under the names the brief uses, for an agent's
+        tools list
 
 connections:
   - _ref: connections/support_pelican.yaml
@@ -164,6 +193,18 @@ api:
   - _ref: api/sync-ticket.yaml
   - _ref: api/sync-tickets.yaml
   - _ref: api/mark-read.yaml
+  - _ref: api/agent/agent-file-ticket.yaml
+  - _ref: api/agent/agent-list-my-tickets.yaml
+  - _ref: api/agent/agent-read-ticket.yaml
+  - _ref: api/agent/agent-post-message.yaml
+
+components:
+  - id: agent-instructions
+    component:
+      _ref: agent/instructions.md
+  - id: agent-tools
+    component:
+      _ref: agent/tools.yaml
 
 secrets:
   - name: MONGODB_URI
