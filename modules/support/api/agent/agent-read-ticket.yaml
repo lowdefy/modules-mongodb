@@ -1,0 +1,61 @@
+id: agent-read-ticket
+type: Api
+description: >-
+  Read one of the signed-in user's support tickets: its title, type, stage and
+  whole thread, each message as { from, author, at, text, files, deleted }. from
+  is reporter for the user's own messages and team for the team's; files are the
+  names of the files on the message; a deleted message has no text. Read it
+  before adding a message, so you carry on the thread, and to tell the user what
+  the team said. Reading marks the ticket read for the user. When Pelican could
+  not be reached, it answers what the app holds, with ok false and the error.
+payloadSchema:
+  type: object
+  additionalProperties: false
+  required:
+    - ticket
+  properties:
+    ticket:
+      type: string
+      minLength: 1
+      description: >-
+        The ticket's key, such as SUP-12, from earlier in this chat or from
+        listing the user's tickets.
+routine:
+  - id: sync_ticket
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId: sync-ticket
+      payload:
+        ticket:
+          _payload: ticket
+  - :set_state:
+      agent_view:
+        _step: sync_ticket.ticket.view
+  - :return:
+      ok:
+        _step: sync_ticket.ok
+      error:
+        _if_none:
+          - _step: sync_ticket.error
+          - null
+      ticket:
+        _js: |
+          const view = state('agent_view');
+          if (!view) return null;
+          return {
+            key: view.key,
+            title: view.title,
+            type: view.type,
+            stage: view.stage,
+            created: view.created,
+            updated: view.updated,
+            messages: (view.messages || []).map((message) => ({
+              from: message.from,
+              author: message.author ? message.author.name : null,
+              at: message.at,
+              text: message.deleted ? null : message.text,
+              files: message.deleted ? [] : (message.files || []).map((file) => file.name),
+              deleted: message.deleted === true,
+            })),
+          };

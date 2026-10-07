@@ -166,6 +166,7 @@ One document per ticket in `support-tickets`:
 | `organization`       | `{ id, name }` the user filed it from, or null. A ticket first stored from a list or a webhook has null.                   |
 | `read_at`            | When the user last had the thread open, or null.                                                                           |
 | `view`               | The reporter view Pelican returned: `id`, `key`, `title`, `type`, `version`, `stage`, `created`, `updated` and `messages`. |
+| `chat_files`         | Keys of the chat files the [agent tools](how-to/agent-tools.md) have sent on the ticket, so none goes twice.               |
 | `created`, `updated` | [Change stamps](../shared/change-stamps.md).                                                                               |
 
 **A ticket belongs to its reporter**, not to an organisation. The connection stands outside the tenant wall (`tenant: shared`), and every read and write is filtered by the session user's id: a user in two organisations sees all their tickets in one list, each marked with its organisation.
@@ -193,6 +194,8 @@ Each answers `{ ok: true, ... }` or `{ ok: false, error, ... }` and never fails 
 | `mark-read`     | `{ ticket }`                               | `{ ok: true }`. Marks the ticket read.                                                                                            |
 
 `ticket` is a ticket's id or its key.
+
+The app's own agent files and follows up tickets through four more endpoints: see [Give the app's agent the support tools](how-to/agent-tools.md).
 
 `create-ticket` and `post-message` check what the browser sent before Pelican is called: the type is one of the `types` var's values, the title is 1 to 120 characters, the message 1 to 4,000, there are at most five files, and each file key is under the user's own `support/{user id}/` prefix. A failed check answers a `fix` error. The server adds `app`, `environment`, `version` and `organization` to the ticket's context, over anything the browser sent for them.
 

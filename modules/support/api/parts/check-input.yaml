@@ -6,10 +6,14 @@
 #
 # Vars:
 #   ticket  true for a new ticket, which also checks the type and title
+#   input   the { type, title, message, files } to check; the payload by default
 - :set_state:
     check:
       input:
-        _payload: true
+        _var:
+          key: input
+          default:
+            _payload: true
       types:
         _module.var: types
       key_prefix:

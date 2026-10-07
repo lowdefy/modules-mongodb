@@ -13,3 +13,10 @@ app_version:
   _build.env:
     key: APP_VERSION
     default: null
+# Chat uploads go under ai-assistant/<user id>/ (modules/ai-assistant/attachment_requests.yaml),
+# so the support agent tools send only chat files under the caller's own prefix.
+chat_files_prefix:
+  _string.concat:
+    - ai-assistant/
+    - _user: id
+    - /

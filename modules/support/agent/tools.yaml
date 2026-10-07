@@ -1,0 +1,14 @@
+# The four support tools for an app's agent, under the names the brief
+# (instructions.md) uses.
+- name: support_file_ticket
+  endpointId:
+    _module.endpointId: agent-file-ticket
+- name: support_list_my_tickets
+  endpointId:
+    _module.endpointId: agent-list-my-tickets
+- name: support_read_ticket
+  endpointId:
+    _module.endpointId: agent-read-ticket
+- name: support_post_message
+  endpointId:
+    _module.endpointId: agent-post-message
