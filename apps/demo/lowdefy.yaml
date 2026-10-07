@@ -3,6 +3,8 @@ name: Module Demo App
 slug: demo
 
 cli:
+  # The script the Lowdefy hub starts the dev server with: secrets from .env.
+  devScript: ldf
   watch:
     - ../../modules/shared
 
@@ -143,15 +145,18 @@ auth:
         - user-admin/**
       customer-user-admin:
         - customer-user-admin/**
-  # The endpoint gate is required, not defence in depth. This entity declares
-  # neither `protected` nor `public`, so an endpoint matching no glob resolves
-  # `{ public: true }` and answers with no session at all — an unlisted admin
-  # instance hands its organization's members, emails and export to anyone. The
-  # write steps are floored separately by the engine against the caller's member
-  # row in the organization each step names; reads have no such floor.
+  # The endpoint gate is required, not defence in depth: an admin instance's
+  # endpoints answering without its role would hand its organization's members,
+  # emails and export to any signed-in user. The write steps are floored
+  # separately by the engine against the caller's member row in the
+  # organization each step names; reads have no such floor.
+  #
+  # Listing public endpoints makes every unlisted one need a session. The one
+  # public endpoint is Pelican's support webhook: it has no session, its verify
+  # gate checks the signature, and Lowdefy requires a webhook listed here.
   api:
-    protected:
-      - files-demo-upload-policy
+    public:
+      - support/webhook
     roles:
       user-admin:
         - user-admin/**

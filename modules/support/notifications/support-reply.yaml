@@ -1,0 +1,29 @@
+# A new team message on one of the user's tickets, in the app's bell and by
+# email. The webhook dispatches one per message, keyed on the message id.
+id: support-reply
+type: NotificationEmail
+properties:
+  subject: "New reply on {{ ticket_key }}: {{ ticket_title }}"
+  title: The support team replied
+  message: |
+    {{ author_name }} replied on your ticket "{{ ticket_title }}":
+
+    {{ preview }}
+  button:
+    label: View ticket
+testData:
+  ticket_key: ENC-42
+  ticket_title: The report page does not load
+  author_name: Ann
+  preview: Can you send a screenshot of the error?
+  contact:
+    _id: U-TEST
+    user_id: U-TEST
+    email: jane@example.com
+    profile:
+      name: Jane Doe
+  links:
+    button:
+      pageId: support/support
+      urlQuery:
+        ticket: ENC-42

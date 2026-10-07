@@ -43,6 +43,35 @@ Every deployment talks to production Pelican, the `pelican_url` default.
 
 Rotating either in Pelican keeps the old one working for a day, so redeploy with the new value within that day.
 
+### The webhook
+
+Pelican sends every change to one of the app's tickets to the module's `webhook` endpoint. In the deployment's support app in Pelican, set the webhook address to:
+
+```
+{app url}/api/endpoints/support/webhook
+```
+
+with `support` replaced by the module's entry id when it differs. The endpoint has no session, so list it in the app's `auth.api.public`; the build fails naming it otherwise:
+
+```yaml
+auth:
+  api:
+    public:
+      - support/webhook
+```
+
+Lowdefy keeps `auth.api.public` and `auth.api.protected` apart: an app that lists protected endpoints moves to listing public ones, and every endpoint it does not list then needs a session.
+
+The endpoint checks each delivery before anything runs. It passes when the `Pelican-Signature` header holds an HMAC of the delivery made with `SUPPORT_WEBHOOK_SECRET` and the `Pelican-Timestamp` is within five minutes of the server's clock; otherwise Lowdefy answers 401. While a rotated secret's old value is live, Pelican signs with both, so a deployment holding either passes. A test delivery from the support app's settings in Pelican answers 200 for a right address and secret and writes nothing; a wrong secret or a clock more than five minutes off answers 401.
+
+A deployment with no webhook address in Pelican refreshes a thread only when it opens and the list only when My tickets opens, and sends no reply notifications.
+
+### Reply notifications
+
+Each new team message, Pelican's own included, sends the user the module's `support-reply` notification, through the notifications module: in the app's bell and by email, with a button to the ticket on the support page. It goes even while the user has the thread open, since the server cannot know what a browser shows. Its key is `support-reply:{message id}`, so a repeated delivery sends nothing new; that needs the notifications module's unique index on `key`.
+
+The email goes to the address the app's auth user record holds for the user, never one from the webhook. The notification is sent in the organisation the ticket was filed from. A ticket the team logged, or one first stored from the list, has no organisation; in an app whose notifications sit behind the tenant wall, its replies show in the thread with no notification.
+
 ### Required indexes
 
 The module cannot create indexes. Create these on `support-tickets` with the app's index tooling (e.g. splice-actions):
@@ -194,6 +223,8 @@ Each answers `{ ok: true, ... }` or `{ ok: false, error, ... }` and never fails 
 | `mark-read`     | `{ ticket }`                               | `{ ok: true }`. Marks the ticket read.                                                                                            |
 
 `ticket` is a ticket's id or its key.
+
+`webhook` takes Pelican's deliveries, `{ event, at, delivery_id, user_id, ticket }`. Every ticket event (`ticket.created`, `ticket.message`, `ticket.message_deleted`, `ticket.stage`, `ticket.updated`) writes `ticket`, the reporter view, into the copy of the user `user_id` names, creating the row when there is none, so a ticket the team logs for a user shows in their list. A view no newer than the stored one changes nothing and still answers 200, so Pelican stops sending it. `ticket.message` also sends a [reply notification](#reply-notifications) for each team message the row did not have. To try it on a dev server, `apps/demo/scripts/support-webhook-check.mjs` posts signed deliveries and checks what they store.
 
 The app's own agent files and follows up tickets through four more endpoints: see [Give the app's agent the support tools](how-to/agent-tools.md).
 

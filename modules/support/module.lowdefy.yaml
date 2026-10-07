@@ -160,6 +160,14 @@ exports:
       description: >-
         Read-only view of the auth engine's organizations, for the name of the
         organisation a ticket is filed from
+    - id: support_webhook
+      description: >-
+        Checks a webhook delivery from Pelican was signed with the support
+        app's webhook secret
+    - id: support-users
+      description: >-
+        Read-only view of the auth engine's users, for the email a reply
+        notification goes to
   api:
     - id: create-ticket
       description: >-
@@ -184,6 +192,10 @@ exports:
         list them newest first
     - id: mark-read
       description: Mark one of the user's tickets read
+    - id: webhook
+      description: >-
+        Pelican's signed webhook: stores each ticket change in the copy and
+        notifies the user of new team messages. List it in auth.api.public
     - id: agent-file-ticket
       description: >-
         Agent tool: file a ticket for the session user, with the images and
@@ -220,10 +232,15 @@ pages:
 menus:
   - _ref: menu.yaml
 
+notifications:
+  - _ref: notifications/support-reply.yaml
+
 connections:
   - _ref: connections/support_pelican.yaml
   - _ref: connections/support_tickets.yaml
   - _ref: connections/support_organizations.yaml
+  - _ref: connections/support_webhook.yaml
+  - _ref: connections/support_users.yaml
 
 api:
   - _ref: api/create-ticket.yaml
@@ -233,6 +250,7 @@ api:
   - _ref: api/sync-ticket.yaml
   - _ref: api/sync-tickets.yaml
   - _ref: api/mark-read.yaml
+  - _ref: api/webhook.yaml
   - _ref: api/agent/agent-file-ticket.yaml
   - _ref: api/agent/agent-list-my-tickets.yaml
   - _ref: api/agent/agent-read-ticket.yaml
