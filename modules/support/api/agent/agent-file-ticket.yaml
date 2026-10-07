@@ -136,5 +136,7 @@ routine:
             _string.concat:
               - _step: send_ticket.ticket.view.stage
               - .label
+          default:
+            _step: send_ticket.ticket.view.stage
       files:
         _state: chat_file_names
