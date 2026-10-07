@@ -11,6 +11,30 @@ _ref:
     # A component gallery wants a bare header: drop the module-wide header
     # blocks (search, switcher) on this page only.
     header_blocks: []
+    requests:
+      # Fails on the server (unknown pipeline stage), so the SupportContext
+      # card can show a failed request in its error list.
+      - id: support_demo_failing_request
+        type: MongoDBAggregation
+        connectionId: demo-contacts
+        properties:
+          pipeline:
+            - $supportDemoNotAStage: {}
+    events:
+      # With ?support_demo_error=1, logs an error while the page initialises,
+      # before any block has rendered. The SupportContext snapshot still has it.
+      onInit:
+        - id: log_support_demo_error
+          type: SetState
+          params:
+            support_demo_logged:
+              _js:
+                fn: |
+                  if (String(args[0]) !== "1") return false;
+                  console.error("SupportContext demo: logged from onInit");
+                  return true;
+                args:
+                  - _url_query: support_demo_error
     blocks:
       - _ref:
           module: layout
@@ -65,3 +89,104 @@ _ref:
                       on:
                         ids:
                           _state: user-multi-selector
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: ChatThread
+            blocks:
+              # Two author types (reporter is own, team is the other side),
+              # an image attachment, a file chip and a chip with no url.
+              - id: demo_chat_thread
+                type: ChatThread
+                properties:
+                  ownAuthorType: reporter
+                  maxHeight: 360
+                  emptyText: No messages yet
+                  messages:
+                    - _id: m1
+                      author_type: reporter
+                      author:
+                        name: Ada Lovelace
+                      body: The export button on the reports page does nothing.
+                      seq: "2026-01-12T09:02:00.000Z"
+                    - _id: m2
+                      author_type: reporter
+                      author:
+                        name: Ada Lovelace
+                      body: Here is what I see.
+                      seq: "2026-01-12T09:03:00.000Z"
+                      attachments:
+                        - name: reports-page.svg
+                          mime: image/svg+xml
+                          key: demo/m2/reports-page.svg
+                          url: "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'240'%20height%3D'140'%3E%3Crect%20width%3D'240'%20height%3D'140'%20fill%3D'%23ede9fe'%2F%3E%3Crect%20x%3D'16'%20y%3D'16'%20width%3D'120'%20height%3D'14'%20rx%3D'4'%20fill%3D'%237c3aed'%2F%3E%3Crect%20x%3D'16'%20y%3D'44'%20width%3D'208'%20height%3D'80'%20rx%3D'6'%20fill%3D'white'%2F%3E%3C%2Fsvg%3E"
+                    - _id: m3
+                      author_type: team
+                      author:
+                        name: Grace Hopper
+                        avatar_color: green
+                      body: Thanks. Could you send the file you were exporting? The steps are at https://example.com/help/export
+                      seq: "2026-01-12T10:15:00.000Z"
+                    - _id: m4
+                      author_type: reporter
+                      author:
+                        name: Ada Lovelace
+                      body: Attached.
+                      seq: "2026-01-13T08:40:00.000Z"
+                      attachments:
+                        - name: quarterly-report.pdf
+                          mime: application/pdf
+                          key: demo/m4/quarterly-report.pdf
+                          url: https://example.com/quarterly-report.pdf
+                        - name: removed-file.pdf
+                          mime: application/pdf
+                          url: null
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: SupportContext
+            blocks:
+              # Renders nothing. Its snapshot method reads the browser's
+              # details and the tab's recent errors into its value.
+              - id: support_context
+                type: SupportContext
+              - id: support_context_buttons
+                type: Box
+                layout:
+                  gap: 8
+                blocks:
+                  - id: support_context_snapshot
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Take a snapshot
+                    events:
+                      onClick:
+                        - id: take_snapshot
+                          type: CallMethod
+                          params:
+                            blockId: support_context
+                            method: snapshot
+                  - id: support_context_fail_request
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Run a failing request
+                    events:
+                      onClick:
+                        - id: run_failing_request
+                          type: Request
+                          params: support_demo_failing_request
+              - id: support_context_value
+                type: Html
+                properties:
+                  html:
+                    _nunjucks:
+                      template: '<pre style="white-space: pre-wrap; font-size: 12px">{{ snapshot | dump(2) }}</pre>'
+                      on:
+                        snapshot:
+                          _state: support_context
