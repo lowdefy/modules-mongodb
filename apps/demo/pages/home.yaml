@@ -8,6 +8,9 @@ _ref:
     breadcrumbs:
       - home: true
         icon: home
+    # The attachment requests the assistant's composer calls.
+    requests:
+      _ref: modules/ai-assistant/attachment_requests.yaml
     events:
       onInit:
         # The docked assistant's state contract — required on any page that

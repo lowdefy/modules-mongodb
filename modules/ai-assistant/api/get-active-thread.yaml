@@ -67,6 +67,7 @@ routine:
           - _step: load_active_thread.0.messages
           - []
   - _ref: api/routines/sanitize_messages.yaml
+  - _ref: api/routines/refresh_file_links.yaml
   - :return:
       # Null when the user has no threads in this scope — `enter` reads this to tell
       # "resume the last one" from "keep the blank thread just minted".

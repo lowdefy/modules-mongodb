@@ -193,6 +193,74 @@ Two vars sharpen the generated names: `title_context` (one line of grounding, e.
 
 `composer_note` puts a short fixed note of small secondary text under the composer, in both the docked panel and the embedded shell, e.g. a reminder not to share personal information. It shows whenever the conversation does and is never added to it, so the transcript stays clean. Inside the panel the chat gives up a fixed 56px to it, so a note longer than about three lines at the panel's width is clipped. Keep it to a sentence or two.
 
+## Attachments
+
+Attachments are off by default. `sender_attachments` turns them on and is passed through as the chat block's `sender.attachments`. A file can then be picked, pasted or dropped onto the composer:
+
+```yaml
+sender_attachments:
+  enabled: true
+  accept: image/*,.pdf
+  maxSize: 5242880
+  uploadPolicyRequestId: chat_upload_policy
+  downloadPolicyRequestId: chat_download_policy
+file_links_endpoint: chat-file-links
+```
+
+The two requests belong to the app, on every page that mounts the chat, for example in the layout's global requests. The module adds none. The upload request returns a storage upload policy, such as an `AwsS3PresignedPostPolicy`. The download request turns the uploaded file into the link the model provider fetches, such as an `AwsS3PresignedGetObject` with a long `expires`. Its key comes from the browser, so sign it only when it is one of the caller's uploads, for example when it starts with the prefix the upload request gives them. Each uploaded file part keeps its storage key at `providerMetadata.lowdefy.key`, beside that link. The thread is saved with both.
+
+A signed link stops working: S3 signs one for seven days at most. A thread reopened after that would send the model links it cannot read. Set `file_links_endpoint` to an app endpoint that signs new ones. When a thread is opened (`get-thread`, and `get-active-thread` on resume), the module collects the file parts that carry a key, each key once, and calls the endpoint once with:
+
+```yaml
+files:
+  - key: uploads/user-1/3f2a/screenshot.png
+    filename: screenshot.png
+    mediaType: image/png
+```
+
+The endpoint returns `{ files: [{ key, url }] }`. Each part's `url` becomes its key's new link. A key returned with `url: null`, or left out, keeps the link the thread stored. A thread with no keyed parts makes no call, and neither does a part sent inline with no upload request.
+
+The keys come from messages the browser saved, so check that each one is the caller's before signing it, for example that it starts with the prefix the upload request gives the caller's uploads. Answer `url: null` for any other key, or leave it out. The endpoint runs as the person opening the thread, so `_user` is theirs, and it can be an `InternalApi`, since only the module calls it:
+
+```yaml
+id: chat-file-links
+type: InternalApi
+routine:
+  - :set_state:
+      prefix:
+        _string.concat: [uploads/, { _user: id }, /]
+      links: []
+  - :for: file
+    :in:
+      _payload: files
+    :do:
+      - :if:
+          _string.startsWith:
+            - _item: file.key
+            - _state: prefix
+        :then:
+          - id: sign
+            type: AwsS3PresignedGetObject
+            connectionId: files-bucket
+            properties:
+              key:
+                _item: file.key
+              expires: 604800
+          - :set_state:
+              links:
+                _array.concat:
+                  - _state: links
+                  - - key:
+                        _item: file.key
+                      url:
+                        _step: sign.$ # this iteration's result
+  - :return:
+      files:
+        _state: links
+```
+
+The endpoint is called on every open of a thread holding files, so keep it to signing.
+
 ## App behaviour on the chat
 
 The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` and will not hand that over. A thread is persisted twice: once when the message is sent, and again when the reply completes. The first save is what makes a thread survive a client that leaves mid-stream — without it the thread was never created, and the question went with it. Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:
@@ -260,6 +328,7 @@ on_before_send:
 ## Requirements
 
 - An app agent whose id is passed as `agent_id`.
+- For `file_links_endpoint`, a Lowdefy version whose `AgentChat` keeps an upload's storage key on its file part (`providerMetadata.lowdefy.key`). On an earlier one, parts carry no key, so the endpoint is never called and stored links stay as they are.
 - `@lowdefy/modules-mongodb-plugins` — ships the [`FloatingPanel`](../plugins/floating-panel.md) block and the `AiText` connection used for titling.
 - Secrets `MONGODB_URI` and (while `generate_titles` is on) `AI_GATEWAY_API_KEY`.
 - Under `auth.organizations.policy: tenant` nothing extra: the threads connection is walled like any MongoDB connection, so each organization has its own thread history per (scope, user), and the `AiText` connection holds no data and is declared non-scopable.

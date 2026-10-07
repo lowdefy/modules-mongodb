@@ -43,6 +43,16 @@ export default {
     env: {
       ...process.env,
       AUTH_SECRET: process.env.AUTH_SECRET || "build-only-not-a-real-secret",
+      // Presigning an S3 link is computed locally, so the ai-assistant file-links spec
+      // signs with these placeholders and never reaches a bucket.
+      LOWDEFY_SECRET_FILES_S3_ACCESS_KEY_ID:
+        process.env.LOWDEFY_SECRET_FILES_S3_ACCESS_KEY_ID ||
+        "e2e-not-a-real-key",
+      LOWDEFY_SECRET_FILES_S3_SECRET_ACCESS_KEY:
+        process.env.LOWDEFY_SECRET_FILES_S3_SECRET_ACCESS_KEY ||
+        "e2e-not-a-real-secret",
+      LOWDEFY_SECRET_FILES_S3_BUCKET:
+        process.env.LOWDEFY_SECRET_FILES_S3_BUCKET || "e2e-bucket",
     },
   },
 };
