@@ -1,0 +1,41 @@
+id: agent-list-my-tickets
+type: Api
+description: >-
+  List the signed-in user's support tickets, newest activity first, the ones the
+  team logged for them included. Each is { key, title, stage, updated, unread }:
+  stage is where the ticket stands (Received, In progress, Needs your reply or
+  Resolved), and unread is true when the team has replied since the user last
+  read it. Use it to find the ticket the user means, or to tell them what the
+  team has answered. When Pelican could not be reached, it still lists the
+  tickets the app holds, with ok false and the error.
+payloadSchema:
+  type: object
+  additionalProperties: false
+  properties: {}
+routine:
+  - id: sync_tickets
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId: sync-tickets
+      payload: {}
+  - :set_state:
+      agent_tickets:
+        _step: sync_tickets.tickets
+      stages:
+        _ref: enums/stages.yaml
+  - :return:
+      ok:
+        _step: sync_tickets.ok
+      error:
+        _step: sync_tickets.error
+      tickets:
+        _js: |
+          const stages = state('stages');
+          return (state('agent_tickets') || []).map((ticket) => ({
+            key: ticket.key,
+            title: ticket.title,
+            stage: stages[ticket.stage] ? stages[ticket.stage].label : ticket.stage,
+            updated: ticket.updated,
+            unread: ticket.unread === true,
+          }));

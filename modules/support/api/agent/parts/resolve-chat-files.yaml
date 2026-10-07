@@ -1,0 +1,49 @@
+# The files the user attached in the chat that a ticket or message from the
+# agent carries, into state.chat_files ([{ key, name }]).
+#
+# They come from the chat request (`_agent: files`), never from the tool's input,
+# so the model can only send files of its own conversation. The browser builds
+# that request, so a key counts only when it starts with the caller's own chat
+# upload prefix (the chat_files_prefix var); with no prefix set, no file is sent.
+# Only images and PDFs go, the files Pelican takes, each key once, at most five.
+#
+# Vars:
+#   sent  keys already sent on any of the user's tickets, left out
+- :set_state:
+    chat_files_input:
+      files:
+        _agent:
+          key: files
+          default: []
+      prefix:
+        _module.var: chat_files_prefix
+      sent:
+        _var:
+          key: sent
+          default: []
+- :set_state:
+    chat_files:
+      _js: |
+        const { files, prefix, sent } = state('chat_files_input');
+        if (typeof prefix !== 'string' || prefix.length === 0) return [];
+        const skip = new Set(Array.isArray(sent) ? sent : []);
+        const chosen = [];
+        for (const file of Array.isArray(files) ? files : []) {
+          if (!file || typeof file.key !== 'string') continue;
+          if (!file.key.startsWith(prefix) || skip.has(file.key)) continue;
+          const type = typeof file.mediaType === 'string' ? file.mediaType : '';
+          if (!type.startsWith('image/') && type !== 'application/pdf') continue;
+          skip.add(file.key);
+          chosen.push({
+            key: file.key,
+            name:
+              typeof file.filename === 'string' && file.filename.length > 0
+                ? file.filename
+                : file.key.split('/').pop(),
+          });
+        }
+        return chosen.slice(0, 5);
+- :set_state:
+    chat_file_names:
+      _js: |
+        return state('chat_files').map((file) => file.name);

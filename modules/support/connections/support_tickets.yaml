@@ -1,0 +1,17 @@
+# The app's copy of its users' tickets. A ticket belongs to the user who
+# reported it, not to an organisation: one user in two organisations sees all
+# their tickets in one list. So the connection stands outside the tenant wall,
+# and every read and write filters user_id by the session user.
+id: support-tickets
+type: MongoDBCollection
+tenant: shared # a ticket belongs to its reporter, across organisations
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: support-tickets
+  changeLog:
+    collection: log-changes
+    meta:
+      user:
+        _user: true
+  write: true

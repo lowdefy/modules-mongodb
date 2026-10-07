@@ -1,0 +1,96 @@
+id: send-ticket
+type: InternalApi
+description: >-
+  Files a ticket in Pelican for the session user and writes its view into the
+  copy. The trusted core of create-ticket and the agent's file-ticket tool: its
+  callers have already checked the input, and every file key is one the user may
+  send.
+payloadSchema:
+  type: object
+  required:
+    - type
+    - title
+    - message
+    - context
+    - files
+  properties:
+    type:
+      type: string
+    title:
+      type: string
+    message:
+      type: string
+    context:
+      type: object
+    files:
+      type: array
+      items:
+        type: object
+        required:
+          - key
+          - name
+        properties:
+          key:
+            type: string
+          name:
+            type: string
+    organization:
+      type:
+        - object
+        - "null"
+routine:
+  - _ref: api/parts/require-user.yaml
+  - :set_state:
+      send_files:
+        _payload: files
+  - _ref: api/parts/link-files.yaml
+  - _ref:
+      path: api/parts/call-pelican.yaml
+      vars:
+        step: create_ticket
+        endpoint: support-create-ticket
+        body:
+          user:
+            _module.var: user
+          type:
+            _payload: type
+          title:
+            _payload: title
+          message:
+            _payload: message
+          context:
+            _object.assign:
+              - _payload: context
+              - app:
+                  _build.app: slug
+                environment:
+                  _module.var: environment
+                version:
+                  _module.var: app_version
+                organization:
+                  _if_none:
+                    - _payload: organization
+                    - null
+          files:
+            _state: pelican_files
+  - :if:
+      _ne:
+        - _state: pelican_error
+        - null
+    :then:
+      - :return:
+          ok: false
+          error:
+            _state: pelican_error
+  - _ref:
+      path: api/parts/write-view.yaml
+      vars:
+        view:
+          _state: pelican_answer.data
+        user_id:
+          _user: id
+        organization:
+          _if_none:
+            - _payload: organization
+            - null
+  - _ref: api/parts/read-and-return.yaml

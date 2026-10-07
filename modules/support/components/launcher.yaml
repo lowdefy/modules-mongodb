@@ -1,0 +1,123 @@
+# For the layout's global_blocks: the help button and the non-modal panel it
+# opens, with New report and My tickets. Pair with the requests and on-init
+# components. It shows to a signed-in user, with or without an organisation, in
+# an app built with SUPPORT_PELICAN_KEY set.
+id: support_panel
+type: FloatingPanel
+visible:
+  _and:
+    - _build.and:
+        - _module.var: launcher.show
+        - _build.ne:
+            - _build.env:
+                key: LOWDEFY_SECRET_SUPPORT_PELICAN_KEY
+                default: ""
+            - ""
+    - _ne:
+        - _if_none:
+            - _user: id
+            - null
+        - null
+properties:
+  title: Support
+  avatar:
+    icon: LifeBuoy
+  launcher:
+    icon: LifeBuoy
+    label:
+      _module.var: launcher.label
+    ariaLabel:
+      _module.var: launcher.label
+  placement:
+    _module.var: launcher.placement
+  width: 420
+  expandable: false
+events:
+  # Opening the panel on My tickets refreshes what it shows.
+  onOpen:
+    _build.array.concat:
+      - _ref:
+          path: actions/open_tickets.yaml.njk
+          vars:
+            prefix: support
+            view_state: support_view
+      - _ref:
+          path: actions/open_thread.yaml.njk
+          vars:
+            prefix: support
+  # A closed panel holds no change stream.
+  onClose:
+    _ref:
+      path: actions/leave_live_thread.yaml.njk
+      vars:
+        prefix: support
+slots:
+  toolbar:
+    blocks:
+      - id: support_view
+        type: ButtonSelector
+        properties:
+          label:
+            disabled: true
+          block: true
+          options:
+            - label: New report
+              value: report
+            - label: My tickets
+              value: tickets
+        events:
+          # My tickets always opens on the list.
+          onChange:
+            _build.array.concat:
+              - - id: support_view_changed
+                  type: SetState
+                  params:
+                    support_ticket: null
+                    support_thread: null
+                    support_thread_error: null
+              - _ref:
+                  path: actions/leave_live_thread.yaml.njk
+                  vars:
+                    prefix: support
+              - _ref:
+                  path: actions/open_tickets.yaml.njk
+                  vars:
+                    prefix: support
+                    view_state: support_view
+  content:
+    blocks:
+      - id: support_report_context
+        type: SupportContext
+      - _ref: components/report/report_form.yaml
+      - id: support_tickets_view
+        type: Box
+        visible:
+          _eq:
+            - _state: support_view
+            - tickets
+        blocks:
+          - id: support_list_area
+            type: Box
+            visible:
+              _eq:
+                - _state: support_ticket
+                - null
+            blocks:
+              - _ref:
+                  path: components/tickets/tickets_list.yaml.njk
+                  vars:
+                    prefix: support
+          - id: support_thread_area
+            type: Box
+            visible:
+              _ne:
+                - _state: support_ticket
+                - null
+            blocks:
+              - _ref:
+                  path: components/tickets/thread.yaml.njk
+                  vars:
+                    prefix: support
+                    back: true
+                    view_state: support_view
+                    max_height: 360

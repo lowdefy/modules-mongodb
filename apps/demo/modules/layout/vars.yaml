@@ -25,7 +25,22 @@ global_events:
       type: SetState
       params:
         whats_new_dismissed: false
+    - _ref:
+        module: support
+        component: on-init
+global_requests:
+  _ref:
+    module: support
+    component: requests
+# The support panel's live thread, opened only while a thread is open.
+global_subscriptions:
+  _ref:
+    module: support
+    component: subscriptions
 global_blocks:
+  - _ref:
+      module: support
+      component: launcher
   - id: whats_new_launcher
     type: Button
     visible:

@@ -1,0 +1,26 @@
+# The line a form shows for an endpoint's { kind, message, retry_after } error.
+# A fix error carries Pelican's own message; the others are the module's.
+#
+# Vars:
+#   error  an operator resolving to the endpoint's error object
+_js:
+  fn: |
+    const error = args.error || {};
+    if (error.kind === 'fix') {
+      return error.message || 'Check the report and try again.';
+    }
+    if (error.kind === 'unavailable') {
+      return 'Support is unavailable right now.';
+    }
+    const wait = error.retry_after;
+    if (typeof wait !== 'number' || wait <= 0) {
+      return 'Something went wrong, try again.';
+    }
+    if (wait < 60) {
+      return `Something went wrong, try again in ${Math.ceil(wait)} seconds.`;
+    }
+    const minutes = Math.ceil(wait / 60);
+    return `Something went wrong, try again in ${minutes === 1 ? 'a minute' : `${minutes} minutes`}.`;
+  args:
+    error:
+      _var: error

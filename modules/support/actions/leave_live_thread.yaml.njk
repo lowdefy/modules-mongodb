@@ -1,0 +1,24 @@
+# Closes the live thread's channel when this surface holds it, so a closed panel
+# or the list holds no change stream. The channel the other surface holds stays.
+#
+# Vars:
+#   prefix  the state and block id prefix of the surface
+- id: {{ prefix }}_live_unsubscribe
+  type: Unsubscribe
+  skip:
+    _ne:
+      - _state: support_live.surface
+      - {{ prefix }}
+  params:
+    _module.websocketId: ticket-thread
+- id: {{ prefix }}_live_clear
+  type: SetState
+  skip:
+    _ne:
+      - _state: support_live.surface
+      - {{ prefix }}
+  params:
+    support_live.ticket_id: null
+    support_live.surface: null
+    support_live.row: null
+    support_live.newer: false

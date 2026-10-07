@@ -1,0 +1,97 @@
+# The support page: the user's tickets beside the open thread, at full width.
+# ?ticket= (an id or a key) opens a thread, so a link or a notification can
+# point at one.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: support
+    title: Support
+    # The same live thread the panel uses; the layout keeps one when the app
+    # also wires it in global_subscriptions.
+    subscriptions:
+      _ref:
+        path: components/subscriptions.yaml
+    requests:
+      - _ref:
+          path: requests/upload_policy.yaml
+          vars:
+            block_id: support_page_reply_files
+    events:
+      onInit:
+        - id: support_page_init
+          type: SetState
+          params:
+            support_page_tickets: []
+            support_page_tickets_error: null
+            support_page_ticket:
+              _if_none:
+                - _url_query: ticket
+                - null
+            support_page_thread: null
+            support_page_thread_error: null
+            support_page_thread_loading: false
+            support_page_posting: false
+            support_page_reply_error: null
+            support_page_reply.message: null
+            support_page_reply.files: []
+      onMount:
+        _build.array.concat:
+          - _ref:
+              path: actions/open_tickets.yaml.njk
+              vars:
+                prefix: support_page
+          - _ref:
+              path: actions/open_thread.yaml.njk
+              vars:
+                prefix: support_page
+    blocks:
+      - id: support_page_columns
+        type: Box
+        layout:
+          gap: 24
+        blocks:
+          - id: support_page_list_column
+            type: Box
+            layout:
+              span: 9
+              sm:
+                span: 24
+              md:
+                span: 9
+            blocks:
+              - _ref:
+                  path: components/tickets/tickets_list.yaml.njk
+                  vars:
+                    prefix: support_page
+          - id: support_page_thread_column
+            type: Card
+            layout:
+              span: 15
+              sm:
+                span: 24
+              md:
+                span: 15
+            blocks:
+              - id: support_page_no_thread
+                type: Paragraph
+                visible:
+                  _eq:
+                    - _state: support_page_ticket
+                    - null
+                properties:
+                  type: secondary
+                  content: Choose a ticket to read the conversation and reply.
+              - id: support_page_thread_area
+                type: Box
+                visible:
+                  _ne:
+                    - _state: support_page_ticket
+                    - null
+                blocks:
+                  - _ref:
+                      path: components/tickets/thread.yaml.njk
+                      vars:
+                        prefix: support_page
+                        back: false
+                        max_height: 60vh

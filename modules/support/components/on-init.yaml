@@ -1,0 +1,26 @@
+# For the layout's global_events.onInit: the state the support panel reads, set
+# on every page so the panel starts on a blank report.
+id: support_init
+type: SetState
+params:
+  support_view: report
+  support_ticket: null
+  support_tickets: []
+  support_tickets_error: null
+  support_thread: null
+  support_thread_error: null
+  support_thread_loading: false
+  support_posting: false
+  support_reply_error: null
+  support_reply.message: null
+  support_reply.files: []
+  support_sending: false
+  support_report_error: null
+  support_report.type: null
+  support_report.title: null
+  support_report.message: null
+  support_report.files: []
+  support_live.ticket_id: null
+  support_live.surface: null
+  support_live.row: null
+  support_live.newer: false

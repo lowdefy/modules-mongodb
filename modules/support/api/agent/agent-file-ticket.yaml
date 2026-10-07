@@ -1,0 +1,142 @@
+id: agent-file-ticket
+type: Api
+description: >-
+  File a support ticket for the signed-in user: a problem with the app, a
+  question about how to use it, an idea for it, or feedback. The team reads it
+  and replies on the ticket, and the user is told when they do. Write the title
+  and description yourself from the conversation. The images and PDFs the user
+  attached in this chat go with the ticket on their own; you do not pass them.
+  Answers { ok: true, key, stage, files } with the ticket's key and the names of
+  the files sent, or { ok: false, error: { kind, message, retry_after } }.
+payloadSchema:
+  type: object
+  additionalProperties: false
+  required:
+    - type
+    - title
+    - description
+  properties:
+    type:
+      type: string
+      description:
+        _build.string.concat:
+          - "The ticket type: the value of one of these types, which say what each is for. "
+          - _build.json.stringify:
+              - _module.var: types
+    title:
+      type: string
+      minLength: 1
+      maxLength: 120
+      description: >-
+        A short, specific summary in your own words, such as "Export to Excel
+        fails on the orders page".
+    description:
+      type: string
+      minLength: 1
+      maxLength: 4000
+      description: >-
+        The conversation written up for someone who was not in it: what the user
+        was trying to do and where, what happened and what they expected, what
+        they tried, and what a screenshot shows. Short paragraphs or bullets;
+        Markdown is fine.
+    page:
+      type:
+        - string
+        - "null"
+      description: The id of the page the user is on, when you know it.
+    url:
+      type:
+        - string
+        - "null"
+      description: The address of the page the user is on, when you know it.
+routine:
+  - _ref: api/parts/require-user.yaml
+  - _ref:
+      path: api/parts/check-input.yaml
+      vars:
+        ticket: true
+        input:
+          type:
+            _payload: type
+          title:
+            _payload: title
+          message:
+            _payload: description
+          files: []
+  - :if:
+      _ne:
+        - _state: input_error
+        - null
+    :then:
+      - :return:
+          ok: false
+          error:
+            _state: input_error
+  - _ref: api/agent/parts/sent-chat-files.yaml
+  - _ref:
+      path: api/agent/parts/resolve-chat-files.yaml
+      vars:
+        sent:
+          _state: sent_chat_files
+  - _ref: api/parts/organization.yaml
+  - id: send_ticket
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId: send-ticket
+      payload:
+        type:
+          _payload: type
+        title:
+          _payload: title
+        message:
+          _payload: description
+        context:
+          page:
+            _if_none:
+              - _payload: page
+              - null
+          url:
+            _if_none:
+              - _payload: url
+              - null
+          extra:
+            filed_by: agent
+            conversation_id:
+              _agent:
+                key: conversationId
+                default: null
+        files:
+          _state: chat_files
+        organization:
+          _state: organization
+  - :if:
+      _ne:
+        - _step: send_ticket.ok
+        - true
+    :then:
+      - :return:
+          ok: false
+          error:
+            _step: send_ticket.error
+  - _ref:
+      path: api/agent/parts/remember-chat-files.yaml
+      vars:
+        ticket_id:
+          _step: send_ticket.ticket._id
+  - :return:
+      ok: true
+      key:
+        _step: send_ticket.ticket.view.key
+      stage:
+        _get:
+          from:
+            _ref: enums/stages.yaml
+          key:
+            _string.concat:
+              - _step: send_ticket.ticket.view.stage
+              - .label
+          default:
+            _step: send_ticket.ticket.view.stage
+      files:
+        _state: chat_file_names

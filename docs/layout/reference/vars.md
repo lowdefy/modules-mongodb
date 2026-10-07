@@ -21,6 +21,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `header` | object | `{}` |  | Page block header properties: { theme, contentStyle } |
 | `global_blocks` | array | `[]` |  | Blocks appended after the consumer content on EVERY page that uses the page component — for app-wide floating widgets (an assistant launcher, a help beacon). Pair with `global_requests` for any requests they need and `global_events.onInit` for their state contract. |
 | `global_requests` | array | `[]` |  | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` these are NOT auto-fired on mount — they are on-demand (e.g. upload/download policies a block calls itself). |
+| `global_subscriptions` | array | `[]` |  | Websocket subscriptions declared on every page for `global_blocks` to use, such as a widget's live channel. A page that declares a subscription to the same websocket through the page component's `subscriptions` var keeps its own, so the page holds one. |
 | `title_block` | object |  |  | Custom title block override (replaces default title bar) |
 | `footer` | array | `[]` |  | Footer blocks appended after page content |
 | `content_style` | object | `{}` |  | Content area style applied to every page that uses the `page` component, merged over the page block's default `padding: 0 40px 40px 40px`. A page's `full_bleed` and its own `content_style` var are applied over it, key by key. |

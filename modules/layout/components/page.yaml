@@ -227,6 +227,32 @@ _build.object.assign:
         - _var:
             key: requests
             default: []
+    # Lowdefy takes subscriptions only on the page root. A global subscription
+    # the page also declares is kept once, as the page declares it, since a page
+    # may not subscribe to one websocket twice.
+    subscriptions:
+      _build.array.concat:
+        - _var:
+            key: subscriptions
+            default: []
+        - _build.array.filter:
+            on:
+              _module.var: global_subscriptions
+            callback:
+              _build.function:
+                __build.not:
+                  __build.array.includes:
+                    on:
+                      _build.array.map:
+                        on:
+                          _var:
+                            key: subscriptions
+                            default: []
+                        callback:
+                          _build.function:
+                            __build.args: 0.websocketId
+                    value:
+                      __build.args: 0.websocketId
     events:
       # Module-entry global init runs AFTER the page's own — its state is set by
       # the time a global widget's state contract runs. A page may author onInit

@@ -1,0 +1,135 @@
+# One ticket's thread: its title, key and stage, the messages, and a composer
+# for the user's reply with files. The ticket is in {{ prefix }}_thread, the row
+# sync-ticket returns. A reporter cannot close a ticket; the team resolves it.
+#
+# Vars:
+#   prefix      the state and block id prefix of the surface
+#   back        true to show Back, which returns to the list
+#   view_state  with back, the state key of the view the list shows in
+#   max_height  the message area's maximum height
+id: {{ prefix }}_thread_box
+type: Box
+layout:
+  gap: 12
+blocks:
+  - id: {{ prefix }}_thread_header
+    type: Box
+    layout:
+      direction: row
+      align: middle
+      gap: 8
+      wrap: nowrap
+    blocks:
+{% if back %}
+      - id: {{ prefix }}_thread_back
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Back to my tickets
+          hideTitle: true
+          icon: ArrowLeft
+          type: text
+          size: small
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: {{ prefix }}_leave_thread
+                  type: SetState
+                  params:
+                    {{ prefix }}_ticket: null
+                    {{ prefix }}_thread: null
+                    {{ prefix }}_thread_error: null
+                    {{ prefix }}_reply_error: null
+              - _ref:
+                  path: actions/leave_live_thread.yaml.njk
+                  vars:
+                    prefix: {{ prefix }}
+              - _ref:
+                  path: actions/open_tickets.yaml.njk
+                  vars:
+                    prefix: {{ prefix }}
+                    view_state: {{ view_state }}
+{% endif %}
+      - id: {{ prefix }}_thread_heading
+        type: Box
+        layout:
+          flex: 1 1 auto
+        visible:
+          _ne:
+            - _state: {{ prefix }}_thread
+            - null
+        blocks:
+          - id: {{ prefix }}_thread_title
+            type: Title
+            style:
+              marginBottom: 0
+            properties:
+              level: 5
+              ellipsis: true
+              content:
+                _state: {{ prefix }}_thread.view.title
+          - id: {{ prefix }}_thread_meta
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+{% raw %}
+                    <span data-tone="secondary">{{ key }}</span>
+                    {% if stage %}<span data-tag="{{ stage.tag }}">{{ stage.label }}</span>{% endif %}
+                    {% if organization %}<span data-tone="secondary">{{ organization }}</span>{% endif %}
+{% endraw %}
+                  on:
+                    key:
+                      _state: {{ prefix }}_thread.view.key
+                    stage:
+                      _get:
+                        from:
+                          _ref: enums/stages.yaml
+                        key:
+                          _if_none:
+                            - _state: {{ prefix }}_thread.view.stage
+                            - none
+                    organization:
+                      _state: {{ prefix }}_thread.organization.name
+  - id: {{ prefix }}_thread_loading_text
+    type: Paragraph
+    visible:
+      _eq:
+        - _state: {{ prefix }}_thread_loading
+        - true
+    properties:
+      type: secondary
+      content: Loading the conversation…
+  - id: {{ prefix }}_thread_notice
+    type: Alert
+    visible:
+      _ne:
+        - _state: {{ prefix }}_thread_error
+        - null
+    properties:
+      type: warning
+      showIcon: true
+      message:
+        _state: {{ prefix }}_thread_error
+  - id: {{ prefix }}_thread_messages
+    type: ChatThread
+    visible:
+      _ne:
+        - _state: {{ prefix }}_thread
+        - null
+    properties:
+      ownAuthorType: reporter
+      maxHeight: {{ max_height }}
+      emptyText: No messages yet. Write to the team below.
+      messages:
+        _ref:
+          path: components/parts/thread_messages.yaml
+          vars:
+            messages:
+              _state: {{ prefix }}_thread.view.messages
+  - _ref:
+      path: components/tickets/composer.yaml.njk
+      vars:
+        prefix: {{ prefix }}

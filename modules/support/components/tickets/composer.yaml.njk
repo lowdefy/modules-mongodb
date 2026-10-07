@@ -1,0 +1,146 @@
+# The reply composer under a thread: a message and up to five images or PDFs,
+# each uploaded to the app's files bucket as it is added. The reply writes
+# under {{ prefix }}_reply, which Send validates.
+#
+# Vars:
+#   prefix  the state and block id prefix of the surface
+id: {{ prefix }}_composer
+type: Box
+visible:
+  _ne:
+    - _state: {{ prefix }}_thread
+    - null
+layout:
+  gap: 8
+blocks:
+  - id: {{ prefix }}_reply.message
+    type: TextArea
+    required: true
+    properties:
+      label:
+        disabled: true
+      placeholder: Write a reply
+      maxLength: 4000
+      autoSize:
+        minRows: 2
+        maxRows: 8
+  - id: {{ prefix }}_reply_files
+    type: FileManager
+    visible:
+      _lt:
+        - _array.length:
+            _if_none:
+              - _state: {{ prefix }}_reply.files
+              - []
+        - 5
+    properties:
+      s3PostPolicyRequestId: upload_policy_{{ prefix }}_reply_files
+      files: []
+      accept: image/*,.pdf
+      hint: Drop, choose or paste an image or PDF, up to 10 MB.
+    events:
+      onSave:
+        - id: {{ prefix }}_reply_over_limit
+          type: SetState
+          skip:
+            _lt:
+              - _array.length:
+                  _if_none:
+                    - _state: {{ prefix }}_reply.files
+                    - []
+              - 5
+          params:
+            {{ prefix }}_reply_error: Attach up to five files.
+        - id: {{ prefix }}_reply_add_file
+          type: SetState
+          skip:
+            _gte:
+              - _array.length:
+                  _if_none:
+                    - _state: {{ prefix }}_reply.files
+                    - []
+              - 5
+          params:
+            {{ prefix }}_reply.files:
+              _array.concat:
+                - _if_none:
+                    - _state: {{ prefix }}_reply.files
+                    - []
+                - - key:
+                      _event: file.key
+                    name:
+                      _event: file.name
+                    size:
+                      _event: file.size
+                    type:
+                      _event: file.type
+  - id: {{ prefix }}_reply.files
+    type: List
+    blocks:
+      - id: {{ prefix }}_reply.files.$
+        type: Box
+        layout:
+          direction: row
+          align: middle
+          gap: 8
+        blocks:
+          - id: {{ prefix }}_reply.files.$.icon
+            type: Icon
+            layout:
+              flex: 0 0 auto
+            properties:
+              name: Paperclip
+          - id: {{ prefix }}_reply.files.$.label
+            type: Paragraph
+            layout:
+              flex: 1 1 auto
+            style:
+              marginBottom: 0
+            properties:
+              ellipsis: true
+              content:
+                _state: {{ prefix }}_reply.files.$.name
+          - id: {{ prefix }}_reply.files.$.remove
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Remove
+              hideTitle: true
+              icon: X
+              type: text
+              size: small
+            events:
+              onClick:
+                - id: {{ prefix }}_reply_remove_file
+                  type: CallMethod
+                  params:
+                    blockId: {{ prefix }}_reply.files
+                    method: removeItem
+                    args:
+                      - _index: 0
+  - id: {{ prefix }}_reply_error
+    type: Alert
+    visible:
+      _ne:
+        - _state: {{ prefix }}_reply_error
+        - null
+    properties:
+      type: error
+      showIcon: true
+      message:
+        _state: {{ prefix }}_reply_error
+  - id: {{ prefix }}_reply_send
+    type: Button
+    properties:
+      title: Send
+      type: primary
+      icon: Send
+      disabled:
+        _state: {{ prefix }}_posting
+    events:
+      onClick:
+        _ref:
+          path: actions/post_reply.yaml.njk
+          vars:
+            prefix: {{ prefix }}

@@ -1,0 +1,96 @@
+id: agent-post-message
+type: Api
+description: >-
+  Add a message to one of the signed-in user's support tickets: more detail, a
+  step to reproduce, a correction, an answer to something the team asked, or a
+  screenshot that came after the ticket was filed. The team sees it in the
+  ticket's thread. Images and PDFs the user attached in this chat that are not
+  yet on any of their tickets go with it on their own; you do not pass them. Answers
+  { ok: true, key, stage, files } with the names of the files sent, or
+  { ok: false, error: { kind, message, retry_after } }.
+payloadSchema:
+  type: object
+  additionalProperties: false
+  required:
+    - ticket
+    - message
+  properties:
+    ticket:
+      type: string
+      minLength: 1
+      description: >-
+        The ticket's key, such as SUP-12, from earlier in this chat or from
+        listing the user's tickets.
+    message:
+      type: string
+      minLength: 1
+      maxLength: 4000
+      description: >-
+        The message for the team, in the user's voice or as a clear relay.
+        Markdown is fine.
+routine:
+  - _ref: api/parts/require-user.yaml
+  - _ref:
+      path: api/parts/check-input.yaml
+      vars:
+        input:
+          message:
+            _payload: message
+          files: []
+  - :if:
+      _ne:
+        - _state: input_error
+        - null
+    :then:
+      - :return:
+          ok: false
+          error:
+            _state: input_error
+  - _ref: api/agent/parts/sent-chat-files.yaml
+  - _ref:
+      path: api/agent/parts/resolve-chat-files.yaml
+      vars:
+        sent:
+          _state: sent_chat_files
+  - id: send_message
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId: send-message
+      payload:
+        ticket:
+          _payload: ticket
+        message:
+          _payload: message
+        files:
+          _state: chat_files
+  - :if:
+      _ne:
+        - _step: send_message.ok
+        - true
+    :then:
+      - :return:
+          ok: false
+          error:
+            _step: send_message.error
+  - _ref:
+      path: api/agent/parts/remember-chat-files.yaml
+      vars:
+        ticket_id:
+          _step: send_message.ticket._id
+  - :return:
+      ok: true
+      key:
+        _step: send_message.ticket.view.key
+      stage:
+        _get:
+          from:
+            _ref: enums/stages.yaml
+          key:
+            _string.concat:
+              - _step: send_message.ticket.view.stage
+              - .label
+          default:
+            _step: send_message.ticket.view.stage
+      files:
+        _state: chat_file_names

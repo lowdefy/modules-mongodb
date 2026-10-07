@@ -1,0 +1,11 @@
+# The auth engine's organizations, read for the name of the organisation a
+# ticket is filed from. Read-only, and read only by the session's active
+# organisation id.
+id: support-organizations
+type: MongoDBCollection
+tenant: shared # engine-owned rows carry no organization field
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-organizations
+  write: false

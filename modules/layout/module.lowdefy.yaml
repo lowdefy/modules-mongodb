@@ -120,6 +120,14 @@ vars:
       Requests declared on every page for `global_blocks` to use. Unlike
       `header_extra.requests` these are NOT auto-fired on mount — they are
       on-demand (e.g. upload/download policies a block calls itself).
+  global_subscriptions:
+    type: array
+    default: []
+    description: >-
+      Websocket subscriptions declared on every page for `global_blocks` to
+      use, such as a widget's live channel. A page that declares a
+      subscription to the same websocket through the page component's
+      `subscriptions` var keeps its own, so the page holds one.
   header_extra:
     type: object
     description: "Header customization: { blocks, requests }"

@@ -1,0 +1,109 @@
+# The New report view: type, title, description and files, then Send. The
+# inputs write under support_report, which Send validates and the module's
+# on-init resets.
+id: support_report_view
+type: Box
+visible:
+  _eq:
+    - _state: support_view
+    - report
+layout:
+  gap: 12
+blocks:
+  - id: support_report.type
+    type: Selector
+    required: true
+    properties:
+      title: Type
+      placeholder: What is this about?
+      allowClear: false
+      options:
+        _array.map:
+          on:
+            _module.var: types
+          callback:
+            _function:
+              label:
+                __args: 0.label
+              value:
+                __args: 0.value
+  - id: support_report_type_description
+    type: Paragraph
+    visible:
+      _ne:
+        - _state: support_report.type
+        - null
+    style:
+      marginTop: -8
+    properties:
+      type: secondary
+      content:
+        _get:
+          key: description
+          default: ""
+          from:
+            _array.find:
+              on:
+                _module.var: types
+              callback:
+                _function:
+                  __eq:
+                    - __args: 0.value
+                    - _state: support_report.type
+  - id: support_report.title
+    type: TextInput
+    required: true
+    validate:
+      - pass:
+          _lte:
+            - _string.length:
+                _if_none:
+                  - _state: support_report.title
+                  - ""
+            - 120
+        status: error
+        message: Keep the title to 120 characters.
+    properties:
+      title: Title
+      placeholder: A short summary
+  - id: support_report.message
+    type: TextArea
+    required: true
+    properties:
+      title: Description
+      placeholder: What happened, and what did you expect?
+      maxLength: 4000
+      autoSize:
+        minRows: 4
+        maxRows: 10
+  - _ref: components/report/report_files.yaml
+  - id: support_report_sends
+    type: Paragraph
+    properties:
+      type: secondary
+      content: >-
+        Sending also shares this page's address, your browser details and the
+        errors this tab recorded, with the files above.
+  - id: support_report_error
+    type: Alert
+    visible:
+      _ne:
+        - _state: support_report_error
+        - null
+    properties:
+      type: error
+      showIcon: true
+      message:
+        _state: support_report_error
+  - id: support_report_send
+    type: Button
+    properties:
+      title: Send
+      type: primary
+      block: true
+      icon: Send
+      disabled:
+        _state: support_sending
+    events:
+      onClick:
+        _ref: actions/send_report.yaml

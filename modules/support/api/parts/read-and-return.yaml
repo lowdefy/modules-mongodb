@@ -1,0 +1,34 @@
+# After the user's own write: marks the ticket in state.copy read, since the
+# user has just seen it, and returns { ok: true, ticket: <stored row> }.
+- id: mark_sent_read
+  type: MongoDBUpdateOne
+  connectionId:
+    _module.connectionId: support-tickets
+  properties:
+    filter:
+      _id:
+        _state: copy._id
+      user_id:
+        _user: id
+    update:
+      $set:
+        read_at:
+          _date: now
+        updated:
+          _ref:
+            module: events
+            component: change_stamp
+- id: sent_ticket
+  type: MongoDBFindOne
+  connectionId:
+    _module.connectionId: support-tickets
+  properties:
+    query:
+      _id:
+        _state: copy._id
+      user_id:
+        _user: id
+- :return:
+    ok: true
+    ticket:
+      _step: sent_ticket

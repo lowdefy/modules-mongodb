@@ -60,6 +60,11 @@
     content:
       _ref: ../../CHANGELOG.md
 
+- id: support
+  source: "file:../../modules/support"
+  vars:
+    _ref: modules/support/vars.yaml
+
 - id: user-account
   source: "file:../../modules/user-account"
   vars:

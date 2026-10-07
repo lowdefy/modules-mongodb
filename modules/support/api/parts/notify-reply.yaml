@@ -1,0 +1,107 @@
+# Sends the support-reply notification for each team message in the delivered
+# view that the stored row (state.stored_row, read before the write) did not
+# have. Goes even when the user has the thread open: the server cannot know what
+# a browser shows. The key, support-reply:<message id>, makes a repeat delivery
+# send nothing new.
+#
+# The recipient's email and name come from the app's auth user record, never
+# from the webhook body. A user the app does not hold gets nothing.
+#
+# The dispatch runs under the organisation the row records, so it lands in that
+# organisation's bell. A row with none (first stored from a webhook or a list)
+# dispatches unbound, which an app whose notifications sit behind the tenant
+# wall refuses: those replies show in the thread with no notification.
+- :set_state:
+    new_replies:
+      _js: |
+        const stored = state('stored_row');
+        const known = new Set(
+          ((stored && stored.view && stored.view.messages) || []).map((message) => message.id),
+        );
+        return (state('delivery').ticket.messages || []).filter(
+          (message) => message.from === 'team' && message.deleted !== true && !known.has(message.id),
+        );
+- :if:
+    _gt:
+      - _array.length:
+          _state: new_replies
+      - 0
+  :then:
+    - id: reply_recipient
+      type: MongoDBFindOne
+      connectionId:
+        _module.connectionId: support-users
+      properties:
+        query:
+          _id:
+            _state: delivery.user_id
+        options:
+          projection:
+            email: 1
+            name: 1
+    - :if:
+        _eq:
+          - _if_none:
+              - _step: reply_recipient.email
+              - null
+          - null
+      :then:
+        - :log:
+            event: support_reply_no_recipient
+            user_id:
+              _state: delivery.user_id
+            ticket_id:
+              _state: delivery.ticket.id
+            message: >-
+              A team reply arrived for a user the app holds no email for, so no
+              support-reply notification was sent.
+          :level: warn
+        - :return:
+            ok: true
+    - :set_state:
+        reply_recipient:
+          _step: reply_recipient
+        support_page_id:
+          _module.pageId: support
+    - :set_state:
+        reply_items:
+          _js: |
+            const ticket = state('delivery').ticket;
+            const recipient = state('reply_recipient');
+            const contact = {
+              _id: state('delivery').user_id,
+              user_id: state('delivery').user_id,
+              email: recipient.email,
+              profile: { name: recipient.name || null },
+            };
+            return state('new_replies').map((message) => {
+              const text = message.text || '';
+              return {
+                key: `support-reply:${message.id}`,
+                contact,
+                ticket_key: ticket.key,
+                ticket_title: ticket.title,
+                author_name: (message.author && message.author.name) || 'The team',
+                preview: text.length > 200 ? `${text.slice(0, 199)}…` : text,
+                links: {
+                  button: {
+                    pageId: state('support_page_id'),
+                    urlQuery: { ticket: ticket.key },
+                  },
+                },
+              };
+            });
+    - id: dispatch_support_reply
+      type: CallApi
+      properties:
+        endpointId:
+          _module.endpointId:
+            id: dispatch-notifications
+            module: notifications
+        organization:
+          _state: copy.organization.id
+        payload:
+          notification_id:
+            _module.notificationId: support-reply
+          items:
+            _state: reply_items

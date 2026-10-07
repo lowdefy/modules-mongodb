@@ -1,0 +1,137 @@
+# The report's files: a screenshot of the page behind the panel, or images and
+# PDFs dropped or pasted, five in all. Each goes to the app's files bucket
+# through the module's upload policy as it is added; support_report.files holds
+# { key, name, size, type } for each.
+id: support_report_files_box
+type: Box
+layout:
+  gap: 8
+blocks:
+  - id: support_report_screenshot
+    type: SupportScreenshot
+    properties:
+      s3PostPolicyRequestId: upload_policy_support_report_files
+      hideSelectors:
+        - "#support_panel"
+      maskSelectors:
+        _module.var: mask_selectors
+      disabled:
+        _gte:
+          - _array.length:
+              _if_none:
+                - _state: support_report.files
+                - []
+          - 5
+    events:
+      onUse:
+        - id: support_add_screenshot
+          type: SetState
+          params:
+            support_report.files:
+              _array.concat:
+                - _if_none:
+                    - _state: support_report.files
+                    - []
+                - - _event: file
+      onError:
+        - id: support_screenshot_failed
+          type: SetState
+          params:
+            support_report_error:
+              _event: message
+  - id: support_report_files
+    type: FileManager
+    visible:
+      _lt:
+        - _array.length:
+            _if_none:
+              - _state: support_report.files
+              - []
+        - 5
+    properties:
+      s3PostPolicyRequestId: upload_policy_support_report_files
+      files: []
+      accept: image/*,.pdf
+      hint: Drop, choose or paste an image or PDF, up to 10 MB.
+    events:
+      onSave:
+        # Two uploads finishing together can both pass the visible check.
+        - id: support_file_over_limit
+          type: SetState
+          skip:
+            _lt:
+              - _array.length:
+                  _if_none:
+                    - _state: support_report.files
+                    - []
+              - 5
+          params:
+            support_report_error: Attach up to five files.
+        - id: support_add_file
+          type: SetState
+          skip:
+            _gte:
+              - _array.length:
+                  _if_none:
+                    - _state: support_report.files
+                    - []
+              - 5
+          params:
+            support_report.files:
+              _array.concat:
+                - _if_none:
+                    - _state: support_report.files
+                    - []
+                - - key:
+                      _event: file.key
+                    name:
+                      _event: file.name
+                    size:
+                      _event: file.size
+                    type:
+                      _event: file.type
+  - id: support_report.files
+    type: List
+    blocks:
+      - id: support_report.files.$
+        type: Box
+        layout:
+          direction: row
+          align: middle
+          gap: 8
+        blocks:
+          - id: support_report.files.$.icon
+            type: Icon
+            layout:
+              flex: 0 0 auto
+            properties:
+              name: Paperclip
+          - id: support_report.files.$.label
+            type: Paragraph
+            layout:
+              flex: 1 1 auto
+            style:
+              marginBottom: 0
+            properties:
+              ellipsis: true
+              content:
+                _state: support_report.files.$.name
+          - id: support_report.files.$.remove
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Remove
+              hideTitle: true
+              icon: X
+              type: text
+              size: small
+            events:
+              onClick:
+                - id: support_remove_file
+                  type: CallMethod
+                  params:
+                    blockId: support_report.files
+                    method: removeItem
+                    args:
+                      - _index: 0
