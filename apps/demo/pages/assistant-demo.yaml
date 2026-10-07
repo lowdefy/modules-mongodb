@@ -8,6 +8,9 @@ _ref:
       - home: true
         icon: home
       - AI Assistant
+    # The attachment requests the assistant's composer calls.
+    requests:
+      _ref: modules/ai-assistant/attachment_requests.yaml
     events:
       onInit:
         # state first (declares every ai_* key), then enter (resume-or-mint) —

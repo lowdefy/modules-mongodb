@@ -116,6 +116,30 @@ vars:
     type: string
     default: Ask a question…
     description: Placeholder text in the composer.
+  sender_attachments:
+    type: object
+    default: null
+    description: >-
+      File attachments on the composer, passed through as the chat block's
+      `sender.attachments`: { enabled, accept, maxSize, uploadPolicyRequestId,
+      downloadPolicyRequestId }. The two request ids name the app's own requests
+      on the page that mounts the chat (for example the layout's global
+      requests); the module adds none. Null (the default) leaves attachments
+      off. Pair it with `file_links_endpoint` so a reopened thread does not send
+      the model links that have expired.
+  file_links_endpoint:
+    type: string
+    default: null
+    description: >-
+      Id of an app endpoint that signs new links for the files in a stored
+      thread. When set, get-thread and get-active-thread collect the file parts
+      that carry a storage key and call it once with
+      { files: [{ key, filename, mediaType }] }. It returns
+      { files: [{ key, url }] }; each part's url is replaced by its key's new
+      link, and a key answered with no url keeps the stored link. Not called
+      when no part carries a key. The keys come from what the browser saved, so
+      the endpoint must check each key is one the caller may read before
+      signing it. Null (the default) leaves stored links as they are.
   composer_note:
     type: string
     default: null

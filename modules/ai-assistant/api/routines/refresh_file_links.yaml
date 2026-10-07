@@ -1,0 +1,65 @@
+# `replayable_messages` in and out, after sanitize_messages. A file part holds the link signed at
+# upload, which stops working within days (S3 signs for seven at most), so a thread reopened later
+# would send the model dead links. When the app names a `file_links_endpoint`, every file part that
+# carries a storage key (AgentChat keeps it at providerMetadata.lowdefy.key) gets that key's new link
+# from one call to it. A key it answers with no url keeps the stored link. Without the var this
+# routine adds no steps.
+_build.if:
+  test:
+    _build.ne:
+      - _build.if_none:
+          - _module.var: file_links_endpoint
+          - null
+      - null
+  then:
+    - :set_state:
+        keyed_files:
+          _js: |
+            const seen = new Set();
+            const files = [];
+            for (const message of state('replayable_messages') || []) {
+              for (const part of (message || {}).parts || []) {
+                if ((part || {}).type !== 'file') continue;
+                const key = ((part.providerMetadata || {}).lowdefy || {}).key;
+                if (typeof key !== 'string' || key === '' || seen.has(key)) continue;
+                seen.add(key);
+                files.push({ key, filename: part.filename, mediaType: part.mediaType });
+              }
+            }
+            return files;
+    - :if:
+        _gt:
+          - _array.length:
+              _state: keyed_files
+          - 0
+      :then:
+        - id: file_links
+          type: CallApi
+          properties:
+            endpointId:
+              _module.var: file_links_endpoint
+            payload:
+              files:
+                _state: keyed_files
+        - :set_state:
+            file_links:
+              _step: file_links.files
+        - :set_state:
+            replayable_messages:
+              _js: |
+                const links = new Map();
+                for (const file of state('file_links') || []) {
+                  if (file && typeof file.key === 'string' && typeof file.url === 'string' && file.url !== '') {
+                    links.set(file.key, file.url);
+                  }
+                }
+                const relink = (part) => {
+                  if ((part || {}).type !== 'file') return part;
+                  const url = links.get(((part.providerMetadata || {}).lowdefy || {}).key);
+                  return url === undefined ? part : { ...part, url };
+                };
+                return (state('replayable_messages') || []).map((message) =>
+                  Array.isArray((message || {}).parts)
+                    ? { ...message, parts: message.parts.map(relink) }
+                    : message);
+  else: []
