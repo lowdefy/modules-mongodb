@@ -171,7 +171,10 @@ test("with the panel closed after showing another thread it starts a new thread 
   await page.getByRole("button", { name: "Open assistant" }).click();
   await expect(page.getByText("An earlier answer")).toBeVisible();
   await page.getByRole("button", { name: "Close panel" }).click();
-  await expect(page.locator(".fp-panel")).toHaveAttribute("data-open", "false");
+  await expect(page.locator("#ai_panel .fp-panel")).toHaveAttribute(
+    "data-open",
+    "false",
+  );
 
   await ldf.block("ask_assistant_tour").do.click();
 

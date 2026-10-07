@@ -48,7 +48,7 @@ slots:
               value: tickets
   content:
     blocks:
-      - id: support_context
+      - id: support_report_context
         type: SupportContext
       - _ref: components/report/report_form.yaml
       - id: support_tickets_view

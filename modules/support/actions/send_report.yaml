@@ -14,7 +14,7 @@ try:
   - id: support_report_snapshot
     type: CallMethod
     params:
-      blockId: support_context
+      blockId: support_report_context
       method: snapshot
   - id: support_create_ticket
     type: CallAPI
@@ -45,19 +45,19 @@ try:
           page:
             _location: pageId
           url:
-            _state: support_context.url
+            _state: support_report_context.url
           user_agent:
-            _state: support_context.user_agent
+            _state: support_report_context.user_agent
           viewport:
-            _state: support_context.viewport
+            _state: support_report_context.viewport
           screen:
-            _state: support_context.screen
+            _state: support_report_context.screen
           locale:
-            _state: support_context.locale
+            _state: support_report_context.locale
           timezone:
-            _state: support_context.timezone
+            _state: support_report_context.timezone
           errors:
-            _state: support_context.errors
+            _state: support_report_context.errors
           extra:
             _module.var: context
   - id: support_report_sent
