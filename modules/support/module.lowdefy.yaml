@@ -141,6 +141,14 @@ exports:
     - id: on-init
       description: >-
         The support panel's state, for the layout's global_events.onInit
+    - id: agent-instructions
+      description: >-
+        Markdown brief for an app's agent that has the agent tools: when to file,
+        how to write a ticket up, follow-ups, and what a failed call means
+    - id: agent-tools
+      description: >-
+        The four agent tools, under the names the brief uses, for an agent's
+        tools list
   connections:
     - id: support_pelican
       description: Pelican's support API, authorised with the support app's key
@@ -188,15 +196,6 @@ exports:
       description: >-
         Agent tool: add a message to one of the session user's tickets, with
         chat files not on it yet
-  components:
-    - id: agent-instructions
-      description: >-
-        Markdown brief for an app's agent that has the agent tools: when to file,
-        how to write a ticket up, follow-ups, and what a failed call means
-    - id: agent-tools
-      description: >-
-        The four agent tools, under the names the brief uses, for an agent's
-        tools list
 
 components:
   - id: launcher
@@ -208,6 +207,12 @@ components:
   - id: on-init
     component:
       _ref: components/on-init.yaml
+  - id: agent-instructions
+    component:
+      _ref: agent/instructions.md
+  - id: agent-tools
+    component:
+      _ref: agent/tools.yaml
 
 pages:
   - _ref: pages/support.yaml
@@ -232,14 +237,6 @@ api:
   - _ref: api/agent/agent-list-my-tickets.yaml
   - _ref: api/agent/agent-read-ticket.yaml
   - _ref: api/agent/agent-post-message.yaml
-
-components:
-  - id: agent-instructions
-    component:
-      _ref: agent/instructions.md
-  - id: agent-tools
-    component:
-      _ref: agent/tools.yaml
 
 secrets:
   - name: MONGODB_URI
