@@ -1,0 +1,53 @@
+# Opening a thread: fetch the ticket in {{ prefix }}_ticket (its id or key) from
+# Pelican, which renews its file links and marks it read. A failed fetch shows
+# what the copy holds, with a notice; a ticket that is not the user's shows
+# nothing. With no ticket chosen it does nothing.
+#
+# Vars:
+#   prefix  the state and block id prefix of the surface
+- id: {{ prefix }}_thread_reset
+  type: SetState
+  skip:
+    _eq:
+      - _state: {{ prefix }}_ticket
+      - null
+  params:
+    {{ prefix }}_thread: null
+    {{ prefix }}_thread_error: null
+    {{ prefix }}_thread_loading: true
+    {{ prefix }}_reply_error: null
+- id: {{ prefix }}_sync_ticket
+  type: CallAPI
+  skip:
+    _eq:
+      - _state: {{ prefix }}_ticket
+      - null
+  params:
+    endpointId:
+      _module.endpointId: sync-ticket
+    payload:
+      ticket:
+        _state: {{ prefix }}_ticket
+- id: {{ prefix }}_set_thread
+  type: SetState
+  skip:
+    _eq:
+      - _state: {{ prefix }}_ticket
+      - null
+  params:
+    {{ prefix }}_thread_loading: false
+    {{ prefix }}_thread:
+      _actions: {{ prefix }}_sync_ticket.response.response.ticket
+    {{ prefix }}_thread_error:
+      _if:
+        test:
+          _eq:
+            - _actions: {{ prefix }}_sync_ticket.response.response.ok
+            - true
+        then: null
+        else:
+          _ref:
+            path: components/parts/error_message.yaml
+            vars:
+              error:
+                _actions: {{ prefix }}_sync_ticket.response.response.error

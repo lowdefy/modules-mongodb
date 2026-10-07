@@ -115,6 +115,14 @@ vars:
       organisation, or null for a user with none.
 
 exports:
+  pages:
+    - id: support
+      description: >-
+        The user's tickets beside the open thread; ?ticket= (an id or a key)
+        opens one
+  menus:
+    - id: default
+      description: A Support link to the support page, for the profile menu
   components:
     - id: launcher
       description: >-
@@ -171,6 +179,12 @@ components:
   - id: on-init
     component:
       _ref: components/on-init.yaml
+
+pages:
+  - _ref: pages/support.yaml
+
+menus:
+  - _ref: menu.yaml
 
 connections:
   - _ref: connections/support_pelican.yaml

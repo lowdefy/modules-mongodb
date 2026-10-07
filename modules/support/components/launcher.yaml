@@ -32,6 +32,19 @@ properties:
     _module.var: launcher.placement
   width: 420
   expandable: false
+events:
+  # Opening the panel on My tickets refreshes what it shows.
+  onOpen:
+    _build.array.concat:
+      - _ref:
+          path: actions/open_tickets.yaml.njk
+          vars:
+            prefix: support
+            view_state: support_view
+      - _ref:
+          path: actions/open_thread.yaml.njk
+          vars:
+            prefix: support
 slots:
   toolbar:
     blocks:
@@ -46,6 +59,21 @@ slots:
               value: report
             - label: My tickets
               value: tickets
+        events:
+          # My tickets always opens on the list.
+          onChange:
+            _build.array.concat:
+              - - id: support_view_changed
+                  type: SetState
+                  params:
+                    support_ticket: null
+                    support_thread: null
+                    support_thread_error: null
+              - _ref:
+                  path: actions/open_tickets.yaml.njk
+                  vars:
+                    prefix: support
+                    view_state: support_view
   content:
     blocks:
       - id: support_report_context
@@ -58,13 +86,28 @@ slots:
             - _state: support_view
             - tickets
         blocks:
-          - id: support_tickets_sent
-            type: Alert
+          - id: support_list_area
+            type: Box
+            visible:
+              _eq:
+                - _state: support_ticket
+                - null
+            blocks:
+              - _ref:
+                  path: components/tickets/tickets_list.yaml.njk
+                  vars:
+                    prefix: support
+          - id: support_thread_area
+            type: Box
             visible:
               _ne:
                 - _state: support_ticket
                 - null
-            properties:
-              type: success
-              showIcon: true
-              message: Your report was sent. The team will reply here.
+            blocks:
+              - _ref:
+                  path: components/tickets/thread.yaml.njk
+                  vars:
+                    prefix: support
+                    back: true
+                    view_state: support_view
+                    max_height: 360

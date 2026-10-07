@@ -5,6 +5,15 @@ type: SetState
 params:
   support_view: report
   support_ticket: null
+  support_tickets: []
+  support_tickets_error: null
+  support_thread: null
+  support_thread_error: null
+  support_thread_loading: false
+  support_posting: false
+  support_reply_error: null
+  support_reply.message: null
+  support_reply.files: []
   support_sending: false
   support_report_error: null
   support_report.type: null

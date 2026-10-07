@@ -105,7 +105,7 @@ Each file uploads to the app's bucket as it is added. A line on the form says wh
 | `errors`                                                 | The tab's last 20 errors.                                         |
 | `extra`                                                  | The `context` var, evaluated when Send is pressed.                |
 
-When Pelican has the ticket, the draft clears and the panel shows My tickets. Otherwise the draft stays and the form says why: Pelican's own message for something to fix, "Something went wrong, try again" (with the wait, when Pelican gives one) for a busy or failed call, or "Support is unavailable right now" for a refused key. Nothing is sent again on its own.
+When Pelican has the ticket, the draft clears and the panel opens the new ticket's thread. Otherwise the draft stays and the form says why: Pelican's own message for something to fix, "Something went wrong, try again" (with the wait, when Pelican gives one) for a busy or failed call, or "Support is unavailable right now" for a refused key. Nothing is sent again on its own.
 
 ### Keeping fields out of screenshots
 
@@ -128,6 +128,31 @@ or list a CSS selector for it in the `mask_selectors` var:
 ```yaml
 mask_selectors:
   - .customer-card .account-number
+```
+
+## My tickets and the thread
+
+**My tickets** in the panel lists the user's tickets, newest first: the ones they reported and the ones the team logged for them. Each row shows the title, the key, the stage as Pelican names it (Received, In progress, Needs your reply, Resolved) and when it last changed. A dot marks a ticket with a team message the user has not read. When the user's tickets come from more than one organisation, each row names its organisation. Opening the view fetches the list from Pelican; when that fails, it shows the saved tickets with a notice.
+
+Opening a ticket shows its **thread**: the messages, with images inline and PDFs as file chips, and a composer for a reply with up to five images or PDFs. Opening it fetches the ticket from Pelican, which renews its file links and marks it read. A message the team removed shows as "Removed". The team's messages, Pelican's own included, sit on the left; the user's on the right. A reporter cannot close a ticket: the team resolves it. A reply that fails keeps its draft and says why, as the report form does.
+
+### The support page
+
+The module's `support` page (`/{entry id}/support`) shows the same list beside the open thread, at full width. `?ticket=` names the ticket to open, by its id or its key, so a link or a notification can point at one. A ticket that is not the user's shows nothing of it.
+
+Add the module's `default` menu to the app's profile menu for a Support link:
+
+```yaml
+# menus.yaml
+- id: profile
+  links:
+    _build.array.concat:
+      - - id: profile
+          type: MenuLink
+          # ...
+      - _ref:
+          module: support
+          menu: default
 ```
 
 ## The copy

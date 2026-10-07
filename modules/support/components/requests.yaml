@@ -4,3 +4,7 @@
     path: requests/upload_policy.yaml
     vars:
       block_id: support_report_files
+- _ref:
+    path: requests/upload_policy.yaml
+    vars:
+      block_id: support_reply_files

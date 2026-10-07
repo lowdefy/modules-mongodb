@@ -1,0 +1,55 @@
+# Opening My tickets: fetch the user's tickets from Pelican into the copy and
+# list them. A failed fetch still lists the stored tickets, with a notice. The
+# organisation shows on each row only when the rows carry more than one.
+#
+# Vars:
+#   prefix      the state and block id prefix of the surface
+#   view_state  optional: a state key; the fetch runs only while it is
+#               "tickets"
+- id: {{ prefix }}_sync_tickets
+  type: CallAPI
+{% if view_state %}
+  skip:
+    _ne:
+      - _state: {{ view_state }}
+      - tickets
+{% endif %}
+  params:
+    endpointId:
+      _module.endpointId: sync-tickets
+- id: {{ prefix }}_set_tickets
+  type: SetState
+{% if view_state %}
+  skip:
+    _ne:
+      - _state: {{ view_state }}
+      - tickets
+{% endif %}
+  params:
+    {{ prefix }}_tickets:
+      _js:
+        fn: |
+          const tickets = args.tickets || [];
+          const organizations = new Set(
+            tickets.map((ticket) => (ticket.organization ? ticket.organization.id : null)),
+          );
+          return tickets.map((ticket) => ({
+            ...ticket,
+            show_organization: organizations.size > 1,
+          }));
+        args:
+          tickets:
+            _actions: {{ prefix }}_sync_tickets.response.response.tickets
+    {{ prefix }}_tickets_error:
+      _if:
+        test:
+          _eq:
+            - _actions: {{ prefix }}_sync_tickets.response.response.ok
+            - true
+        then: null
+        else:
+          _ref:
+            path: components/parts/error_message.yaml
+            vars:
+              error:
+                _actions: {{ prefix }}_sync_tickets.response.response.error

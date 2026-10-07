@@ -42,7 +42,10 @@ const pelican = createPelicanStub();
 test.beforeAll(() => pelican.start());
 test.afterAll(() => pelican.stop());
 
-test.beforeEach(async ({ ldf, page }) => {
+// The in-memory database outlives each test, so every test starts from an
+// empty copy.
+test.beforeEach(async ({ ldf, page, mdb }) => {
+  await mdb.collection("support-tickets").deleteMany({});
   pelican.reset();
   await ldf.mock.request("upload_policy_support_report_files", {
     response: { url: S3_URL, fields: { key: KEY, bucket: "e2e-bucket" } },
@@ -89,19 +92,25 @@ test("Help files a report with a screenshot, an attached image and the page's co
   await fillDraft({ ldf });
   await page.getByTestId("support_report_screenshot").click();
   await page.getByTestId("support_report_screenshot_use").click();
-  await attach(page, "pasted.png");
   await expect(page.locator("#support_report\\.files")).toContainText(
     "screenshot.png",
   );
+  await attach(page, "pasted.png");
   await expect(page.locator("#support_report\\.files")).toContainText(
     "pasted.png",
   );
 
   await ldf.block("support_report_send").do.click();
-  await ldf.block("support_tickets_sent").expect.visible();
+  // The panel opens the new ticket's thread.
+  await expect(page.locator("#support_thread_title")).toContainText(
+    "The export fails",
+  );
 
-  expect(pelican.calls).toHaveLength(1);
-  const [sent] = pelican.calls;
+  const created = pelican.calls.filter(
+    (c) => c.endpoint === "support-create-ticket",
+  );
+  expect(created).toHaveLength(1);
+  const [sent] = created;
   expect(sent.endpoint).toBe("support-create-ticket");
   expect(sent.body.type).toBe("bug");
   expect(sent.body.title).toBe("The export fails");
@@ -243,7 +252,9 @@ test("a user with no organisation sees Help and files with organization null", a
   await openForm({ ldf, page });
   await fillDraft({ ldf });
   await ldf.block("support_report_send").do.click();
-  await ldf.block("support_tickets_sent").expect.visible();
+  await expect(page.locator("#support_thread_title")).toContainText(
+    "The export fails",
+  );
   expect(pelican.calls[0].body.context.organization).toBeNull();
 });
 

@@ -1,0 +1,65 @@
+# My tickets: the user's tickets newest first, the ones the team logged for
+# them included. A dot marks a ticket with a team message the user has not
+# read. Clicking one opens its thread.
+#
+# Vars:
+#   prefix  the state and block id prefix of the surface it sits in
+id: {{ prefix }}_tickets_list_box
+type: Box
+layout:
+  gap: 8
+blocks:
+  - id: {{ prefix }}_tickets_notice
+    type: Alert
+    visible:
+      _ne:
+        - _state: {{ prefix }}_tickets_error
+        - null
+    properties:
+      type: warning
+      showIcon: true
+      message:
+        _string.concat:
+          - "Showing your saved tickets. "
+          - _state: {{ prefix }}_tickets_error
+  - id: {{ prefix }}_tickets_list
+    type: ListSelector
+    properties:
+      selectable: false
+      hoverable: true
+      size: small
+      gap: 6
+      noData: No tickets yet. Reports you send show here.
+      data:
+        _if_none:
+          - _state: {{ prefix }}_tickets
+          - []
+      # Rendered per row by the block, so the template is kept out of this
+      # file's own build-time rendering.
+      html: |
+{% raw %}
+        <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            {% if item.unread %}<span data-status="processing" data-tooltip="New reply from the team" aria-label="New reply"></span>{% endif %}
+            <strong data-truncate="1">{{ item.title }}</strong>
+          </div>
+          <div data-tone="secondary" style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">
+            <span>{{ item.key }}</span>
+            {% if item.stage == 'Resolved' %}<span data-tag="success">{{ item.stage }}</span>{% elif item.stage == 'Needs your reply' %}<span data-tag="warning">{{ item.stage }}</span>{% elif item.stage == 'In progress' %}<span data-tag="processing">{{ item.stage }}</span>{% else %}<span data-tag="default">{{ item.stage }}</span>{% endif %}
+            <time datetime="{{ item.updated }}" data-time="relative"></time>
+            {% if item.show_organization and item.organization %}<span>{{ item.organization.name }}</span>{% endif %}
+          </div>
+        </div>
+{% endraw %}
+    events:
+      onClick:
+        _build.array.concat:
+          - - id: {{ prefix }}_pick_ticket
+              type: SetState
+              params:
+                {{ prefix }}_ticket:
+                  _event: item.id
+          - _ref:
+              path: actions/open_thread.yaml.njk
+              vars:
+                prefix: {{ prefix }}
