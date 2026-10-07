@@ -30,6 +30,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                               |
 | [ai-reporting](../modules/ai-reporting/README.md)   | AI chat over your data — open query engine, charts, CSV exports, saved reports                              |
 | [walkthroughs](../modules/walkthroughs/README.md) | Step-by-step walkthroughs stored and played in-app — native player, draft/publish editor, screen capture |
+| [support](../modules/support/README.md) | The reporter's side of the Pelican support desk: report a problem, chat with the team |
 
 ## Dependency graph
 
@@ -66,6 +67,10 @@ graph TD
   release-notes --> layout
   events
   ai-reporting --> layout
+  support --> layout
+  support --> events
+  support --> notifications
+  support --> files
 ```
 
 A few notes on the shape:

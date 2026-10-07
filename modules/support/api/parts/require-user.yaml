@@ -1,0 +1,10 @@
+# The copy is keyed on the session user, and Pelican is told who the reporter is
+# from the session. An endpoint called without one has nobody to act for.
+- :if:
+    _eq:
+      - _if_none:
+          - _user: id
+          - null
+      - null
+  :then:
+    - :reject: Sign in to contact support.

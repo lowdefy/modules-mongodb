@@ -1,0 +1,159 @@
+name: Support
+version: 0.44.1
+description: >-
+  The reporter's side of the Pelican support desk: a signed-in user reports a
+  problem and chats with the team. Tickets live in Pelican; the app keeps a copy
+  of each of its users' tickets, filled from Pelican's support API and owned by
+  the user who reported it.
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper for the support page.
+  - id: events
+    description: Change stamps on every write to the ticket copy.
+  - id: notifications
+    description: The support-reply notification on every new team message.
+  - id: files
+    description: >-
+      The files bucket (files-bucket connection) that screenshots and attached
+      files are uploaded to before Pelican copies them.
+
+vars:
+  pelican_url:
+    type: string
+    default: https://pelican.lowdefy.app
+    description: >-
+      Origin of the Pelican deployment holding the support app, no trailing
+      slash. Every deployment of an app talks to production Pelican; only
+      building this module points it elsewhere.
+  environment:
+    type: string
+    required: true
+    description: >-
+      The deployment that filed a ticket: production, staging or development.
+      Sent with every ticket and shown on it. Set it from a build-time env var,
+      never guess it at runtime.
+  app_version:
+    default: null
+    description: The app's version, sent with every ticket and shown on it.
+  types:
+    type: array
+    default:
+      - value: bug
+        label: Bug
+        description: Something is broken or does not work as it should.
+      - value: question
+        label: Question
+        description: Ask how something works.
+      - value: feature_request
+        label: Feature request
+        description: Suggest something the app could do.
+      - value: feedback
+        label: Feedback
+        description: Tell the team what you think.
+    description: >-
+      The ticket types offered on the report form, as { value, label,
+      description }. Values are Pelican's ticket types (bug, question,
+      feature_request, feedback); labels and descriptions are the app's.
+  context:
+    type: object
+    default: {}
+    description: >-
+      Runtime operators evaluated when a ticket is sent, into its context's
+      `extra`. For facts about the user's situation the module cannot know, such
+      as the record they are looking at.
+  mask_selectors:
+    type: array
+    default: []
+    description: >-
+      CSS selectors blanked in screenshots before the capture, beside the
+      built-in ones (password inputs and `[data-support-mask]`).
+  launcher:
+    type: object
+    description: The help button that opens the support panel.
+    properties:
+      show:
+        type: boolean
+        default: true
+        description: >-
+          Show the help button to signed-in users. It never shows without a
+          session.
+      label:
+        type: string
+        default: Help
+        description: Text on the help button.
+      placement:
+        type: string
+        default: bottom-left
+        enum:
+          - bottom-left
+          - bottom-right
+        description: >-
+          Corner the help button and its panel dock to. Use the corner the
+          ai-assistant module's `panel_placement` does not.
+  user:
+    type: object
+    default:
+      id:
+        _user: id
+      name:
+        _user: name
+      email:
+        _user: email
+    description: >-
+      Runtime operators resolving to the reporter as { id, name, email }, sent
+      to Pelican on every call. Pelican matches the reporter by id, then by
+      email. The default reads the session; an app whose session keeps these
+      elsewhere points them there. Always from the session, never from a
+      payload.
+  organization:
+    default: null
+    description: >-
+      Runtime operator resolving to the organisation a ticket is filed from, as
+      { id, name }, or null. Sent as the ticket's `context.organization` and
+      recorded on the copy. Null (the default) sends the session's active
+      organisation, or null for a user with none.
+
+exports:
+  connections:
+    - id: support_pelican
+      description: Pelican's support API, authorised with the support app's key
+    - id: support-tickets
+      description: >-
+        The copy of each user's tickets (collection support-tickets), shared
+        across organisations and filtered by user on every read and write
+  api:
+    - id: sync-ticket
+      description: >-
+        Fetch one of the user's tickets from Pelican, store it and mark it read
+    - id: sync-tickets
+      description: >-
+        Fetch the user's tickets from Pelican, store the ones that changed and
+        list them newest first
+    - id: mark-read
+      description: Mark one of the user's tickets read
+
+connections:
+  - _ref: connections/support_pelican.yaml
+  - _ref: connections/support_tickets.yaml
+
+api:
+  - _ref: api/sync-ticket.yaml
+  - _ref: api/sync-tickets.yaml
+  - _ref: api/mark-read.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+  - name: SUPPORT_PELICAN_KEY
+    description: >-
+      Key of this deployment's support app in Pelican. Without it support is
+      unavailable and the help button does not show.
+  - name: SUPPORT_WEBHOOK_SECRET
+    description: >-
+      Webhook secret of this deployment's support app in Pelican, which signs
+      every webhook Pelican sends.
+
+plugins:
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.44.1"
