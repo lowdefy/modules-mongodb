@@ -14,7 +14,7 @@ The module ships four tools and a brief for the app's own agent, so a user can d
 | `support_file_ticket`     | `agent-file-ticket`     | Files a ticket with the chat's images and PDFs. Answers `{ ok, key, stage, files }`. |
 | `support_list_my_tickets` | `agent-list-my-tickets` | The user's tickets, each `{ key, title, stage, updated, unread }`.                   |
 | `support_read_ticket`     | `agent-read-ticket`     | One ticket's thread, each message `{ from, author, at, text, files, deleted }`.      |
-| `support_post_message`    | `agent-post-message`    | Adds a message, with the chat's images and PDFs not on the ticket yet.               |
+| `support_post_message`    | `agent-post-message`    | Adds a message, with the chat's images and PDFs not yet sent on any ticket.          |
 
 Every tool acts for the session user, through the same checked cores as the report form, and answers `{ ok: false, error }` on a failure, with the `kind` the [endpoints](../index.md#endpoints) describe. The brief tells the agent what each kind means.
 
@@ -48,7 +48,7 @@ The app sets its agent's model. Gemini Flash is a good fit: the tools need a mod
 
 ## Let the chat's files through
 
-The tools send the images and PDFs the user attached in the chat. They take them from the chat request (`_agent: files`), never from the model, so the agent can only send files of its own conversation. Each file is sent once per ticket: the copy records the keys sent on it in `chat_files`, and a later message leaves those out. At most five go with one ticket or message.
+The tools send the images and PDFs the user attached in the chat. They take them from the chat request (`_agent: files`), never from the model, so the agent can only send files of its own conversation. Each file is sent once: the copy records the keys sent on each ticket in `chat_files`, and a later ticket or message leaves out any key already sent on one of the user's tickets, so a second problem's ticket never repeats the first one's screenshots. At most five go with one ticket or message.
 
 The browser builds the chat request, so the tools send a file only when its key starts with the caller's own chat upload prefix. Set `chat_files_prefix` to the prefix the app's chat upload request gives the user's uploads:
 

@@ -210,7 +210,7 @@ exports:
     - id: agent-post-message
       description: >-
         Agent tool: add a message to one of the session user's tickets, with
-        chat files not on it yet
+        chat files not yet sent on any ticket
 
 components:
   - id: launcher

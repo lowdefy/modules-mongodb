@@ -207,7 +207,7 @@ One document per ticket in `support-tickets`:
 | `organization`       | `{ id, name }` the user filed it from, or null. A ticket first stored from a list or a webhook has null.                   |
 | `read_at`            | When the user last had the thread open, or null.                                                                           |
 | `view`               | The reporter view Pelican returned: `id`, `key`, `title`, `type`, `version`, `stage`, `created`, `updated` and `messages`. |
-| `chat_files`         | Keys of the chat files the [agent tools](how-to/agent-tools.md) have sent on the ticket, so none goes twice.               |
+| `chat_files`         | Keys of the chat files the [agent tools](how-to/agent-tools.md) have sent on the ticket, so none goes again.               |
 | `created`, `updated` | [Change stamps](../shared/change-stamps.md).                                                                               |
 
 **A ticket belongs to its reporter**, not to an organisation. The connection stands outside the tenant wall (`tenant: shared`), and every read and write is filtered by the session user's id: a user in two organisations sees all their tickets in one list, each marked with its organisation.

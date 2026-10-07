@@ -5,7 +5,7 @@ description: >-
   step to reproduce, a correction, an answer to something the team asked, or a
   screenshot that came after the ticket was filed. The team sees it in the
   ticket's thread. Images and PDFs the user attached in this chat that are not
-  on the ticket yet go with it on their own; you do not pass them. Answers
+  yet on any of their tickets go with it on their own; you do not pass them. Answers
   { ok: true, key, stage, files } with the names of the files sent, or
   { ok: false, error: { kind, message, retry_after } }.
 payloadSchema:
@@ -46,29 +46,12 @@ routine:
           ok: false
           error:
             _state: input_error
-  - id: sent_chat_files
-    type: MongoDBFindOne
-    connectionId:
-      _module.connectionId: support-tickets
-    properties:
-      query:
-        user_id:
-          _user: id
-        $or:
-          - _id:
-              _payload: ticket
-          - view.key:
-              _payload: ticket
-      options:
-        projection:
-          chat_files: 1
+  - _ref: api/agent/parts/sent-chat-files.yaml
   - _ref:
       path: api/agent/parts/resolve-chat-files.yaml
       vars:
         sent:
-          _if_none:
-            - _step: sent_chat_files.chat_files
-            - []
+          _state: sent_chat_files
   - id: send_message
     type: CallApi
     properties:

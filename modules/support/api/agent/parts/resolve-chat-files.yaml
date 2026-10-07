@@ -8,7 +8,7 @@
 # Only images and PDFs go, the files Pelican takes, each key once, at most five.
 #
 # Vars:
-#   sent  keys already sent on the ticket, left out
+#   sent  keys already sent on any of the user's tickets, left out
 - :set_state:
     chat_files_input:
       files:

@@ -72,7 +72,12 @@ routine:
           ok: false
           error:
             _state: input_error
-  - _ref: api/agent/parts/resolve-chat-files.yaml
+  - _ref: api/agent/parts/sent-chat-files.yaml
+  - _ref:
+      path: api/agent/parts/resolve-chat-files.yaml
+      vars:
+        sent:
+          _state: sent_chat_files
   - _ref: api/parts/organization.yaml
   - id: send_ticket
     type: CallApi
