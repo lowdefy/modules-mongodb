@@ -122,7 +122,25 @@ exports:
       description: >-
         The copy of each user's tickets (collection support-tickets), shared
         across organisations and filtered by user on every read and write
+    - id: support-organizations
+      description: >-
+        Read-only view of the auth engine's organizations, for the name of the
+        organisation a ticket is filed from
   api:
+    - id: create-ticket
+      description: >-
+        File a ticket for the session user from the report form, with files
+        they uploaded
+    - id: post-message
+      description: Post the session user's message, with files, on one of their tickets
+    - id: send-ticket
+      description: >-
+        Internal: file a ticket with checked input; the core of create-ticket
+        and the agent tools
+    - id: send-message
+      description: >-
+        Internal: post a message with checked input; the core of post-message
+        and the agent tools
     - id: sync-ticket
       description: >-
         Fetch one of the user's tickets from Pelican, store it and mark it read
@@ -136,8 +154,13 @@ exports:
 connections:
   - _ref: connections/support_pelican.yaml
   - _ref: connections/support_tickets.yaml
+  - _ref: connections/support_organizations.yaml
 
 api:
+  - _ref: api/create-ticket.yaml
+  - _ref: api/post-message.yaml
+  - _ref: api/send-ticket.yaml
+  - _ref: api/send-message.yaml
   - _ref: api/sync-ticket.yaml
   - _ref: api/sync-tickets.yaml
   - _ref: api/mark-read.yaml

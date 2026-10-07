@@ -89,13 +89,31 @@ Each answers `{ ok: true, ... }` or `{ ok: false, error, ... }` and never fails 
 | `retry`       | Pelican was busy or failed (429, 500), or did not answer.        | Try again, after `retry_after` seconds when given. |
 | `unavailable` | Pelican refused the key (401). Logged as an error on the server. | Support is unavailable until the key is fixed.     |
 
-| Endpoint       | Payload      | Returns                                                                                                                           |
-| -------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `sync-tickets` | none         | `{ ok, error, tickets }`: the user's tickets newest first, each `{ id, key, title, type, stage, updated, organization, unread }`. |
-| `sync-ticket`  | `{ ticket }` | `{ ok, ticket }`: the stored row, refreshed from Pelican and marked read. On failure, the stored row (or null) with the error.    |
-| `mark-read`    | `{ ticket }` | `{ ok: true }`. Marks the ticket read.                                                                                            |
+| Endpoint        | Payload                                    | Returns                                                                                                                           |
+| --------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `create-ticket` | `{ type, title, message, context, files }` | `{ ok, ticket }`: files a ticket and returns its stored row.                                                                      |
+| `post-message`  | `{ ticket, message, files }`               | `{ ok, ticket }`: posts the user's message and returns the stored row.                                                            |
+| `sync-tickets`  | none                                       | `{ ok, error, tickets }`: the user's tickets newest first, each `{ id, key, title, type, stage, updated, organization, unread }`. |
+| `sync-ticket`   | `{ ticket }`                               | `{ ok, ticket }`: the stored row, refreshed from Pelican and marked read. On failure, the stored row (or null) with the error.    |
+| `mark-read`     | `{ ticket }`                               | `{ ok: true }`. Marks the ticket read.                                                                                            |
 
 `ticket` is a ticket's id or its key.
+
+`create-ticket` and `post-message` check what the browser sent before Pelican is called: the type is one of the `types` var's values, the title is 1 to 120 characters, the message 1 to 4,000, there are at most five files, and each file key is under the user's own `support/{user id}/` prefix. A failed check answers a `fix` error. The server adds `app`, `environment`, `version` and `organization` to the ticket's context, over anything the browser sent for them.
+
+Neither retries on its own. Pelican's create has no idempotency key, so a create repeated after a lost answer files a second ticket: let the user decide to try again.
+
+## Files
+
+Every file a reporter sends goes to the app's own files bucket first, through the `files` module:
+
+1. The browser uploads it with the module's upload policy (`requests/upload_policy.yaml`), under `support/{user id}/{uuid}/{file name}`, up to 10 MB, with the uploader metadata the `files` module's own policy sets.
+2. `create-ticket` or `post-message` takes the uploaded files as `[{ key, name }]` and refuses any key outside the user's prefix.
+3. The server signs a 15-minute GET link for each key and sends Pelican `files: [{ name, url }]`. Pelican copies each file into its own bucket within that time.
+
+Pelican takes images and PDFs up to 10 MB, five per message. It refuses a larger file with `file_too_large` and another type with `file_type`, both `fix` errors.
+
+The ticket's view then lists each message's files as Pelican's own links, valid for seven days. `sync-ticket` renews them when a thread opens.
 
 `sync-tickets` asks Pelican for the user's tickets, the ones the team logged for them included, and fetches in full only those the copy lacks or holds at a lower version. Normally that is one call. A failed call keeps the copy and returns it with the error.
 

@@ -1,0 +1,45 @@
+id: post-message
+type: Api
+description: >-
+  Posts the session user's message on one of their tickets: { ticket, message,
+  files: [{ key, name }] }, the ticket by id or key. Files are keys the user
+  uploaded through the module's upload policy. Answers { ok, ticket } or
+  { ok: false, error }.
+payloadSchema:
+  type: object
+  required:
+    - ticket
+  properties:
+    ticket:
+      type: string
+      minLength: 1
+    files:
+      type: array
+routine:
+  - _ref: api/parts/require-user.yaml
+  - _ref: api/parts/check-input.yaml
+  - :if:
+      _ne:
+        - _state: input_error
+        - null
+    :then:
+      - :return:
+          ok: false
+          error:
+            _state: input_error
+  - id: send_message
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId: send-message
+      payload:
+        ticket:
+          _payload: ticket
+        message:
+          _payload: message
+        files:
+          _if_none:
+            - _payload: files
+            - []
+  - :return:
+      _step: send_message

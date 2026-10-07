@@ -1,0 +1,27 @@
+# Signs a 15-minute GET link on the files bucket for each file in
+# state.send_files ([{ key, name }]), leaving state.pelican_files
+# ([{ name, url }]) for Pelican to copy the files from.
+- :set_state:
+    pelican_files: []
+- ':for': send_file
+  ':in':
+    _state: send_files
+  ':do':
+    - id: presign_file
+      type: AwsS3PresignedGetObject
+      connectionId:
+        _module.connectionId:
+          id: files-bucket
+          module: files
+      properties:
+        key:
+          _item: send_file.key
+        expires: 900
+    - :set_state:
+        pelican_files:
+          _array.concat:
+            - _state: pelican_files
+            - - name:
+                  _item: send_file.name
+                url:
+                  _step: presign_file.$

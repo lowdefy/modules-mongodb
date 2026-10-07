@@ -1,0 +1,55 @@
+# Checks a report or a message before anything is sent, leaving
+# state.input_error null or a fix error saying what to change. The browser can
+# send anything, so nothing here trusts it: a file must sit under the caller's
+# own upload prefix, or the server would hand Pelican a link to another user's
+# upload.
+#
+# Vars:
+#   ticket  true for a new ticket, which also checks the type and title
+- :set_state:
+    check:
+      input:
+        _payload: true
+      types:
+        _module.var: types
+      key_prefix:
+        _string.concat:
+          - support/
+          - _user: id
+          - /
+      ticket:
+        _var:
+          key: ticket
+          default: false
+- :set_state:
+    input_error:
+      _js: |
+        const { input, types, key_prefix, ticket } = state('check');
+        const type_values = types.map((type) => type.value);
+        const text = (value) => (typeof value === 'string' ? value.trim() : '');
+        const problem = (() => {
+          if (ticket && !type_values.includes(input.type)) {
+            return 'Choose one of the ticket types.';
+          }
+          if (ticket && (text(input.title).length < 1 || input.title.length > 120)) {
+            return 'Give the ticket a title of up to 120 characters.';
+          }
+          if (text(input.message).length < 1 || input.message.length > 4000) {
+            return 'Write a message of up to 4,000 characters.';
+          }
+          const files = input.files || [];
+          if (files.length > 5) return 'Attach up to five files.';
+          const notOwn = files.some(
+            (file) =>
+              !file ||
+              typeof file.key !== 'string' ||
+              !file.key.startsWith(key_prefix) ||
+              typeof file.name !== 'string' ||
+              file.name.length < 1,
+          );
+          if (notOwn) return 'Attach only files you uploaded here.';
+          return null;
+        })();
+        return problem === null
+          ? null
+          : { kind: 'fix', status: null, code: 'invalid_request', message: problem, retry_after: null };

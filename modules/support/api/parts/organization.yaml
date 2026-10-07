@@ -1,0 +1,36 @@
+# The organisation a ticket is filed from, into state.organization: the
+# `organization` var's value, or else the session's active organisation as
+# { id, name }, or null for a user with none.
+- :set_state:
+    organization:
+      _module.var: organization
+- :if:
+    _and:
+      - _eq:
+          - _state: organization
+          - null
+      - _ne:
+          - _if_none:
+              - _user: organization_id
+              - null
+          - null
+  :then:
+    - id: active_organization
+      type: MongoDBFindOne
+      connectionId:
+        _module.connectionId: support-organizations
+      properties:
+        query:
+          _id:
+            _user: organization_id
+        options:
+          projection:
+            name: 1
+    - :set_state:
+        organization:
+          id:
+            _user: organization_id
+          name:
+            _if_none:
+              - _step: active_organization.name
+              - null

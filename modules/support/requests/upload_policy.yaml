@@ -1,0 +1,62 @@
+# The presigned POST policy the report form and the composer upload through, to
+# the app's files bucket under support/{user}/{uuid}/{name}. send-ticket and
+# send-message sign links only for keys under the caller's own prefix.
+#
+# Vars:
+#   block_id  the upload block's id; the request is upload_policy_{block_id}
+id:
+  _build.string.concat:
+    - upload_policy_
+    - _var: block_id
+type: AwsS3PresignedPostPolicy
+connectionId:
+  _module.connectionId:
+    id: files-bucket
+    module: files
+payload:
+  file_name:
+    _event: file.name
+  file_type:
+    _event: file.type
+  url:
+    _location: href
+properties:
+  key:
+    _string.concat:
+      - support/
+      - _user: id
+      - /
+      - _uuid: true
+      - /
+      - _payload: file_name
+  fields:
+    Content-Type:
+      _payload: file_type
+    x-amz-meta-uploaded-by-id:
+      _if_none:
+        - _user: id
+        - unknown
+    x-amz-meta-uploaded-by-name:
+      _if_none:
+        - _user: name
+        - _if_none:
+            - _user: profile.name
+            - unknown
+    x-amz-meta-uploaded-by-url:
+      _if_none:
+        - _payload: url
+        - unknown
+  conditions:
+    # Pelican takes files up to 10 MB.
+    - - content-length-range
+      - 1
+      - 10485760
+    - - starts-with
+      - $x-amz-meta-uploaded-by-id
+      - ""
+    - - starts-with
+      - $x-amz-meta-uploaded-by-name
+      - ""
+    - - starts-with
+      - $x-amz-meta-uploaded-by-url
+      - ""
