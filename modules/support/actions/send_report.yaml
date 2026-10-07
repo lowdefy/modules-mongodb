@@ -1,0 +1,118 @@
+# Send on the report form: check the draft, read the page's context, file the
+# ticket. The draft clears only when Pelican has the ticket; nothing is resent on
+# its own, since a create repeated after a lost answer files a second ticket.
+try:
+  - id: support_report_validate
+    type: Validate
+    params:
+      regex: ^support_report\.
+  - id: support_report_start
+    type: SetState
+    params:
+      support_sending: true
+      support_report_error: null
+  - id: support_report_snapshot
+    type: CallMethod
+    params:
+      blockId: support_context
+      method: snapshot
+  - id: support_create_ticket
+    type: CallAPI
+    params:
+      endpointId:
+        _module.endpointId: create-ticket
+      payload:
+        type:
+          _state: support_report.type
+        title:
+          _state: support_report.title
+        message:
+          _state: support_report.message
+        files:
+          _array.map:
+            on:
+              _if_none:
+                - _state: support_report.files
+                - []
+            callback:
+              _function:
+                key:
+                  __args: 0.key
+                name:
+                  __args: 0.name
+        # The server adds app, environment, version and organization.
+        context:
+          page:
+            _location: pageId
+          url:
+            _state: support_context.url
+          user_agent:
+            _state: support_context.user_agent
+          viewport:
+            _state: support_context.viewport
+          screen:
+            _state: support_context.screen
+          locale:
+            _state: support_context.locale
+          timezone:
+            _state: support_context.timezone
+          errors:
+            _state: support_context.errors
+          extra:
+            _module.var: context
+  - id: support_report_sent
+    type: SetState
+    skip:
+      _ne:
+        - _actions: support_create_ticket.response.response.ok
+        - true
+    params:
+      support_report.type: null
+      support_report.title: null
+      support_report.message: null
+      support_report.files: []
+  # Its own step, after the reset: the form's inputs take the cleared values
+  # while still shown, so the draft does not come back when the form shows
+  # again.
+  - id: support_report_show_ticket
+    type: SetState
+    skip:
+      _ne:
+        - _actions: support_create_ticket.response.response.ok
+        - true
+    params:
+      support_view: tickets
+      support_ticket:
+        _actions: support_create_ticket.response.response.ticket._id
+  - id: support_report_refused
+    type: SetState
+    skip:
+      _eq:
+        - _actions: support_create_ticket.response.response.ok
+        - true
+    params:
+      support_report_error:
+        _ref:
+          path: components/parts/error_message.yaml
+          vars:
+            error:
+              _actions: support_create_ticket.response.response.error
+  - id: support_report_done
+    type: SetState
+    params:
+      support_sending: false
+catch:
+  # A failed check stops before support_sending is set, and the form shows
+  # what to fix. Anything later is a failed call: the draft stays.
+  - id: support_report_failed
+    type: SetState
+    skip:
+      _ne:
+        - _state: support_sending
+        - true
+    params:
+      support_report_error: Something went wrong, try again.
+  - id: support_report_failed_done
+    type: SetState
+    params:
+      support_sending: false

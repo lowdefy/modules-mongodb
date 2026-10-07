@@ -60,6 +60,76 @@ db["support-tickets"].createIndex(
 );
 ```
 
+## The help button
+
+The module's `launcher` component is a help button docked in a corner of every page, opening a support panel that does not block the page: the user can still scroll and click behind it. It shows only to a signed-in user (with or without an organisation), and only in an app built with `SUPPORT_PELICAN_KEY` set. The key is checked when the app is built, so a build without it has no button.
+
+Wire its three components into the layout module's vars:
+
+```yaml
+# The layout entry's vars
+global_blocks:
+  - _ref:
+      module: support
+      component: launcher
+global_requests:
+  _ref:
+    module: support
+    component: requests
+global_events:
+  onInit:
+    - _ref:
+        module: support
+        component: on-init
+```
+
+`requests` is a list of requests; when the app has global requests of its own, join the lists with `_build.array.concat`. `on-init` is one action, the panel's state. The `launcher` var sets the button's label (default Help), its corner (`bottom-left` by default, the corner the ai-assistant panel does not use) and whether it shows at all.
+
+### New report
+
+The panel opens on the report form: a type (the `types` var, each with its description), a title of up to 120 characters and a description of up to 4,000. Then up to five files, each an image or a PDF of up to 10 MB:
+
+- **Take screenshot** draws the page behind the panel, leaving the panel out, and opens an editor to blur or crop it. See [SupportScreenshot](../plugins/support-screenshot.md).
+- Files dropped on, chosen in or pasted into the drop area.
+
+Each file uploads to the app's bucket as it is added. A line on the form says what Send also shares: the page, the browser's details and the errors the tab recorded.
+
+**Send** files the ticket in one go. Its context is:
+
+| Field                                                    | From                                                              |
+| -------------------------------------------------------- | ----------------------------------------------------------------- |
+| `app`, `environment`, `version`                          | The app's slug and the `environment` and `app_version` vars.      |
+| `organization`                                           | `{ id, name }` of the organisation the user is in, or null.       |
+| `page`, `url`                                            | The page's id and address.                                        |
+| `user_agent`, `viewport`, `screen`, `locale`, `timezone` | The browser. See [SupportContext](../plugins/support-context.md). |
+| `errors`                                                 | The tab's last 20 errors.                                         |
+| `extra`                                                  | The `context` var, evaluated when Send is pressed.                |
+
+When Pelican has the ticket, the draft clears and the panel shows My tickets. Otherwise the draft stays and the form says why: Pelican's own message for something to fix, "Something went wrong, try again" (with the wait, when Pelican gives one) for a busy or failed call, or "Support is unavailable right now" for a refused key. Nothing is sent again on its own.
+
+### Keeping fields out of screenshots
+
+Every password input is blanked in a screenshot. To blank anything else, put a `data-support-mask` attribute on it:
+
+```yaml
+- id: account_number
+  type: Html
+  properties:
+    html:
+      _nunjucks:
+        template: <span data-support-mask>{{ number }}</span>
+        on:
+          number:
+            _state: account.number
+```
+
+or list a CSS selector for it in the `mask_selectors` var:
+
+```yaml
+mask_selectors:
+  - .customer-card .account-number
+```
+
 ## The copy
 
 One document per ticket in `support-tickets`:

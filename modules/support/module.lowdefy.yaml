@@ -115,6 +115,16 @@ vars:
       organisation, or null for a user with none.
 
 exports:
+  components:
+    - id: launcher
+      description: >-
+        The help button and the support panel, for the layout's global_blocks
+    - id: requests
+      description: >-
+        The requests the support panel calls, for the layout's global_requests
+    - id: on-init
+      description: >-
+        The support panel's state, for the layout's global_events.onInit
   connections:
     - id: support_pelican
       description: Pelican's support API, authorised with the support app's key
@@ -150,6 +160,17 @@ exports:
         list them newest first
     - id: mark-read
       description: Mark one of the user's tickets read
+
+components:
+  - id: launcher
+    component:
+      _ref: components/launcher.yaml
+  - id: requests
+    component:
+      _ref: components/requests.yaml
+  - id: on-init
+    component:
+      _ref: components/on-init.yaml
 
 connections:
   - _ref: connections/support_pelican.yaml

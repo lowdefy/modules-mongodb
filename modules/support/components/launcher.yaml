@@ -1,0 +1,70 @@
+# For the layout's global_blocks: the help button and the non-modal panel it
+# opens, with New report and My tickets. Pair with the requests and on-init
+# components. It shows to a signed-in user, with or without an organisation, in
+# an app built with SUPPORT_PELICAN_KEY set.
+id: support_panel
+type: FloatingPanel
+visible:
+  _and:
+    - _build.and:
+        - _module.var: launcher.show
+        - _build.ne:
+            - _build.env:
+                key: LOWDEFY_SECRET_SUPPORT_PELICAN_KEY
+                default: ""
+            - ""
+    - _ne:
+        - _if_none:
+            - _user: id
+            - null
+        - null
+properties:
+  title: Support
+  avatar:
+    icon: LifeBuoy
+  launcher:
+    icon: LifeBuoy
+    label:
+      _module.var: launcher.label
+    ariaLabel:
+      _module.var: launcher.label
+  placement:
+    _module.var: launcher.placement
+  width: 420
+  expandable: false
+slots:
+  toolbar:
+    blocks:
+      - id: support_view
+        type: ButtonSelector
+        properties:
+          label:
+            disabled: true
+          block: true
+          options:
+            - label: New report
+              value: report
+            - label: My tickets
+              value: tickets
+  content:
+    blocks:
+      - id: support_context
+        type: SupportContext
+      - _ref: components/report/report_form.yaml
+      - id: support_tickets_view
+        type: Box
+        visible:
+          _eq:
+            - _state: support_view
+            - tickets
+        blocks:
+          - id: support_tickets_sent
+            type: Alert
+            visible:
+              _ne:
+                - _state: support_ticket
+                - null
+            properties:
+              type: success
+              showIcon: true
+              message: Your report was sent. The team will reply here.
