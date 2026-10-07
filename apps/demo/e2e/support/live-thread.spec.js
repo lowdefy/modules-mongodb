@@ -35,7 +35,7 @@ const view = (id, key, version, messages) => ({
   title: `Ticket ${key}`,
   type: "bug",
   version,
-  stage: "In progress",
+  stage: "in_progress",
   created: "2026-10-01T08:00:00.000Z",
   updated: `2026-10-02T10:0${version}:00.000Z`,
   messages,

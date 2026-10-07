@@ -31,7 +31,7 @@ const createdView = {
   title: "The export fails",
   type: "bug",
   version: 1,
-  stage: "Received",
+  stage: "received",
   created: "2026-10-07T09:00:00.000Z",
   updated: "2026-10-07T09:00:00.000Z",
   messages: [],

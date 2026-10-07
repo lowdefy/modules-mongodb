@@ -124,6 +124,12 @@ routine:
       key:
         _step: send_ticket.ticket.view.key
       stage:
-        _step: send_ticket.ticket.view.stage
+        _get:
+          from:
+            _ref: enums/stages.yaml
+          key:
+            _string.concat:
+              - _step: send_ticket.ticket.view.stage
+              - .label
       files:
         _state: chat_file_names

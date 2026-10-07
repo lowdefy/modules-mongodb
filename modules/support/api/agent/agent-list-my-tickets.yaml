@@ -22,6 +22,8 @@ routine:
   - :set_state:
       agent_tickets:
         _step: sync_tickets.tickets
+      stages:
+        _ref: enums/stages.yaml
   - :return:
       ok:
         _step: sync_tickets.ok
@@ -29,10 +31,11 @@ routine:
         _step: sync_tickets.error
       tickets:
         _js: |
+          const stages = state('stages');
           return (state('agent_tickets') || []).map((ticket) => ({
             key: ticket.key,
             title: ticket.title,
-            stage: ticket.stage,
+            stage: stages[ticket.stage] ? stages[ticket.stage].label : ticket.stage,
             updated: ticket.updated,
             unread: ticket.unread === true,
           }));

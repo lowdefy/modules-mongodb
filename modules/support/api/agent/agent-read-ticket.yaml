@@ -32,6 +32,8 @@ routine:
   - :set_state:
       agent_view:
         _step: sync_ticket.ticket.view
+      stages:
+        _ref: enums/stages.yaml
   - :return:
       ok:
         _step: sync_ticket.ok
@@ -43,11 +45,12 @@ routine:
         _js: |
           const view = state('agent_view');
           if (!view) return null;
+          const stages = state('stages');
           return {
             key: view.key,
             title: view.title,
             type: view.type,
-            stage: view.stage,
+            stage: stages[view.stage] ? stages[view.stage].label : view.stage,
             created: view.created,
             updated: view.updated,
             messages: (view.messages || []).map((message) => ({

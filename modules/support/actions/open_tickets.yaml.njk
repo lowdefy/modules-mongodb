@@ -1,6 +1,7 @@
 # Opening My tickets: fetch the user's tickets from Pelican into the copy and
 # list them. A failed fetch still lists the stored tickets, with a notice. The
-# organisation shows on each row only when the rows carry more than one.
+# organisation shows on each row only when the rows carry more than one. Each
+# row gets its stage's label and tag from enums/stages.yaml.
 #
 # Vars:
 #   prefix      the state and block id prefix of the surface
@@ -33,13 +34,20 @@
           const organizations = new Set(
             tickets.map((ticket) => (ticket.organization ? ticket.organization.id : null)),
           );
-          return tickets.map((ticket) => ({
-            ...ticket,
-            show_organization: organizations.size > 1,
-          }));
+          return tickets.map((ticket) => {
+            const stage = args.stages[ticket.stage];
+            return {
+              ...ticket,
+              stage_label: stage ? stage.label : null,
+              stage_tag: stage ? stage.tag : null,
+              show_organization: organizations.size > 1,
+            };
+          });
         args:
           tickets:
             _actions: {{ prefix }}_sync_tickets.response.response.tickets
+          stages:
+            _ref: enums/stages.yaml
     {{ prefix }}_tickets_error:
       _if:
         test:

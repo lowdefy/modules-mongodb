@@ -45,7 +45,7 @@ blocks:
           </div>
           <div data-tone="secondary" style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">
             <span>{{ item.key }}</span>
-            {% if item.stage == 'Resolved' %}<span data-tag="success">{{ item.stage }}</span>{% elif item.stage == 'Needs your reply' %}<span data-tag="warning">{{ item.stage }}</span>{% elif item.stage == 'In progress' %}<span data-tag="processing">{{ item.stage }}</span>{% else %}<span data-tag="default">{{ item.stage }}</span>{% endif %}
+            {% if item.stage_label %}<span data-tag="{{ item.stage_tag }}">{{ item.stage_label }}</span>{% endif %}
             <time datetime="{{ item.updated }}" data-time="relative"></time>
             {% if item.show_organization and item.organization %}<span>{{ item.organization.name }}</span>{% endif %}
           </div>

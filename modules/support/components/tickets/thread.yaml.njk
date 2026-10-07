@@ -77,14 +77,20 @@ blocks:
                   template: |
 {% raw %}
                     <span data-tone="secondary">{{ key }}</span>
-                    {% if stage == 'Resolved' %}<span data-tag="success">{{ stage }}</span>{% elif stage == 'Needs your reply' %}<span data-tag="warning">{{ stage }}</span>{% elif stage == 'In progress' %}<span data-tag="processing">{{ stage }}</span>{% else %}<span data-tag="default">{{ stage }}</span>{% endif %}
+                    {% if stage %}<span data-tag="{{ stage.tag }}">{{ stage.label }}</span>{% endif %}
                     {% if organization %}<span data-tone="secondary">{{ organization }}</span>{% endif %}
 {% endraw %}
                   on:
                     key:
                       _state: {{ prefix }}_thread.view.key
                     stage:
-                      _state: {{ prefix }}_thread.view.stage
+                      _get:
+                        from:
+                          _ref: enums/stages.yaml
+                        key:
+                          _if_none:
+                            - _state: {{ prefix }}_thread.view.stage
+                            - none
                     organization:
                       _state: {{ prefix }}_thread.organization.name
   - id: {{ prefix }}_thread_loading_text

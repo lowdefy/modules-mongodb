@@ -165,7 +165,7 @@ mask_selectors:
 
 ## My tickets and the thread
 
-**My tickets** in the panel lists the user's tickets, newest first: the ones they reported and the ones the team logged for them. Each row shows the title, the key, the stage as Pelican names it (Received, In progress, Needs your reply, Resolved) and when it last changed. A dot marks a ticket with a team message the user has not read. When the user's tickets come from more than one organisation, each row names its organisation. Opening the view fetches the list from Pelican; when that fails, it shows the saved tickets with a notice.
+**My tickets** in the panel lists the user's tickets, newest first: the ones they reported and the ones the team logged for them. Each row shows the title, the key, the stage (Received, In progress, Needs your reply or Resolved, from Pelican's codes `received`, `in_progress`, `needs_your_reply` and `resolved`) and when it last changed. A dot marks a ticket with a team message the user has not read. When the user's tickets come from more than one organisation, each row names its organisation. Opening the view fetches the list from Pelican; when that fails, it shows the saved tickets with a notice.
 
 Opening a ticket shows its **thread**: the messages, with images inline and PDFs as file chips, and a composer for a reply with up to five images or PDFs. Opening it fetches the ticket from Pelican, which renews its file links and marks it read. A message the team removed shows as "Removed". The team's messages, Pelican's own included, sit on the left; the user's on the right. A reporter cannot close a ticket: the team resolves it. A reply that fails keeps its draft and says why, as the report form does.
 

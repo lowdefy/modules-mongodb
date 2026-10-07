@@ -29,6 +29,7 @@ const listCode = readYaml("agent-list-my-tickets.yaml").routine.find(
 const readCode = readYaml("agent-read-ticket.yaml").routine.find(
   (step) => step[":return"],
 )[":return"].ticket._js;
+const stages = readYaml("../../enums/stages.yaml");
 
 const chatFile = (name, mediaType = "image/png", owner = "u1") => ({
   key: `ai-assistant/${owner}/k-${name}/${name}`,
@@ -149,7 +150,7 @@ test("agent-list-my-tickets answers each ticket lean", () => {
           key: "SUP-1",
           title: "Export fails",
           type: "bug",
-          stage: "Needs your reply",
+          stage: "needs_your_reply",
           updated: "2026-10-07T09:00:00.000Z",
           organization: { id: "o1", name: "Org" },
           unread: true,
@@ -158,10 +159,11 @@ test("agent-list-my-tickets answers each ticket lean", () => {
           id: "t2",
           key: "SUP-2",
           title: "Idea",
-          stage: "Received",
+          stage: "received",
           updated: null,
         },
       ],
+      stages,
     }),
   ).toEqual([
     {
@@ -179,7 +181,7 @@ test("agent-list-my-tickets answers each ticket lean", () => {
       unread: false,
     },
   ]);
-  expect(runJs(listCode, { agent_tickets: null })).toEqual([]);
+  expect(runJs(listCode, { agent_tickets: null, stages })).toEqual([]);
 });
 
 describe("agent-read-ticket", () => {
@@ -189,7 +191,7 @@ describe("agent-read-ticket", () => {
     title: "Export fails",
     type: "bug",
     version: 3,
-    stage: "Needs your reply",
+    stage: "needs_your_reply",
     created: "2026-10-07T09:00:00.000Z",
     updated: "2026-10-07T10:00:00.000Z",
     messages: [
@@ -224,7 +226,7 @@ describe("agent-read-ticket", () => {
   };
 
   test("answers the thread with file names, never their links", () => {
-    expect(runJs(readCode, { agent_view: view })).toEqual({
+    expect(runJs(readCode, { agent_view: view, stages })).toEqual({
       key: "SUP-1",
       title: "Export fails",
       type: "bug",
@@ -261,6 +263,6 @@ describe("agent-read-ticket", () => {
   });
 
   test("answers null when there is no ticket", () => {
-    expect(runJs(readCode, { agent_view: null })).toBeNull();
+    expect(runJs(readCode, { agent_view: null, stages })).toBeNull();
   });
 });

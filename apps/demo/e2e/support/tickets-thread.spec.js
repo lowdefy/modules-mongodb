@@ -51,7 +51,7 @@ const REPLIED = view({
   id: "t-replied",
   key: "ENC-31",
   version: 3,
-  stage: "Needs your reply",
+  stage: "needs_your_reply",
   updated: "2026-10-02T10:00:00.000Z",
   messages: [
     message({
@@ -81,7 +81,7 @@ const LOGGED = view({
   id: "t-logged",
   key: "ENC-32",
   version: 1,
-  stage: "Received",
+  stage: "received",
   updated: "2026-10-03T10:00:00.000Z",
   messages: [],
 });
@@ -163,7 +163,9 @@ test("My tickets lists the user's tickets, a thread shows its messages, and read
   await expect(rows(page, "support").nth(0)).toContainText("Ticket ENC-32");
   await expect(rows(page, "support").nth(0)).toContainText("Received");
   await expect(rows(page, "support").nth(1)).toContainText("Ticket ENC-31");
-  await expect(rows(page, "support").nth(1)).toContainText("Needs your reply");
+  await expect(
+    rows(page, "support").nth(1).locator('[data-tag="warning"]'),
+  ).toHaveText("Needs your reply");
   await expect(
     rows(page, "support").nth(1).locator("[data-status]"),
   ).toHaveCount(1);
@@ -180,6 +182,9 @@ test("My tickets lists the user's tickets, a thread shows its messages, and read
   await expect(page.locator("#support_thread_title")).toContainText(
     "Ticket ENC-31",
   );
+  await expect(
+    page.locator('#support_thread_meta [data-tag="warning"]'),
+  ).toHaveText("Needs your reply");
 
   await ldf.block("support_thread_back").do.click();
   await expect(rows(page, "support")).toHaveCount(2);
@@ -197,7 +202,7 @@ test("a reply with an image and a PDF posts and shows its files", async ({
   const replied = {
     ...REPLIED,
     version: 4,
-    stage: "In progress",
+    stage: "in_progress",
     messages: [
       ...REPLIED.messages,
       message({
@@ -316,7 +321,7 @@ test("a link to another user's ticket shows nothing of it", async ({
       id: "t-other",
       key: "ENC-99",
       version: 1,
-      stage: "Received",
+      stage: "received",
       updated: "2026-10-01T08:00:00.000Z",
       messages: [
         message({
@@ -348,7 +353,7 @@ test("sending a report opens its thread in the panel", async ({
     id: "t-new",
     key: "ENC-40",
     version: 1,
-    stage: "Received",
+    stage: "received",
     updated: "2026-10-07T09:00:00.000Z",
     messages: [
       message({
