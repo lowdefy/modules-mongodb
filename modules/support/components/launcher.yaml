@@ -45,6 +45,12 @@ events:
           path: actions/open_thread.yaml.njk
           vars:
             prefix: support
+  # A closed panel holds no change stream.
+  onClose:
+    _ref:
+      path: actions/leave_live_thread.yaml.njk
+      vars:
+        prefix: support
 slots:
   toolbar:
     blocks:
@@ -69,6 +75,10 @@ slots:
                     support_ticket: null
                     support_thread: null
                     support_thread_error: null
+              - _ref:
+                  path: actions/leave_live_thread.yaml.njk
+                  vars:
+                    prefix: support
               - _ref:
                   path: actions/open_tickets.yaml.njk
                   vars:

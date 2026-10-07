@@ -42,6 +42,10 @@ blocks:
                     {{ prefix }}_thread_error: null
                     {{ prefix }}_reply_error: null
               - _ref:
+                  path: actions/leave_live_thread.yaml.njk
+                  vars:
+                    prefix: {{ prefix }}
+              - _ref:
                   path: actions/open_tickets.yaml.njk
                   vars:
                     prefix: {{ prefix }}

@@ -141,6 +141,9 @@ exports:
     - id: on-init
       description: >-
         The support panel's state, for the layout's global_events.onInit
+    - id: subscriptions
+      description: >-
+        The live thread's subscription, for the layout's global_subscriptions
     - id: agent-instructions
       description: >-
         Markdown brief for an app's agent that has the agent tools: when to file,
@@ -219,6 +222,9 @@ components:
   - id: on-init
     component:
       _ref: components/on-init.yaml
+  - id: subscriptions
+    component:
+      _ref: components/subscriptions.yaml
   - id: agent-instructions
     component:
       _ref: agent/instructions.md
@@ -234,6 +240,9 @@ menus:
 
 notifications:
   - _ref: notifications/support-reply.yaml
+
+websockets:
+  - _ref: websockets/ticket-thread.yaml
 
 connections:
   - _ref: connections/support_pelican.yaml

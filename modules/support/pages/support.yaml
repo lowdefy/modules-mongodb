@@ -7,6 +7,11 @@ _ref:
   vars:
     id: support
     title: Support
+    # The same live thread the panel uses; the layout keeps one when the app
+    # also wires it in global_subscriptions.
+    subscriptions:
+      _ref:
+        path: components/subscriptions.yaml
     requests:
       - _ref:
           path: requests/upload_policy.yaml

@@ -93,7 +93,7 @@ db["support-tickets"].createIndex(
 
 The module's `launcher` component is a help button docked in a corner of every page, opening a support panel that does not block the page: the user can still scroll and click behind it. It shows only to a signed-in user (with or without an organisation), and only in an app built with `SUPPORT_PELICAN_KEY` set. The key is checked when the app is built, so a build without it has no button.
 
-Wire its three components into the layout module's vars:
+Wire its four components into the layout module's vars:
 
 ```yaml
 # The layout entry's vars
@@ -105,6 +105,10 @@ global_requests:
   _ref:
     module: support
     component: requests
+global_subscriptions:
+  _ref:
+    module: support
+    component: subscriptions
 global_events:
   onInit:
     - _ref:
@@ -112,7 +116,7 @@ global_events:
         component: on-init
 ```
 
-`requests` is a list of requests; when the app has global requests of its own, join the lists with `_build.array.concat`. `on-init` is one action, the panel's state. The `launcher` var sets the button's label (default Help), its corner (`bottom-left` by default, the corner the ai-assistant panel does not use) and whether it shows at all.
+`requests` and `subscriptions` are lists; when the app has global requests or subscriptions of its own, join the lists with `_build.array.concat`. `on-init` is one action, the panel's state. `subscriptions` is the live thread (below); the panel's threads need it. The `launcher` var sets the button's label (default Help), its corner (`bottom-left` by default, the corner the ai-assistant panel does not use) and whether it shows at all.
 
 ### New report
 
@@ -164,6 +168,14 @@ mask_selectors:
 **My tickets** in the panel lists the user's tickets, newest first: the ones they reported and the ones the team logged for them. Each row shows the title, the key, the stage as Pelican names it (Received, In progress, Needs your reply, Resolved) and when it last changed. A dot marks a ticket with a team message the user has not read. When the user's tickets come from more than one organisation, each row names its organisation. Opening the view fetches the list from Pelican; when that fails, it shows the saved tickets with a notice.
 
 Opening a ticket shows its **thread**: the messages, with images inline and PDFs as file chips, and a composer for a reply with up to five images or PDFs. Opening it fetches the ticket from Pelican, which renews its file links and marks it read. A message the team removed shows as "Removed". The team's messages, Pelican's own included, sit on the left; the user's on the right. A reporter cannot close a ticket: the team resolves it. A reply that fails keeps its draft and says why, as the report form does.
+
+### The live thread
+
+An open thread shows a team reply as soon as the webhook stores it, with no polling. The module ships a websocket, `ticket-thread`: a change stream on `support-tickets`, filtered to the open ticket and the signed-in user, so another user's ticket id delivers nothing. Opening a thread subscribes to it; going back to the list, switching to New report or closing the panel unsubscribes, so only people chatting hold a stream. Each change replaces the thread with the stored row, and a newer view marks the ticket read.
+
+The panel and the support page share one channel: the thread opened last is the live one. The support page declares the subscription itself, and the layout keeps one when the app also wires `global_subscriptions`.
+
+Module websockets need a signed-in caller by default, so `support/ticket-thread` needs no `auth.websockets` rule. The database must run as a replica set, as change streams need; MongoDB Atlas does.
 
 ### The support page
 

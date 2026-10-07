@@ -20,3 +20,7 @@ params:
   support_report.title: null
   support_report.message: null
   support_report.files: []
+  support_live.ticket_id: null
+  support_live.surface: null
+  support_live.row: null
+  support_live.newer: false

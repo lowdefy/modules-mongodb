@@ -114,7 +114,7 @@ The browser-tab title is `title` when it is a string at build time. A `title` th
 
 ## App-wide seams
 
-Four module vars splice into every page that uses the `page` component, so an app can hang app-wide behaviour in one place instead of on each page:
+Five module vars splice into every page that uses the `page` component, so an app can hang app-wide behaviour in one place instead of on each page:
 
 | Var                          | Where it lands                                                                                                                                        |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -122,8 +122,11 @@ Four module vars splice into every page that uses the `page` component, so an ap
 | `global_events.onMountAsync` | Appended to every page's `onMountAsync`, after the `header_extra` request fetches (their `_request:` values have resolved) and before the page's own. |
 | `global_blocks`              | Blocks appended after the consumer content on every page — for floating widgets (an assistant launcher, a help beacon, a "what's new" button).        |
 | `global_requests`            | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` they are not auto-fired on mount.                          |
+| `global_subscriptions`       | Websocket subscriptions declared on every page for `global_blocks` to use, such as a widget's live channel.                                           |
 
 `global_events.onMountAsync` is the seam for app-wide guards: an onboarding gate that redirects until the caller's organization is set up, for example, reads the header requests that have just resolved and issues a `Link` — no page opts in, and pages outside the layout (auth pages, a wizard) are exempt by construction.
+
+Lowdefy takes subscriptions only on the page root, so a page declares its own through the `page` component's `subscriptions` var. When it declares one to a websocket `global_subscriptions` also subscribes to, the page keeps its own and drops the global one, since a page may subscribe to a websocket only once.
 
 The header blocks themselves (`header_extra.blocks`) are module-wide, but a page may replace them with the `header_blocks` `_ref` var — `header_blocks: []` for a bare header, or a shorter list to keep only some of them.
 

@@ -32,6 +32,11 @@ global_requests:
   _ref:
     module: support
     component: requests
+# The support panel's live thread, opened only while a thread is open.
+global_subscriptions:
+  _ref:
+    module: support
+    component: subscriptions
 global_blocks:
   - _ref:
       module: support

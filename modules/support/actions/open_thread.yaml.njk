@@ -1,7 +1,8 @@
 # Opening a thread: fetch the ticket in {{ prefix }}_ticket (its id or key) from
 # Pelican, which renews its file links and marks it read. A failed fetch shows
 # what the copy holds, with a notice; a ticket that is not the user's shows
-# nothing. With no ticket chosen it does nothing.
+# nothing. With no ticket chosen it does nothing. A shown thread goes live
+# (components/subscriptions.yaml).
 #
 # Vars:
 #   prefix  the state and block id prefix of the surface
@@ -51,3 +52,35 @@
             vars:
               error:
                 _actions: {{ prefix }}_sync_ticket.response.response.error
+# The thread goes live: the one channel moves to this ticket. A thread that
+# could not be shown closes the channel this surface held.
+- id: {{ prefix }}_live_set
+  type: SetState
+  skip:
+    _eq:
+      - _state: {{ prefix }}_thread
+      - null
+  params:
+    support_live.ticket_id:
+      _state: {{ prefix }}_thread._id
+    support_live.surface: {{ prefix }}
+- id: {{ prefix }}_live_subscribe
+  type: Subscribe
+  skip:
+    _eq:
+      - _state: {{ prefix }}_thread
+      - null
+  params:
+    _module.websocketId: ticket-thread
+- id: {{ prefix }}_live_unsubscribe_failed
+  type: Unsubscribe
+  skip:
+    _or:
+      - _ne:
+          - _state: {{ prefix }}_thread
+          - null
+      - _ne:
+          - _state: support_live.surface
+          - {{ prefix }}
+  params:
+    _module.websocketId: ticket-thread
