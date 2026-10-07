@@ -1,6 +1,6 @@
 # The two requests the ai-assistant's `sender_attachments` names, on every page that mounts the
-# chat. Uploads go under ai-assistant/<user id>/, which is what assistant-file-links checks before
-# it signs a stored key again.
+# chat. Uploads go under ai-assistant/<user id>/, which both the download request here and
+# assistant-file-links check before they sign a key.
 - id: ai_assistant_upload_policy
   type: AwsS3PresignedPostPolicy
   connectionId: files/files-bucket
@@ -34,8 +34,20 @@
     content_type:
       _event: file.type
   properties:
+    # The key comes from the browser, so only one under the caller's own upload prefix is signed.
+    # Any other leaves `key` null, which the request refuses.
     key:
-      _payload: key
+      _if:
+        test:
+          _string.startsWith:
+            - _payload: key
+            - _string.concat:
+                - ai-assistant/
+                - _user: id
+                - /
+        then:
+          _payload: key
+        else: null
     responseContentType:
       _payload: content_type
     # A week, the longest S3 signs for: the model provider fetches this link on every turn.

@@ -136,3 +136,24 @@ test("a thread with no keyed files is returned as stored", async ({
     { id: "m1", role: "user", parts: [{ type: "text", text: "hello" }] },
   ]);
 });
+
+async function downloadLink(page, key) {
+  const raw = await page.request.post(
+    "/api/request/assistant-demo/ai_assistant_download_policy",
+    { data: { payload: { key, content_type: "image/png" } } },
+  );
+  return { status: raw.status(), body: await raw.json().catch(() => null) };
+}
+
+test("the composer's download request signs only the caller's own uploads", async ({
+  ldf,
+  page,
+}) => {
+  await ldf.user(USER);
+  const own = await downloadLink(page, OWN_KEY);
+  expect(own.status).toBe(200);
+  expect(own.body?.response).toContain(OWN_KEY);
+  expect(own.body?.response).toContain("X-Amz-Signature=");
+  const other = await downloadLink(page, OTHER_KEY);
+  expect(JSON.stringify(other.body ?? "")).not.toContain("X-Amz-Signature=");
+});

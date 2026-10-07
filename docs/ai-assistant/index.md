@@ -207,7 +207,7 @@ sender_attachments:
 file_links_endpoint: chat-file-links
 ```
 
-The two requests belong to the app, on every page that mounts the chat, for example in the layout's global requests. The module adds none. The upload request returns a storage upload policy, such as an `AwsS3PresignedPostPolicy`. The download request turns the uploaded file into the link the model provider fetches, such as an `AwsS3PresignedGetObject` with a long `expires`. Each uploaded file part keeps its storage key at `providerMetadata.lowdefy.key`, beside that link. The thread is saved with both.
+The two requests belong to the app, on every page that mounts the chat, for example in the layout's global requests. The module adds none. The upload request returns a storage upload policy, such as an `AwsS3PresignedPostPolicy`. The download request turns the uploaded file into the link the model provider fetches, such as an `AwsS3PresignedGetObject` with a long `expires`. Its key comes from the browser, so sign it only when it is one of the caller's uploads, for example when it starts with the prefix the upload request gives them. Each uploaded file part keeps its storage key at `providerMetadata.lowdefy.key`, beside that link. The thread is saved with both.
 
 A signed link stops working: S3 signs one for seven days at most. A thread reopened after that would send the model links it cannot read. Set `file_links_endpoint` to an app endpoint that signs new ones. When a thread is opened (`get-thread`, and `get-active-thread` on resume), the module collects the file parts that carry a key, each key once, and calls the endpoint once with:
 
