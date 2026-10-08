@@ -58,7 +58,11 @@ with the re-denorm in one routine — four database operations:
 
 Because these are inseparable in one fragment, contact profile data can never be
 written without the denormalized `user.profile` bag being refreshed in the same
-routine. A caller's own save additionally runs `UpdateSession` so the change shows
+routine, with one exception. An invite writes the invitee's contact without the
+denorm step, because the engine allows `UpdateUserProfile` only on a member of the
+organization and an invitee is not one yet. An invitee who already has a login
+keeps their user row as it was until their first own profile save (onboarding, or
+the account page). A caller's own save additionally runs `UpdateSession` so the change shows
 without a reload. `user.email` is **not** part of this — email change is a
 verification flow, unexposed in v1.
 

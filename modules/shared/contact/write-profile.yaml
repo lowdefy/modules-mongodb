@@ -5,7 +5,8 @@
 # top-level `user.name` / `user.image` display copies can NEVER drift from the
 # contact (design Decisions 6 & 8, upstream ask 5). Neither module can write
 # contact profile data without re-denormalizing the target's user row in the
-# same routine.
+# same routine, with one exception: the invite flow, whose target is not yet a
+# member, writes the contact alone (see `user_id` below).
 #
 # This is a var-free file — every input is an `_ref` var (NEVER `_module.var`).
 # It resolves in any consumer that depends on the `events` module (for the
