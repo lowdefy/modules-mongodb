@@ -392,17 +392,17 @@ _ref:
                   payload:
                     invitationId:
                       _url_query: invitationId
-              # LOCAL FORK: refresh the client's _user BEFORE routing. The
-              # accept just gave this session its organization; without the
-              # refresh the router still reads awaiting_organization from the
-              # stale client user and bounces straight back to the awaiting
-              # page — the accept/awaiting ping-pong.
+              # Refresh the session, bypassing its cookie cache, so the page
+              # load below reads the organization the accept just gave it.
               - id: refresh_session_after_accept
                 type: UpdateSession
+              # A full page load (components/app_home_href.yaml): this page
+              # loaded before the caller was a member, so its menus are empty.
               - id: accept_enter_app
                 type: Link
                 params:
-                  home: true
+                  href:
+                    _ref: components/app_home_href.yaml
             catch:
               # LOCAL FORK: a retry against an invitation THIS caller already
               # consumed (an interrupted first accept) fails "not found" even
@@ -432,7 +432,8 @@ _ref:
                   - id: enter_app_after_retry
                     type: Link
                     params:
-                      home: true
+                      href:
+                        _ref: components/app_home_href.yaml
                 :else:
                   - id: accept_error
                     type: DisplayMessage
@@ -482,14 +483,15 @@ _ref:
         events:
           onClick:
             # Refresh first: the "already a member" caller often arrives here
-            # with a stale client user (accepted moments ago in this tab) and
-            # the router would bounce them back to awaiting without it.
+            # with a stale session (accepted moments ago in this tab), and
+            # enter with a full page load so the menus match the membership.
             - id: member_refresh_session
               type: UpdateSession
             - id: member_enter_app
               type: Link
               params:
-                home: true
+                href:
+                  _ref: components/app_home_href.yaml
 
       # ---- Missing invitationId (required parameter absent) ----
       - id: accept_no_invitation

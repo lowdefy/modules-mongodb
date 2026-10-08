@@ -77,7 +77,8 @@ operator console). Both run against the same `contact` / `user` / `member` /
   organization (not the caller's active one), naming the person joining and who
   invited them. A retry that finds the invitation already accepted, and a reload
   that shows "already a member", log it too, and the event is still saved once.
-  A failed log never stops the person entering the app.
+  A failed log never stops the person entering the app. Entering the app is a
+  full page load to home, so the menus and home page reflect the new membership.
   Its sign-in / create-account buttons carry the invited address on to the
   `login` / `signup` page as `?email=…`, where the email field is **prefilled and
   locked** — the invitation is only accepted for a session on that address, so

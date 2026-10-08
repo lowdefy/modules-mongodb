@@ -5,7 +5,8 @@
 # top-level `user.name` / `user.image` display copies can NEVER drift from the
 # contact (design Decisions 6 & 8, upstream ask 5). Neither module can write
 # contact profile data without re-denormalizing the target's user row in the
-# same routine.
+# same routine, with one exception: the invite flow, whose target is not yet a
+# member, writes the contact alone (see `user_id` below).
 #
 # This is a var-free file — every input is an `_ref` var (NEVER `_module.var`).
 # It resolves in any consumer that depends on the `events` module (for the
@@ -16,11 +17,11 @@
 #   contact_id     — target contact `_id`
 #   user_id        — target auth user id (the user whose address resolves to
 #                    contact_id in that contact's organization).
-#                    MAY be absent (undefined/null) — the invite flow reuses this
-#                    fragment before the invitee has a `user` row, so the
-#                    `UpdateUserProfile` re-denorm is guarded on presence and
-#                    no-ops when absent (the contact write still lands). All other
-#                    callers always pass a user_id.
+#                    MAY be absent (undefined/null) — the invite flow leaves it
+#                    out because its target is not yet a member, which the
+#                    `UpdateUserProfile` floor requires. The re-denorm is guarded
+#                    on presence and no-ops when absent (the contact write still
+#                    lands). All other callers always pass a user_id.
 #   profile        — the profile fields to merge onto the contact (object). May
 #                    carry `photo`, an uploaded image data URI (or null to remove
 #                    it); stage 5 makes it the stored `picture`.
@@ -198,9 +199,8 @@
 # caller refreshing their OWN session is the caller routine's job, not the
 # fragment's — see update-profile.)
 #
-# Guarded on `user_id` presence: coalesce to null first, so BOTH the no-match
-# (`undefined`, e.g. the invite flow's find_user with no user row) and the
-# explicit-`null` cases skip. A bare `_ne: [user_id, null]` would pass on
+# Guarded on `user_id` presence: coalesce to null first, so BOTH the absent
+# (`undefined`, e.g. the invite flow) and the explicit-`null` cases skip. A bare `_ne: [user_id, null]` would pass on
 # `undefined` and fire UpdateUserProfile with no user_id.
 - :if:
     _ne:
