@@ -21,8 +21,8 @@
 # Role-gated app-side. Payload: { email, roles (array of role ids), org_role?,
 #                                 member_attributes? (object), profile? (object) }
 # ensure-contact mints the contact bare; the write-profile splice then persists
-# the captured profile onto it (and re-denorms onto the user only if one already
-# exists). `profile.profile_created` stays unset, so the invitee still onboards.
+# the captured profile onto it. `profile.profile_created` stays unset, so the
+# invitee still onboards.
 id: invite
 type: Api
 routine:
@@ -55,9 +55,8 @@ routine:
 
   # 2) Cancel each stale row by id so the fresh invite below can't leave a
   #    duplicate pending row beside it. No-op when find_stale returned nothing.
-  #    Every auth step here names its organization explicitly (the write-profile
-  #    splice through its `organization_id` var): an absent one falls back to the
-  #    APP's pinned organization, so an instance administering another organization
+  #    Every auth step here names its organization explicitly: an absent one
+  #    falls back to the APP's pinned organization, so an instance administering another organization
   #    would be authorized against, and write into, the wrong one.
   - :for: stale
     :in:
@@ -74,9 +73,8 @@ routine:
   # 3) Resolve the target auth user, if one exists. An invitee has no user row
   #    until they accept, but the address may already be a user of another
   #    organization. find_user._id is that user's id, or absent (no document)
-  #    when none matches. It both links the minted contact below and gates
-  #    write-profile's re-denorm. Matched case-insensitively on the address, the
-  #    same idiom check-invite-email uses.
+  #    when none matches. It links the minted contact below. Matched
+  #    case-insensitively on the address, the same idiom check-invite-email uses.
   - id: find_user
     type: MongoDBFindOne
     connectionId:
@@ -116,9 +114,11 @@ routine:
   # 3c) Persist the captured profile onto the contact (shared write-profile
   #     fragment). The same write seam both update-profile routines use, so the
   #     invited person's name/phone/job land now, not only at first post-accept
-  #     edit. profile.name is derived (given + family). The UpdateUserProfile
-  #     re-denorm is guarded on user_id, so it no-ops for a pre-accept invitee
-  #     (find_user._id absent) and fires only when a user already exists.
+  #     edit. profile.name is derived (given + family). No user_id is passed, so
+  #     the UpdateUserProfile re-denorm is skipped: the engine allows it only on a
+  #     member of the organization, and an invitee is never one yet. An existing
+  #     user's row picks the profile up at their first own profile save
+  #     (onboarding, or the account page).
   - _ref:
       path: ../shared/contact/write-profile.yaml
       vars:
@@ -126,16 +126,12 @@ routine:
           _module.connectionId: user-contacts-collection
         contact_id:
           _step: read_contact._id
-        user_id:
-          _step: find_user._id
         profile:
           _payload: profile
         avatar_colors:
           _module.var: avatar_colors
         write_stages:
           _module.var: request_stages.write
-        organization_id:
-          _module.var: org_slug
 
   # 4) Invite the member. `appRoles` is the app-role id array the member row is
   #    minted with; `orgRole` is the unrelated organization-authority tier
