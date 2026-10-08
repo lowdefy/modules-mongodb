@@ -399,10 +399,18 @@ _ref:
               # page — the accept/awaiting ping-pong.
               - id: refresh_session_after_accept
                 type: UpdateSession
+              # A full page load, not a client-side Link: the menus and home
+              # page are built from the roles at app load, and this page
+              # loaded before the caller was a member.
               - id: accept_enter_app
                 type: Link
                 params:
-                  home: true
+                  href:
+                    _string.concat:
+                      - _if_none:
+                          - _location: basePath
+                          - ""
+                      - /
             catch:
               # LOCAL FORK: a retry against an invitation THIS caller already
               # consumed (an interrupted first accept) fails "not found" even
@@ -432,7 +440,12 @@ _ref:
                   - id: enter_app_after_retry
                     type: Link
                     params:
-                      home: true
+                      href:
+                        _string.concat:
+                          - _if_none:
+                              - _location: basePath
+                              - ""
+                          - /
                 :else:
                   - id: accept_error
                     type: DisplayMessage
