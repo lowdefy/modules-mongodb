@@ -30,7 +30,9 @@ export default {
   },
   // Holds no data, so there is nothing for the tenant wall to scope: declared
   // non-scopable, the same capability the framework's AI connections declare.
-  meta: { tenant: false },
+  // Reaches the AI Gateway and holds none of the app's data, so data-set
+  // journeys leave it on its real target.
+  meta: { tenant: false, dataSet: "external" },
   requests: {
     GenerateChatTitle,
     SummarizeReportData,

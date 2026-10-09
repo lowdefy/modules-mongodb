@@ -145,22 +145,22 @@ importers:
         specifier: ^3.0.133
         version: 3.0.189(zod@4.4.3)
       '@lowdefy/block-utils':
-        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009120232
+        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009073700 || 0.0.0-experimental-20261009120232
         version: 5.5.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd':
-        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009120232
+        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009073700 || 0.0.0-experimental-20261009120232
         version: 5.5.1(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-basic':
-        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009120232
+        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009073700 || 0.0.0-experimental-20261009120232
         version: 5.5.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-mongodb':
         specifier: ^3
         version: 3.0.0(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/helpers':
-        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009120232
+        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009073700 || 0.0.0-experimental-20261009120232
         version: 5.5.1
       '@lowdefy/nunjucks':
-        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009120232
+        specifier: 5.5.1 || 0.0.0-experimental-20260906143808 || 0.0.0-experimental-20260908113207 || 0.0.0-experimental-20260827105525 || 0.0.0-experimental-20260928062533 || 0.0.0-experimental-20260928120643 || 0.0.0-experimental-20261006081525 || 0.0.0-experimental-20261007090522 || 0.0.0-experimental-20261009073700 || 0.0.0-experimental-20261009120232
         version: 5.5.1
       '@lowdefy/plugin-aws':
         specifier: '>=4.0.0'

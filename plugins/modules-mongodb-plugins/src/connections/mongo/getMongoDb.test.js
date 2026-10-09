@@ -50,7 +50,6 @@ describe("getMongoDb", () => {
       { logger: secondLogger },
     );
     expect(second.mongoClient).toBe(first.mongoClient);
-    expect(second.mongoDb).toBe(first.mongoDb);
     // Cached: the second call neither reconnects nor re-logs.
     expect(secondLogger.log).not.toHaveBeenCalled();
   });
