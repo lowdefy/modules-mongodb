@@ -73,13 +73,25 @@ vars:
       Title templates (Nunjucks) for the organization events, keyed by event
       type, replacing the module's defaults in defaults/event_display.yaml type
       by type. Templates receive `actor`, `subject` ({ user_id, email, name,
-      member_id, invitation_id }), `from` and `to`.
+      member_id, invitation_id }), `from`, `to` and, on MCP token events,
+      `token` ({ name, start }).
   allow_create_organization:
     type: boolean
     default: false
     description: >-
       Lets anyone signed in create an organization and become its owner. When
       false the create-organization page and endpoint are left out of the build.
+  mcp_tokens:
+    type: boolean
+    default: false
+    description: >-
+      Adds an Access tokens section to the Security page listing every MCP
+      member token in the active organization (member, name, start, created,
+      expires, last used), where owners and admins switch any of them off, and
+      an MCP tokens kind to the audit log filter. Needs the app's MCP
+      authorization server (`auth.oauthProvider`), whose `user-mcp-tokens`
+      collection holds the tokens. When false the section, its read, its
+      connection and the revoke-mcp-token endpoint are left out of the build.
   creator_app_roles:
     type: array
     default: []
@@ -204,7 +216,10 @@ exports:
     - id: billing
       description: Settings page holding billing's place, owners and admins only
     - id: security
-      description: Settings page holding security's place with a danger zone, owners and admins only
+      description: >-
+        Settings page holding security's place with a danger zone, owners and
+        admins only. With `mcp_tokens` on it lists the organization's MCP
+        tokens, each with Switch off.
     - id: create-organization
       description: >-
         Name a new organization and become its owner, then switch into it and
@@ -276,6 +291,10 @@ exports:
       description: Read-only connection for the auth `user-invitations` collection
     - id: user-contacts-collection
       description: Walled app connection for the user-contacts records — writable, used by the invite-time contact mint
+    - id: user-mcp-tokens
+      description: >-
+        Read-only, walled connection for the auth `user-mcp-tokens` collection.
+        Present only when `mcp_tokens` is true.
   api:
     - id: invite
       description: >-
@@ -310,16 +329,27 @@ exports:
       description: >-
         Create an organization with the caller as its owner. Present only when
         `allow_create_organization` is true.
+    - id: revoke-mcp-token
+      description: >-
+        Switch off any MCP token in the active organization (owners and
+        admins), then log it. Present only when `mcp_tokens` is true.
   menus:
     - id: default
       description: Menu group linking the members and general settings pages
 
 connections:
-  - _ref: connections/user-members.yaml
-  - _ref: connections/user-organizations.yaml
-  - _ref: connections/user-invitations.yaml
-  - _ref: connections/user-contacts-collection.yaml
-  - _ref: connections/org-events-system.yaml
+  _build.array.concat:
+    - - _ref: connections/user-members.yaml
+      - _ref: connections/user-organizations.yaml
+      - _ref: connections/user-invitations.yaml
+      - _ref: connections/user-contacts-collection.yaml
+      - _ref: connections/org-events-system.yaml
+    - _build.if:
+        test:
+          _module.var: mcp_tokens
+        then:
+          - _ref: connections/user-mcp-tokens.yaml
+        else: []
 
 api:
   _build.array.concat:
@@ -337,6 +367,12 @@ api:
           _module.var: allow_create_organization
         then:
           - _ref: api/create-organization.yaml
+        else: []
+    - _build.if:
+        test:
+          _module.var: mcp_tokens
+        then:
+          - _ref: api/revoke-mcp-token.yaml
         else: []
 
 pages:

@@ -1,0 +1,52 @@
+# revoke-mcp-token: switch off any MCP token in the caller's ACTIVE
+# organization. Present only with `mcp_tokens` on.
+#
+# The RevokeOrgMcpToken step needs `member: [update]` authority (owners and
+# admins) and refuses a token in another organization as not found.
+# `organizationId` is explicit: under the `tenant` policy there is no pinned
+# organization for the step to default to.
+#
+# The token's member is read after the switch-off so the
+# `org-mcp-token-revoked` event can name them; the step returns whose token it
+# was, never the token itself.
+#
+# Payload: { token_id }
+id: revoke-mcp-token
+type: Api
+routine:
+  - id: revoke_mcp_token
+    type: RevokeOrgMcpToken
+    properties:
+      id:
+        _payload: token_id
+      organizationId:
+        _user: organization_id
+
+  - _ref:
+      path: api/parts/read-member.yaml
+      vars:
+        id: read_member
+        member_id:
+          _step: revoke_mcp_token.memberId
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-mcp-token-revoked
+        subject:
+          user_id:
+            _step: revoke_mcp_token.userId
+          email:
+            _step: read_member.0.email
+          name:
+            _step: read_member.0.name
+          member_id:
+            _step: revoke_mcp_token.memberId
+        token:
+          name:
+            _step: revoke_mcp_token.name
+          start:
+            _step: revoke_mcp_token.start
+
+  - :return:
+      success: true
