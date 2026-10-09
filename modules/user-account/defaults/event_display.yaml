@@ -1,2 +1,4 @@
 update-profile: "{{ user.profile.name }} updated their profile"
 org-member-joined: "{{ user.name or user.email }} joined {{ organization.name }}{% if inviter.name %}, invited by {{ inviter.name }}{% endif %}"
+org-mcp-token-created: "{{ user.name or user.email }} created the access token {{ token.name }}"
+org-mcp-token-revoked: "{{ user.name or user.email }} switched off the access token {{ token.name }}"

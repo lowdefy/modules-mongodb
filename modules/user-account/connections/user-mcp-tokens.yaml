@@ -1,0 +1,16 @@
+# Read-only native read of the engine-owned `user-mcp-tokens` collection (same
+# MongoDB deployment as user-contacts), which exists only in apps with
+# `auth.oauthProvider`. Tokens are created and switched off through the
+# CreateMcpToken / RevokeMcpToken steps, never this connection.
+#
+# Walled (the default): every token row carries the organization it was made
+# in, and every read here is the caller's own tokens in their active
+# organization, so the wall scopes exactly what the reads ask for.
+id: user-mcp-tokens
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-mcp-tokens
+  read: true
+  write: false

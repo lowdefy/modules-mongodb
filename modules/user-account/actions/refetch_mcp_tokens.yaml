@@ -1,0 +1,15 @@
+# Re-fetch the caller's member tokens and mirror them into `mcp_tokens_ui`, the
+# state array the Access tokens tile's List binds to (a List binds to state, not
+# a request). error: false for the same reason as refetch_account: it trails
+# chains whose own action already succeeded and toasted.
+- id: refetch_mcp_tokens
+  type: Request
+  messages:
+    error: false
+  params:
+    - get_mcp_tokens
+- id: seed_mcp_tokens_ui
+  type: SetState
+  params:
+    mcp_tokens_ui:
+      _request: get_mcp_tokens

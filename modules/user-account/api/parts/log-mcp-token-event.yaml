@@ -1,0 +1,73 @@
+# The audit event for a member token the caller created or switched off, logged
+# through the events module's walled `new-event` endpoint, so it lands in the
+# caller's active organization (the organization the token belongs to). The
+# token itself never reaches an event; only its name and `start`.
+#
+# Event shape (besides _id, date, created and type):
+#   <app slug>.title     the rendered line (event_display.<type>)
+#   user_ids             the caller
+#   metadata:
+#     actor_user_id      the caller
+#     subject_user_id    the caller (a member manages only their own tokens)
+#     member_id          the member row the token was made for
+#     token_name         the token's name
+#     token_start        the token's first 12 characters
+#
+# Vars:
+#   type    org-mcp-token-created | org-mcp-token-revoked
+#   token   { name, start, member_id }
+id: log_event
+type: CallApi
+properties:
+  endpointId:
+    _module.endpointId:
+      id: new-event
+      module: events
+  payload:
+    type:
+      _var: type
+    display:
+      _build.object.fromEntries:
+        - - _build.app: slug
+          - title:
+              _nunjucks:
+                template:
+                  _build.if_none:
+                    - _build.get:
+                        from:
+                          _module.var: event_display
+                        key:
+                          _var: type
+                    - _build.get:
+                        from:
+                          _ref: defaults/event_display.yaml
+                        key:
+                          _var: type
+                on:
+                  user:
+                    id:
+                      _user: id
+                    name:
+                      _user: name
+                    email:
+                      _user: email
+                  token:
+                    name:
+                      _var: token.name
+                    start:
+                      _var: token.start
+            description: null
+    references:
+      user_ids:
+        - _user: id
+    metadata:
+      actor_user_id:
+        _user: id
+      subject_user_id:
+        _user: id
+      member_id:
+        _var: token.member_id
+      token_name:
+        _var: token.name
+      token_start:
+        _var: token.start

@@ -1,0 +1,31 @@
+# Switch-off confirm for one member token, seeded by the row's button
+# (mcptoken_revoke.id / .name). Runs the revoke-mcp-token endpoint, then
+# re-fetches the list.
+id: modal_revoke_mcp_token
+type: ConfirmModal
+properties:
+  title: Switch off this token?
+  okText: Switch off
+  okButton:
+    danger: true
+  content:
+    _nunjucks:
+      template: "“{{ name }}” stops working at once: anything still using it is refused on its next call."
+      on:
+        name:
+          _state: mcptoken_revoke.name
+events:
+  onOk:
+    _build.array.concat:
+      - - id: revoke_mcp_token
+          type: CallAPI
+          messages:
+            loading: Switching off…
+            success: Token switched off.
+          params:
+            endpointId:
+              _module.endpointId: revoke-mcp-token
+            payload:
+              id:
+                _state: mcptoken_revoke.id
+      - _ref: actions/refetch_mcp_tokens.yaml

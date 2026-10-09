@@ -15,6 +15,7 @@ concepts:
     passwordless,
     two-factor-required,
     two_factor_enrolled,
+    mcp-tokens,
   ]
 ---
 
@@ -87,7 +88,8 @@ operator console). Both run against the same `contact` / `user` / `member` /
 - **Account workspace** (`view` page) — one page, section-scoped edits:
   **Profile** (contact fields), **Security** (email + verification, change
   password, 2FA, passkeys, linked accounts — read-only), **Sessions** (active
-  sessions + sign-out-others). Each tile writes through its own pathway. See
+  sessions + sign-out-others), and **Access tokens** when `mcp_tokens` is on
+  (see [below](#access-tokens)). Each tile writes through its own pathway. See
   [Write pathways](concepts/write-pathways.md).
 - **Onboarding** (`onboarding` page) — chrome-less first-login profile
   completion; on save it sets `profile.profile_created: true`, the marker the
@@ -138,6 +140,7 @@ split by what they touch:
 | Profile fields                       | `contact` (`user-contacts`) | `update-profile` API on the shared `write-profile` fragment — change-stamped contact write + `UpdateUserProfile` re-denorm |
 | Login identity (password, 2FA, keys) | `user` + plugin collections | BetterAuth client actions against `/api/auth/*` (caller's own session)                                                     |
 | Own sessions                         | `session` (`user-sessions`) | Native read for display; `RevokeOtherSessions` client action                                                               |
+| Own member tokens (`mcp_tokens`)     | `user-mcp-tokens`           | Native read for display; `create-mcp-token` / `revoke-mcp-token` APIs (`CreateMcpToken` / `RevokeMcpToken` steps)          |
 | Roles, attributes                    | `member` / `user`           | **Not self-service** — admin steps via [`user-admin`](../user-admin/index.md)                                              |
 
 Reads stay native — the workspace aggregates over `users`, `user-sessions`,
@@ -175,6 +178,42 @@ so the two can't mint duplicate contacts for one email in one organization. The
 hook knows the session's user, so a contact minted here is born linked. It fires on
 every login and is idempotent: a login whose contact already exists writes nothing
 and leaves the change stamp alone.
+
+## Access tokens
+
+With `mcp_tokens: true` the account page gets an **Access tokens** tile beside
+Active sessions, where a signed-in member manages their own MCP **member
+tokens**: the long-lived bearer a script sends to the app's `/api/mcp` route to
+be served as that member (see Lowdefy's MCP docs, "Tokens for scripts").
+
+- **Needs the app's MCP authorization server** — `auth.oauthProvider` in the
+  app's `auth:` config. Without it the token collection does not exist and
+  creating a token is refused at runtime. The build does not check this.
+- **List** — the caller's own tokens in their **active organization**, newest
+  first: name, `start` (the first 12 characters), created, expires ("never" for
+  a token with no expiry) and last used. The stored hash is never read into the
+  page.
+- **Create token** — a name and an expiry of 30 days, 90 days (the default), a
+  year or none, through the `create-mcp-token` endpoint (`CreateMcpToken`). The
+  token is shown **once**, with a copy button; it lives only in page state, and
+  closing the dialog or reloading the page discards it for good. Only a person
+  signed in with a session can create one.
+- **Switch off** — a per-row button with a confirm, through the
+  `revoke-mcp-token` endpoint (`RevokeMcpToken`). The token is refused on its
+  next call.
+- **Audit** — each create and switch-off logs an event through the `events`
+  dependency's `new-event` endpoint, in the active organization:
+  `org-mcp-token-created` / `org-mcp-token-revoked`, with metadata
+  `{ actor_user_id, subject_user_id, member_id, token_name, token_start }`
+  (actor and subject are both the caller). The token itself is never logged.
+  Titles default from `defaults/event_display.yaml` and are overridable through
+  `event_display`; templates receive `user` (`{ id, name, email }`) and `token`
+  (`{ name, start }`). Give the two types a badge in the events module's
+  `event_types`.
+
+With `mcp_tokens` false (the default) the tile, its request, the two endpoints
+and the `user-mcp-tokens` connection are left out of the build. The module does
+not depend on the `organizations` module for any of this.
 
 ## Prerequisites
 

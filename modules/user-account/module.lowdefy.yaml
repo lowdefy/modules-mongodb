@@ -26,11 +26,23 @@ vars:
       Event display templates: a flat map of event type to a Nunjucks title
       template. Templates receive `user` (the acting user); the
       `org-member-joined` template also receives `inviter` ({ id, name }) and
-      `organization` ({ id, name }). When unset, the
+      `organization` ({ id, name }), and the `org-mcp-token-created` /
+      `org-mcp-token-revoked` templates receive `token` ({ name, start }). When
+      unset, the
       module's `defaults/event_display.yaml` renders. When set, the override
       fully replaces the defaults, no merge. The rendered block is written to
       the event under the app slug, which is where the events module's
       `display_key` reads it back.
+  mcp_tokens:
+    type: boolean
+    default: false
+    description: >-
+      Adds an Access tokens tile to the account page, where a signed-in member
+      lists, creates and switches off their own MCP member tokens in their
+      active organization; each create and switch-off is logged as an audit
+      event. Needs the app's MCP authorization server (`auth.oauthProvider`).
+      When false the tile, its requests, endpoints and the `user-mcp-tokens`
+      connection are left out of the build.
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
@@ -94,20 +106,35 @@ vars:
           transforms beyond the built-in profile write.
 
 connections:
-  - _ref: connections/user-contacts-collection.yaml
-  - _ref: connections/user-contacts-system.yaml
-  - _ref: connections/users.yaml
-  - _ref: connections/user-sessions.yaml
-  - _ref: connections/user-accounts.yaml
-  - _ref: connections/user-passkeys.yaml
-  - _ref: connections/user-invitations.yaml
-  - _ref: connections/user-events-system.yaml
+  _build.array.concat:
+    - - _ref: connections/user-contacts-collection.yaml
+      - _ref: connections/user-contacts-system.yaml
+      - _ref: connections/users.yaml
+      - _ref: connections/user-sessions.yaml
+      - _ref: connections/user-accounts.yaml
+      - _ref: connections/user-passkeys.yaml
+      - _ref: connections/user-invitations.yaml
+      - _ref: connections/user-events-system.yaml
+    - _build.if:
+        test:
+          _module.var: mcp_tokens
+        then:
+          - _ref: connections/user-mcp-tokens.yaml
+        else: []
 
 api:
-  - _ref: api/update-profile.yaml
-  - _ref: api/ensure-contact-on-signup.yaml
-  - _ref: api/log-invitation-rejection.yaml
-  - _ref: api/log-member-joined.yaml
+  _build.array.concat:
+    - - _ref: api/update-profile.yaml
+      - _ref: api/ensure-contact-on-signup.yaml
+      - _ref: api/log-invitation-rejection.yaml
+      - _ref: api/log-member-joined.yaml
+    - _build.if:
+        test:
+          _module.var: mcp_tokens
+        then:
+          - _ref: api/create-mcp-token.yaml
+          - _ref: api/revoke-mcp-token.yaml
+        else: []
 
 pages:
   _build.array.concat:
@@ -233,7 +260,7 @@ exports:
     - id: logout
       description: Sign the user out and offer a sign-in link.
     - id: view
-      description: Account workspace. Profile, security, and session tiles.
+      description: Account workspace. Profile, security, and session tiles, plus access tokens when `mcp_tokens` is true.
     - id: onboarding
       description: First-login profile completion.
     - id: two-factor-enrol
@@ -253,6 +280,10 @@ exports:
       description: Read-only native read of the passkeys collection.
     - id: user-invitations
       description: Read-only native read of the invitations collection.
+    - id: user-mcp-tokens
+      description: >-
+        Read-only, walled read of the member-token collection. Present only
+        when `mcp_tokens` is true.
     - id: user-events-system
       description: Deliberately unwalled log-events connection for the org-member-joined event; the write stamps the accepted invitation's organization explicitly. Change-logs into `log-changes-system`, which no walled connection reads.
   api:
@@ -267,6 +298,16 @@ exports:
         rejecting views it logs from all require a session.
     - id: log-member-joined
       description: Save the org-member-joined event for an invitation the caller accepted, once per invitation, in the invitation's organization.
+    - id: create-mcp-token
+      description: >-
+        Create a member token for the caller in their active organization and
+        log `org-mcp-token-created`. Returns the token, its only appearance.
+        Present only when `mcp_tokens` is true.
+    - id: revoke-mcp-token
+      description: >-
+        Switch off one of the caller's own member tokens in their active
+        organization and log `org-mcp-token-revoked`. Present only when
+        `mcp_tokens` is true.
   components:
     - id: profile-avatar
       description: Avatar config for the PageHeaderMenu profile. User image with first-letter fallback.

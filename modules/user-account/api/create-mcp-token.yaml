@@ -1,0 +1,61 @@
+# Create a member token for the caller in their active organization and log it.
+# Present only with `mcp_tokens: true`. CreateMcpToken refuses an app without
+# `auth.oauthProvider` and any caller not signed in with a session.
+#
+# Payload: { name, expires_in_days } — expires_in_days is a positive whole number
+# of days, or null for a token that never expires.
+# Returns { id, token, start, expiresAt }. This is the only place the token
+# appears; the page shows it once and keeps it nowhere else.
+id: create-mcp-token
+type: Api
+payloadSchema:
+  type: object
+  additionalProperties: false
+  required:
+    - name
+    - expires_in_days
+  properties:
+    name:
+      type: string
+      minLength: 1
+    expires_in_days:
+      type:
+        - integer
+        - "null"
+      minimum: 1
+routine:
+  - id: create_token
+    type: CreateMcpToken
+    properties:
+      name:
+        _payload: name
+      expiresInDays:
+        _payload: expires_in_days
+  # The step returns no member id or stored (trimmed) name; read them back for
+  # the event.
+  - id: read_token
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-mcp-tokens
+    properties:
+      query:
+        _id:
+          _step: create_token.id
+      options:
+        projection:
+          name: 1
+          start: 1
+          member_id: 1
+  - _ref:
+      path: api/parts/log-mcp-token-event.yaml
+      vars:
+        type: org-mcp-token-created
+        token:
+          name:
+            _step: read_token.name
+          start:
+            _step: read_token.start
+          member_id:
+            _step: read_token.member_id
+  - :return:
+      _step: create_token

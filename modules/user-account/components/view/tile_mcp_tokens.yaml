@@ -1,0 +1,107 @@
+# Access tokens tile: the caller's own member tokens in their active
+# organization (get_mcp_tokens, mirrored into mcp_tokens_ui). "Create token"
+# opens modal_mcp_token; each row's "Switch off" seeds mcptoken_revoke and opens
+# modal_revoke_mcp_token. Present only with `mcp_tokens: true`.
+_ref:
+  module: layout
+  component: card
+  vars:
+    id: tile_mcp_tokens
+    title: Access tokens
+    header_buttons:
+      - id: mcp_tokens_create_btn
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Create token
+          size: small
+          variant: outlined
+        events:
+          onClick:
+            # Seeded before the dialog mounts, with explicit leaf values, so the
+            # form opens on its defaults every time.
+            - id: seed_mcptoken
+              type: SetState
+              params:
+                mcptoken.name: null
+                mcptoken.expiry: 90
+                mcptoken.token: null
+            - id: open_mcp_token_modal
+              type: CallMethod
+              params:
+                blockId: modal_mcp_token
+                method: toggleOpen
+    blocks:
+      - id: mcp_tokens_body
+        type: Box
+        layout:
+          gap: 12
+        blocks:
+          - id: mcp_tokens_empty
+            type: Html
+            visible:
+              _eq:
+                - _array.length:
+                    _if_none:
+                      - _state: mcp_tokens_ui
+                      - []
+                - 0
+            properties:
+              html: '<div style="color:var(--ant-color-text-tertiary); font-size:13px;">No access tokens.</div>'
+          - id: mcp_tokens_ui
+            type: List
+            blocks:
+              - id: mcp_tokens_ui.$.item
+                type: Box
+                layout:
+                  direction: row
+                  align: middle
+                  selfAlign: middle
+                  justify: space-between
+                  gap: 12
+                style:
+                  padding: 8px 0
+                  borderBottom: 1px solid var(--ant-color-border-secondary)
+                blocks:
+                  - id: mcp_tokens_ui.$.label
+                    type: Html
+                    layout:
+                      flex: 1 1 auto
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            <div style="font-size:13px; color:var(--ant-color-text);">{{ item.name }}</div>
+                            <div style="font-size:12px; color:var(--ant-color-text-tertiary);"><span style="font-family:ui-monospace,Menlo,Consolas,monospace;">{{ item.start }}…</span> · Created {{ item.created_str }}</div>
+                            <div style="font-size:12px; color:var(--ant-color-text-tertiary);">Expires {{ item.expires_str or 'never' }} · {% if item.last_used_str %}Last used {{ item.last_used_str }}{% else %}Never used{% endif %}</div>
+                          on:
+                            item:
+                              _state: mcp_tokens_ui.$
+                  - id: mcp_tokens_ui.$.revoke
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Switch off
+                      size: small
+                      color: danger
+                      variant: outlined
+                    events:
+                      onClick:
+                        - id: seed_mcptoken_revoke
+                          type: SetState
+                          params:
+                            mcptoken_revoke.id:
+                              _state: mcp_tokens_ui.$.id
+                            mcptoken_revoke.name:
+                              _state: mcp_tokens_ui.$.name
+                        - id: open_revoke_mcp_token_modal
+                          type: CallMethod
+                          params:
+                            blockId: modal_revoke_mcp_token
+                            method: open
+          - id: mcp_tokens_hint
+            type: Html
+            properties:
+              html: '<div style="font-size:12px; color:var(--ant-color-text-tertiary);">A token lets a script call this app''s MCP tools as you, in this organization.</div>'

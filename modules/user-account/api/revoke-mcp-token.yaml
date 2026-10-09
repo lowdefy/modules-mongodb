@@ -1,0 +1,65 @@
+# Switch off one of the caller's own member tokens and log it. Present only with
+# `mcp_tokens: true`.
+#
+# RevokeMcpToken deletes the caller's token in any organization; the event is
+# logged in the active one. So the token must first be found among the caller's
+# tokens in their active organization, which is also the only list the page
+# offers.
+#
+# Payload: { id }. Returns { id }.
+id: revoke-mcp-token
+type: Api
+payloadSchema:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+  properties:
+    id:
+      type: string
+      minLength: 1
+routine:
+  - id: read_token
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-mcp-tokens
+    properties:
+      query:
+        _id:
+          _payload: id
+        user_id:
+          _user: id
+        organization_id:
+          _user: organization_id
+      options:
+        projection:
+          _id: 1
+  # A no-match FindOne leaves the step's `_id` undefined, which `_eq: [..., null]`
+  # does not catch on its own.
+  - :if:
+      _eq:
+        - _if_none:
+            - _step: read_token._id
+            - null
+        - null
+    :then:
+      :reject: No access token with this id in your active organization.
+  - id: revoke_token
+    type: RevokeMcpToken
+    properties:
+      id:
+        _payload: id
+  - _ref:
+      path: api/parts/log-mcp-token-event.yaml
+      vars:
+        type: org-mcp-token-revoked
+        token:
+          name:
+            _step: revoke_token.name
+          start:
+            _step: revoke_token.start
+          member_id:
+            _step: revoke_token.memberId
+  - :return:
+      id:
+        _step: revoke_token.id
