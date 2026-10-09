@@ -135,6 +135,17 @@ The `ai-reporting` module's query engine ships here. These are documented with t
 
 See [AI Chat Reporting](../ai-reporting/index.md), and [the open query engine](../ai-reporting/concepts/open-query-engine.md) for the validation model and caps.
 
+## Data-set journeys
+
+Pages that use these connections run in a Lowdefy data-set journey. Each connection declares how a journey treats it (`meta.dataSet`):
+
+| Connection                                       | `meta.dataSet` | Under a data-set journey                                                        |
+| ------------------------------------------------ | -------------- | ------------------------------------------------------------------------------- |
+| `EventsTimeline`, `WorkflowAPI`, `ReportingData` | `redirect`     | Reads and writes the journey's own database (`databaseUri` and `databaseName`). |
+| `AiText`                                         | `external`     | Keeps calling the real AI Gateway.                                              |
+
+The `redirect` connections share one MongoDB client per URI and open the connection's `databaseName` on every request, so journeys on one server never see each other's data.
+
 ## Install
 
 `lowdefy.yaml`:
