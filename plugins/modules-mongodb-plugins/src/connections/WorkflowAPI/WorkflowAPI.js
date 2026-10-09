@@ -14,7 +14,9 @@ const WorkflowAPI = {
   // Runtime tenant contract declaration: the engine threads the verdict from
   // createEngineContext into every mongo/ wrapper call (reads org-scoped,
   // writes org-stamped).
-  meta: { tenant: true },
+  // Data-set journeys redirect it: it reads and writes only through
+  // databaseUri and databaseName (mongo/getMongoDb.js).
+  meta: { tenant: true, dataSet: "redirect" },
   requests: {
     StartWorkflow,
     CancelWorkflow,
