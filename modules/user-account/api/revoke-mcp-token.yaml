@@ -3,8 +3,8 @@
 #
 # RevokeMcpToken deletes the caller's token in any organization; the event is
 # logged in the active one. So the token must first be found among the caller's
-# tokens in their active organization, which is also the only list the page
-# offers.
+# tokens in their active organization (the tenant wall scopes the read), which
+# is also the only list the page offers.
 #
 # Payload: { id }. Returns { id }.
 id: revoke-mcp-token
@@ -29,8 +29,6 @@ routine:
           _payload: id
         user_id:
           _user: id
-        organization_id:
-          _user: organization_id
       options:
         projection:
           _id: 1

@@ -1,6 +1,7 @@
-# The caller's own member tokens in their active organization, newest first, for
-# the Access tokens tile. Whitelist projection: `hash` is never selected, and the
-# token itself is not stored at all (only `start`, its first 12 characters).
+# The caller's own member tokens, newest first, for the Access tokens tile. The
+# tenant wall scopes the read to the active organization. Whitelist projection:
+# `hash` is never selected, and the token itself is not stored at all (only
+# `start`, its first 12 characters).
 id: get_mcp_tokens
 type: MongoDBAggregation
 connectionId:
@@ -10,8 +11,6 @@ properties:
     - $match:
         user_id:
           _user: id
-        organization_id:
-          _user: organization_id
     - $sort:
         created_at: -1
     - $project:
