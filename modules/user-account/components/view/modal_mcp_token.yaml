@@ -14,7 +14,8 @@ properties:
   title:
     _if:
       test:
-        _state: mcptoken.token
+        _boolean:
+          _state: mcptoken.token
       then: Copy your new token
       else: Create access token
   width: 520
@@ -106,7 +107,7 @@ blocks:
                   type: SetState
                   params:
                     mcptoken.token:
-                      _actions: create_mcp_token.response.token
+                      _actions: create_mcp_token.response.response.token
                 # The X and Esc still close the dialog while the create runs; open
                 # it again so a token made in the meantime is shown, not lost.
                 - id: keep_mcp_token_modal_open
