@@ -27,6 +27,7 @@ contact write and half a dozen session-gated auth calls.
 | Profile fields                       | `contact` (`user-contacts`) | `update-profile` API on the shared `write-profile` fragment                      |
 | Login identity (password, 2FA, keys) | `user` + plugin collections | BetterAuth client actions against `/api/auth/*` (caller's own session)           |
 | Own sessions                         | `session` (`user-sessions`) | Native read for display; `RevokeOtherSessions` client action                     |
+| Own member tokens (`mcp_tokens`)     | `user-mcp-tokens`           | Native read for display; `create-mcp-token` / `revoke-mcp-token` APIs            |
 | Roles, attributes                    | `member` / `user`           | **Not self-service** — admin steps via [`user-admin`](../../user-admin/index.md) |
 
 Reads stay native: the workspace aggregates over `users`, `user-sessions`,

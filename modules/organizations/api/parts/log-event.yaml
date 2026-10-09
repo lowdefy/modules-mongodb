@@ -20,16 +20,19 @@
 #     invitation_id            the invitation, or null
 #     from, to                 the value before and after (app roles, authority, name), or null
 #     expires_at               the invitation's expiry (invited, resent), or null
+#     token_name, token_start  the MCP token's name and first 12 characters, or
+#                              null (never the token itself)
 #
 # The line is the app's `event_display` template for the type, else the
 # module's default in defaults/event_display.yaml. Templates receive actor,
-# subject, from and to.
+# subject, from, to and token.
 #
 # Vars:
 #   type             event type id from enums/event_types.yaml
 #   subject          { user_id, email, name, member_id, invitation_id }; any may be absent
 #   from, to         optional
 #   expires_at       optional: the invitation's expiry
+#   token            optional: { name, start } of the MCP token the event is about
 #   organization_id  optional: write through org-events-system, stamped with this organization
 #   changed          optional, default true: false logs nothing (the write changed nothing)
 #   step_id          optional, default log_event: the step's id, for an endpoint that logs twice
@@ -82,6 +85,10 @@
                     _var:
                       key: expires_at
                       default: null
+                  token:
+                    _var:
+                      key: token
+                      default: null
             references:
               _ref:
                 path: api/parts/event-content.yaml
@@ -105,6 +112,10 @@
                     _var:
                       key: expires_at
                       default: null
+                  token:
+                    _var:
+                      key: token
+                      default: null
             metadata:
               _ref:
                 path: api/parts/event-content.yaml
@@ -127,6 +138,10 @@
                   expires_at:
                     _var:
                       key: expires_at
+                      default: null
+                  token:
+                    _var:
+                      key: token
                       default: null
     else:
       - id:
@@ -161,6 +176,10 @@
                       _var:
                         key: expires_at
                         default: null
+                    token:
+                      _var:
+                        key: token
+                        default: null
               - _ref:
                   path: api/parts/event-content.yaml
                   key: references
@@ -182,6 +201,10 @@
                     expires_at:
                       _var:
                         key: expires_at
+                        default: null
+                    token:
+                      _var:
+                        key: token
                         default: null
               - _id:
                   _uuid: true
@@ -217,4 +240,8 @@
                       expires_at:
                         _var:
                           key: expires_at
+                          default: null
+                      token:
+                        _var:
+                          key: token
                           default: null

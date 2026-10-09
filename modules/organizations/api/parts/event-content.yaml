@@ -2,7 +2,8 @@
 # api/parts/log-event.yaml writes one: `display` (the rendered line under the
 # app slug), `references` (user_ids) and `metadata`. Reached with `key`.
 #
-# Vars: those of api/parts/log-event.yaml (type, subject, from, to, expires_at).
+# Vars: those of api/parts/log-event.yaml (type, subject, from, to, expires_at,
+# token).
 display:
   _build.object.fromEntries:
     - - _build.app: slug
@@ -36,6 +37,10 @@ display:
               to:
                 _var:
                   key: to
+                  default: null
+              token:
+                _var:
+                  key: token
                   default: null
         description: null
 references:
@@ -115,5 +120,17 @@ metadata:
     _if_none:
       - _var:
           key: expires_at
+          default: null
+      - null
+  token_name:
+    _if_none:
+      - _var:
+          key: token.name
+          default: null
+      - null
+  token_start:
+    _if_none:
+      - _var:
+          key: token.start
           default: null
       - null

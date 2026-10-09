@@ -12,6 +12,9 @@
 #   get_accounts : user-accounts: linked list + credential-presence gate (one
 #                  query, Decision 5)
 #   get_passkeys : user-passkeys: list + per-passkey delete
+# With `mcp_tokens: true` the side column adds an Access tokens tile, fed by
+# get_mcp_tokens (user-mcp-tokens, active organization, hash never selected) and
+# re-fetched by its own actions/refetch_mcp_tokens.yaml.
 # Section writes go through their own pathways: profile via the update-profile
 # API; every security/session action via a BetterAuth client action on the
 # caller's session (Decision 5).
@@ -26,13 +29,27 @@ _ref:
   vars:
     id: view
     requests:
-      - _ref: requests/get_account.yaml
-      - _ref: requests/get_sessions.yaml
-      - _ref: requests/get_accounts.yaml
-      - _ref: requests/get_passkeys.yaml
+      _build.array.concat:
+        - - _ref: requests/get_account.yaml
+          - _ref: requests/get_sessions.yaml
+          - _ref: requests/get_accounts.yaml
+          - _ref: requests/get_passkeys.yaml
+        - _build.if:
+            test:
+              _module.var: mcp_tokens
+            then:
+              - _ref: requests/get_mcp_tokens.yaml
+            else: []
     events:
       onMount:
-        _ref: actions/refetch_account.yaml
+        _build.array.concat:
+          - _ref: actions/refetch_account.yaml
+          - _build.if:
+              test:
+                _module.var: mcp_tokens
+              then:
+                _ref: actions/refetch_mcp_tokens.yaml
+              else: []
     # Title-block: avatar + "ACCOUNT" eyebrow + the caller's own name. `title`
     # carries the entity name only. The page's own label is the eyebrow's job
     # (docs/layout/index.md). Edits are section-scoped (Decision 5), so the
@@ -50,40 +67,56 @@ _ref:
         icon: home
       - label: Account
     blocks:
-      - id: account_grid
-        type: Box
-        layout:
-          gap: 16
-          align: top
-          selfAlign: top
-        blocks:
-          - id: account_main_col
+      _build.array.concat:
+        - - id: account_grid
             type: Box
             layout:
-              span: 14
-              sm:
-                span: 24
               gap: 16
+              align: top
+              selfAlign: top
             blocks:
-              _build.array.concat:
-                - - _ref: components/view/tile_profile.yaml
-                  - _ref: components/view/tile_security.yaml
-                # Consumer extension surface (Decision 8), extra main-column tiles.
-                - _module.var: components.main_slots
-          - id: account_side_col
-            type: Box
-            layout:
-              span: 10
-              sm:
-                span: 24
-              gap: 16
-            blocks:
-              - _ref: components/view/tile_sessions.yaml
-              - _ref: components/view/tile_linked_accounts.yaml
-      # ── Interaction-state layers: modals (top-level siblings of the grid,
-      #    opened via CallMethod toggleOpen from their triggers) ──
-      - _ref: components/view/modal_profile.yaml
-      - _ref: components/view/modal_changepw.yaml
-      - _ref: components/view/modal_rename_passkey.yaml
-      - _ref: components/view/modal_enroltotp.yaml
-      - _ref: components/view/modal_disable2fa.yaml
+              - id: account_main_col
+                type: Box
+                layout:
+                  span: 14
+                  sm:
+                    span: 24
+                  gap: 16
+                blocks:
+                  _build.array.concat:
+                    - - _ref: components/view/tile_profile.yaml
+                      - _ref: components/view/tile_security.yaml
+                    # Consumer extension surface (Decision 8), extra main-column tiles.
+                    - _module.var: components.main_slots
+              - id: account_side_col
+                type: Box
+                layout:
+                  span: 10
+                  sm:
+                    span: 24
+                  gap: 16
+                blocks:
+                  _build.array.concat:
+                    - - _ref: components/view/tile_sessions.yaml
+                    - _build.if:
+                        test:
+                          _module.var: mcp_tokens
+                        then:
+                          - _ref: components/view/tile_mcp_tokens.yaml
+                        else: []
+                    - - _ref: components/view/tile_linked_accounts.yaml
+          # ── Interaction-state layers: modals (top-level siblings of the grid,
+          #    opened via CallMethod toggleOpen from their triggers) ──
+          - _ref: components/view/modal_profile.yaml
+          - _ref: components/view/modal_changepw.yaml
+          - _ref: components/view/modal_rename_passkey.yaml
+          - _ref: components/view/modal_enroltotp.yaml
+          - _ref: components/view/modal_disable2fa.yaml
+        # Access tokens (mcp_tokens): create-token form and switch-off confirm.
+        - _build.if:
+            test:
+              _module.var: mcp_tokens
+            then:
+              - _ref: components/view/modal_mcp_token.yaml
+              - _ref: components/view/modal_revoke_mcp_token.yaml
+            else: []

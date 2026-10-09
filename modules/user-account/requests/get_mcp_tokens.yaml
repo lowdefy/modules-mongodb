@@ -1,0 +1,36 @@
+# The caller's own member tokens in their active organization, newest first, for
+# the Access tokens tile. Whitelist projection: `hash` is never selected, and the
+# token itself is not stored at all (only `start`, its first 12 characters).
+id: get_mcp_tokens
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-mcp-tokens
+properties:
+  pipeline:
+    - $match:
+        user_id:
+          _user: id
+        organization_id:
+          _user: organization_id
+    - $sort:
+        created_at: -1
+    - $project:
+        _id: 0
+        id: "$_id"
+        name: 1
+        start: 1
+        created_str:
+          $dateToString:
+            date: "$created_at"
+            format: "%Y-%m-%d"
+            onNull: ""
+        expires_str:
+          $dateToString:
+            date: "$expires_at"
+            format: "%Y-%m-%d"
+            onNull: ""
+        last_used_str:
+          $dateToString:
+            date: "$last_used_at"
+            format: "%Y-%m-%d"
+            onNull: ""

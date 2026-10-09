@@ -1,8 +1,10 @@
 # Display metadata (title, colour, icon) for the organisation events: those the
-# module's write endpoints log, and org-member-joined, which the account
-# module's accept page logs. An app registers them with the events module by
-# passing this file's component (`event_types`) into that module's
-# `event_types` var.
+# module's write endpoints log, org-member-joined, which the account module's
+# accept page logs, and org-mcp-token-created and org-mcp-token-revoked, which
+# the account module logs when a member creates or switches off their own MCP
+# token (this module's revoke-mcp-token endpoint logs an admin's switch-off).
+# An app registers them with the events module by passing this file's
+# component (`event_types`) into that module's `event_types` var.
 org-invited:
   title: Invited
   color: "#1890ff"
@@ -54,3 +56,11 @@ org-member-joined:
   title: Joined
   color: "#52c41a"
   icon: UserPlus
+org-mcp-token-created:
+  title: MCP token created
+  color: "#2f54eb"
+  icon: KeyRound
+org-mcp-token-revoked:
+  title: MCP token switched off
+  color: "#fa541c"
+  icon: PowerOff

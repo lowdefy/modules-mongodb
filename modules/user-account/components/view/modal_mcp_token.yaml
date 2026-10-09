@@ -1,0 +1,181 @@
+# Create-token modal, two renders keyed off `mcptoken.token`:
+#   no token  the form (name + expiry) and a Create button
+#   token     the new token, shown once, with a copy button and Done
+#
+# There is no native footer: its Ok closes the dialog on success, and the token
+# must stay on screen after the create. The token lives only in page state and
+# every close path (Done, the X, Esc) clears it through onClose, so it cannot be
+# shown again. A stray mask click must not discard it.
+id: modal_mcp_token
+type: Modal
+layout:
+  gap: 16
+properties:
+  title:
+    _if:
+      test:
+        _state: mcptoken.token
+      then: Copy your new token
+      else: Create access token
+  width: 520
+  footer: false
+  maskClosable: false
+events:
+  onClose:
+    - id: reset_mcptoken
+      type: SetState
+      params:
+        mcptoken.name: null
+        mcptoken.expiry: null
+        mcptoken.token: null
+blocks:
+  - id: mcptoken_form
+    type: Box
+    visible:
+      _not:
+        _state: mcptoken.token
+    layout:
+      span: 24
+      gap: 16
+    blocks:
+      - id: mcptoken.name
+        type: TextInput
+        required: true
+        layout:
+          span: 24
+        properties:
+          label:
+            title: Name
+            span: 24
+          placeholder: e.g. Nightly sync
+          maxLength: 64
+      - id: mcptoken.expiry
+        type: ButtonSelector
+        required: true
+        layout:
+          span: 24
+        properties:
+          label:
+            title: Expires after
+            span: 24
+          options:
+            - label: 30 days
+              value: 30
+            - label: 90 days
+              value: 90
+            - label: A year
+              value: 365
+            - label: No expiry
+              value: never
+      - id: mcptoken_create_btn
+        type: Button
+        layout:
+          span: 24
+        properties:
+          title: Create token
+          block: true
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: validate_mcptoken
+                  type: Validate
+                  params:
+                    regex: '^mcptoken\.'
+                - id: create_mcp_token
+                  type: CallAPI
+                  messages:
+                    loading: Creating token…
+                  params:
+                    endpointId:
+                      _module.endpointId: create-mcp-token
+                    payload:
+                      name:
+                        _state: mcptoken.name
+                      expires_in_days:
+                        _if:
+                          test:
+                            _eq:
+                              - _state: mcptoken.expiry
+                              - never
+                          then: null
+                          else:
+                            _state: mcptoken.expiry
+                - id: show_mcptoken
+                  type: SetState
+                  params:
+                    mcptoken.token:
+                      _actions: create_mcp_token.response.token
+                # The X and Esc still close the dialog while the create runs; open
+                # it again so a token made in the meantime is shown, not lost.
+                - id: keep_mcp_token_modal_open
+                  type: CallMethod
+                  params:
+                    blockId: modal_mcp_token
+                    method: setOpen
+                    args:
+                      - open: true
+              - _ref: actions/refetch_mcp_tokens.yaml
+  - id: mcptoken_result
+    type: Box
+    visible:
+      _boolean:
+        _state: mcptoken.token
+    layout:
+      span: 24
+      gap: 16
+    blocks:
+      - id: mcptoken_value
+        type: Paragraph
+        layout:
+          span: 24
+        properties:
+          content:
+            _nunjucks:
+              template: '<span style="font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; word-break:break-all;">{{ token }}</span>'
+              on:
+                token:
+                  _state: mcptoken.token
+      - id: mcptoken_alert
+        type: Alert
+        layout:
+          span: 24
+        properties:
+          type: warning
+          showIcon: true
+          message: This token will not be shown again. Copy it now and keep it somewhere safe.
+      - id: mcptoken_copy_btn
+        type: Button
+        layout:
+          span: 24
+        properties:
+          title: Copy token
+          block: true
+          icon: copy
+          variant: outlined
+        events:
+          onClick:
+            - id: copy_mcptoken
+              type: CopyToClipboard
+              messages:
+                success: Copied
+              params:
+                copy:
+                  _state: mcptoken.token
+      - id: mcptoken_done_btn
+        type: Button
+        layout:
+          span: 24
+        properties:
+          title: Done
+          block: true
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            - id: close_mcp_token_modal
+              type: CallMethod
+              params:
+                blockId: modal_mcp_token
+                method: toggleOpen
