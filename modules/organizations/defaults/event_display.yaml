@@ -1,7 +1,8 @@
 # Default title templates (Nunjucks) for the organization events, keyed by event
 # type. Each receives `actor` (the caller's name), `subject` ({ user_id, email,
-# name, member_id, invitation_id }), `from` and `to`. An app overrides any of
-# them through the `event_display` module var.
+# name, member_id, invitation_id }), `from`, `to` and `token` ({ name, start },
+# on MCP token events). An app overrides any of them through the
+# `event_display` module var.
 org-invited: "{{ actor }} invited {{ subject.email }}"
 org-invitation-resent: "{{ actor }} resent the invitation for {{ subject.email }}"
 org-invitation-cancelled: "{{ actor }} cancelled the invitation for {{ subject.email }}"
@@ -31,3 +32,4 @@ org-logo-changed:
     - _build.string.toLowerCase:
         _module.var: label
     - ' logo'
+org-mcp-token-revoked: "{{ actor }} switched off the MCP token {{ token.name }} of {{ subject.name or subject.email }}"

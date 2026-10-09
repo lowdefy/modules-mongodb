@@ -1,0 +1,155 @@
+# The security page's Access tokens section, with `mcp_tokens` on: every MCP
+# token in the active organization, with its member, and Switch off on each
+# behind a confirmation. Reads get_mcp_tokens and get_members; the member's
+# name, picture and email are the members page's own.
+_ref:
+  module: layout
+  component: card
+  vars:
+    id: mcp_tokens
+    title: Access tokens
+    blocks:
+      - id: mcp_tokens_note
+        type: Span
+        class: block text-[13px] text-[var(--ant-color-text-secondary)]
+        properties:
+          content:
+            _build.string.concat:
+              - 'MCP tokens members made for scripts in this '
+              - _build.string.toLowerCase:
+                  _module.var: label
+              - '. A token acts as its member. Switching one off stops it on its next call.'
+      - id: mcp_tokens_table
+        type: Table
+        properties:
+          size: compact
+          headerMenu: false
+          reorderable: false
+          emptyText: No MCP tokens
+          rowKey: _id
+          loading:
+            _or:
+              - _not:
+                  _request: get_mcp_tokens
+              - _not:
+                  _request: get_members
+          defaultColumn:
+            sortable: false
+            filterable: false
+          columns:
+            - key: member_name
+              title: Member
+              type: avatar
+              flex: 2
+              minWidth: 220
+              cell:
+                nameField: member_name
+                srcField: picture
+                idField: user_id
+                descriptionField: email
+            - key: name
+              title: Token
+              flex: 1
+              minWidth: 140
+            - key: start
+              title: Starts with
+              width: 140
+            - key: created_at
+              title: Created
+              type: date
+              width: 120
+              cell:
+                format: D MMM YYYY
+            - key: expires_at
+              title: Expires
+              type: html
+              width: 120
+              cell:
+                template: "{% if value %}{{ value | date('D MMM YYYY') }}{% else %}Never{% endif %}"
+            - key: last_used_at
+              title: Last used
+              type: html
+              width: 120
+              cell:
+                template: "{% if value %}{{ value | date('D MMM YYYY') }}{% else %}Never{% endif %}"
+            - key: actions
+              title: ''
+              type: buttons
+              width: 110
+              cell:
+                buttons:
+                  - eventName: onSwitchOff
+                    title: Switch off
+                    size: small
+                    color: danger
+                    variant: text
+          data:
+            _js:
+              fn: |
+                const members = new Map((args.members || []).map((m) => [m.member_id, m]));
+                return (args.tokens || []).map((t) => {
+                  const member = members.get(t.member_id) || {};
+                  return {
+                    ...t,
+                    member_name: member.name || member.email || null,
+                    picture: member.picture || null,
+                    email: member.email || null,
+                  };
+                });
+              args:
+                tokens:
+                  _request: get_mcp_tokens
+                members:
+                  _request: get_members
+        events:
+          onSwitchOff:
+            - id: select_mcp_token
+              type: SetState
+              params:
+                selected_mcp_token:
+                  _event: row
+            - id: open_switch_off_modal
+              type: CallMethod
+              params:
+                blockId: switch_off_mcp_token_modal
+                method: toggleOpen
+      - id: switch_off_mcp_token_modal
+        type: Modal
+        properties:
+          title: Switch off this token?
+          width: 440
+          okText: Switch off
+          cancelText: Keep token
+          okButtonProps:
+            danger: true
+        events:
+          onOk:
+            - id: switch_off_mcp_token
+              type: CallAPI
+              messages:
+                loading: Switching off…
+                success: Token switched off.
+              params:
+                endpointId:
+                  _module.endpointId: revoke-mcp-token
+                payload:
+                  token_id:
+                    _state: selected_mcp_token._id
+            - id: refetch_mcp_tokens
+              type: Request
+              params: get_mcp_tokens
+        blocks:
+          - id: switch_off_mcp_token_message
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: >-
+                    <div style="font-size:13.5px; color:var(--ant-color-text-secondary)">The
+                    token <b>{{ name }}</b> of <b>{{ member }}</b> stops working on its next
+                    call. They can make a new one.</div>
+                  on:
+                    name:
+                      _state: selected_mcp_token.name
+                    member:
+                      _state: selected_mcp_token.member_name

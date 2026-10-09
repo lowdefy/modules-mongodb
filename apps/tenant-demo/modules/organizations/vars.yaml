@@ -4,6 +4,11 @@ allow_create_organization: true
 creator_app_roles:
   - admin
 
+# The Security page lists the organization's MCP tokens with Switch off. The
+# section needs the app's MCP authorization server (auth.oauthProvider) to
+# hold any tokens; this demo has none, so it shows an empty list.
+mcp_tokens: true
+
 settings_back_title: Back to the demo
 settings_back_page_id: home
 

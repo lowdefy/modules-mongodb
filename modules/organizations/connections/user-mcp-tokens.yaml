@@ -1,0 +1,17 @@
+# Read-only connection for the auth `user-mcp-tokens` collection: the Access
+# tokens list on the security page. Present only with `mcp_tokens` on; the
+# collection exists only in apps with the MCP authorization server
+# (`auth.oauthProvider`). Adapter-fixed collection name. Same-database
+# co-location precondition applies (see module.lowdefy.yaml).
+#
+# Walled, unlike the module's other auth connections: every token row carries
+# the organization_id it was made in, and the only read is the active
+# organization's tokens, so the wall scopes it with no authored clause.
+# Switching a token off goes through the RevokeOrgMcpToken step, never here.
+id: user-mcp-tokens
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-mcp-tokens
+  write: false

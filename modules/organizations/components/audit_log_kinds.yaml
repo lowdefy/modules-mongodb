@@ -1,26 +1,39 @@
-# The audit log's kind filter: each kind and the event types it covers.
-- value: invitations
-  label: Invitations
-  types:
-    - org-invited
-    - org-invitation-resent
-    - org-invitation-cancelled
-- value: access
-  label: Roles and authority
-  types:
-    - org-app-roles-changed
-    - org-authority-changed
-    - org-ownership-transferred
-- value: membership
-  label: Membership
-  types:
-    - org-member-joined
-    - org-member-removed
-    - org-member-left
-- value: organization
-  label:
-    _module.var: label
-  types:
-    - org-created
-    - org-renamed
-    - org-logo-changed
+# The audit log's kind filter: each kind and the event types it covers. The
+# MCP tokens kind is offered only with `mcp_tokens` on; its events show in
+# the unfiltered log either way.
+_build.array.concat:
+  - - value: invitations
+      label: Invitations
+      types:
+        - org-invited
+        - org-invitation-resent
+        - org-invitation-cancelled
+    - value: access
+      label: Roles and authority
+      types:
+        - org-app-roles-changed
+        - org-authority-changed
+        - org-ownership-transferred
+    - value: membership
+      label: Membership
+      types:
+        - org-member-joined
+        - org-member-removed
+        - org-member-left
+    - value: organization
+      label:
+        _module.var: label
+      types:
+        - org-created
+        - org-renamed
+        - org-logo-changed
+  - _build.if:
+      test:
+        _module.var: mcp_tokens
+      then:
+        - value: mcp_tokens
+          label: MCP tokens
+          types:
+            - org-mcp-token-created
+            - org-mcp-token-revoked
+      else: []

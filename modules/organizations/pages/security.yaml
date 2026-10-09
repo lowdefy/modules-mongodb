@@ -1,5 +1,6 @@
 # `security` settings page, owners and admins only: holds security's place in
-# the settings menu, with a danger zone naming deletion as not yet available.
+# the settings menu, lists the organization's MCP tokens when `mcp_tokens` is
+# on, and has a danger zone naming deletion as not yet available.
 _ref:
   path: components/settings-page.yaml
   vars:
@@ -13,68 +14,95 @@ _ref:
             _module.var: label
         - ', and what cannot be undone. Owners and admins only.'
     owners_and_admins_only: true
+    requests:
+      _build.if:
+        test:
+          _module.var: mcp_tokens
+        then:
+          - _ref: requests/get_members.yaml
+          - _ref: requests/get_mcp_tokens.yaml
+        else: []
+    events:
+      onMountAsync:
+        _build.if:
+          test:
+            _module.var: mcp_tokens
+          then:
+            - id: fetch_mcp_tokens
+              type: Request
+              params:
+                - get_members
+                - get_mcp_tokens
+          else: []
     blocks:
-      - _ref:
-          path: components/settings_placeholder_card.yaml
-          vars:
-            id: security_placeholder
-            icon: lock
-            text:
-              _build.string.concat:
-                - 'Everyone signs in with an email link today. The '
-                - _build.string.toLowerCase:
-                    _module.var: label
-                - '''s own sign-in rules will live here.'
-            items: |
-              - Sign-in methods allowed
-              - Session length
-              - Required two-factor
-              - Allowed email domains for new members
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            id: danger_zone
-            title: Danger zone
-            blocks:
-              - id: delete_organization_row
-                type: Box
-                layout:
-                  gap: 16
-                  align: middle
-                  wrap: nowrap
+      _build.array.concat:
+        - - _ref:
+              path: components/settings_placeholder_card.yaml
+              vars:
+                id: security_placeholder
+                icon: lock
+                text:
+                  _build.string.concat:
+                    - 'Everyone signs in with an email link today. The '
+                    - _build.string.toLowerCase:
+                        _module.var: label
+                    - '''s own sign-in rules will live here.'
+                items: |
+                  - Sign-in methods allowed
+                  - Session length
+                  - Required two-factor
+                  - Allowed email domains for new members
+        - _build.if:
+            test:
+              _module.var: mcp_tokens
+            then:
+              - _ref: components/mcp_tokens_card.yaml
+            else: []
+        - - _ref:
+              module: layout
+              component: card
+              vars:
+                id: danger_zone
+                title: Danger zone
                 blocks:
-                  - id: delete_organization_text
+                  - id: delete_organization_row
                     type: Box
                     layout:
-                      flex: 1 1 0
-                      direction: column
-                      gap: 2
+                      gap: 16
+                      align: middle
+                      wrap: nowrap
                     blocks:
-                      - id: delete_organization_title
-                        type: Span
-                        class: block
+                      - id: delete_organization_text
+                        type: Box
+                        layout:
+                          flex: 1 1 0
+                          direction: column
+                          gap: 2
+                        blocks:
+                          - id: delete_organization_title
+                            type: Span
+                            class: block
+                            properties:
+                              content:
+                                _build.string.concat:
+                                  - 'Delete '
+                                  - _build.string.toLowerCase:
+                                      _module.var: label
+                          - id: delete_organization_note
+                            type: Span
+                            class: block text-[12px] text-[var(--ant-color-text-tertiary)]
+                            properties:
+                              content: Not available yet. Deleting it and its data comes with billing.
+                      - id: delete_organization_btn
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
                         properties:
-                          content:
+                          title:
                             _build.string.concat:
                               - 'Delete '
                               - _build.string.toLowerCase:
                                   _module.var: label
-                      - id: delete_organization_note
-                        type: Span
-                        class: block text-[12px] text-[var(--ant-color-text-tertiary)]
-                        properties:
-                          content: Not available yet. Deleting it and its data comes with billing.
-                  - id: delete_organization_btn
-                    type: Button
-                    layout:
-                      flex: 0 0 auto
-                    properties:
-                      title:
-                        _build.string.concat:
-                          - 'Delete '
-                          - _build.string.toLowerCase:
-                              _module.var: label
-                      color: danger
-                      variant: outlined
-                      disabled: true
+                          color: danger
+                          variant: outlined
+                          disabled: true

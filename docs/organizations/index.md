@@ -13,6 +13,7 @@ concepts:
     audit-log,
     ownership-transfer,
     organization-setup,
+    mcp-tokens,
   ]
 ---
 
@@ -61,7 +62,8 @@ component.
 | `members`             | every member      | The members table (search, sort, a row opens the member page) and, for owners and admins, the pending invitations and the invite form.                                                                                                                                    |
 | `member`              | every member      | One person, `member?user_id=<user id>`: identity; the access form (authority and app roles, one Save) for owners and admins; their activity; the app's own blocks (`member_page_blocks`); transfer ownership; remove, or leave on your own page. A former member shows their name and activity. |
 | `audit-log`           | owners and admins | Every organization event, newest first, grouped by day, filterable by person and by kind.                                                                                                                                                                                 |
-| `billing`, `security` | owners and admins | Placeholders holding their place in the settings menu.                                                                                                                                                                                                                    |
+| `billing`             | owners and admins | A placeholder holding its place in the settings menu.                                                                                                                                                                                                                     |
+| `security`            | owners and admins | A placeholder for the sign-in rules and a danger zone; with `mcp_tokens` on, the organization's [MCP tokens](#mcp-tokens) with Switch off.                                                                                                                              |
 | `my-organizations`    | anyone signed in  | Every organization the caller belongs to, with their authority and the member count: Settings on the active one, Switch on the others, Leave (through the caller's own member page) except on their only membership, and Create when creation is on.                      |
 | `create-organization` | anyone signed in  | Name a new organization and become its owner. Present only when `allow_create_organization` is true.                                                                                                                                                                      |
 | `setup`               | the new owner     | Where the creator lands: mints the owner's contact in the new organization and logs its creation once, then optional steps (the app's `setup_steps`, a logo, inviting people) and Done to home.                                                                           |
@@ -214,6 +216,8 @@ Every write endpoint logs an organization event: `org-invited`,
 `org-authority-changed`, `org-member-removed`, `org-member-left`,
 `org-renamed`, `org-logo-changed`, `org-ownership-transferred` and
 `org-created` (`org-member-joined` is saved by `user-account`'s accept page).
+The audit log also shows `org-mcp-token-created` and `org-mcp-token-revoked`
+([MCP tokens](#mcp-tokens)), whichever module saved them.
 Their titles are Nunjucks templates that the `event_display` var overrides type
 by type. The `label` var names the organization in every page, message and
 event title, so an app can call it a team or a workspace.
@@ -222,6 +226,41 @@ event title, so an app can call it a team or a workspace.
 connection would stamp the wrong organization. It goes through the module's
 `org-events-system` connection (`tenant: shared`), which stamps the
 organization left explicitly and change-logs into `log-changes-system`.
+
+## MCP tokens
+
+With `mcp_tokens: true` the `security` page gets an **Access tokens** section:
+every MCP member token in the active organization, with its member, name,
+start (its first 12 characters), created, expires ("Never" for a token that
+does not expire) and last used, newest first. Owners and admins switch any of
+them off; it stops working on its next call.
+
+```yaml
+# modules/organizations/vars.yaml
+mcp_tokens: true
+```
+
+It needs the app's MCP authorization server (`auth.oauthProvider`): member
+tokens live in its `user-mcp-tokens` collection, and switching one off
+(`RevokeOrgMcpToken`) fails without it. It also needs Lowdefy
+`0.0.0-experimental-20261009120232` or later. Members create and switch off
+their own tokens elsewhere, for example in `user-account`; this section is the
+organization's overview. With the var off (the default) the section, its read,
+the `user-mcp-tokens` connection and the `revoke-mcp-token` endpoint are left
+out of the build, and the security page is unchanged.
+
+The list reads `user-mcp-tokens` through a walled, read-only connection,
+without the token hash, and takes each member's name, picture and email from
+the members read. `revoke-mcp-token` (payload `{ token_id }`) runs
+`RevokeOrgMcpToken`, which needs `member: [update]` authority in the
+organization, so the step refuses anyone but owners and admins whatever the
+page shows.
+
+The switch-off is logged as `org-mcp-token-revoked`, with the admin as actor and
+the token's member as subject. Token events carry `metadata.token_name` and
+`metadata.token_start`, never the token. A member's own create and switch-off
+(`org-mcp-token-created`, `org-mcp-token-revoked`, saved by the module that
+offers them) show in the same audit log; the `MCP tokens` kind filters to both.
 
 ## Same-database co-location
 
@@ -247,6 +286,7 @@ fields). `apps/tenant-demo/pages/team-directory.yaml` is the example.
 | `user-invitations`         | no     | read-only  | Engine-owned; invitations are written by the module's endpoints               |
 | `user-contacts-collection` | yes    | read/write | App data; the wall stamps and filters the organization mechanically           |
 | `org-events-system`        | no     | write      | The left event, stamped with the organization left; change-logs on its own    |
+| `user-mcp-tokens`          | yes    | read-only  | Engine-owned; rows carry `organization_id`. Only with `mcp_tokens` on         |
 
 See [organization scoping](../shared/org-scoping.md) for what walled means, and
 [vars](reference/vars.md) for every module var.

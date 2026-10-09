@@ -4,9 +4,12 @@
 #
 # Every entry is an event saved when the thing happened: the organization's
 # events of this module's types (enums/event_types.yaml), logged by the module's
-# write endpoints, and org-member-joined, logged by the account module's accept
-# page. Nothing is built from member or invitation rows. `expires_at` is the
-# invitation's expiry on the invited and resent lines, else null.
+# write endpoints, org-member-joined, logged by the account module's accept
+# page, and org-mcp-token-created and org-mcp-token-revoked, logged by the
+# account module for a member's own MCP token and by revoke-mcp-token for an
+# admin's switch-off. Nothing is built from member or invitation rows.
+# `expires_at` is the invitation's expiry on the invited and resent lines, else
+# null. `detail` is the token's name and start on the MCP token lines.
 #
 # Payload (each field optional):
 #   user_id  only entries by or about this person
@@ -75,6 +78,21 @@ properties:
                   $concat:
                     - 'Invited by '
                     - "$metadata.inviter_name"
+              - case:
+                  $in:
+                    - "$type"
+                    - - org-mcp-token-created
+                      - org-mcp-token-revoked
+                then:
+                  $concat:
+                    - $ifNull:
+                        - "$metadata.token_name"
+                        - ''
+                    - ' · '
+                    - $ifNull:
+                        - "$metadata.token_start"
+                        - ''
+                    - '…'
             default: null
         expires_at:
           $ifNull:
