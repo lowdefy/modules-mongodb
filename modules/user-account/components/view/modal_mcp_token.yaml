@@ -107,6 +107,15 @@ blocks:
                   params:
                     mcptoken.token:
                       _actions: create_mcp_token.response.token
+                # The X and Esc still close the dialog while the create runs; open
+                # it again so a token made in the meantime is shown, not lost.
+                - id: keep_mcp_token_modal_open
+                  type: CallMethod
+                  params:
+                    blockId: modal_mcp_token
+                    method: setOpen
+                    args:
+                      - open: true
               - _ref: actions/refetch_mcp_tokens.yaml
   - id: mcptoken_result
     type: Box

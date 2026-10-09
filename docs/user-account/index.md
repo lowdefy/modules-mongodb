@@ -193,7 +193,7 @@ be served as that member (see Lowdefy's MCP docs, "Tokens for scripts").
   first: name, `start` (the first 12 characters), created, expires ("never" for
   a token with no expiry) and last used. The stored hash is never read into the
   page.
-- **Create token** — a name and an expiry of 30 days, 90 days (the default), a
+- **Create token** — a name (up to 64 characters) and an expiry of 30 days, 90 days (the default), a
   year or none, through the `create-mcp-token` endpoint (`CreateMcpToken`). The
   token is shown **once**, with a copy button; it lives only in page state, and
   closing the dialog or reloading the page discards it for good. Only a person
@@ -206,6 +206,8 @@ be served as that member (see Lowdefy's MCP docs, "Tokens for scripts").
   `org-mcp-token-created` / `org-mcp-token-revoked`, with metadata
   `{ actor_user_id, subject_user_id, member_id, token_name, token_start }`
   (actor and subject are both the caller). The token itself is never logged.
+  A create whose event fails to save still returns the token, and the server
+  logs a warning naming the token's id.
   Titles default from `defaults/event_display.yaml` and are overridable through
   `event_display`; templates receive `user` (`{ id, name, email }`) and `token`
   (`{ name, start }`). Give the two types a badge in the events module's
