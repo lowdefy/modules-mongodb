@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## 0.48.0
+
 ## 0.47.0
 
 ## 0.46.0

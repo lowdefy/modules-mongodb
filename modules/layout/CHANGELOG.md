@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-layout
 
+## 0.48.0
+
+### Minor Changes
+
+- [#279](https://github.com/lowdefy/modules-mongodb/pull/279) [`bbf259d`](https://github.com/lowdefy/modules-mongodb/commit/bbf259d93d4b9d303e9919b51ef39892237629bf) Thanks [@SamTolmay](https://github.com/SamTolmay)! - layout: a per-page header logo
+
+  - New `logo` var on the `page` component sets that page's header logo, passed to the page block's `logo` property (`{ src, srcMobile, alt }`, plus `breakpoint` or `style` depending on the page type). Pages that leave it unset keep the public-folder logo.
+
 ## 0.47.0
 
 ## 0.46.0
