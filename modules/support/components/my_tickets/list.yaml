@@ -1,5 +1,6 @@
-# The tickets, filtered by support_list_filter.*. A dot and a bold title mark a
-# ticket with a team message the user has not read; a row opens its ticket page.
+# The tickets as dense rows, filtered by support_list_filter.*. A dot and a bold
+# title mark a ticket with a team message the user has not read; a row opens its
+# ticket page.
 id: support_list_box
 type: Box
 layout:
@@ -26,16 +27,27 @@ blocks:
     properties:
       selectable: false
       hoverable: true
-      gap: 8
+      size: small
+      gap: 4
+      theme:
+        bodyPaddingSM: 10
+        borderRadiusLG: 8
       noData:
-        _if:
-          test:
-            _gt:
-              - _array.length:
-                  _state: support_list_tickets
-              - 0
-          then: No tickets match. Change the search or the filters.
-          else: No tickets yet. Report a problem with the Help button and it shows here.
+        _js:
+          fn: |
+            if (!args.total) return 'No tickets yet. Report a problem with the Help button and it shows here.';
+            if (args.status === 'open' && !args.search && !args.type) return 'No open tickets. Choose All to see resolved ones.';
+            return 'No tickets match. Change the search or the filters.';
+          args:
+            total:
+              _array.length:
+                _state: support_list_tickets
+            status:
+              _state: support_list_filter.status
+            search:
+              _state: support_list_filter.search
+            type:
+              _state: support_list_filter.type
       data:
         _js:
           fn: |
@@ -44,7 +56,7 @@ blocks:
             return (args.tickets || []).filter((ticket) => {
               if (filter.type && ticket.type !== filter.type) return false;
               if (filter.status === 'open' && ticket.stage === 'resolved') return false;
-              if (filter.status && filter.status !== 'open' && ticket.stage !== filter.status) return false;
+              if (filter.status === 'resolved' && ticket.stage !== 'resolved') return false;
               if (!search) return true;
               return [ticket.title, ticket.key].some(
                 (text) => (text || '').toLowerCase().includes(search),
@@ -56,19 +68,17 @@ blocks:
             filter:
               _state: support_list_filter
       html: |
-        <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-          <span style="flex: 0 0 8px;">{% if item.unread %}<span data-status="processing" data-tooltip="New reply from the team" aria-label="New reply from the team"></span>{% endif %}</span>
-          <div style="flex: 1 1 0; min-width: 0;">
-            <div data-truncate="1" style="font-weight: {% if item.unread %}700{% else %}500{% endif %};">{{ item.title }}</div>
-            <div data-tone="secondary" style="display: flex; flex-wrap: wrap; gap: 2px 12px;">
-              <span>{{ item.key }}</span>
-              {% if item.type_label %}<span>{{ item.type_label }}</span>{% endif %}
-              {% if item.show_organization and item.organization %}<span>{{ item.organization.name }}</span>{% endif %}
-            </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; cursor: pointer;">
+          <div style="flex: 1 1 260px; min-width: 0; display: flex; align-items: center; gap: 10px;">
+            <span style="flex: 0 0 8px;">{% if item.unread %}<span data-status="processing" data-tooltip="New reply from the team" aria-label="New reply from the team"></span>{% endif %}</span>
+            <span data-tone="secondary" style="flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;">{{ item.key }}</span>
+            <div data-truncate="1" style="flex: 1 1 0; min-width: 0; font-weight: {% if item.unread %}700{% else %}500{% endif %};">{{ item.title }}</div>
           </div>
-          <div style="flex: 0 0 auto; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
-            {% if item.stage_label %}<span data-tag="{{ item.stage_tag }}">{{ item.stage_label }}</span>{% endif %}
-            <time data-tone="secondary" datetime="{{ item.updated }}" data-time="relative"></time>
+          <div style="flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding-left: 18px;">
+            {% if item.show_organization and item.organization %}<span data-tone="secondary">{{ item.organization.name }}</span>{% endif %}
+            <span data-tone="secondary" data-truncate="1" style="flex: 0 0 72px;">{{ item.type_label }}</span>
+            <span style="flex: 0 0 100px;">{% if item.stage_label %}<span data-tag="{{ item.stage_tag }}">{{ item.stage_label }}</span>{% endif %}</span>
+            <time data-tone="secondary" datetime="{{ item.updated }}" data-time="relative" style="flex: 0 0 104px; text-align: right; white-space: nowrap;"></time>
           </div>
         </div>
     events:

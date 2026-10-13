@@ -1,16 +1,20 @@
-# The search box and the status and type filters over the loaded tickets. They
-# set support_list_filter.*, which the list reads; nothing is fetched again.
+# The search box, the Open / Resolved / All switch and the type filter over the
+# loaded tickets, in one toolbar. They set support_list_filter.*, which the list
+# reads; nothing is fetched again.
 id: support_list_filters
 type: Box
 layout:
   direction: row
   wrap: wrap
-  gap: 12
+  align: middle
+  gap: 8
 blocks:
   - id: support_list_filter.search
     type: TextInput
     layout:
-      flex: 2 1 260px
+      flex: 1 1 200px
+    class:
+      .block: min-w-0
     properties:
       label:
         disabled: true
@@ -18,29 +22,23 @@ blocks:
       prefixIcon: Search
       allowClear: true
   - id: support_list_filter.status
-    type: Selector
+    type: ButtonSelector
     layout:
-      flex: 1 1 180px
+      flex: 0 0 auto
     properties:
       label:
         disabled: true
-      placeholder: Any status
-      allowClear: true
       options:
         - label: Open
           value: open
         - label: Resolved
           value: resolved
-        - label: Received
-          value: received
-        - label: In progress
-          value: in_progress
-        - label: Needs your reply
-          value: needs_your_reply
+        - label: All
+          value: all
   - id: support_list_filter.type
     type: Selector
     layout:
-      flex: 1 1 180px
+      flex: 0 0 150px
     properties:
       label:
         disabled: true
