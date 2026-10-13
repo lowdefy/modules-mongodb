@@ -13,6 +13,13 @@ welcome:
     - label: How do threads work?
       description: How this assistant stores and titles conversations
 sender_placeholder: Ask about the demo app…
+# Sent with every message. support_context is the support module's agent-context: the
+# browser's details and the tab's recent errors, which a ticket the agent files carries.
+shared_state:
+  support_context:
+    _ref:
+      module: support
+      component: agent-context
 title_domain: a Lowdefy module demo app
 
 # Attachments on the composer: the requests are the page's own (attachment_requests.yaml, on

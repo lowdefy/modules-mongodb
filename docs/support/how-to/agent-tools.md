@@ -73,8 +73,31 @@ With the ai-assistant's `screenshot: true`, the user can take a screenshot of th
 
 A file the user attaches on the very message that asks for the ticket goes with it: the chat request carries every message of the conversation, the newest included.
 
+## Share the browser's context with the agent
+
+A ticket from the report form carries the page, the browser's details and the tab's recent errors. A ticket the agent files carries the same when the app adds the module's `agent-context` component to its agent's shared state, under the key `support_context`. With the ai-assistant module, that is its `shared_state` var:
+
+```yaml
+- id: ai-assistant
+  source: "github:lowdefy/modules-mongodb/modules/ai-assistant@vX"
+  vars:
+    shared_state:
+      support_context:
+        _ref:
+          module: support
+          component: agent-context
+```
+
+An app with its own `AgentChat` block puts the same key in the block's `sharedState`. The key must be `support_context`: `support_file_ticket` reads it there and nowhere else.
+
+The component is the plugin's `_support_context` operator. In the browser it gives the page id and a [SupportContext](../../plugins/support-context.md) snapshot: `url`, `user_agent`, `viewport`, `screen`, `locale`, `timezone` and the tab's last 20 `errors`. It reads them each time the page re-evaluates, and the chat sends the latest value with every message. Loading the operator also starts the plugin's error recorder, so an app with no help button still keeps the tab's errors.
+
+`support_file_ticket` takes the snapshot from the chat request (`_agent: sharedState`), never from the tool's input, which the model writes. It keeps only the fields above, held to the recorder's limits (the last 20 errors, 2,000 characters a text). The page and url the model passes are used only when the chat sends no snapshot. The app, environment, version and organisation are always the server's.
+
+The agent sees its shared state with every message, so the snapshot costs tokens on every turn: a few hundred for the browser, more for a tab with many errors and long stacks.
+
 ## What the team sees
 
-A ticket the agent files carries `extra.filed_by: agent` and `extra.conversation_id`, the chat's conversation id, in its context, beside the app, environment, version and organisation every ticket carries.
+A ticket the agent files carries `extra.filed_by: agent` and `extra.conversation_id`, the chat's conversation id, in its context, beside the app, environment, version and organisation every ticket carries. With `agent-context` shared, it also carries the page, url, browser and recent errors, as a ticket from the form does.
 
-The tools are ordinary endpoints. Called with no agent, by a person or over MCP, they send no chat files and `extra.conversation_id` is null.
+The tools are ordinary endpoints. Called with no agent, by a person or over MCP, they send no chat files and no browser context, and `extra.conversation_id` is null.

@@ -18,6 +18,7 @@
     "./connections": "./dist/connections.js",
     "./fsm": "./dist/connections/shared/fsm/tables.js",
     "./metas": "./dist/metas.js",
+    "./operators/client": "./dist/operators/client.js",
     "./operators/server": "./dist/operators/server.js",
     "./types": "./dist/types.js"
   },

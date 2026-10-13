@@ -7,7 +7,7 @@ const blockTypes = extractBlockTypes(metas);
 export default {
   ...blockTypes,
   actions: Object.keys(actions),
-  operators: { client: [], server: ["_analytics"] },
+  operators: { client: ["_support_context"], server: ["_analytics"] },
   connections: Object.keys(connections),
   // Build-side tenant capability declaration. `tenant: true` types implement
   // the scoping contract, so under auth.organizations.policy: tenant their
