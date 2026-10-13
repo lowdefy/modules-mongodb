@@ -92,9 +92,9 @@ An app with its own `AgentChat` block puts the same key in the block's `sharedSt
 
 The component is the plugin's `_support_context` operator. In the browser it gives the page id and a [SupportContext](../../plugins/support-context.md) snapshot: `url`, `user_agent`, `viewport`, `screen`, `locale`, `timezone` and the tab's last 20 `errors`. It reads them each time the page re-evaluates, and the chat sends the latest value with every message. Loading the operator also starts the plugin's error recorder, so an app with no help button still keeps the tab's errors.
 
-`support_file_ticket` takes the snapshot from the chat request (`_agent: sharedState`), never from the tool's input, which the model writes. It keeps only the fields above, held to the recorder's limits (the last 20 errors, 2,000 characters a text). The page and url the model passes are used only when the chat sends no snapshot. The app, environment, version and organisation are always the server's.
+`support_file_ticket` takes the snapshot from the chat request (`_agent: sharedState`), never from the tool's input, which the model writes. It keeps only the fields above, held to the recorder's limits (the last 20 errors, 2,000 characters a text). The page and url the model passes are used only for a page or url the snapshot lacks. The app, environment, version and organisation are always the server's.
 
-The agent sees its shared state with every message, so the snapshot costs tokens on every turn: a few hundred for the browser, more for a tab with many errors and long stacks.
+The agent sees its shared state with every message, so the snapshot costs tokens on every turn: a few hundred for the browser, up to about 20,000 for a tab with 20 errors with long messages and stacks. The model reads the error messages too, so treat them like any other text the page shows it.
 
 ## What the team sees
 
