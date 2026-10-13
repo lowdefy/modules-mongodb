@@ -33,6 +33,20 @@ const canvasToFile = (canvas, name) =>
     }, "image/png");
   });
 
+// Hands the file to a file input already on the page, as if the user had
+// picked it. The input's own change handler then takes it through whatever
+// intake and upload it has, which is how a chat composer attaches it.
+const attachToInput = (file, selector) => {
+  const input = document.querySelector(selector);
+  if (!input || input.type !== "file") {
+    throw new Error(`No file input matches "${selector}".`);
+  }
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  input.files = transfer.files;
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+};
+
 const boxStyle = (box) => ({
   position: "absolute",
   left: box.x,
@@ -212,13 +226,14 @@ const SupportScreenshot = ({
   );
 
   useEffect(() => {
+    if (properties.attachTo) return;
     methods.registerEvent({
       name: "__getS3PostPolicy",
       actions: [
         {
           id: "__getS3PostPolicy",
           type: "Request",
-          params: [properties.s3PostPolicyRequestId],
+          params: [properties.s3PostPolicyRequestId, properties.attachTo],
         },
       ],
     });
@@ -284,6 +299,17 @@ const SupportScreenshot = ({
     try {
       const output = renderEdited(shot.canvas, { blurs, crop });
       const file = await canvasToFile(output, fileName);
+      if (properties.attachTo) {
+        attachToInput(file, properties.attachTo);
+        close();
+        await methods.triggerEvent({
+          name: "onUse",
+          event: {
+            file: { name: file.name, size: file.size, type: file.type },
+          },
+        });
+        return;
+      }
       const result = await new Promise((resolve) => {
         settleRef.current = resolve;
         s3Upload.upload({ file });

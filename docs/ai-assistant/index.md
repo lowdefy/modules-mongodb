@@ -261,6 +261,24 @@ routine:
 
 The endpoint is called on every open of a thread holding files, so keep it to signing.
 
+### Screenshot
+
+`screenshot: true` adds a **Take screenshot** button to the docked panel's footer. It draws the page behind the panel (the panel itself is left out), blanks every password input, every `[data-support-mask]` element and every match of `screenshot_mask_selectors`, then opens an editor where the user can blur or crop it and choose **Use** or **Retake**. **Use** puts the image in the composer as an attachment, the same as one picked with the paperclip: it uploads on send through the `uploadPolicyRequestId` request, under the prefix that request gives the user, and the thread keeps its storage key.
+
+```yaml
+sender_attachments:
+  enabled: true
+  accept: image/*,.pdf
+  uploadPolicyRequestId: chat_upload_policy
+  downloadPolicyRequestId: chat_download_policy
+screenshot: true
+screenshot_mask_selectors:
+  - .account-number
+```
+
+It needs `sender_attachments.enabled`, and the composer's `accept` list and `maxSize` must allow a PNG. It is not part of the embedded shell. The button is disabled in the thread list and under a `notice`. The capture is the [SupportScreenshot](../plugins/support-screenshot.md) block's, with its limits.
+
+
 ## App behaviour on the chat
 
 The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` and will not hand that over. A thread is persisted twice: once when the message is sent, and again when the reply completes. The first save is what makes a thread survive a client that leaves mid-stream — without it the thread was never created, and the question went with it. Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:

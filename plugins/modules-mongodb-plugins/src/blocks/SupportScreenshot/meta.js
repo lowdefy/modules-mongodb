@@ -31,6 +31,11 @@ export default {
         description:
           "The request that returns the S3 presigned POST policy for the upload, as FileManager takes it. It receives _event: file ({ name, size, type, lastModified, uid }).",
       },
+      attachTo: {
+        type: "string",
+        description:
+          "CSS selector of a file input on the page, such as the one inside an AgentChat composer. When set, Use hands the edited image to that input as if the user had picked it, and nothing is uploaded by this block (so s3PostPolicyRequestId is not needed). The input's owner uploads it.",
+      },
       fileName: {
         type: "string",
         default: "screenshot.png",
@@ -46,9 +51,9 @@ export default {
   events: {
     onUse: {
       description:
-        "Triggered after the edited screenshot is uploaded and the editor closes.",
+        "Triggered after the edited screenshot is uploaded (or, with attachTo, handed to the input) and the editor closes.",
       event: {
-        file: "The uploaded file: { key, name, size, type }.",
+        file: "The file: { key, name, size, type }. With attachTo there is no key.",
       },
     },
     onError: {
