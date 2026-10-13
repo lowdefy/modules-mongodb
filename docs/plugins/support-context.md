@@ -7,12 +7,13 @@ concepts: [support-context, error-recorder]
 
 # SupportContext
 
-Gives a support form the browser's details and the tab's recent errors at the moment a ticket is sent. Two parts:
+Gives a support form, or an app's agent, the browser's details and the tab's recent errors at the moment a ticket is sent. Three parts:
 
-- **The error recorder.** The plugin installs it on `window` (as `window.__lowdefySupportRecorder`) when its blocks load, before the first page's `onInit` runs, once per browser tab. It keeps the tab's last 20 errors in memory. **Nothing leaves the browser** until a page reads a snapshot and sends it.
+- **The error recorder.** The plugin installs it on `window` (as `window.__lowdefySupportRecorder`) when its blocks or the `_support_context` operator load, before the first page's `onInit` runs, once per browser tab. It keeps the tab's last 20 errors in memory. **Nothing leaves the browser** until a page reads a snapshot and sends it.
 - **The `SupportContext` block.** It renders nothing. Its `snapshot` method sets the block's value to a snapshot of the browser and the recorded errors, and fires `onSnapshot` with it.
+- **The `_support_context` operator.** The same snapshot with the page id, as a value, for an agent's shared state. See [The `_support_context` operator](#the-_support_context-operator).
 
-The `support` module's report form calls `snapshot` before it sends a ticket, and adds the app, environment, version, page, organisation and its own extra fields to build the ticket's context.
+The `support` module's report form calls `snapshot` before it sends a ticket, and adds the app, environment, version, page, organisation and its own extra fields to build the ticket's context. Its `agent-context` component is the operator, for an app whose agent files tickets.
 
 ## Usage
 
@@ -39,6 +40,20 @@ The `support` module's report form calls `snapshot` before it sends a ticket, an
 ```
 
 The block is an input: after `snapshot`, `_state: support_context` holds the snapshot too.
+
+## The `_support_context` operator
+
+A client operator for an agent's shared state, which the chat sends with every message:
+
+```yaml
+sharedState:
+  support_context:
+    _support_context: true
+```
+
+It returns `{ page, ...snapshot }`: the page id and the fields below. It reads the browser and the recorder each time the block holding it evaluates, which is every evaluation pass of the page, so the chat sends what was true at its latest pass. Outside a browser it returns null. Loading it installs the recorder, so a page with the operator and no `SupportContext` block still keeps the tab's errors.
+
+The `support` module wraps it as its `agent-context` component; see [Give the app's agent the support tools](../support/how-to/agent-tools.md#share-the-browsers-context-with-the-agent).
 
 ## What a snapshot carries
 

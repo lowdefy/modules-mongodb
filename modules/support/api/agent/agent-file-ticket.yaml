@@ -79,6 +79,13 @@ routine:
         sent:
           _state: sent_chat_files
   - _ref: api/parts/organization.yaml
+  - _ref:
+      path: api/agent/parts/chat-context.yaml
+      vars:
+        page:
+          _payload: page
+        url:
+          _payload: url
   - id: send_ticket
     type: CallApi
     properties:
@@ -92,20 +99,14 @@ routine:
         message:
           _payload: description
         context:
-          page:
-            _if_none:
-              - _payload: page
-              - null
-          url:
-            _if_none:
-              - _payload: url
-              - null
-          extra:
-            filed_by: agent
-            conversation_id:
-              _agent:
-                key: conversationId
-                default: null
+          _object.assign:
+            - _state: chat_context
+            - extra:
+                filed_by: agent
+                conversation_id:
+                  _agent:
+                    key: conversationId
+                    default: null
         files:
           _state: chat_files
         organization:

@@ -156,6 +156,11 @@ exports:
       description: >-
         The four agent tools, under the names the brief uses, for an agent's
         tools list
+    - id: agent-context
+      description: >-
+        The browser's details and the tab's recent errors, for the app's agent's
+        shared state under the key support_context, so a ticket the agent files
+        carries what the report form sends
   connections:
     - id: support_pelican
       description: Pelican's support API, authorised with the support app's key
@@ -235,6 +240,9 @@ components:
   - id: agent-tools
     component:
       _ref: agent/tools.yaml
+  - id: agent-context
+    component:
+      _ref: components/agent-context.yaml
 
 pages:
   - _ref: pages/support.yaml

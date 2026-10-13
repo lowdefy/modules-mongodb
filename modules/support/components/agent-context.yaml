@@ -1,0 +1,6 @@
+# For the app's agent's shared state, under the key support_context: the page id
+# and the SupportContext snapshot (browser, viewport, screen, locale, time zone
+# and the tab's last 20 errors), read in the browser and sent with every chat
+# message. agent-file-ticket takes it from the chat request, never from the
+# model's input.
+_support_context: true

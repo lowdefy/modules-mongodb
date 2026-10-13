@@ -1,0 +1,64 @@
+# The ticket context of an agent-filed ticket, into state.chat_context: the
+# browser snapshot the agent-context component put in the chat's shared state
+# (support_context), with the model's page and url as fallbacks. The browser
+# builds the chat request, so only the snapshot's known fields are kept, held to
+# the recorder's limits: the last 20 errors, 2,000 characters a text. The app,
+# environment, version and organisation are send-ticket's.
+#
+# Vars:
+#   page  the page id the model gave, or null
+#   url   the page address the model gave, or null
+- :set_state:
+    chat_context_input:
+      shared:
+        _agent:
+          key: sharedState
+          default: null
+      page:
+        _var: page
+      url:
+        _var: url
+- :set_state:
+    chat_context:
+      _js: |
+        const { shared, page, url } = state('chat_context_input');
+        const MAX_ERRORS = 20;
+        const MAX_CHARS = 2000;
+        const isObject = (value) =>
+          value !== null && typeof value === 'object' && !Array.isArray(value);
+        const text = (value, max = MAX_CHARS) => {
+          if (typeof value !== 'string' || value.length < 1) return null;
+          return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+        };
+        const number = (value) =>
+          typeof value === 'number' && Number.isFinite(value) ? value : null;
+        const size = (value, keys) =>
+          isObject(value)
+            ? Object.fromEntries(keys.map((key) => [key, number(value[key])]))
+            : null;
+        const kinds = ['console', 'error', 'rejection'];
+        const snapshot = isObject(shared) && isObject(shared.support_context)
+          ? shared.support_context
+          : {};
+        const errors = (Array.isArray(snapshot.errors) ? snapshot.errors : [])
+          .filter(isObject)
+          .slice(-MAX_ERRORS)
+          .map((entry) => {
+            const stack = text(entry.stack);
+            return {
+              at: text(entry.at, 40),
+              kind: kinds.includes(entry.kind) ? entry.kind : null,
+              message: text(entry.message) ?? '',
+              ...(stack === null ? {} : { stack }),
+            };
+          });
+        return {
+          page: text(snapshot.page, 200) ?? text(page, 200),
+          url: text(snapshot.url) ?? text(url),
+          user_agent: text(snapshot.user_agent),
+          viewport: size(snapshot.viewport, ['width', 'height']),
+          screen: size(snapshot.screen, ['width', 'height', 'pixel_ratio']),
+          locale: text(snapshot.locale, 100),
+          timezone: text(snapshot.timezone, 100),
+          errors,
+        };
