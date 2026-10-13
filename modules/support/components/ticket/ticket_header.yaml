@@ -31,7 +31,7 @@ blocks:
             </div>
             <div data-tone="secondary" style="margin-top: 4px;">
               {% if created %}Opened {{ created | date('D MMM YYYY, HH:mm') }}{% endif %}
-              {% if updated %}, last activity <time datetime="{{ updated }}" data-time="relative"></time>{% endif %}
+              {%- if updated %}, last activity <time datetime="{{ updated }}" data-time="relative"></time>{% endif %}
             </div>
           on:
             key:
