@@ -6,6 +6,7 @@ export { default as DataDescriptions } from "./blocks/DataDescriptions/DataDescr
 export { default as EventsTimeline } from "./blocks/EventsTimeline/EventsTimeline.js";
 export { default as FileManager } from "./blocks/FileManager/FileManager.js";
 export { default as FloatingPanel } from "./blocks/FloatingPanel/FloatingPanel.js";
+export { default as MessageComposer } from "./blocks/MessageComposer/MessageComposer.js";
 export { default as SmartDescriptions } from "./blocks/SmartDescriptions/SmartDescriptions.js";
 export { default as SupportContext } from "./blocks/SupportContext/SupportContext.js";
 export { default as SupportScreenshot } from "./blocks/SupportScreenshot/SupportScreenshot.js";
