@@ -18,7 +18,7 @@ _ref:
             support_list_tickets_error: null
             support_list_loaded: false
             support_list_filter.search: null
-            support_list_filter.status: null
+            support_list_filter.status: open
             support_list_filter.type: null
       onMount:
         _build.array.concat:
@@ -41,7 +41,6 @@ _ref:
         style:
           maxWidth: 960
           width: 100%
-          margin: 0 auto
         layout:
           gap: 16
         blocks:
