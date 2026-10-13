@@ -83,6 +83,7 @@ To mask a field in app config, put `data-support-mask` on it (in an `Html` block
 | `hideSelectors`         | string[] | `[]`                | CSS selectors of elements left out of the screenshot, such as the panel the button sits in. |
 | `maskSelectors`         | string[] | `[]`                | CSS selectors drawn as solid grey boxes, beside the built-in masks.                         |
 | `s3PostPolicyRequestId` | string   | —                   | The request that returns the S3 presigned POST policy for the upload.                       |
+| `attachTo`              | string   | —                   | CSS selector of a file input on the page. When set, **Use** hands the image to that input as if the user had picked it, and this block uploads nothing. The ai-assistant's panel points it at the chat composer. |
 | `fileName`              | string   | `"screenshot.png"`  | The uploaded file's name.                                                                   |
 | `disabled`              | boolean  | `false`             | Disables the button and the `capture` method.                                               |
 

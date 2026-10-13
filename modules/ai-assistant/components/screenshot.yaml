@@ -1,0 +1,33 @@
+# screenshot.yaml — the panel's footer: a Take screenshot button for the chat. It captures the page
+# behind the panel (SupportScreenshot masks passwords, `[data-support-mask]` and the
+# `screenshot_mask_selectors` var, and leaves the panel out), lets the user blur or crop it, and
+# hands the result to the composer's file input. The chat then uploads it on send through
+# `sender_attachments`, like a file picked with the paperclip.
+#
+# Needs `sender_attachments.enabled`: without the composer's file input there is nothing to attach to.
+id: ai_screenshot
+type: SupportScreenshot
+properties:
+  # The composer is out of view in the thread list and under a notice: nothing to attach to.
+  disabled:
+    _or:
+      - _eq:
+          - _state: ai_view
+          - threads
+      - _ne:
+          - _module.var: notice
+          - null
+  attachTo: '#ai_chat input[type="file"]'
+  hideSelectors:
+    - "#ai_panel"
+  maskSelectors:
+    _module.var: screenshot_mask_selectors
+  fileName: screenshot.png
+events:
+  onError:
+    - id: ai_screenshot_failed
+      type: DisplayMessage
+      params:
+        status: error
+        content:
+          _event: message

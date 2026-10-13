@@ -69,6 +69,8 @@ The browser builds the chat request, so the tools send a file only when its key 
 
 With no prefix set, the tools send no chat files. Chat uploads must go to the `files` module's bucket, the one the module signs links on. See the ai-assistant module's [attachments](../../ai-assistant/index.md#attachments).
 
+With the ai-assistant's `screenshot: true`, the user can take a screenshot of the page from the chat panel, with passwords and the app's mask selectors blanked and a blur and crop editor, and it attaches to the message like any file ([Screenshot](../../ai-assistant/index.md#screenshot)). It uploads under the same chat prefix, so `chat_files_prefix` covers it and the tools send it with the ticket.
+
 A file the user attaches on the very message that asks for the ticket goes with it: the chat request carries every message of the conversation, the newest included.
 
 ## What the team sees
