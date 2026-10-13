@@ -82,11 +82,11 @@ blocks:
             <span data-tone="secondary" style="flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;">{{ item.key }}</span>
             <div data-truncate="1" style="flex: 1 1 0; min-width: 0; font-weight: {% if item.unread %}700{% else %}500{% endif %};">{{ item.title }}</div>
           </div>
-          <div style="flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding-left: 18px;">
+          <div style="flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 12px; padding-left: 18px;">
             {% if item.show_organization and item.organization %}<span data-tone="secondary">{{ item.organization.name }}</span>{% endif %}
-            <span data-tone="secondary" data-truncate="1" style="flex: 0 0 72px;">{{ item.type_label }}</span>
-            <span style="flex: 0 0 100px;">{% if item.stage_label %}<span data-tag="{{ item.stage_tag }}">{{ item.stage_label }}</span>{% endif %}</span>
-            <time data-tone="secondary" datetime="{{ item.updated }}" data-time="relative" style="flex: 0 0 104px; text-align: right; white-space: nowrap;"></time>
+            <span data-tone="secondary" data-truncate="1" style="flex: 0 1 72px; width: 72px; min-width: 0;">{{ item.type_label }}</span>
+            <span style="flex: 0 1 100px; width: 100px; min-width: max-content;">{% if item.stage_label %}<span data-tag="{{ item.stage_tag }}">{{ item.stage_label }}</span>{% endif %}</span>
+            <time data-tone="secondary" datetime="{{ item.updated }}" data-time="relative" style="flex: none; width: 104px; text-align: right; white-space: nowrap;"></time>
           </div>
         </div>
     events:
