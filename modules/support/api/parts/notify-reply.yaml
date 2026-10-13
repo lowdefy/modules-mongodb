@@ -61,8 +61,8 @@
     - :set_state:
         reply_recipient:
           _step: reply_recipient
-        support_page_id:
-          _module.pageId: support
+        ticket_page_id:
+          _module.pageId: ticket
     - :set_state:
         reply_items:
           _js: |
@@ -85,8 +85,8 @@
                 preview: text.length > 200 ? `${text.slice(0, 199)}…` : text,
                 links: {
                   button: {
-                    pageId: state('support_page_id'),
-                    urlQuery: { ticket: ticket.key },
+                    pageId: state('ticket_page_id'),
+                    pathParams: { ticket_key: ticket.key },
                   },
                 },
               };

@@ -24,6 +24,6 @@ testData:
       name: Jane Doe
   links:
     button:
-      pageId: support/support
-      urlQuery:
-        ticket: ENC-42
+      pageId: support/ticket
+      pathParams:
+        ticket_key: ENC-42

@@ -285,7 +285,7 @@ test("a retry answer to a reply keeps the draft", async ({ ldf, page }) => {
   await ldf.state("support_reply.message").expect.toBe("Still failing.");
 });
 
-test("the support page opens the ticket a link names, by key", async ({
+test("the ticket page opens the ticket its path names, by key", async ({
   ldf,
   page,
 }) => {
@@ -293,17 +293,47 @@ test("the support page opens the ticket a link names, by key", async ({
   pelican.answer(
     pelicanAnswering({ "t-replied": REPLIED, "t-logged": LOGGED }),
   );
-  await ldf.goto("/support/support?ticket=ENC-31");
-  await expect(rows(page, "support_page")).toHaveCount(2);
+  await ldf.goto("/support/ENC-31");
   await expect(page.locator("#support_page_thread_messages")).toContainText(
     "Which file were you exporting?",
   );
-  await rows(page, "support_page").first().click();
   await expect(page.locator("#support_page_thread_title")).toContainText(
-    "Ticket ENC-32",
+    "Ticket ENC-31",
   );
+  await expect(page.locator("#support_page_thread_meta")).toContainText(
+    "Needs your reply",
+  );
+});
+
+test("My tickets page lists every ticket, filters them and opens one", async ({
+  ldf,
+  page,
+}) => {
+  await ldf.user(USER);
+  pelican.answer(
+    pelicanAnswering({ "t-replied": REPLIED, "t-logged": LOGGED }),
+  );
+  await ldf.goto("/support/support");
+  const list = page.locator("#support_list_tickets .ant-card");
+  await expect(list).toHaveCount(2);
+  await expect(list.nth(0)).toContainText("Ticket ENC-32");
+  await expect(list.nth(1)).toContainText("Ticket ENC-31");
+
+  await ldf.block("support_list_filter.search").do.fill("enc-31");
+  await expect(list).toHaveCount(1);
+  await expect(list.first()).toContainText("Ticket ENC-31");
+
+  await ldf.block("support_list_filter.search").do.fill("nothing like it");
+  await expect(page.locator("#support_list_tickets")).toContainText(
+    "No tickets match",
+  );
+
+  await ldf.block("support_list_filter.search").do.fill("");
+  await expect(list).toHaveCount(2);
+  await list.nth(1).click();
+  await expect(page).toHaveURL(/\/support\/ENC-31$/);
   await expect(page.locator("#support_page_thread_messages")).toContainText(
-    "No messages yet",
+    "Which file were you exporting?",
   );
 });
 
@@ -335,7 +365,7 @@ test("a link to another user's ticket shows nothing of it", async ({
   });
   await ldf.user(USER);
   pelican.answer(pelicanAnswering({ "t-logged": LOGGED }));
-  await ldf.goto("/support/support?ticket=t-other");
+  await ldf.goto("/support/t-other");
 
   await expect(page.locator("#support_page_thread_notice")).toContainText(
     "No such ticket.",

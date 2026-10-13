@@ -1,0 +1,50 @@
+# The search box and the status and type filters over the loaded tickets. They
+# set support_list_filter.*, which the list reads; nothing is fetched again.
+id: support_list_filters
+type: Box
+layout:
+  direction: row
+  wrap: wrap
+  gap: 12
+blocks:
+  - id: support_list_filter.search
+    type: TextInput
+    layout:
+      flex: 2 1 260px
+    properties:
+      label:
+        disabled: true
+      placeholder: Search by title or key
+      prefixIcon: Search
+      allowClear: true
+  - id: support_list_filter.status
+    type: Selector
+    layout:
+      flex: 1 1 180px
+    properties:
+      label:
+        disabled: true
+      placeholder: Any status
+      allowClear: true
+      options:
+        - label: Open
+          value: open
+        - label: Resolved
+          value: resolved
+        - label: Received
+          value: received
+        - label: In progress
+          value: in_progress
+        - label: Needs your reply
+          value: needs_your_reply
+  - id: support_list_filter.type
+    type: Selector
+    layout:
+      flex: 1 1 180px
+    properties:
+      label:
+        disabled: true
+      placeholder: Any type
+      allowClear: true
+      options:
+        _module.var: types

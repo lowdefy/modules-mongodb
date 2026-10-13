@@ -8,7 +8,7 @@ description: >-
 
 dependencies:
   - id: layout
-    description: Page layout wrapper for the support page.
+    description: Page layout wrapper for the support pages.
   - id: events
     description: Change stamps on every write to the ticket copy.
   - id: notifications
@@ -126,8 +126,12 @@ exports:
   pages:
     - id: support
       description: >-
-        The user's tickets beside the open thread; ?ticket= (an id or a key)
-        opens one
+        My tickets: every ticket the user has, open and resolved, with a search
+        box and status and type filters, at /{entry id}/support
+    - id: ticket
+      description: >-
+        One ticket, its conversation and the reply composer, at
+        /{entry id}/{ticket key}
   menus:
     - id: default
       description: A Support link to the support page, for the profile menu
@@ -234,6 +238,7 @@ components:
 
 pages:
   - _ref: pages/support.yaml
+  - _ref: pages/ticket.yaml
 
 menus:
   - _ref: menu.yaml

@@ -9,14 +9,18 @@ concepts: [agent-tools, agent-instructions, chat-files, filed-by-agent]
 
 The module ships four tools and a brief for the app's own agent, so a user can describe a problem in the chat and the agent files the ticket and follows it up for them.
 
-| Tool name                 | Endpoint                | Does                                                                                 |
-| ------------------------- | ----------------------- | ------------------------------------------------------------------------------------ |
-| `support_file_ticket`     | `agent-file-ticket`     | Files a ticket with the chat's images and PDFs. Answers `{ ok, key, stage, files }`. |
-| `support_list_my_tickets` | `agent-list-my-tickets` | The user's tickets, each `{ key, title, stage, updated, unread }`.                   |
-| `support_read_ticket`     | `agent-read-ticket`     | One ticket's thread, each message `{ from, author, at, text, files, deleted }`.      |
-| `support_post_message`    | `agent-post-message`    | Adds a message, with the chat's images and PDFs not yet sent on any ticket.          |
+| Tool name                 | Endpoint                | Does                                                                                           |
+| ------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `support_file_ticket`     | `agent-file-ticket`     | Files a ticket with the chat's images and PDFs. Answers `{ ok, key, url, stage, files }`.      |
+| `support_list_my_tickets` | `agent-list-my-tickets` | The user's tickets, each `{ key, url, title, stage, updated, unread }`.                        |
+| `support_read_ticket`     | `agent-read-ticket`     | One ticket's key, `url` and thread, each message `{ from, author, at, text, files, deleted }`. |
+| `support_post_message`    | `agent-post-message`    | Adds a message, with the chat's images and PDFs not yet sent on any ticket.                    |
 
 Every tool acts for the session user, through the same checked cores as the report form, and answers `{ ok: false, error }` on a failure, with the `kind` the [endpoints](../index.md#endpoints) describe. The brief tells the agent what each kind means.
+
+## Links to tickets
+
+Every answer that names a ticket carries `url`, the app path of the ticket's page: `/{entry id}/{ticket key}`, such as `/support/PEL-1715`. It is built from the module's entry id, so it is right whatever the entry id is, and it carries no origin or base path. The brief tells the agent to write every ticket key as a markdown link to that `url`, such as `[PEL-1715](/support/PEL-1715)`, so the key is a link in the chat and never plain text.
 
 ## Wire them into the agent
 
