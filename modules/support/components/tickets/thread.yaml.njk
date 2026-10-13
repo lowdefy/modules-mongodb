@@ -7,11 +7,13 @@
 #   back        true to show Back, which returns to the list
 #   view_state  with back, the state key of the view the list shows in
 #   max_height  the message area's maximum height
+#   no_header   true when the surface draws the ticket's title and stage itself
 id: {{ prefix }}_thread_box
 type: Box
 layout:
   gap: 12
 blocks:
+{% if not no_header %}
   - id: {{ prefix }}_thread_header
     type: Box
     layout:
@@ -93,6 +95,7 @@ blocks:
                             - none
                     organization:
                       _state: {{ prefix }}_thread.organization.name
+{% endif %}
   - id: {{ prefix }}_thread_loading_text
     type: Paragraph
     visible:

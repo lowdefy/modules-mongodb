@@ -12,6 +12,28 @@ _ref:
     # blocks (search, switcher) on this page only.
     header_blocks: []
     requests:
+      - id: message_composer_policy
+        type: AwsS3PresignedPostPolicy
+        connectionId: files/files-bucket
+        payload:
+          name:
+            _event: file.name
+          type:
+            _event: file.type
+        properties:
+          key:
+            _string.concat:
+              - user-components-demo/message-composer/
+              - _uuid: true
+              - /
+              - _payload: name
+          fields:
+            Content-Type:
+              _payload: type
+          conditions:
+            - - content-length-range
+              - 1
+              - 10485760
       # Fails on the server (unknown pipeline stage), so the SupportContext
       # card can show a failed request in its error list.
       - id: support_demo_failing_request
@@ -142,6 +164,56 @@ _ref:
                         - name: removed-file.pdf
                           mime: application/pdf
                           url: null
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: MessageComposer
+            blocks:
+              # Type, paste or drop an image or PDF, then press Ctrl or Cmd
+              # with Enter. The message and the files are read back below.
+              - id: demo_composer.message
+                type: MessageComposer
+                properties:
+                  placeholder: Write a message
+                  s3PostPolicyRequestId: message_composer_policy
+                  files:
+                    _if_none:
+                      - _state: demo_composer.files
+                      - []
+                events:
+                  onUploaded:
+                    - id: demo_composer_add_file
+                      type: SetState
+                      params:
+                        demo_composer.files:
+                          _event: files
+                  onRemove:
+                    - id: demo_composer_remove_file
+                      type: SetState
+                      params:
+                        demo_composer.files:
+                          _event: files
+                  onSubmit:
+                    - id: demo_composer_sent
+                      type: SetState
+                      params:
+                        demo_composer_sent:
+                          message:
+                            _event: message
+                          files:
+                            _event: files
+                        demo_composer.message: null
+                        demo_composer.files: []
+              - id: demo_composer_readback
+                type: Html
+                properties:
+                  html:
+                    _nunjucks:
+                      template: "<strong>Sent:</strong> {{ sent | dump }}"
+                      on:
+                        sent:
+                          _state: demo_composer_sent
       - _ref:
           module: layout
           component: card

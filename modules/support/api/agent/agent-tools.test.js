@@ -31,6 +31,8 @@ const readCode = readYaml("agent-read-ticket.yaml").routine.find(
 )[":return"].ticket._js;
 const stages = readYaml("../../enums/stages.yaml");
 
+const ticket_path = "/help/";
+
 const chatFile = (name, mediaType = "image/png", owner = "u1") => ({
   key: `ai-assistant/${owner}/k-${name}/${name}`,
   filename: name,
@@ -164,10 +166,12 @@ test("agent-list-my-tickets answers each ticket lean", () => {
         },
       ],
       stages,
+      ticket_path,
     }),
   ).toEqual([
     {
       key: "SUP-1",
+      url: "/help/SUP-1",
       title: "Export fails",
       stage: "Needs your reply",
       updated: "2026-10-07T09:00:00.000Z",
@@ -175,13 +179,16 @@ test("agent-list-my-tickets answers each ticket lean", () => {
     },
     {
       key: "SUP-2",
+      url: "/help/SUP-2",
       title: "Idea",
       stage: "Received",
       updated: null,
       unread: false,
     },
   ]);
-  expect(runJs(listCode, { agent_tickets: null, stages })).toEqual([]);
+  expect(runJs(listCode, { agent_tickets: null, stages, ticket_path })).toEqual(
+    [],
+  );
 });
 
 describe("agent-read-ticket", () => {
@@ -226,8 +233,9 @@ describe("agent-read-ticket", () => {
   };
 
   test("answers the thread with file names, never their links", () => {
-    expect(runJs(readCode, { agent_view: view, stages })).toEqual({
+    expect(runJs(readCode, { agent_view: view, stages, ticket_path })).toEqual({
       key: "SUP-1",
+      url: "/help/SUP-1",
       title: "Export fails",
       type: "bug",
       stage: "Needs your reply",
@@ -263,6 +271,8 @@ describe("agent-read-ticket", () => {
   });
 
   test("answers null when there is no ticket", () => {
-    expect(runJs(readCode, { agent_view: null, stages })).toBeNull();
+    expect(
+      runJs(readCode, { agent_view: null, stages, ticket_path }),
+    ).toBeNull();
   });
 });

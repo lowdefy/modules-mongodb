@@ -127,6 +127,26 @@ vars:
       requests); the module adds none. Null (the default) leaves attachments
       off. Pair it with `file_links_endpoint` so a reopened thread does not send
       the model links that have expired.
+  screenshot:
+    type: boolean
+    default: false
+    description: >-
+      Adds a Take screenshot button to the panel. It captures the page behind
+      the panel, with password inputs, `[data-support-mask]` elements and
+      `screenshot_mask_selectors` drawn as solid boxes, lets the user blur or
+      crop it, and attaches it to the composer. The chat uploads it on send
+      through `sender_attachments`, so that var must be enabled and the
+      app's upload policy request must accept an image; a support module's
+      agent tools send it with the ticket like any chat file. Not shown in the
+      embedded shell.
+  screenshot_mask_selectors:
+    type: array
+    default: []
+    items:
+      type: string
+    description: >-
+      CSS selectors drawn as solid boxes in a screenshot, beside the built-in
+      password inputs and `[data-support-mask]`.
   file_links_endpoint:
     type: string
     default: null

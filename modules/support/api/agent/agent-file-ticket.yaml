@@ -6,7 +6,7 @@ description: >-
   and replies on the ticket, and the user is told when they do. Write the title
   and description yourself from the conversation. The images and PDFs the user
   attached in this chat go with the ticket on their own; you do not pass them.
-  Answers { ok: true, key, stage, files } with the ticket's key and the names of
+  Answers { ok: true, key, url, stage, files } with the ticket's key, url (the app path of its page) and the names of
   the files sent, or { ok: false, error: { kind, message, retry_after } }.
 payloadSchema:
   type: object
@@ -128,6 +128,12 @@ routine:
       ok: true
       key:
         _step: send_ticket.ticket.view.key
+      url:
+        _ref:
+          path: api/agent/parts/ticket-url.yaml
+          vars:
+            key:
+              _step: send_ticket.ticket.view.key
       stage:
         _get:
           from:

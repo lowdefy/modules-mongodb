@@ -101,6 +101,7 @@ test("file-ticket files the ticket marked as filed by the agent and answers its 
   expect(result).toEqual({
     ok: true,
     key: "SUP-12",
+    url: "/support/SUP-12",
     stage: "Received",
     files: [],
   });
@@ -150,6 +151,7 @@ test("post-message adds the message to the user's ticket by key", async ({
   expect(result).toEqual({
     ok: true,
     key: "SUP-12",
+    url: "/support/SUP-12",
     stage: "Received",
     files: [],
   });
@@ -198,6 +200,7 @@ test("read-ticket by key answers the thread lean", async ({
     error: null,
     ticket: {
       key: "SUP-12",
+      url: "/support/SUP-12",
       title: "Export fails",
       type: "bug",
       stage: "Received",
@@ -248,6 +251,7 @@ test("list-my-tickets answers the user's tickets lean", async ({
     tickets: [
       {
         key: "SUP-12",
+        url: "/support/SUP-12",
         title: "Export fails",
         stage: "Received",
         updated: "2026-10-07T09:00:00.000Z",

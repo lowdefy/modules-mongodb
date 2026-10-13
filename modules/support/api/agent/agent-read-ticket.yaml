@@ -1,7 +1,7 @@
 id: agent-read-ticket
 type: Api
 description: >-
-  Read one of the signed-in user's support tickets: its title, type, stage and
+  Read one of the signed-in user's support tickets: its key, url (the app path of its page, which you link the key to), title, type, stage and
   whole thread, each message as { from, author, at, text, files, deleted }. from
   is reporter for the user's own messages and team for the team's; files are the
   names of the files on the message; a deleted message has no text. Read it
@@ -34,6 +34,11 @@ routine:
         _step: sync_ticket.ticket.view
       stages:
         _ref: enums/stages.yaml
+      ticket_path:
+        _string.concat:
+          - /
+          - _module.id: true
+          - /
   - :return:
       ok:
         _step: sync_ticket.ok
@@ -48,6 +53,7 @@ routine:
           const stages = state('stages');
           return {
             key: view.key,
+            url: state('ticket_path') + encodeURIComponent(view.key),
             title: view.title,
             type: view.type,
             stage: stages[view.stage] ? stages[view.stage].label : view.stage,

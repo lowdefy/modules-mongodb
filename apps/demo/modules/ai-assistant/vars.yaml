@@ -71,3 +71,7 @@ toolbar:
 thread_selection:
   border: "#7c3aed"
   background: "#f5f3ff"
+
+# Take screenshot in the panel: the page behind it, masked and editable, attaches to the composer
+# and uploads through sender_attachments on send.
+screenshot: true

@@ -68,7 +68,7 @@ A deployment with no webhook address in Pelican refreshes a thread only when it 
 
 ### Reply notifications
 
-Each new team message, Pelican's own included, sends the user the module's `support-reply` notification, through the notifications module: in the app's bell and by email, with a button to the ticket on the support page. It goes even while the user has the thread open, since the server cannot know what a browser shows. Its key is `support-reply:{message id}`, so a repeated delivery sends nothing new; that needs the notifications module's unique index on `key`.
+Each new team message, Pelican's own included, sends the user the module's `support-reply` notification, through the notifications module: in the app's bell and by email, with a button to the ticket's page. It goes even while the user has the thread open, since the server cannot know what a browser shows. Its key is `support-reply:{message id}`, so a repeated delivery sends nothing new; that needs the notifications module's unique index on `key`.
 
 The email goes to the address the app's auth user record holds for the user, never one from the webhook. The notification is sent in the organisation the ticket was filed from. A ticket the team logged, or one first stored from the list, has no organisation; in an app whose notifications sit behind the tenant wall, its replies show in the thread with no notification.
 
@@ -171,15 +171,38 @@ Opening a ticket shows its **thread**: the messages, with images inline and PDFs
 
 ### The live thread
 
-An open thread shows a team reply as soon as the webhook stores it, with no polling. The module ships a websocket, `ticket-thread`: a change stream on `support-tickets`, filtered to the open ticket and the signed-in user, so another user's ticket id delivers nothing. Opening a thread subscribes to it; going back to the list, switching to New report or closing the panel unsubscribes, so only people chatting hold a stream. Each change replaces the thread with the stored row, and a newer view marks the ticket read.
+An open thread shows a team reply as soon as the webhook stores it, with no polling. The module ships a websocket, `ticket-thread`: a change stream on `support-tickets`, filtered to the open ticket and the signed-in user, so another user's ticket id delivers nothing. Opening a thread subscribes to it; going back to the list, switching to New report, closing the panel or opening My tickets unsubscribes, so only people chatting hold a stream. Each change replaces the thread with the stored row, and a newer view marks the ticket read.
 
-The panel and the support page share one channel: the thread opened last is the live one. The support page declares the subscription itself, and the layout keeps one when the app also wires `global_subscriptions`.
+The panel and the ticket page share one channel: the thread opened last is the live one. The ticket page declares the subscription itself, and the layout keeps one when the app also wires `global_subscriptions`.
 
 Module websockets need a signed-in caller by default, so `support/ticket-thread` needs no `auth.websockets` rule. The database must run as a replica set, as change streams need; MongoDB Atlas does.
 
-### The support page
+### The pages
 
-The module's `support` page (`/{entry id}/support`) shows the same list beside the open thread, at full width. `?ticket=` names the ticket to open, by its id or its key, so a link or a notification can point at one. A ticket that is not the user's shows nothing of it.
+The module ships two pages for the user, at full width.
+
+| Page id   | Path                       | Shows                                                                                                                                                                                                      |
+| --------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `support` | `/{entry id}/support`      | **My tickets**: every ticket the user has, open and resolved, newest activity first. Each row has the title, key, type, stage, when it last changed and a dot when the team replied since the user looked. |
+| `ticket`  | `/{entry id}/{ticket key}` | One ticket: its title, key, type, stage and when it opened, the conversation (images inline, the team's messages on the left, the user's on the right) and the reply composer.                             |
+
+A search box filters the list by title or key, and two selectors by status (Open, Resolved, or one stage) and by type. With no tickets the list says so, and with filters that match none it asks the user to change them. The list reads from the copy, fetched from Pelican when the page opens; the filters change what shows, not what is fetched.
+
+A ticket's address is its key in the path, such as `/support/PEL-1715`, so a link, a notification or the agent can name it. A key that is the ticket's id works too. A ticket that is not the user's shows nothing of it. Link to the pages from the app with `_module.pageId`; the ticket page takes the key as the `ticket_key` path param:
+
+```yaml
+- id: open_ticket
+  type: Link
+  params:
+    pageId:
+      _module.pageId:
+        module: support
+        id: ticket
+    pathParams:
+      ticket_key: PEL-1715
+```
+
+The ticket page holds the same live thread as the panel, and the layout keeps one subscription when the app also wires `global_subscriptions`. The pages use only the layout module's `page` component vars, so they work under a fork of the layout.
 
 Add the module's `default` menu to the app's profile menu for a Support link:
 

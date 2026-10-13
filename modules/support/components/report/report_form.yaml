@@ -1,6 +1,6 @@
-# The New report view: type, title, description and files, then Send. The
-# inputs write under support_report, which Send validates and the module's
-# on-init resets.
+# The New report view: type, title, then the message box with its files and
+# Send. The inputs write under support_report, which Send validates and the
+# module's on-init resets.
 id: support_report_view
 type: Box
 visible:
@@ -66,24 +66,55 @@ blocks:
     properties:
       title: Title
       placeholder: A short summary
-  - id: support_report.message
-    type: TextArea
-    required: true
-    properties:
-      title: Description
-      placeholder: What happened, and what did you expect?
-      maxLength: 4000
-      autoSize:
-        minRows: 4
-        maxRows: 10
   - _ref: components/report/report_files.yaml
   - id: support_report_sends
     type: Paragraph
+    style:
+      marginBottom: 0
     properties:
       type: secondary
       content: >-
         Sending also shares this page's address, your browser details and the
-        errors this tab recorded, with the files above.
+        errors this tab recorded, with the files you attach.
+  - id: support_report.message
+    type: MessageComposer
+    required: true
+    properties:
+      placeholder: What happened, and what did you expect?
+      maxLength: 4000
+      minRows: 4
+      maxRows: 10
+      submitLabel: Send report
+      s3PostPolicyRequestId: upload_policy_support_report_files
+      files:
+        _if_none:
+          - _state: support_report.files
+          - []
+      loading:
+        _state: support_sending
+    events:
+      onUploaded:
+        - id: support_add_file
+          type: SetState
+          params:
+            support_report.files:
+              _event: files
+            support_report_error: null
+      onRemove:
+        - id: support_remove_file
+          type: SetState
+          params:
+            support_report.files:
+              _event: files
+            support_report_error: null
+      onError:
+        - id: support_file_refused
+          type: SetState
+          params:
+            support_report_error:
+              _event: message
+      onSubmit:
+        _ref: actions/send_report.yaml
   - id: support_report_error
     type: Alert
     visible:
@@ -95,15 +126,3 @@ blocks:
       showIcon: true
       message:
         _state: support_report_error
-  - id: support_report_send
-    type: Button
-    properties:
-      title: Send
-      type: primary
-      block: true
-      icon: Send
-      disabled:
-        _state: support_sending
-    events:
-      onClick:
-        _ref: actions/send_report.yaml
