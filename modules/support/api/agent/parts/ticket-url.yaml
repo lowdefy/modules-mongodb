@@ -1,0 +1,10 @@
+# The app path of a ticket's page, /{entry id}/{ticket key}, as pages/ticket.yaml
+# serves it. An agent prints it as a link, so it is right whatever the entry id.
+#
+# Vars:
+#   key  an operator resolving to the ticket's key
+_string.concat:
+  - /
+  - _module.id: true
+  - /
+  - _var: key

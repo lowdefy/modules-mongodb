@@ -192,14 +192,14 @@ test("a change to the row shows in the open panel thread within a second and mar
   await expect.poll(channel.open).toBe(null);
 });
 
-test("the support page thread is live, and opening another ticket moves the one channel", async ({
+test("the ticket page thread is live, and opening another ticket moves the one channel", async ({
   ldf,
   page,
   mdb,
 }) => {
   await ldf.user(USER);
   const channel = watchChannel(page);
-  await ldf.goto("/support/support?ticket=ENC-41");
+  await ldf.goto("/support/ENC-41");
   await expect(page.locator("#support_page_thread_messages")).toContainText(
     "Looking at it now.",
   );
@@ -213,7 +213,7 @@ test("the support page thread is live, and opening another ticket moves the one 
     },
   );
 
-  await rows(page, "support_page").filter({ hasText: "ENC-42" }).click();
+  await ldf.goto("/support/ENC-42");
   await expect(page.locator("#support_page_thread_title")).toContainText(
     "Ticket ENC-42",
   );

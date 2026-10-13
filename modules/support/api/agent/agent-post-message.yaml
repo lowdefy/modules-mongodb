@@ -6,7 +6,7 @@ description: >-
   screenshot that came after the ticket was filed. The team sees it in the
   ticket's thread. Images and PDFs the user attached in this chat that are not
   yet on any of their tickets go with it on their own; you do not pass them. Answers
-  { ok: true, key, stage, files } with the names of the files sent, or
+  { ok: true, key, url, stage, files } with the ticket's key, url (the app path of its page) and the names of the files sent, or
   { ok: false, error: { kind, message, retry_after } }.
 payloadSchema:
   type: object
@@ -82,6 +82,12 @@ routine:
       ok: true
       key:
         _step: send_message.ticket.view.key
+      url:
+        _ref:
+          path: api/agent/parts/ticket-url.yaml
+          vars:
+            key:
+              _step: send_message.ticket.view.key
       stage:
         _get:
           from:
