@@ -7,6 +7,7 @@
 #   key: string                    optional — deduplication key
 #   send_email: boolean            optional — default true; false = inbox only
 #   cc, bcc: [string]              optional
+#   popup: boolean                 optional — default false; true also toasts
 #   links.*, <template dataKeys>   optional — { pageId, pathParams?, urlQuery?, input? } page links
 #   ...everything else is template data
 id: dispatch-notification-item
@@ -133,6 +134,11 @@ routine:
             last_attempt: null
             email_result: null
             read: false
+            # Toasts in the recipient's toast stack, live and on page load.
+            popup:
+              _if_none:
+                - _payload: item.popup
+                - false
             created:
               timestamp:
                 _date: now

@@ -133,16 +133,36 @@ The pipeline writes this shape; the inbox, bell, and link pages read it. Everyth
 | `data`                                                  | The ORIGINAL item — link targets stay as `{ pageId, pathParams?, urlQuery?, input? }` objects                                                                                                                                                                                                                                                                                                      |
 | `send_email`, `cc`, `bcc`                               | Delivery inputs                                                                                                                                                                                                                                                                                                                                                                                    |
 | `sent`, `send_attempts`, `last_attempt`, `email_result` | Delivery lifecycle — `email_result.to` records the post-filter address mail actually went to (differs from `email` under a `replaceAddress` redirect); `filtered: true` = dropped by the filter                                                                                                                                                                                                    |
+| `popup`                                                 | Also toast it (`item.popup`, default `false`) — see Popup notifications                                                                                                                                                                                                                                                                                                                            |
 | `read`                                                  | Inbox state (mark-as-read)                                                                                                                                                                                                                                                                                                                                                                         |
 | `created.timestamp`, `created.app_name`                 | Ordering and app scoping                                                                                                                                                                                                                                                                                                                                                                           |
 
 **`data` stores the original item, never the render result's resolved copy** — the link page reads `{ pageId, pathParams?, urlQuery?, input? }` targets back out of `data` at the `?option` dot-path; a resolved copy would redirect the landing page to itself.
 
-Legacy (Lambda-era) records coalesce on read: the inbox falls back `description ?? preview`, badges and filters match `event_type ?? type`, and the link page falls back to the top-level `links.button` target.
+Legacy (Lambda-era) records coalesce on read: the inbox falls back `description ?? preview`, and the link page falls back to the top-level `links.button` target.
+
+**A record's type** is `type ?? event_type` everywhere the inbox reads one: filters, views, rail counts, icons and labels. Pipeline records store the notification id in `type`; legacy records store only `event_type`. A record an app inserts itself with both (for example `type: quote-approved`, `event_type: action-approve`) is filed under its `type`.
 
 **Appearance.** Icon and colour resolve per type: the type's `enums.event_types` entry (`icon`, `color`, and the `title` shown as a chip), else a bell in a palette colour picked deterministically from the type — so types nobody configured still look different from each other, and follow the app theme. Give each notification type an entry in the app's event types to choose its icon and colour. The toast uses the same resolution.
 
 The inbox list shows one row per record — the resolved icon in a circle tinted with the colour, title, a two-line ellipsised `preview` (or legacy `description`), time received, an unread dot — styled from the app's Ant Design tokens. The detail panel renders `body` with the email chrome removed — the framework's canvas, card, logo header, signature and footer are hidden and the remaining content (message, metadata, quote, actions, button) takes the app's typography — so a stored email reads as an in-app message under the title and date the panel already shows. The email itself is unchanged.
+
+## Inbox
+
+The `all` page lists the signed-in user's notifications in this app, up to 1000 a page, newest first.
+
+- **Filters.** Unread / All / Read, a date range with presets, a search over title and preview (case-insensitive, matched on the server so it covers every page), and a view or a single type from the rail.
+- **Mark all as read** marks every unread notification the filters match, across all pages, not only the loaded ones. With a view, type, search or date set, the button names the count it will mark. **Mark as unread** on an open notification sets it back.
+- **Views** group notification types at the top of the rail, such as Mentions. Set them in the `views` var; each lists the type ids it shows, and its count is the sum of their unread counts. With no views the rail shows Inbox and the types the user has.
+
+```yaml
+vars:
+  views:
+    - id: mentions
+      title: Mentions
+      icon: AtSign
+      types: [deal-note-mention, comment-mention]
+```
 
 ## Required indexes
 

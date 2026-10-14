@@ -15,7 +15,7 @@ blocks:
     events:
       onChange:
         _ref: actions/filter-onchange.yaml
-  - id: filter.status
+  - id: filter.types
     type: MultipleSelector
     layout:
       flex: 1 0 auto

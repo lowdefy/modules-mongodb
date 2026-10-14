@@ -24,8 +24,4 @@ properties:
                     _state: list.$.created.timestamp
             withSuffix: false
         appearance:
-          _ref:
-            path: components/notification-appearance.yaml
-            vars:
-              record:
-                _state: list.$
+          _state: list.$.appearance

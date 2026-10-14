@@ -9,32 +9,11 @@ style:
   background:
     _string.concat:
       - "color-mix(in srgb, "
-      - _get:
-          key: color
-          from:
-            _ref:
-              path: components/notification-appearance.yaml
-              vars:
-                record:
-                  _state: list.$
+      - _state: list.$.appearance.color
       - " 12%, transparent)"
 properties:
   size: 18
   name:
-    _get:
-      key: icon
-      from:
-        _ref:
-          path: components/notification-appearance.yaml
-          vars:
-            record:
-              _state: list.$
+    _state: list.$.appearance.icon
   color:
-    _get:
-      key: color
-      from:
-        _ref:
-          path: components/notification-appearance.yaml
-          vars:
-            record:
-              _state: list.$
+    _state: list.$.appearance.color

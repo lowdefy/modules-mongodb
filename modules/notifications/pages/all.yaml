@@ -7,7 +7,8 @@ _ref:
     hide_title: true
     requests:
       - _ref: requests/get-notifications.yaml
-      - _ref: requests/get-notification-types.yaml
+      - _ref: requests/get-notification-facets.yaml
+      - _ref: requests/update-selected-unread.yaml
       - _ref: requests/get-selected-notification.yaml
       - _ref: requests/update-notifications.yaml
       - _ref: requests/update-selected-notification.yaml
@@ -17,13 +18,10 @@ _ref:
           type: SetState
           params:
             pagination:
-              pageSize: 10
+              pageSize: 1000
               skip: 0
             filter:
-              type: Unread
-        - id: get_notification_types
-          type: Request
-          params: get_notification_types
+              status: unread
       onMount:
         _build.array.concat:
           - _ref: actions/set-selected.yaml
@@ -72,7 +70,7 @@ _ref:
                             total:
                               _request: get_notifications.0.total_count.0.total
                             type:
-                              _state: filter.type
+                              _state: filter.status
                   - id: button_mark_all_read
                     type: Button
                     layout:
@@ -90,8 +88,8 @@ _ref:
                                   - 0
                               - 0
                           - _eq:
-                              - _state: filter.type
-                              - Read
+                              - _state: filter.status
+                              - read
                     events:
                       onClick:
                         _build.array.concat:
@@ -99,7 +97,7 @@ _ref:
                               type: Request
                               params: update_notifications
                           - _ref: actions/update-list.yaml
-                  - id: filter.type
+                  - id: filter.status
                     type: ButtonSelector
                     layout:
                       flex: 0 1 auto
@@ -112,17 +110,17 @@ _ref:
                       label:
                         disabled: true
                       options:
-                        - Unread
-                        - Read
+                        - label: Unread
+                          value: unread
+                        - label: Read
+                          value: read
                     events:
                       onChange:
                         debounce:
                           ms: 500
                         try:
                           _build.array.concat:
-                            - - id: get_notification_types
-                                type: Request
-                                params: get_notification_types
+                            - []
                             - _ref: actions/update-list.yaml
               - _ref: components/form-filter.yaml
               - _ref: components/list-notifications.yaml
@@ -151,8 +149,11 @@ _ref:
                       type: SetState
                       params:
                         list:
-                          _request: get_notifications.0.notifications
-                    - _ref: actions/set-types.yaml
+                          _ref:
+                            path: components/notification-appearance.yaml
+                            vars:
+                              records:
+                                _request: get_notifications.0.notifications
           # Right column — selected notification detail
           - id: selected_area
             type: Box

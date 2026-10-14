@@ -213,7 +213,8 @@ test("every session-scoped request matches the recipient through match-recipient
   const files = [
     "requests/get-notification-for-link.yaml",
     "requests/get-notifications.yaml",
-    "requests/get-notification-types.yaml",
+    "requests/get-notification-facets.yaml",
+    "requests/update-selected-unread.yaml",
     "requests/get-selected-notification.yaml",
     "requests/update-selected-notification.yaml",
     "requests/update-notifications.yaml",

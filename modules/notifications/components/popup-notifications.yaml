@@ -51,22 +51,22 @@ blocks:
               size: 34
               name:
                 _get:
-                  key: icon
+                  key: 0.appearance.icon
                   from:
                     _ref:
                       path: components/notification-appearance.yaml
                       vars:
-                        record:
-                          _state: popup_notifications.$
+                        records:
+                          - _state: popup_notifications.$
               color:
                 _get:
-                  key: color
+                  key: 0.appearance.color
                   from:
                     _ref:
                       path: components/notification-appearance.yaml
                       vars:
-                        record:
-                          _state: popup_notifications.$
+                        records:
+                          - _state: popup_notifications.$
           - id: popup_notifications.$.body
             type: Box
             layout:

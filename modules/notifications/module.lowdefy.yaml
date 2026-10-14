@@ -21,6 +21,29 @@ vars:
       Maximum number of popup notification toasts shown at once. The layout
       page component fetches this many unread notifications flagged popup:true
       and renders them as a fixed-position toast stack.
+  views:
+    type: array
+    default: []
+    description: >
+      Inbox views: named groups of notification types shown at the top of the
+      inbox rail, such as Mentions. Each view filters the inbox to its types,
+      and its count is the sum of their unread counts. A record's type is its
+      `type` (the notification id), else a legacy record's `event_type`.
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique view id.
+        title:
+          type: string
+          description: Label shown in the rail.
+        icon:
+          type: string
+          description: Icon name shown beside the label (e.g. AtSign).
+        types:
+          type: array
+          description: Notification type ids the view lists.
   server_url:
     type: string
     default: null

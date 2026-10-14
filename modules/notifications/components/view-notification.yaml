@@ -20,11 +20,14 @@ blocks:
             notification:
               _var: notification
             appearance:
-              _ref:
-                path: components/notification-appearance.yaml
-                vars:
-                  record:
-                    _var: notification
+              _get:
+                key: 0.appearance
+                from:
+                  _ref:
+                    path: components/notification-appearance.yaml
+                    vars:
+                      records:
+                        - _var: notification
   - id: divider
     type: Divider
     properties:

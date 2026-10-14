@@ -1,0 +1,100 @@
+# The inbox filter's conditions on the signed-in user's records: dates, types
+# (a view or a single type, resolved on the client to filter.types) and search.
+# The list matches on them and Mark all as read updates through them, so the
+# two always see the same records. Status (read / unread) is not here: the
+# list applies it on its own, and mark-all always targets unread.
+#
+# A record's type is `type ?? event_type`: pipeline records store the
+# notification id in `type`, legacy records only `event_type`.
+$and:
+  _array.concat:
+    # $and needs at least one clause.
+    - - {}
+    - _if:
+        test:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _payload: filter.dates
+                  - []
+            - 0
+        then:
+          - created.timestamp:
+              $gte:
+                _payload: filter.dates.0
+              $lt:
+                _mql.expr:
+                  on:
+                    end_date:
+                      _if_none:
+                        - _payload: filter.dates.1
+                        - _date: now
+                  expr:
+                    $dateAdd:
+                      startDate: $end_date
+                      unit: day
+                      amount: 1
+        else: []
+    - _if:
+        test:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _payload: filter.types
+                  - []
+            - 0
+        then:
+          - $expr:
+              $in:
+                - $ifNull:
+                    - $type
+                    - $event_type
+                - _payload: filter.types
+        else: []
+    # Case-insensitive substring of title, preview or a legacy description.
+    # $indexOfCP takes the text as typed and $literal keeps a leading "$" from
+    # reading as a field path, so the search needs no escaping.
+    - _if:
+        test:
+          _ne:
+            - _string.trim:
+                _if_none:
+                  - _payload: filter.search
+                  - ""
+            - ""
+        then:
+          - $expr:
+              $let:
+                vars:
+                  q:
+                    $literal:
+                      _string.toLowerCase:
+                        _string.trim:
+                          _payload: filter.search
+                in:
+                  $or:
+                    - $gte:
+                        - $indexOfCP:
+                            - $toLower:
+                                $ifNull:
+                                  - $title
+                                  - ""
+                            - $$q
+                        - 0
+                    - $gte:
+                        - $indexOfCP:
+                            - $toLower:
+                                $ifNull:
+                                  - $preview
+                                  - ""
+                            - $$q
+                        - 0
+                    - $gte:
+                        - $indexOfCP:
+                            - $toLower:
+                                $ifNull:
+                                  - $description
+                                  - ""
+                            - $$q
+                        - 0
+        else: []
