@@ -1,4 +1,5 @@
-# The records, each with `appearance: { icon, color, title }` added. Map a whole
+# The records, each with `appearance: { type, icon, color, title, label }`
+# added (label is the title, else the type id written out). Map a whole
 # list once rather than resolving row by row.
 # A record's type is `type ?? event_type`. Its icon, colour and label come from
 # the type's enums.event_types entry, else a bell in a palette colour chosen
@@ -34,9 +35,13 @@ _js:
       return {
         ...record,
         appearance: {
-          icon: entry.icon ?? 'bell',
+          icon: entry.icon ?? 'Bell',
           color: entry.color ?? palette[hash % palette.length],
           title: entry.title ?? null,
+          label:
+            entry.title ??
+            (String(type).replace(/[-_]+/g, ' ').replace(/^./, (c) => c.toUpperCase()) || 'Notification'),
+          type,
         },
       };
     });

@@ -1,35 +1,35 @@
-id: area_selected
+# The reading pane: the selected notification, or a quiet placeholder.
+id: reading_pane
 type: Box
-loading:
-  _not:
-    _request: get_selected_notification
-skeleton:
-  type: Box
-  style:
-    padding: 100px 24px 200px 24px
-  blocks:
-    - id: spinner
-      type: Spinner
-      properties:
-        size: large
+class:
+  .element:
+    _if:
+      test:
+        _state: pane_open
+      then: nx-region nx-pane
+      else: nx-region nx-pane nx-narrow-hidden
+layout:
+  flex: 1 1 0
 blocks:
-  - id: no_selected
-    type: Result
+  - id: pane_placeholder
+    type: Html
     visible:
-      _not:
-        _url_query: _id
+      _eq:
+        - _if_none:
+            - _state: selected_id
+            - null
+        - null
     properties:
-      subTitle: Click on a notification to view details.
-      title: No Selected Notification
-      icon:
-        name: FileExclamationPoint
-        color: "#d9d9d9"
+      html: |
+        <div class="nx-placeholder"><div class="nx-ring"><i data-icon="MailOpen"></i></div><strong>Select a notification to read it</strong><span>Opening a notification marks it as read.</span></div>
   - id: selected_item
     type: Box
     visible:
-      _not:
-        _not:
-          _url_query: _id
+      _ne:
+        - _if_none:
+            - _state: selected_id
+            - null
+        - null
     blocks:
       - _ref:
           path: components/view-notification.yaml

@@ -237,7 +237,22 @@ _build.object.assign:
             default: []
         - _build.array.filter:
             on:
-              _module.var: global_subscriptions
+              _build.array.concat:
+                # The live notifications feed (bell, toasts, sound), beside the
+                # bell's request.
+                - _build.if:
+                    test:
+                      _build.not:
+                        _var:
+                          key: hide_notifications
+                          default: false
+                    then:
+                      _ref:
+                        module: notifications
+                        component: live-subscription
+                        key: subscriptions
+                    else: []
+                - _module.var: global_subscriptions
             callback:
               _build.function:
                 __build.not:
@@ -324,6 +339,18 @@ _build.object.assign:
                       - _user: id
                       - null
                   params: notifications_unread_count
+              else: []
+          - _build.if:
+              test:
+                _build.not:
+                  _var:
+                    key: hide_notifications
+                    default: false
+              then:
+                _ref:
+                  module: notifications
+                  component: live-subscription
+                  key: actions
               else: []
           - _build.if:
               test:
@@ -452,6 +479,18 @@ _build.object.assign:
                   - _ref:
                       module: notifications
                       component: popup-notifications
+                else: []
+            # The live feed's sound player; draws nothing.
+            - _build.if:
+                test:
+                  _build.not:
+                    _var:
+                      key: hide_notifications
+                      default: false
+                then:
+                  - _ref:
+                      module: notifications
+                      component: notification-sound
                 else: []
             # Title block (per-page override > module-level override > default)
             - _build.if:

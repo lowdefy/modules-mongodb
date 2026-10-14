@@ -181,17 +181,45 @@ db.notifications.createIndex(
 
 Partial rather than sparse because records store explicit `key: null`, and a sparse unique index still collides on explicit nulls.
 
+The inbox, bell and toasts read a user's records newest first through two recipient fields. Two indexes keep those reads fast as the collection grows:
+
+```js
+db.notifications.createIndex({
+  user_id: 1,
+  "created.app_name": 1,
+  "created.timestamp": -1,
+});
+db.notifications.createIndex({
+  contact_id: 1,
+  "created.app_name": 1,
+  "created.timestamp": -1,
+});
+```
+
 ## Popup notifications (toasts)
 
-Any notification flagged `popup: true` is also surfaced as a dismissible toast card in a fixed-position stack, top-right of the viewport, over every page. The stack is mounted automatically by the `layout` page component (the `popup-notifications` and `popup-notifications-requests` exports), the same way the bell is wired.
+Any notification flagged `popup: true` also shows as a compact toast in a stack at the top right, under the app header, over every page. The stack is mounted automatically by the `layout` page component (the `popup-notifications` and `popup-notifications-requests` exports), the same way the bell is wired.
 
-- **Opt in per notification.** Set `popup: true` on the document in your `send_routine`. Notifications left `popup: false` still appear in the bell and inbox but never toast. No migration is needed — apps that never set it see no toasts.
-- **Refresh.** Toasts are fetched on page mount/navigation (no sockets or polling), showing up to `popup_limit` (default 3) most-recent unread popups scoped to the current user and `app_name`.
-- **Acknowledge marks read.** Clicking **Acknowledge** sets `read: true`, so the toast, the inbox unread entry, and the bell count clear together.
-- **Optional deep-link button.** If the notification has a `links.button` (`{ pageId, pathParams?, urlQuery?, input? }`), the toast also shows a **View** button that navigates there via a `Link` action. Toasts without `links.button` show only Acknowledge.
+- **Opt in per notification.** Set `popup: true` on the item in your `send_routine` (the dispatch pipeline stores it), or on the document an app inserts itself. Notifications left `popup: false` still reach the bell and inbox but never toast. Apps that never set it see no toasts.
+- **On arrival and on page load.** A popup notification toasts the moment it arrives (see Live notifications) and, while unread, on every page load. The stack shows up to `popup_limit` (default 3), newest first.
+- **Dismiss, close or Open marks it read**, so the toast, the inbox entry and the bell count clear together, in every open tab.
+- **Open** shows when the notification has a page link at `links.button` or `data.links.button` (`{ pageId, pathParams?, urlQuery?, input? }`), and navigates there.
 - **Disable per page.** Pass `hide_popup_notifications: true` to the `layout` page component to suppress the stack (independent of the bell's `hide_notifications`). The stack is also hidden on the notifications inbox (`all`) page.
 
-Toast icon and color come from the `enums.event_types.<event_type>` global (falling back to a bell icon), the same lookup the inbox uses.
+Toast icon and colour come from the same appearance lookup the inbox uses.
+
+## Live notifications
+
+The bell, the toast stack and the inbox update the moment a notification arrives or is read elsewhere, without a reload. The module ships a websocket, `notifications-live`: a MongoDB change stream on the notifications collection that carries new records and changes to `read` for the signed-in user in this app. The `layout` page component subscribes to it on every page with a signed-in user (the `live-subscription` export), unless the page passes `hide_notifications: true`. On each batch it refetches the bell count, takes down toasts whose notification is now read, adds new unread popup notifications to the stack and plays the sound. The inbox page also shows a "N new" button above the list; new rows never move the list under the cursor.
+
+- **One stream per signed-in user.** Each signed-in user with a page open holds one change stream, and one pooled MongoDB connection while it waits. Size `maxPoolSize` in the connection string for your concurrent users plus your request load (the driver's default is 100).
+- **Replica set required.** Change streams run only on a replica set (Atlas clusters are one). Where they cannot run, set `live: false`: the bell and toasts then update on page load, as before.
+- **Failure is quiet.** If the feed fails, the page shows nothing; the bell and toasts update on the next navigation.
+- **Tenant wall.** Under `policy: tenant` the stream is scoped to the active organization, like a read.
+
+### Sound
+
+A short chirp can play when a popup notification arrives. It is **off until the person turns it on** with the **Sound** switch in the inbox header. The setting is kept in the browser, per app, so it holds per device; other open tabs follow a change at once. It plays once per batch across all open tabs, and nothing plays before the person has clicked or typed on the page (browsers block it). The layout mounts the player on every page (the `notification-sound` export, the plugins package's [NotificationSound](../plugins/notification-sound.md) block), so the module declares `@lowdefy/modules-mongodb-plugins`.
 
 ## Deep-link and file-download pages
 

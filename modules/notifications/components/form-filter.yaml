@@ -1,30 +1,156 @@
-id: filter_box
+# The list toolbar: status, date presets and search; below md a View selector
+# stands in for the rail; then the count line.
+id: list_toolbar
 type: Box
-loading:
-  _not:
-    _request: get_notifications
+class:
+  .element: nx-toolbar
 layout:
   gap: 8
 blocks:
+  - id: filter.status
+    type: SegmentedSelector
+    layout:
+      flex: 0 0 auto
+    properties:
+      label:
+        disabled: true
+      options:
+        - label: Unread
+          value: unread
+        - label: All
+          value: all
+        - label: Read
+          value: read
+    events:
+      onChange:
+        _ref: actions/update-list.yaml
   - id: filter.dates
     type: DateRangeSelector
     layout:
-      flex: 1 0 auto
+      flex: 1 1 0
     properties:
-      title: Date Range
+      label:
+        disabled: true
+      placeholder:
+        - Any time
+        - ""
+      presets:
+        - label: Today
+          value:
+            - _dayjs:
+                - now
+                - format: YYYY-MM-DD
+            - _dayjs:
+                - now
+                - format: YYYY-MM-DD
+        - label: Last 7 days
+          value:
+            - _dayjs:
+                - now
+                - subtract:
+                    - 6
+                    - days
+                - format: YYYY-MM-DD
+            - _dayjs:
+                - now
+                - format: YYYY-MM-DD
+        - label: Last 30 days
+          value:
+            - _dayjs:
+                - now
+                - subtract:
+                    - 29
+                    - days
+                - format: YYYY-MM-DD
+            - _dayjs:
+                - now
+                - format: YYYY-MM-DD
+        - label: This year
+          value:
+            - _dayjs:
+                - now
+                - startOf: year
+                - format: YYYY-MM-DD
+            - _dayjs:
+                - now
+                - format: YYYY-MM-DD
     events:
       onChange:
-        _ref: actions/filter-onchange.yaml
-  - id: filter.types
-    type: MultipleSelector
+        _ref: actions/update-list.yaml
+  - id: filter.search
+    type: TextInput
     layout:
-      flex: 1 0 auto
+      span: 24
     properties:
-      title: Type
-      placeholder: Select type
-      renderTags: true
-      options:
-        _state: event_types
+      label:
+        disabled: true
+      placeholder: Search title and message
+      allowClear: true
+      prefixIcon: Search
     events:
       onChange:
         _ref: actions/filter-onchange.yaml
+  # The rail's choices, for screens too narrow to show the rail. Its own state
+  # path: an input that is not visible has its value removed from state, so
+  # it cannot hold filter.view, which the rail sets.
+  - id: view_picker
+    type: Selector
+    visible:
+      _or:
+        - _eq:
+            - _media: size
+            - xs
+        - _eq:
+            - _media: size
+            - sm
+    layout:
+      span: 24
+    properties:
+      label:
+        disabled: true
+      allowClear: false
+      options:
+        _js:
+          args:
+            rail:
+              _ref: components/rail-items.yaml
+          fn: |
+            return args.rail.views
+              .concat(args.rail.types)
+              .map((item) => ({ value: item.key, label: item.label }));
+    events:
+      onChange:
+        _build.array.concat:
+          - - id: set_view_from_picker
+              type: SetState
+              params:
+                filter.view:
+                  _state: view_picker
+          - _ref: actions/select-view.yaml
+  - id: list_meta
+    type: Html
+    layout:
+      span: 24
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            <div class="nx-meta"><span>{{ total }} notification{% if total != 1 %}s{% endif %}{% if view %} in {{ view }}{% endif %}</span><span>Newest first</span></div>
+          on:
+            total:
+              _if_none:
+                - _request: get_notifications.0.total_count.0.total
+                - 0
+            view:
+              _js:
+                args:
+                  key:
+                    _state: filter.view
+                  rail:
+                    _ref: components/rail-items.yaml
+                fn: |
+                  if (!args.key || args.key === 'inbox') return null;
+                  const item = args.rail.views
+                    .concat(args.rail.types)
+                    .find((i) => i.key === args.key);
+                  return item ? item.label : null;

@@ -44,6 +44,15 @@ vars:
         types:
           type: array
           description: Notification type ids the view lists.
+  live:
+    type: boolean
+    default: true
+    description: >
+      Live notifications: the bell, the toast stack and the inbox update the
+      moment a notification arrives or is read elsewhere, through a change
+      stream per signed-in user with a page open. Needs MongoDB as a replica
+      set (Atlas is one). Set false where change streams cannot run; the bell
+      and toasts then update on navigation.
   server_url:
     type: string
     default: null
@@ -164,6 +173,14 @@ vars:
           Enable SendGrid sandbox mode (mailSettings.sandboxMode.enable) —
           SendGrid validates the send without delivering the mail.
 
+plugins:
+  # NotificationSound (the inbox's Sound switch and the page-wide player).
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.44.1"
+
+websockets:
+  - _ref: websockets/notifications-live.yaml
+
 connections:
   - _ref: connections/notifications-collection.yaml
   - _ref: connections/notifications-email.yaml
@@ -219,6 +236,10 @@ exports:
       description: MongoDB count request for unread notifications
     - id: popup-notifications
       description: Fixed-position toast stack rendering unread popup:true notifications, mounted globally by the layout page component
+    - id: live-subscription
+      description: Live notifications feed — `subscriptions` (the page subscription; batches refetch the bell, update the toast stack and chirp) and `actions` (its Subscribe action), both mounted by the layout page component; empty when `live` is false
+    - id: notification-sound
+      description: Page-wide NotificationSound player (id notifications_sound) the live feed chirps through, mounted by the layout page component
     - id: popup-notifications-requests
       description: MongoDB requests backing the popup toasts — fetch (notifications_popups) and mark-read (set_popup_read)
 
@@ -240,6 +261,12 @@ components:
   - id: popup-notifications
     component:
       _ref: components/popup-notifications.yaml
+  - id: live-subscription
+    component:
+      _ref: components/live-subscription.yaml
+  - id: notification-sound
+    component:
+      _ref: components/notification-sound.yaml
   - id: popup-notifications-requests
     component:
       _ref: components/popup-notifications-requests.yaml

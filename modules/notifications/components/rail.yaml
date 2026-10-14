@@ -1,0 +1,50 @@
+# The inbox rail: Inbox and the app's views, then every type the user has,
+# each with its unread count (hidden at zero). Choosing one sets filter.view.
+id: rail
+type: ClickableHtml
+class:
+  .element: nx-rail-html
+properties:
+  dataEvents:
+    - onSelect
+  html:
+    _nunjucks:
+      template: |
+        <div class="nx-rail-section">
+          <h6>Views</h6>
+          {% for item in rail.views %}
+          <div class="nx-rail-item{% if item.key == selected %} nx-rail-item--on{% endif %}" data-event="onSelect" data-key="{{ item.key }}" role="button">
+            <i data-icon="{{ item.icon }}"></i>
+            <span class="nx-rail-label">{{ item.label }}</span>
+            {% if item.unread > 0 %}<span class="nx-rail-count">{{ item.unread }}</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% if rail.types.length %}
+        <div class="nx-rail-section">
+          <h6>Types</h6>
+          {% for item in rail.types %}
+          <div class="nx-rail-item{% if item.key == selected %} nx-rail-item--on{% endif %}" data-event="onSelect" data-key="{{ item.key }}" role="button">
+            <span class="nx-swatch" style="--c: {{ item.color }}"><i data-icon="{{ item.icon }}"></i></span>
+            <span class="nx-rail-label">{{ item.label }}</span>
+            {% if item.unread > 0 %}<span class="nx-rail-count">{{ item.unread }}</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      on:
+        selected:
+          _if_none:
+            - _state: filter.view
+            - inbox
+        rail:
+          _ref: components/rail-items.yaml
+events:
+  onSelect:
+    _build.array.concat:
+      - - id: set_view
+          type: SetState
+          params:
+            filter.view:
+              _event: key
+      - _ref: actions/select-view.yaml

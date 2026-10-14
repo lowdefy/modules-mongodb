@@ -1,4 +1,4 @@
 debounce:
-  ms: 500
+  ms: 400
 try:
   _ref: actions/update-list.yaml

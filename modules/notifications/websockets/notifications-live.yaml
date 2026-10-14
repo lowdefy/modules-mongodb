@@ -1,0 +1,34 @@
+# The signed-in user's notifications in this app as they change: new records,
+# and records whose read state changes (in another tab, on another device, by
+# Mark all as read). One stream per signed-in user with a page open. Projects
+# what a toast and a list row show, never the body, data or contact.
+id: notifications-live
+type: MongoDBChangeStream
+connectionId:
+  _module.connectionId: notifications-collection
+properties:
+  pipeline:
+    - $match:
+        fullDocument.created.app_name:
+          _build.app: slug
+        $and:
+          - $or:
+              _ref: requests/match-recipient-change.yaml
+          - $or:
+              - operationType: insert
+              - operationType: update
+                updateDescription.updatedFields.read:
+                  $exists: true
+    - $project:
+        operationType: 1
+        fullDocument._id: 1
+        fullDocument.title: 1
+        fullDocument.preview: 1
+        fullDocument.description: 1
+        fullDocument.type: 1
+        fullDocument.event_type: 1
+        fullDocument.read: 1
+        fullDocument.popup: 1
+        fullDocument.created.timestamp: 1
+        fullDocument.links.button: 1
+        fullDocument.data.links.button: 1

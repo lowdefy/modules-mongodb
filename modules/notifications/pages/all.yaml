@@ -1,3 +1,5 @@
+# The inbox: header, then rail | list | reading pane filling the page under
+# the app header (full_bleed publishes the height left).
 _ref:
   module: layout
   component: page
@@ -5,13 +7,44 @@ _ref:
     id: all
     title: Notifications
     hide_title: true
+    full_bleed: true
+    # The page's own live feed: the shared bell, toast and sound actions, plus a
+    # count of new rows for the pill above the list and fresh rail counts. New
+    # rows never insert themselves under the cursor.
+    subscriptions:
+      _ref:
+        path: components/live-subscription.yaml
+        key: subscriptions
+        vars:
+          on_message:
+            - id: count_new_rows
+              type: SetState
+              params:
+                new_count:
+                  _js:
+                    args:
+                      count:
+                        _if_none:
+                          - _state: new_count
+                          - 0
+                      inserted:
+                        _if_none:
+                          - _state: notifications_live.inserted
+                          - 0
+                    fn: |
+                      return args.count + args.inserted;
+            - id: live_counts
+              type: Request
+              params:
+                - get_notification_facets
+                - get_notifications
     requests:
       - _ref: requests/get-notifications.yaml
       - _ref: requests/get-notification-facets.yaml
-      - _ref: requests/update-selected-unread.yaml
       - _ref: requests/get-selected-notification.yaml
       - _ref: requests/update-notifications.yaml
       - _ref: requests/update-selected-notification.yaml
+      - _ref: requests/update-selected-unread.yaml
     events:
       onInit:
         - id: init
@@ -20,167 +53,120 @@ _ref:
             pagination:
               pageSize: 1000
               skip: 0
+              current: 1
             filter:
               status: unread
+              view: inbox
+              types: []
+              search: ""
+            selected_id:
+              _if_none:
+                - _url_query: _id
+                - null
+            view_picker: inbox
+            pane_open: false
+            new_count: 0
       onMount:
         _build.array.concat:
-          - _ref: actions/set-selected.yaml
           - _ref: actions/update-list.yaml
+          - - id: open_from_link
+              type: Request
+              skip:
+                _eq:
+                  - _state: selected_id
+                  - null
+              params:
+                - get_selected_notification
+                - update_selected_notification
     blocks:
-      - id: content_wrapper
+      - id: inbox_styles
+        type: Html
+        properties:
+          html:
+            # A leading <style> is hoisted into <head> and dropped by the
+            # sanitiser, so the stylesheet trails an empty element.
+            _string.concat:
+              - "<span></span><style>"
+              - _ref: components/notification-list.css
+              - "</style>"
+      - id: inbox
         type: Box
-        style:
-          maxWidth: 1200
-          margin: 64px auto
+        class:
+          .element: nx-inbox
         layout:
           gap: 16
-          justify: center
         blocks:
-          # Left column — notification list
-          - id: notifications_area
+          - id: inbox_header
             type: Box
             layout:
-              span: 10
-              gap: 16
-              sm:
-                span: 24
-                order: 2
-              md:
-                span: 10
-                order: 1
+              span: 24
+              gap: 12
+              align: bottom
+              justify: space-between
             blocks:
-              - id: title_box
+              - id: inbox_title
+                type: Html
+                layout:
+                  flex: 1 1 auto
+                properties:
+                  html:
+                    _nunjucks:
+                      template: |
+                        <div class="nx-title"><h1>Notifications</h1><p>{% if loaded %}{% if unread > 0 %}<strong>{{ unread }} unread</strong>{% else %}All caught up{% endif %} · {{ total }} in total{% else %}&nbsp;{% endif %}</p></div>
+                      on:
+                        loaded:
+                          _ne:
+                            - _request: get_notification_facets
+                            - null
+                        unread:
+                          _js:
+                            args:
+                              facets:
+                                _if_none:
+                                  - _request: get_notification_facets
+                                  - []
+                            fn: |
+                              return args.facets.reduce((sum, f) => sum + f.unread, 0);
+                        total:
+                          _js:
+                            args:
+                              facets:
+                                _if_none:
+                                  - _request: get_notification_facets
+                                  - []
+                            fn: |
+                              return args.facets.reduce((sum, f) => sum + f.total, 0);
+              - id: inbox_actions
                 type: Box
                 layout:
-                  gap: 8
+                  flex: 0 0 auto
+                  gap: 16
+                  align: middle
                 blocks:
-                  - id: notifications_area_title
-                    type: Divider
+                  - id: notifications_sound_toggle
+                    type: NotificationSound
                     layout:
-                      flex: 1 0 auto
-                    style:
-                      .element:
-                        margin: 0
+                      flex: 0 0 auto
                     properties:
-                      title:
-                        _nunjucks:
-                          template: |
-                            {{ type }} Notifications ({{ total or 0 }})
-                          on:
-                            total:
-                              _request: get_notifications.0.total_count.0.total
-                            type:
-                              _state: filter.status
-                  - id: button_mark_all_read
-                    type: Button
-                    layout:
-                      flex: 1 1 auto
-                    style:
-                      textAlign: right
-                    properties:
-                      title: Mark All Read
-                      type: default
-                      disabled:
-                        _or:
-                          - _eq:
-                              - _if_none:
-                                  - _request: get_notifications.0.total_count.0.total
-                                  - 0
-                              - 0
-                          - _eq:
-                              - _state: filter.status
-                              - read
-                    events:
-                      onClick:
-                        _build.array.concat:
-                          - - id: update_notifications
-                              type: Request
-                              params: update_notifications
-                          - _ref: actions/update-list.yaml
-                  - id: filter.status
-                    type: ButtonSelector
-                    layout:
-                      flex: 0 1 auto
-                    style:
-                      textAlign: right
-                    loading:
-                      _not:
-                        _request: get_notifications
-                    properties:
-                      label:
-                        disabled: true
-                      options:
-                        - label: Unread
-                          value: unread
-                        - label: Read
-                          value: read
-                    events:
-                      onChange:
-                        debounce:
-                          ms: 500
-                        try:
-                          _build.array.concat:
-                            - []
-                            - _ref: actions/update-list.yaml
-              - _ref: components/form-filter.yaml
-              - _ref: components/list-notifications.yaml
-              - id: pagination
-                type: Pagination
-                style:
-                  textAlign: right
-                properties:
-                  showTotal: true
-                  total:
-                    _get:
-                      from:
-                        _request: get_notifications.0.total_count
-                      key: 0.total
-                      default: 0
-                events:
-                  onChange:
-                    - id: clear
-                      type: SetState
-                      params:
-                        list: []
-                    - id: fetch
-                      type: Request
-                      params: get_notifications
-                    - id: set_list
-                      type: SetState
-                      params:
-                        list:
-                          _ref:
-                            path: components/notification-appearance.yaml
-                            vars:
-                              records:
-                                _request: get_notifications.0.notifications
-          # Right column — selected notification detail
-          - id: selected_area
+                      app:
+                        _build.app: slug
+                      toggle: true
+                  - _ref: components/button-mark-all.yaml
+          - id: inbox_panel
             type: Box
+            class:
+              .element: nx-panel
             layout:
-              span: 14
-              sm:
-                span: 24
-                order: 1
-              md:
-                span: 14
-                order: 2
-              gap: 8
+              span: 24
+              wrap: nowrap
             blocks:
-              - id: selected_area_title
-                type: Divider
-                style:
-                  .element:
-                    margin: 0
+              - id: rail_column
+                type: Box
+                class:
+                  .element: nx-region nx-rail
                 layout:
-                  flex: 1 0 auto
-                properties:
-                  title: Selected
-                  titlePlacement: start
-              - id: selected_area_card
-                type: Card
-                properties:
-                  style:
-                    boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
+                  flex: 0 0 240px
                 blocks:
-                  - _ref: components/area-selected.yaml
+                  - _ref: components/rail.yaml
+              - _ref: components/list-column.yaml
+              - _ref: components/area-selected.yaml

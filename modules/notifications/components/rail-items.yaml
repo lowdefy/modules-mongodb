@@ -1,0 +1,43 @@
+# { views, types }: the rail's items from the views var and the type counts.
+# A view's count is the sum of its types' unread counts.
+_js:
+  args:
+    views:
+      _module.var: views
+    facets:
+      _ref:
+        path: components/notification-appearance.yaml
+        vars:
+          records:
+            _js:
+              args:
+                facets:
+                  _if_none:
+                    - _request: get_notification_facets
+                    - []
+              fn: |
+                return args.facets.map((f) => ({ ...f, type: f._id }));
+  fn: |
+    const facets = args.facets || [];
+    const unread = {};
+    let total = 0;
+    facets.forEach((f) => {
+      unread[f._id] = f.unread;
+      total += f.unread;
+    });
+    const views = [{ key: 'inbox', label: 'Inbox', icon: 'Inbox', unread: total }].concat(
+      (args.views || []).map((view) => ({
+        key: view.id,
+        label: view.title,
+        icon: view.icon || 'Layers',
+        unread: (view.types || []).reduce((sum, t) => sum + (unread[t] || 0), 0),
+      })),
+    );
+    const types = facets.map((f) => ({
+      key: `type:${f._id}`,
+      label: f.appearance.label,
+      icon: f.appearance.icon,
+      color: f.appearance.color,
+      unread: f.unread,
+    }));
+    return { views, types };

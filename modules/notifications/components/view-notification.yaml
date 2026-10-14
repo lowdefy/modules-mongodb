@@ -1,41 +1,105 @@
 id: view_notification
 type: Box
 blocks:
-  - id: header
-    type: Html
-    properties:
-      html:
-        _nunjucks:
-          template: |
-            <div style="display: flex; gap: 12px; align-items: flex-start;">
-              <div style="flex: 1 1 auto; min-width: 0;">
-                <h3 style="margin: 0; font-size: 16px; line-height: 24px;">{{ notification.title }}</h3>
-                <div style="font-size: 12px; line-height: 20px; color: var(--ant-color-text-tertiary);">Received {{ notification.created.timestamp | date('D MMM YYYY, HH:mm') }}</div>
-              </div>
-              {% if appearance.title %}
-              <div style="flex: 0 0 auto; padding: 0 8px; border-radius: 999px; font-size: 12px; line-height: 20px; font-weight: 500; white-space: nowrap; color: {{ appearance.color }}; background: color-mix(in srgb, {{ appearance.color }} 12%, transparent);">{{ appearance.title }}</div>
-              {% endif %}
-            </div>
-          on:
-            notification:
-              _var: notification
-            appearance:
-              _get:
-                key: 0.appearance
-                from:
-                  _ref:
-                    path: components/notification-appearance.yaml
-                    vars:
-                      records:
-                        - _var: notification
-  - id: divider
-    type: Divider
-    properties:
-      title: Notification Details
+  - id: pane_header
+    type: Box
+    class:
+      .element: nx-pane-header
+    layout:
+      gap: 12
+    blocks:
+      - id: pane_back
+        type: Button
+        visible:
+          _or:
+            - _eq:
+                - _media: size
+                - xs
+            - _eq:
+                - _media: size
+                - sm
+        layout:
+          span: 24
+        properties:
+          title: Back
+          type: link
+          size: small
+          icon: ArrowLeft
+        events:
+          onClick:
+            - id: close_pane
+              type: SetState
+              params:
+                pane_open: false
+      - id: pane_title
+        type: Html
+        layout:
+          flex: 1 1 0
+        style:
+          minWidth: 0
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <div class="nx-pane-head">
+                  <span class="nx-icon nx-icon--lg" style="--c: {{ appearance.color }}"><i data-icon="{{ appearance.icon }}"></i></span>
+                  <div>
+                    <h2>{{ notification.title }}</h2>
+                    <div class="nx-pane-meta"><span data-tag="{{ appearance.color }}">{{ appearance.label }}</span><time datetime="{{ received }}" data-time="D MMM YYYY, HH:mm"></time><span>·</span><time datetime="{{ received }}" data-time="relative"></time></div>
+                  </div>
+                </div>
+              on:
+                notification:
+                  _var: notification
+                received:
+                  _js:
+                    args:
+                      at:
+                        _get:
+                          key: created.timestamp
+                          from:
+                            _var: notification
+                    fn: |
+                      return args.at ? new Date(args.at).toISOString() : '';
+                appearance:
+                  _get:
+                    key: 0.appearance
+                    from:
+                      _ref:
+                        path: components/notification-appearance.yaml
+                        vars:
+                          records:
+                            - _var: notification
+      - id: button_mark_unread
+        type: Button
+        layout:
+          flex: 0 0 auto
+        # Opening a notification reads it, so the row in the list says whether
+        # it is read now; the fetched record predates the open.
+        visible:
+          _js:
+            args:
+              list:
+                _if_none:
+                  - _state: list
+                  - []
+              id:
+                _state: selected_id
+            fn: |
+              const row = args.list.find((r) => r._id === args.id);
+              return !row || row.read === true;
+        properties:
+          title: Mark as unread
+          type: text
+          size: small
+          icon: Mail
+        events:
+          onClick:
+            _ref: actions/mark-unread.yaml
   - id: notification_details
     type: Html
     class:
-      .element: notification-email
+      .element: notification-email nx-pane-body
     properties:
       html:
         # The stylesheet trails the document: the HTML parser hoists a leading

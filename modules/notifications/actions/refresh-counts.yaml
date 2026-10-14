@@ -1,0 +1,6 @@
+# Rail counts and the bell, after anything changes what is read.
+- id: refresh_counts
+  type: Request
+  params:
+    - get_notification_facets
+    - notifications_unread_count

@@ -1,20 +1,32 @@
-_build.array.concat:
-  - - id: scroll_top
-      type: ScrollTo
-      params:
-        top: 0
-    - id: set_id
-      type: SetState
-      params:
-        selected_id:
-          _if_none:
-            - _var:
-                key: selected_id
-                default: null
-            - _url_query: _id
-    - id: get_selected_notification
-      type: Request
-      params: get_selected_notification
-    - id: update_selected_notification
-      type: Request
-      params: update_selected_notification
+# Open the notification in selected_id: fetch it for the pane and mark it read,
+# in the database and on its row in place, so the list keeps its scroll and an
+# Unread row stays until the next fetch.
+- id: open_pane
+  type: SetState
+  params:
+    pane_open: true
+    list:
+      _js:
+        args:
+          list:
+            _if_none:
+              - _state: list
+              - []
+          id:
+            _state: selected_id
+        fn: |
+          return args.list.map((row) =>
+            row._id === args.id ? { ...row, read: true } : row,
+          );
+- id: get_selected_notification
+  type: Request
+  params: get_selected_notification
+- id: update_selected_notification
+  type: Request
+  params: update_selected_notification
+- id: refresh_after_read
+  type: Request
+  params:
+    - get_notification_facets
+    - notifications_unread_count
+    - get_notifications

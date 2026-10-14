@@ -1,167 +1,171 @@
+# The toast stack: unread popup:true notifications, newest first, at most
+# popup_limit, fixed top-right under the app header. Mounted on every page by
+# the layout page component; filled on page load (notifications_popups) and by
+# the live feed (live-subscription.yaml). Dismiss, close and Open all mark the
+# notification read and take it off the stack. Hidden on the inbox page.
 id: popup_notifications
 type: List
 visible:
   _and:
     - _gt:
-        - _state: popup_notifications.length
+        - _array.length:
+            _if_none:
+              - _state: popup_notifications
+              - []
         - 0
-    # Don't stack toasts on top of the full inbox page.
     - _ne:
         - _location: pageId
         - _module.pageId: all
 style:
   .element:
-    display: flex
-    flexDirection: column-reverse
-    gap: 8
     position: fixed
-    zIndex: 9999
-    top: 0
-    right: 0
-    minWidth: 200
-    maxWidth: 500
-    minHeight: 100
-    maxHeight: 100vh
-    overflowY: scroll
+    zIndex: 1050
+    top: calc(var(--ant-layout-header-height, 64px) + 16px)
+    right: 16px
+    width: 360px
+    maxWidth: calc(100vw - 32px)
+    maxHeight: calc(100dvh - var(--ant-layout-header-height, 64px) - 32px)
+    overflowY: auto
+    display: flex
+    flexDirection: column
+    gap: 8px
 blocks:
-  - id: popup_notifications.$.card
-    type: Card
-    visible:
-      _not:
-        _state: popup_notifications.$.hide
-    layout:
-      gap: 8
+  - id: popup_notifications.$.toast
+    type: Box
     style:
       .element:
-        paddingLeft: 12
-        paddingRight: 12
-        paddingTop: 12
-        marginTop: 12
-        marginRight: 12
-        border: "2px solid #c2c7d2"
+        position: relative
+        padding: 12px
+        borderRadius: var(--ant-border-radius-lg, 8px)
+        border: 1px solid var(--ant-color-border-secondary)
+        background: var(--ant-color-bg-elevated)
+        boxShadow: var(--ant-box-shadow-secondary)
     blocks:
-      - id: container
-        type: Box
-        blocks:
-          - id: popup_notifications.$.status_icon
-            type: Icon
-            layout:
-              flex: 0 1 auto
-            properties:
-              size: 34
-              name:
-                _get:
-                  key: 0.appearance.icon
-                  from:
-                    _ref:
-                      path: components/notification-appearance.yaml
-                      vars:
-                        records:
-                          - _state: popup_notifications.$
-              color:
-                _get:
-                  key: 0.appearance.color
-                  from:
-                    _ref:
-                      path: components/notification-appearance.yaml
-                      vars:
-                        records:
-                          - _state: popup_notifications.$
-          - id: popup_notifications.$.body
-            type: Box
-            layout:
-              gap: 8
-              flex: 1 1 auto
-            style:
-              maxWidth: 80%
-              marginLeft: 6
-            blocks:
-              - id: popup_notifications.$.description
-                type: Html
-                style:
-                  .element:
-                    whiteSpace: pre-wrap
-                properties:
-                  html:
-                    _string.concat:
-                      - '<h5 style="font-size: 13px">'
-                      - _state: popup_notifications.$.title
-                      - "</h5>"
-                      - _state: popup_notifications.$.description
-              - id: divider
-                type: Divider
-                style:
-                  .element:
-                    margin: 4
-      - id: popup_notification.$.created_date
+      - id: popup_notifications.$.content
         type: Html
         layout:
-          flex: 0 1 auto
+          span: 24
         properties:
           html:
             _nunjucks:
-              template: <span class="secondary">Sent on {{ timestamp | date('D MMM YYYY h:mm A') }}</span>
+              template: |
+                <div style="display: grid; grid-template-columns: 32px 1fr; column-gap: 12px; padding-right: 20px;">
+                  <span style="width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: {{ appearance.color }}; background: color-mix(in srgb, {{ appearance.color }} 16%, transparent);"><i data-icon="{{ appearance.icon }}"></i></span>
+                  <div style="min-width: 0;">
+                    <div style="font-weight: 600; color: var(--ant-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ item.title }}</div>
+                    {% if preview %}<div data-truncate="2" style="margin-top: 2px; color: var(--ant-color-text-secondary);">{{ preview }}</div>{% endif %}
+                  </div>
+                </div>
               on:
-                _state: popup_notifications.$.created
-      - id: popup_notifications.$.actions
+                item:
+                  _state: popup_notifications.$
+                preview:
+                  _if_none:
+                    - _state: popup_notifications.$.preview
+                    - _state: popup_notifications.$.description
+                appearance:
+                  _get:
+                    key: 0.appearance
+                    from:
+                      _ref:
+                        path: components/notification-appearance.yaml
+                        vars:
+                          records:
+                            - _state: popup_notifications.$
+      - id: popup_notifications.$.foot
         type: Box
         layout:
-          flex: 1 1 auto
-          gap: 8
+          span: 24
+          gap: 4
+          align: middle
+        style:
+          .element:
+            marginTop: 8px
+            paddingLeft: 44px
         blocks:
-          # Optional deep-link button — only when the notification carries links.button.
-          - id: popup_notifications.$.button
-            type: Button
+          - id: popup_notifications.$.time
+            type: Html
             layout:
               flex: 1 1 auto
-            style:
-              textAlign: right
             properties:
-              title: Acknowledge
-              type: default
-            events:
-              onClick:
-                - id: set_popup_read_state
-                  type: SetState
-                  params:
-                    popup_id:
-                      _state: popup_notifications.$._id
-                    popup_notifications.$.hide: true
-                - id: set_popup_read
-                  type: Request
-                  params: set_popup_read
-          - id: popup_notifications.$.link_button
+              html:
+                _nunjucks:
+                  template: |
+                    {% if at %}<time datetime="{{ at }}" data-time="relative" style="font-size: 12px; color: var(--ant-color-text-tertiary);"></time>{% endif %}
+                  on:
+                    at:
+                      _js:
+                        args:
+                          at:
+                            _state: popup_notifications.$.created.timestamp
+                        fn: |
+                          return args.at ? new Date(args.at).toISOString() : null;
+          - id: popup_notifications.$.dismiss
             type: Button
             layout:
-              flex: 0 1 auto
-            visible:
-              _ne:
-                - _state:
-                    key: popup_notifications.$.links.button.pageId
-                    default: null
-                - null
+              flex: 0 0 auto
             properties:
-              title: View
+              title: Dismiss
+              type: text
+              size: small
             events:
               onClick:
-                # Opening the target also acknowledges the popup (marks read).
-                - id: set_popup_read_state
-                  type: SetState
-                  params:
-                    popup_id:
-                      _state: popup_notifications.$._id
-                    popup_notifications.$.hide: true
-                - id: set_popup_read
-                  type: Request
-                  params: set_popup_read
-                - id: link_to_target
-                  type: Link
-                  params:
-                    pageId:
-                      _state: popup_notifications.$.links.button.pageId
-                    pathParams:
-                      _state:
-                        key: popup_notifications.$.links.button.pathParams
-                        default: {}
-                    urlQuery:
-                      _state: popup_notifications.$.links.button.urlQuery
+                _ref: actions/popup-dismiss.yaml
+          - id: popup_notifications.$.open
+            type: Button
+            layout:
+              flex: 0 0 auto
+            visible:
+              _ne:
+                - _if_none:
+                    - _state: popup_notifications.$.links.button.pageId
+                    - _state: popup_notifications.$.data.links.button.pageId
+                - null
+            properties:
+              title: Open
+              type: primary
+              size: small
+            events:
+              onClick:
+                _build.array.concat:
+                  - - id: set_popup_link
+                      type: SetState
+                      params:
+                        popup_link:
+                          _if_none:
+                            - _state: popup_notifications.$.links.button
+                            - _state: popup_notifications.$.data.links.button
+                  - _ref: actions/popup-dismiss.yaml
+                  - - id: link_to_target
+                      type: Link
+                      params:
+                        pageId:
+                          _state: popup_link.pageId
+                        pathParams:
+                          _if_none:
+                            - _state: popup_link.pathParams
+                            - {}
+                        urlQuery:
+                          _if_none:
+                            - _state: popup_link.urlQuery
+                            - {}
+                        input:
+                          _if_none:
+                            - _state: popup_link.input
+                            - {}
+      - id: popup_notifications.$.close
+        type: Button
+        style:
+          .element:
+            position: absolute
+            top: 8px
+            right: 8px
+        properties:
+          title: Dismiss notification
+          hideTitle: true
+          type: text
+          size: small
+          icon: X
+        events:
+          onClick:
+            _ref: actions/popup-dismiss.yaml
