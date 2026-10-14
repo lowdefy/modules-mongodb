@@ -48,11 +48,16 @@ export async function claimNotice(
 }
 
 // True when any id in the batch is claimed by this tab. Every id is claimed,
-// so a later tab or reload refuses the whole batch.
-export async function claimBatch(ids, env) {
+// so a later tab or reload refuses the whole batch. A hidden tab waits once
+// for the batch, not once per id.
+export async function claimBatch(ids, env = {}) {
+  const list = Array.isArray(ids) ? ids : [];
+  if (list.length === 0) return false;
+  const { hidden = false, hiddenDelayMs = HIDDEN_DELAY_MS } = env;
+  if (hidden && hiddenDelayMs > 0) await sleep(hiddenDelayMs);
   let won = false;
-  for (const id of Array.isArray(ids) ? ids : []) {
-    if (await claimNotice(id, env)) won = true;
+  for (const id of list) {
+    if (await claimNotice(id, { ...env, hidden: false })) won = true;
   }
   return won;
 }

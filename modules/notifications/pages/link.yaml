@@ -22,8 +22,8 @@ events:
               _module.var: public_link_types
             value:
               _if_none:
-                - _request: get_notification_for_link.0.event_type
                 - _request: get_notification_for_link.0.type
+                - _request: get_notification_for_link.0.event_type
       params:
         pageId:
           _if_none:
@@ -59,8 +59,8 @@ events:
               _module.var: public_link_types
             value:
               _if_none:
-                - _request: get_notification_for_link.0.event_type
                 - _request: get_notification_for_link.0.type
+                - _request: get_notification_for_link.0.event_type
       messages:
         error: false
       params:
@@ -114,7 +114,7 @@ events:
     - id: mark_read
       type: SetState
       params:
-        selected_id:
+        open_id:
           _url_query: _id
     - id: update_read
       type: Request

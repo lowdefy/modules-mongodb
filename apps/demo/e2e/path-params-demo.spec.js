@@ -2,8 +2,8 @@ import { test, expect } from "./fixtures.js";
 
 // The path-params-demo page is served at /path-params-demo/{item_id}. Each item
 // id is its own page instance, and a notification about an item links back to
-// it with the item's path value through the notifications module: the popup's
-// View button and the notification landing page.
+// it with the item's path value through the notifications module: the toast's
+// Open button and the notification landing page.
 
 const USER = {
   id: "e2e-path-params",
@@ -51,9 +51,11 @@ test.describe("path parameters demo", () => {
     // The popup stack is read when a page mounts, so the next page shows it.
     await page.getByRole("button", { name: "Item 1" }).click();
     await expect(page).toHaveURL(/\/path-params-demo\/item-1$/);
-    const view = page.getByRole("button", { name: "View" });
-    await expect(view).toBeVisible();
-    await view.click();
+    const open = page
+      .locator("#popup_notifications")
+      .getByRole("button", { name: "Open" });
+    await expect(open).toBeVisible();
+    await open.click();
     await expect(page).toHaveURL(/\/path-params-demo\/item-2$/);
     await expect(page.getByTestId("item_intro")).toContainText(
       "/path-params-demo/item-2",

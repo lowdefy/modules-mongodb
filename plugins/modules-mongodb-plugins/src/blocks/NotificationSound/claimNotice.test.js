@@ -124,3 +124,15 @@ test("the sound setting is off until it is turned on, per app", () => {
   expect(readSetting(storage, key)).toBe(false);
   expect(readSetting(null, key)).toBe(false);
 });
+
+test("a hidden tab waits once for a batch, not once per notification", async () => {
+  const started = Date.now();
+  expect(
+    await claimBatch(["a", "b", "c", "d"], {
+      storage: memoryStorage(),
+      hidden: true,
+      hiddenDelayMs: 40,
+    }),
+  ).toBe(true);
+  expect(Date.now() - started).toBeLessThan(120);
+});

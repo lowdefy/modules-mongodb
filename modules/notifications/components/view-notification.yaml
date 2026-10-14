@@ -84,7 +84,7 @@ blocks:
                   - _state: list
                   - []
               id:
-                _state: selected_id
+                _state: open_id
             fn: |
               const row = args.list.find((r) => r._id === args.id);
               return !row || row.read === true;

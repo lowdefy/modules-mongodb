@@ -16,7 +16,7 @@ blocks:
     visible:
       _eq:
         - _if_none:
-            - _state: selected_id
+            - _state: open_id
             - null
         - null
     properties:
@@ -27,7 +27,7 @@ blocks:
     visible:
       _ne:
         - _if_none:
-            - _state: selected_id
+            - _state: open_id
             - null
         - null
     blocks:

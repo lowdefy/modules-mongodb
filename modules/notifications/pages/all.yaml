@@ -17,6 +17,8 @@ _ref:
         key: subscriptions
         vars:
           on_message:
+            # New rows the current view would show (its types; never under
+            # Read), and the read state of rows already listed.
             - id: count_new_rows
               type: SetState
               params:
@@ -27,12 +29,41 @@ _ref:
                         _if_none:
                           - _state: new_count
                           - 0
-                      inserted:
+                      messages:
+                        _event: messages
+                      types:
                         _if_none:
-                          - _state: notifications_live.inserted
-                          - 0
+                          - _state: filter.types
+                          - []
+                      status:
+                        _state: filter.status
                     fn: |
-                      return args.count + args.inserted;
+                      if (args.status === 'read') return args.count;
+                      const fresh = (args.messages || []).filter((m) => {
+                        if (m.operationType !== 'insert' || !m.fullDocument) return false;
+                        const type = m.fullDocument.type ?? m.fullDocument.event_type;
+                        return args.types.length === 0 || args.types.includes(type);
+                      });
+                      return args.count + fresh.length;
+                list:
+                  _js:
+                    args:
+                      list:
+                        _if_none:
+                          - _state: list
+                          - []
+                      messages:
+                        _event: messages
+                    fn: |
+                      const read = {};
+                      (args.messages || []).forEach((m) => {
+                        if (m.operationType === 'update' && m.fullDocument) {
+                          read[m.fullDocument._id] = m.fullDocument.read === true;
+                        }
+                      });
+                      return args.list.map((row) =>
+                        row._id in read ? { ...row, read: read[row._id] } : row,
+                      );
             - id: live_counts
               type: Request
               params:
@@ -59,6 +90,10 @@ _ref:
               view: inbox
               types: []
               search: ""
+            open_id:
+              _if_none:
+                - _url_query: _id
+                - null
             selected_id:
               _if_none:
                 - _url_query: _id
@@ -69,15 +104,18 @@ _ref:
       onMount:
         _build.array.concat:
           - _ref: actions/update-list.yaml
-          - - id: open_from_link
-              type: Request
-              skip:
-                _eq:
-                  - _state: selected_id
-                  - null
-              params:
-                - get_selected_notification
-                - update_selected_notification
+          # A link to one notification (?_id=) opens it.
+          - _build.array.map:
+              on:
+                _ref: actions/open-notification.yaml
+              callback:
+                _build.function:
+                  __build.object.assign:
+                    - __build.args: 0
+                    - skip:
+                        _eq:
+                          - _state: open_id
+                          - null
     blocks:
       - id: inbox_styles
         type: Html

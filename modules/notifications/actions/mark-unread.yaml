@@ -12,7 +12,7 @@
               - _state: list
               - []
           id:
-            _state: selected_id
+            _state: open_id
         fn: |
           return args.list.map((row) =>
             row._id === args.id ? { ...row, read: false } : row,

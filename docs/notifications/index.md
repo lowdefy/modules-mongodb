@@ -151,7 +151,7 @@ The inbox list shows one row per record — the resolved icon in a circle tinted
 
 The `all` page lists the signed-in user's notifications in this app, up to 1000 a page, newest first.
 
-- **Filters.** Unread / All / Read, a date range with presets, a search over title and preview (case-insensitive, matched on the server so it covers every page), and a view or a single type from the rail.
+- **Filters.** Unread / All / Read, a date range with presets, a search over title and preview (matched on the server so it covers every page; case-insensitive for ASCII letters, since MongoDB's `$toLower` leaves accented letters as they are), and a view or a single type from the rail.
 - **Mark all as read** marks every unread notification the filters match, across all pages, not only the loaded ones. With a view, type, search or date set, the button names the count it will mark. **Mark as unread** on an open notification sets it back.
 - **Views** group notification types at the top of the rail, such as Mentions. Set them in the `views` var; each lists the type ids it shows, and its count is the sum of their unread counts. With no views the rail shows Inbox and the types the user has.
 
@@ -214,6 +214,7 @@ The bell, the toast stack and the inbox update the moment a notification arrives
 
 - **One stream per signed-in user.** Each signed-in user with a page open holds one change stream, and one pooled MongoDB connection while it waits. Size `maxPoolSize` in the connection string for your concurrent users plus your request load (the driver's default is 100).
 - **Replica set required.** Change streams run only on a replica set (Atlas clusters are one). Where they cannot run, set `live: false`: the bell and toasts then update on page load, as before.
+- **Mark all as read sends one change per record.** Each record it marks reaches the user's open tabs as its own change, batched every 250 ms; marking thousands at once means a few seconds of batches and count refetches in those tabs.
 - **Failure is quiet.** If the feed fails, the page shows nothing; the bell and toasts update on the next navigation.
 - **Tenant wall.** Under `policy: tenant` the stream is scoped to the active organization, like a read.
 

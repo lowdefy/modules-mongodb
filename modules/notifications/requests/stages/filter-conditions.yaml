@@ -49,7 +49,10 @@ $and:
                 - $ifNull:
                     - $type
                     - $event_type
-                - _payload: filter.types
+                # Taken literally, so a client-sent element is never read as an
+                # expression.
+                - $literal:
+                    _payload: filter.types
         else: []
     # Case-insensitive substring of title, preview or a legacy description.
     # $indexOfCP takes the text as typed and $literal keeps a leading "$" from

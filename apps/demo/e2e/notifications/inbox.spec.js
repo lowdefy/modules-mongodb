@@ -130,3 +130,18 @@ test("on a phone the list and the pane take turns", async ({ ldf, page }) => {
   await expect(rows(page)).toHaveCount(3);
   await page.screenshot({ path: test.info().outputPath("phone-list.png") });
 });
+
+test("a link to one notification opens it even when the Unread list is empty", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await mdb
+    .collection(COLLECTION)
+    .updateMany({ user_id: USER.id }, { $set: { read: true } });
+  await ldf.goto("/notifications/all?_id=s2");
+  await expect(page.locator("#pane_title")).toContainText(
+    "Support replied on ENC-2",
+  );
+  await expect(page.locator("#list_empty")).toContainText("caught up");
+});
