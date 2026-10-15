@@ -210,8 +210,9 @@ blocks:
         then:
           - id: org_role_divider
             type: Divider
-            properties:
-              margin: 4
+            style:
+              .element:
+                margin: 4px 0
           # Owner is read-only: the protected creator tier, capability-identical to
           # admin, never set from this control. Shown so the tier is visible; the
           # save leaves it untouched (the tier write skips when org_role is

@@ -180,8 +180,9 @@ _ref:
                     else: []
           - id: security_divider_sessions
             type: Divider
-            properties:
-              margin: 4
+            style:
+              .element:
+                margin: 4px 0
           - id: sessions_eyebrow
             type: Html
             properties:
@@ -196,8 +197,9 @@ _ref:
                 request: get_user_sessions
           - id: security_divider_methods
             type: Divider
-            properties:
-              margin: 4
+            style:
+              .element:
+                margin: 4px 0
           - id: methods_eyebrow
             type: Html
             properties:
