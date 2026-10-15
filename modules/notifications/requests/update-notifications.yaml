@@ -1,17 +1,25 @@
+# Mark all as read: every unread record of the signed-in user in this app that
+# the inbox filter matches (requests/stages/filter-conditions.yaml), across all
+# pages. The recipient and app clauses are server-side, so the filter can only
+# narrow the caller's own records.
 id: update_notifications
 type: MongoDBUpdateMany
 connectionId:
   _module.connectionId: notifications-collection
 payload:
+  filter:
+    _state: filter
   app_name:
     _build.app: slug
 properties:
   filter:
-    $or:
-      _ref: requests/match-recipient.yaml
-    created.app_name:
-      _payload: app_name
-    read: false
+    $and:
+      - $or:
+          _ref: requests/match-recipient.yaml
+      - created.app_name:
+          _payload: app_name
+        read: false
+      - _ref: requests/stages/filter-conditions.yaml
   update:
     $set:
       read: true

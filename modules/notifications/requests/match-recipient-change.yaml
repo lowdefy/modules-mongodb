@@ -1,0 +1,13 @@
+# requests/match-recipient.yaml for a change stream: the same two ways to be a
+# record's recipient, on the change event's fullDocument. A change stream
+# $match cannot reuse the unprefixed file, so this copy sits beside it;
+# match-recipient.test.js runs both against the same records so they cannot
+# drift. Never null without a session, for the reason given there.
+- fullDocument.contact_id:
+    _if_none:
+      - _user: id
+      - __no_session__
+- fullDocument.user_id:
+    _if_none:
+      - _user: id
+      - __no_session__

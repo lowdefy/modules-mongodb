@@ -1,0 +1,22 @@
+# filter.view is "inbox", a view id, or "type:<type id>"; it resolves to
+# filter.types, the one type condition the server sees.
+_build.array.concat:
+  - - id: set_view_types
+      type: SetState
+      params:
+        pane_open: false
+        view_picker:
+          _state: filter.view
+        filter.types:
+          _js:
+            args:
+              view:
+                _state: filter.view
+              views:
+                _module.var: views
+            fn: |
+              const view = args.view || 'inbox';
+              if (view.startsWith('type:')) return [view.slice(5)];
+              const found = (args.views || []).find((v) => v.id === view);
+              return found ? found.types || [] : [];
+  - _ref: actions/update-list.yaml

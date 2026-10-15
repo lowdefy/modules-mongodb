@@ -7,6 +7,7 @@ export { default as EventsTimeline } from "./blocks/EventsTimeline/EventsTimelin
 export { default as FileManager } from "./blocks/FileManager/FileManager.js";
 export { default as FloatingPanel } from "./blocks/FloatingPanel/FloatingPanel.js";
 export { default as MessageComposer } from "./blocks/MessageComposer/MessageComposer.js";
+export { default as NotificationSound } from "./blocks/NotificationSound/NotificationSound.js";
 export { default as SmartDescriptions } from "./blocks/SmartDescriptions/SmartDescriptions.js";
 export { default as SupportContext } from "./blocks/SupportContext/SupportContext.js";
 export { default as SupportScreenshot } from "./blocks/SupportScreenshot/SupportScreenshot.js";

@@ -1,0 +1,108 @@
+# The live notifications feed for a page (websockets/notifications-live.yaml).
+#   subscriptions  the page subscription, for the page root
+#   actions        the Subscribe action for onMountAsync, skipped without a
+#                  signed-in user so public pages never open the stream
+# Both are empty when the module's `live` var is false.
+#
+# Every batch refetches the bell, drops toasts whose record is now read, adds
+# new unread popup records to the toast stack (newest first, at most
+# popup_limit) and chirps for them through the page's notifications_sound
+# player. A failed feed shows nothing: the bell and toasts then update on
+# navigation, as they do without it.
+#
+# Vars:
+#   on_message  further actions for each batch (the inbox refreshes its list
+#               counts); the page's own subscription replaces the layout's, so
+#               these run in addition to the shared ones
+subscriptions:
+  _build.if:
+    test:
+      _module.var: live
+    then:
+      - websocketId:
+          _module.websocketId: notifications-live
+        client:
+          subscribeOnMount: false
+          maxMessages: 50
+        events:
+          onMessage:
+            _build.array.concat:
+              - - id: live_bell
+                  type: Request
+                  params: notifications_unread_count
+                - id: live_batch
+                  type: SetState
+                  params:
+                    notifications_live:
+                      _js:
+                        args:
+                          messages:
+                            _event: messages
+                          stack:
+                            _if_none:
+                              - _state: popup_notifications
+                              - []
+                          limit:
+                            _module.var: popup_limit
+                        fn: |
+                          const docs = (args.messages || [])
+                            .filter((m) => m && m.fullDocument)
+                            .map((m) => ({ op: m.operationType, doc: m.fullDocument }));
+                          const read = new Set(
+                            docs.filter(({ doc }) => doc.read === true).map(({ doc }) => doc._id),
+                          );
+                          let stack = (args.stack || []).filter((p) => !read.has(p._id));
+                          const shown = new Set(stack.map((p) => p._id));
+                          const added = docs
+                            .filter(
+                              ({ op, doc }) =>
+                                op === 'insert' &&
+                                doc.popup === true &&
+                                doc.read !== true &&
+                                !shown.has(doc._id),
+                            )
+                            .map(({ doc }) => doc)
+                            .reverse();
+                          stack = added.concat(stack).slice(0, args.limit || 3);
+                          return {
+                            stack,
+                            added: added.map((doc) => doc._id),
+                            inserted: docs.filter(({ op }) => op === 'insert').length,
+                          };
+                - id: live_toasts
+                  type: SetState
+                  params:
+                    popup_notifications:
+                      _state: notifications_live.stack
+                - id: live_chirp
+                  type: CallMethod
+                  skip:
+                    _eq:
+                      - _array.length:
+                          _if_none:
+                            - _state: notifications_live.added
+                            - []
+                      - 0
+                  params:
+                    blockId: notifications_sound
+                    method: play
+                    args:
+                      - _state: notifications_live.added
+              - _var:
+                  key: on_message
+                  default: []
+    else: []
+actions:
+  _build.if:
+    test:
+      _module.var: live
+    then:
+      - id: __subscribe_notifications_live
+        type: Subscribe
+        skip:
+          _eq:
+            - _user: id
+            - null
+        params:
+          _module.websocketId: notifications-live
+    else: []

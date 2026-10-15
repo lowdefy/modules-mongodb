@@ -1,18 +1,18 @@
+# filter.status: unread (default) | all | read.
 $match:
-  _object.assign:
-    - _if:
+  _if:
+    test:
+      _eq:
+        - _payload: filter.status
+        - read
+    then:
+      read: true
+    else:
+      _if:
         test:
           _eq:
-            - _payload: filter.type
-            - Unread
-        then:
+            - _payload: filter.status
+            - all
+        then: {}
+        else:
           read: false
-        else: {}
-    - _if:
-        test:
-          _eq:
-            - _payload: filter.type
-            - Read
-        then:
-          read: true
-        else: {}

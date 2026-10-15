@@ -1,0 +1,24 @@
+# Take a toast off the stack and mark its notification read. Runs inside the
+# toast's list item, so `$` is the toast.
+- id: set_popup_id
+  type: SetState
+  params:
+    popup_id:
+      _state: popup_notifications.$._id
+- id: remove_popup
+  type: SetState
+  params:
+    popup_notifications:
+      _js:
+        args:
+          stack:
+            _if_none:
+              - _state: popup_notifications
+              - []
+          id:
+            _state: popup_id
+        fn: |
+          return args.stack.filter((p) => p._id !== args.id);
+- id: set_popup_read
+  type: Request
+  params: set_popup_read

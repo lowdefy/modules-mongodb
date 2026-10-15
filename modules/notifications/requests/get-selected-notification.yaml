@@ -4,7 +4,7 @@ connectionId:
   _module.connectionId: notifications-collection
 payload:
   _id:
-    _state: selected_id
+    _state: open_id
   app_name:
     _build.app: slug
 properties:

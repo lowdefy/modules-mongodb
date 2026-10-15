@@ -1,84 +1,366 @@
-/* Inbox list rows. Every colour, radius and shadow comes from the app's Ant
-   Design tokens, so the list follows each consuming app's theme (and its dark
-   mode) without per-app overrides. The row's selected/unselected border and
-   background are inline on the block (operator-driven), the rest lives here. */
+/* Notifications inbox: header, rail | list | reading pane. Every colour, radius
+   and shadow is an Ant Design token, so the page follows each app's theme and
+   dark mode. The page is full-bleed: the layout publishes the height left
+   under its header as --layout-content-height, and the three regions fill it,
+   each scrolling on its own. Below md the rail gives way to a View selector
+   and the list and pane take turns. */
 
-.notification-item {
-  padding: 12px 14px;
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--ant-border-radius-lg, 8px);
-  background: var(--ant-color-bg-container);
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    background-color 0.15s ease;
+.nx-inbox {
+  --nx-panel-height: calc(var(--layout-content-height, 100dvh) - 120px);
+  --notifications-list-height: calc(var(--nx-panel-height) - 126px);
+  padding: 24px 32px;
 }
 
-.notification-item:hover {
-  border-color: var(--ant-color-primary-border-hover, var(--ant-color-primary));
-  box-shadow: var(--ant-box-shadow-tertiary);
-}
-
-.notification-item__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-}
-
-.notification-item__title {
-  font-size: var(--ant-font-size, 14px);
-  line-height: 22px;
-  font-weight: 500;
-  color: var(--ant-color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.notification-item__title--unread {
+.nx-title h1 {
+  margin: 0;
+  font-size: var(--ant-font-size-heading-4, 20px);
+  line-height: 28px;
   font-weight: 600;
+  color: var(--ant-color-text);
 }
 
-.notification-item__desc {
-  margin-top: 2px;
-  font-size: var(--ant-font-size, 14px);
-  line-height: 20px;
-  color: var(--ant-color-text-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.notification-item__meta {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  white-space: nowrap;
-  font-size: var(--ant-font-size-sm, 12px);
-  line-height: 22px;
+.nx-title p {
+  margin: 0;
   color: var(--ant-color-text-tertiary);
 }
 
-.notification-item__dot {
+.nx-title strong {
+  color: var(--ant-color-text-secondary);
+  font-weight: 500;
+}
+
+.nx-panel {
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg, 8px);
+  overflow: hidden;
+}
+
+.nx-region {
+  height: var(--nx-panel-height);
+  min-width: 0;
+}
+
+.nx-rail {
+  overflow: auto;
+  padding: 16px 8px;
+  background: var(--ant-color-fill-quaternary);
+  border-right: 1px solid var(--ant-color-border-secondary);
+}
+
+.nx-list-column {
+  border-right: 1px solid var(--ant-color-border-secondary);
+  overflow: hidden;
+}
+
+.nx-pane {
+  overflow: auto;
+}
+
+/* ── rail ─────────────────────────────────────────────────────────────── */
+
+.nx-rail-section + .nx-rail-section {
+  margin-top: 16px;
+}
+
+.nx-rail-section h6 {
+  margin: 0 0 4px;
+  padding: 0 12px;
+  font-size: var(--ant-font-size-sm, 12px);
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ant-color-text-tertiary);
+}
+
+.nx-rail-item {
+  height: 36px;
+  padding: 0 12px;
+  margin-bottom: 2px;
+  border-radius: var(--ant-border-radius, 6px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+}
+
+.nx-rail-item:hover {
+  background: var(--ant-color-fill-tertiary);
+  color: var(--ant-color-text);
+}
+
+.nx-rail-item--on,
+.nx-rail-item--on:hover {
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-primary);
+  font-weight: 500;
+}
+
+.nx-rail-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nx-rail-count {
+  font-size: var(--ant-font-size-sm, 12px);
+  font-variant-numeric: tabular-nums;
+  color: var(--ant-color-text-tertiary);
+}
+
+.nx-rail-item--on .nx-rail-count {
+  color: var(--ant-color-primary);
+}
+
+.nx-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+}
+
+/* ── list column ──────────────────────────────────────────────────────── */
+
+.nx-toolbar {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.nx-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--ant-font-size-sm, 12px);
+  line-height: 20px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.nx-list .ant-card {
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-left: 2px solid transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.nx-list .ant-card:hover {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.nx-list .ant-card .ant-card-body {
+  padding: 12px 16px 12px 14px;
+}
+
+.nx-row {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  column-gap: 12px;
+}
+
+.nx-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+}
+
+.nx-icon--lg {
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+}
+
+.nx-main {
+  min-width: 0;
+}
+
+.nx-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.nx-row-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ant-color-text-secondary);
+}
+
+.nx-time {
+  flex: 0 0 auto;
+  font-size: var(--ant-font-size-sm, 12px);
+  color: var(--ant-color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.nx-preview {
+  margin-top: 2px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.nx-foot {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nx-dot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: var(--ant-color-primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--ant-color-primary) 20%, transparent);
 }
 
-.notification-chip {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 0 8px;
+.nx-row--unread .nx-row-title {
+  color: var(--ant-color-text);
+  font-weight: 600;
+}
+
+.nx-row--unread .nx-preview {
+  color: var(--ant-color-text-secondary);
+}
+
+.nx-empty {
+  padding: 64px 40px;
+  text-align: center;
+  color: var(--ant-color-text-tertiary);
+}
+
+.nx-empty strong {
+  display: block;
+  font-size: var(--ant-font-size-lg, 16px);
+  font-weight: 600;
+  color: var(--ant-color-text);
+}
+
+.nx-ring {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
   border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--ant-color-text-quaternary);
+  background: var(--ant-color-fill-tertiary);
+}
+
+.nx-ring--success {
+  color: var(--ant-color-success);
+  background: var(--ant-color-success-bg);
+}
+
+/* ── reading pane ─────────────────────────────────────────────────────── */
+
+.nx-pane-header {
+  padding: 24px 32px 16px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.nx-pane-head {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  column-gap: 16px;
+  align-items: start;
+}
+
+.nx-pane-head h2 {
+  margin: 0;
+  font-size: var(--ant-font-size-lg, 16px);
+  line-height: 24px;
+  font-weight: 600;
+  color: var(--ant-color-text);
+}
+
+.nx-pane-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   font-size: var(--ant-font-size-sm, 12px);
   line-height: 20px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.nx-pane-body {
+  padding: 24px 32px;
+  max-width: 760px;
+}
+
+.nx-placeholder {
+  height: 100%;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.nx-placeholder strong {
+  color: var(--ant-color-text-secondary);
   font-weight: 500;
-  white-space: nowrap;
+}
+
+.nx-placeholder span {
+  font-size: var(--ant-font-size-sm, 12px);
+}
+
+/* ── narrow screens ───────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .nx-inbox {
+    --notifications-list-height: 70dvh;
+    padding: 16px;
+  }
+  .nx-region {
+    height: auto;
+  }
+  .nx-list-column {
+    border-right: 0;
+  }
+  /* Lowdefy wraps each block in a "bl-" element named after it carrying its flex basis;
+     on a narrow screen the list and the pane each take the full width, one
+     at a time. */
+  #bl-rail_column {
+    display: none !important;
+  }
+  #bl-list_column,
+  #bl-reading_pane {
+    flex: 1 1 100% !important;
+  }
+  #bl-list_column:has(.nx-narrow-hidden),
+  #bl-reading_pane:has(.nx-narrow-hidden) {
+    display: none !important;
+  }
+  .nx-pane-header,
+  .nx-pane-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 }

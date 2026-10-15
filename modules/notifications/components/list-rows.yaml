@@ -1,0 +1,25 @@
+# The inbox list's rows from get_notifications: appearance resolved once for
+# the page, the time as an ISO string for <time data-time>, and the preview
+# (a legacy record's description).
+_js:
+  args:
+    records:
+      _ref:
+        path: components/notification-appearance.yaml
+        vars:
+          records:
+            _if_none:
+              - _request: get_notifications.0.notifications
+              - []
+  fn: |
+    return args.records.map((record) => {
+      const at = record.created && record.created.timestamp;
+      return {
+        _id: record._id,
+        title: record.title,
+        read: record.read === true,
+        preview: record.preview ?? record.description ?? null,
+        created_at: at ? new Date(at).toISOString() : null,
+        appearance: record.appearance,
+      };
+    });

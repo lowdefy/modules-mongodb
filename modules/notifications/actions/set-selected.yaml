@@ -1,20 +1,10 @@
+# The list's choice opens in the pane. The pane reads open_id, not the list's
+# own value: the list is an input, and an input that is not visible (an empty
+# list) has its value removed from state.
 _build.array.concat:
-  - - id: scroll_top
-      type: ScrollTo
-      params:
-        top: 0
-    - id: set_id
+  - - id: set_open_id
       type: SetState
       params:
-        selected_id:
-          _if_none:
-            - _var:
-                key: selected_id
-                default: null
-            - _url_query: _id
-    - id: get_selected_notification
-      type: Request
-      params: get_selected_notification
-    - id: update_selected_notification
-      type: Request
-      params: update_selected_notification
+        open_id:
+          _state: selected_id
+  - _ref: actions/open-notification.yaml

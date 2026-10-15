@@ -1,0 +1,33 @@
+# Unread and total counts per type for the inbox rail, over all of the
+# signed-in user's records in this app (no filter).
+id: get_notification_facets
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: notifications-collection
+payload:
+  app_name:
+    _build.app: slug
+properties:
+  pipeline:
+    - $match:
+        $or:
+          _ref: requests/match-recipient.yaml
+        created.app_name:
+          _payload: app_name
+    - $group:
+        _id:
+          $ifNull:
+            - $type
+            - $event_type
+        total:
+          $sum: 1
+        unread:
+          $sum:
+            $cond:
+              - $eq:
+                  - $read
+                  - false
+              - 1
+              - 0
+    - $sort:
+        _id: 1
