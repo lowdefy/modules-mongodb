@@ -1,0 +1,56 @@
+# The shown note (`note`, from get_note): version and date, headline, preview,
+# then the body with its embeds already rewritten to public URLs.
+id: note_card
+type: Card
+visible:
+  _ne:
+    - _state: note
+    - null
+properties:
+  theme:
+    bodyPadding: 32
+    borderRadiusLG: 12
+blocks:
+  - id: note_kicker
+    type: Span
+    class: text-xs font-semibold uppercase tracking-wider text-primary
+    properties:
+      content:
+        _string.concat:
+          - "Version "
+          - _state: note.version
+          - " · "
+          - _dayjs.format:
+              on:
+                _state: note.released_at
+              format: D MMMM YYYY
+  - id: note_title
+    type: Title
+    style:
+      marginTop: 8
+    properties:
+      level: 2
+      content:
+        _state: note.title
+  - id: note_preview
+    type: Paragraph
+    class:
+      .element: text-[15px]
+    properties:
+      type: secondary
+      content:
+        _state: note.preview
+  # The body is the team's own markdown from Pelican. Its videos need HTML,
+  # which DangerousMarkdown renders through DOMPurify.
+  - id: note_body
+    type: DangerousMarkdown
+    class:
+      .element: >-
+        text-[15px] leading-relaxed
+        [&_h2]:mt-6 [&_h2]:border-0 [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:uppercase [&_h2]:tracking-wider [&_h2]:text-[var(--ant-color-text-tertiary)]
+        [&_h3]:text-lg [&_h3]:font-semibold
+        [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg
+        [&_video]:w-full [&_video]:rounded-lg
+    properties:
+      content:
+        _state: note.body

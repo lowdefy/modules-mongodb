@@ -53,6 +53,9 @@ export default {
         "e2e-not-a-real-secret",
       LOWDEFY_SECRET_FILES_S3_BUCKET:
         process.env.LOWDEFY_SECRET_FILES_S3_BUCKET || "e2e-bucket",
+      // The release-notes spec intercepts this public bucket's object URLs.
+      LOWDEFY_SECRET_FILES_S3_BUCKET_PUB:
+        process.env.LOWDEFY_SECRET_FILES_S3_BUCKET_PUB || "e2e-bucket-pub",
       // The support module talks to a stub Pelican the support specs start on this port
       // (e2e/support/pelican-stub.js), never to a real one.
       SUPPORT_PELICAN_URL: "http://127.0.0.1:3102",

@@ -1,0 +1,24 @@
+# onInit: the person's notes, the note to show (the one urlQuery.note names,
+# else their newest) and their email choice.
+- id: fetch_page
+  type: Request
+  params:
+    - get_notes
+    - get_note
+    - get_email_preference
+- id: set_page
+  type: SetState
+  params:
+    notes:
+      _if_none:
+        - _request: get_notes
+        - []
+    note:
+      _if_none:
+        - _request: get_note.0
+        - null
+    # No preferences row means the person never turned emails off.
+    email_releases:
+      _ne:
+        - _request: get_email_preference.email
+        - false

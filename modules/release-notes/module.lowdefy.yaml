@@ -14,6 +14,8 @@ dependencies:
     description: >-
       The public files bucket (FILES_S3_BUCKET_PUB) a note's images and videos
       are copied into.
+  - id: events
+    description: The change stamp on each person's release email choice.
 
 vars:
   audiences:
@@ -102,3 +104,7 @@ menus:
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
+  - name: FILES_S3_BUCKET_PUB
+    description: >-
+      The public files bucket a note's images and videos are copied into. The
+      What's new page links them by their plain object URL.

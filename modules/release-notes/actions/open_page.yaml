@@ -1,0 +1,20 @@
+# onMount: marks the shown note opened, and scrolls to the email switch when
+# the email footer's link (urlQuery.section=email) opened the page.
+- id: open_note
+  type: Request
+  skip:
+    _eq:
+      - _state: note
+      - null
+  params: update_note_opened
+- id: scroll_to_email
+  type: ScrollTo
+  skip:
+    _ne:
+      - _url_query: section
+      - email
+  params:
+    blockId: email_card
+    options:
+      behavior: smooth
+      block: center

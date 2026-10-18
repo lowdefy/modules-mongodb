@@ -1,0 +1,23 @@
+# Writes the signed-in person's release note email choice to their own
+# preferences row (_id is their user id).
+id: set_email_preference
+type: MongoDBUpdateOne
+connectionId:
+  _module.connectionId: release-notes-preferences
+payload:
+  email:
+    _state: email_releases
+properties:
+  filter:
+    _id:
+      _user: id
+  update:
+    $set:
+      email:
+        _payload: email
+      updated:
+        _ref:
+          module: events
+          component: change_stamp
+  options:
+    upsert: true

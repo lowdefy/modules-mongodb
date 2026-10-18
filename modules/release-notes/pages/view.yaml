@@ -1,3 +1,6 @@
+# What's new: the notes announced to the signed-in person, newest first, beside
+# the one shown (urlQuery.note, else the newest), and their release email
+# switch at the foot. On a phone the list stacks above the note.
 _ref:
   module: layout
   component: page
@@ -5,14 +8,72 @@ _ref:
     id: view
     title: What's new
     hide_title: true
-    content_width: 900
+    content_width: 1100
+    requests:
+      - _ref: requests/get_notes.yaml
+      - _ref: requests/get_note.yaml
+      - _ref: requests/update_note_opened.yaml
+      - _ref: requests/get_email_preference.yaml
+      - _ref: requests/set_email_preference.yaml
+    events:
+      onInit:
+        _ref: actions/load_page.yaml
+      onMount:
+        _ref: actions/open_page.yaml
     blocks:
-      - id: release_notes_card
-        type: Card
-        style:
-          padding: 32px
+      - id: whats_new
+        type: Box
+        layout:
+          gap: 32
         blocks:
-          - id: release_notes_empty
-            type: Markdown
-            properties:
-              content: No release notes yet.
+          - id: notes_column
+            type: Box
+            class: min-w-0
+            layout:
+              span: 24
+              md:
+                span: 7
+              direction: column
+              gap: 4
+            blocks:
+              - id: notes_title
+                type: Title
+                style:
+                  margin: 0 0 8px 12px
+                properties:
+                  level: 4
+                  content: What's new
+              - id: notes
+                type: List
+                properties:
+                  direction: column
+                layout:
+                  gap: 4
+                blocks:
+                  - _ref: components/note_row.yaml
+          - id: note_column
+            type: Box
+            class: min-w-0
+            layout:
+              span: 24
+              md:
+                span: 17
+              direction: column
+              gap: 16
+            blocks:
+              - _ref: components/note_card.yaml
+              - id: notes_empty
+                type: Card
+                visible:
+                  _eq:
+                    - _state: note
+                    - null
+                blocks:
+                  - id: notes_empty_text
+                    type: Paragraph
+                    style:
+                      margin: 0
+                    properties:
+                      type: secondary
+                      content: No release notes yet.
+              - _ref: components/email_card.yaml
