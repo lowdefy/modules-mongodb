@@ -1,0 +1,134 @@
+# One note the signed-in person was announced: the one `note` names, or their
+# newest when `note` is null or names a note they were not announced. Its body
+# comes with each [[file:name]] embed rewritten to HTML: an image to its public
+# URL, a video to a player, any other file to a link, and a file that is not
+# copied yet, or not on the note, to a placeholder line. The public bucket is a
+# secret, so the URLs are built here on the server.
+id: get_note
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: release-notes-recipients
+payload:
+  note:
+    _if_none:
+      - _state: requested_note
+      - _url_query: note
+properties:
+  pipeline:
+    - $match:
+        user_id:
+          _user: id
+    - $lookup:
+        from: release-notes
+        localField: note_id
+        foreignField: _id
+        as: note
+    - $unwind: $note
+    - $addFields:
+        requested:
+          $eq:
+            - $note_id
+            - _payload: note
+    - $sort:
+        requested: -1
+        note.released_at: -1
+    - $limit: 1
+    - $project:
+        _id: $note._id
+        version: $note.version
+        title: $note.title
+        preview: $note.preview
+        released_at: $note.released_at
+        body:
+          $let:
+            vars:
+              origin:
+                _string.concat:
+                  - https://
+                  - _secret: FILES_S3_BUCKET_PUB
+                  - .s3.
+                  - _module.var: region
+                  - .amazonaws.com/
+              body:
+                $ifNull:
+                  - $note.body
+                  - ""
+              media:
+                $ifNull:
+                  - $note.media
+                  - []
+            in:
+              $reduce:
+                input:
+                  $regexFindAll:
+                    input: $$body
+                    regex: '\[\[file:([^\]]+)\]\]'
+                initialValue: $$body
+                in:
+                  $let:
+                    vars:
+                      name:
+                        $arrayElemAt:
+                          - $$this.captures
+                          - 0
+                      file:
+                        $first:
+                          $filter:
+                            input: $$media
+                            as: item
+                            cond:
+                              $eq:
+                                - $$item.name
+                                - $arrayElemAt:
+                                    - $$this.captures
+                                    - 0
+                    in:
+                      $replaceAll:
+                        input: $$value
+                        find: $$this.match
+                        replacement:
+                          $switch:
+                            branches:
+                              - case:
+                                  $ne:
+                                    - $$file.copied
+                                    - true
+                                then:
+                                  $concat:
+                                    - "*"
+                                    - $$name
+                                    - " is not available yet.*"
+                              - case:
+                                  $eq:
+                                    - $indexOfCP:
+                                        - $$file.content_type
+                                        - image/
+                                    - 0
+                                then:
+                                  $concat:
+                                    - '<img src="'
+                                    - $$origin
+                                    - $$file.key
+                                    - '" alt="'
+                                    - $$name
+                                    - '">'
+                              - case:
+                                  $eq:
+                                    - $indexOfCP:
+                                        - $$file.content_type
+                                        - video/
+                                    - 0
+                                then:
+                                  $concat:
+                                    - '<video controls preload="metadata" src="'
+                                    - $$origin
+                                    - $$file.key
+                                    - '"></video>'
+                            default:
+                              $concat:
+                                - '<a href="'
+                                - $$origin
+                                - $$file.key
+                                - '">'
+                                - $$name
+                                - "</a>"

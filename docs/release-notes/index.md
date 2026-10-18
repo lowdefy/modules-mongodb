@@ -18,6 +18,7 @@ Before anyone announces, Pelican asks the app who an announcement would reach: t
 | [layout](../layout/index.md)               | Page wrapper                                                 |
 | [notifications](../notifications/index.md) | The bell notification and email an announcement sends        |
 | [files](../files/index.md)                 | The public files bucket a note's images and videos copy into |
+| [events](../events/index.md)               | The change stamp on each person's release email choice       |
 
 The app also needs the [support](../support/index.md) module, wired to Pelican with its key, webhook secret and webhook address. Release events arrive on its webhook; this module has no secret or address of its own.
 
@@ -55,6 +56,15 @@ links:
     module: release-notes
     menu: default
 ```
+
+## What's new
+
+The module's `view` page lists the notes announced to the signed-in person, newest first, with a New mark until they open one. Beside the list it shows one note: version and date, headline, preview and body. On a phone the list stacks above the note.
+
+- **Which note**: `urlQuery.note`, a note's `_id` (`{repository}@{version}`). An unknown note, or one the person was not announced, shows their newest. The bell notification and the email link here with `{ pageId: release-notes/view, urlQuery: { note } }`.
+- **New**: showing a note sets `opened_at` on the person's own recipient row. Its mark clears once they move to another note or come back, in every organisation.
+- **Embeds**: each `[[file:name]]` in the body becomes the file's plain public URL (`https://{FILES_S3_BUCKET_PUB}.s3.{region}.amazonaws.com/{key}`), built on the server: an image shows inline, a video as a player and any other file as a link. A file not copied yet, or not on the note, shows a placeholder line rather than a broken image.
+- **Email me about new releases**: a switch at the foot that writes the person's `release-notes-preferences` row. `urlQuery.section=email` scrolls to it, for the email footer's link.
 
 ## Audiences
 

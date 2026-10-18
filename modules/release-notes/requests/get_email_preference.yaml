@@ -1,0 +1,10 @@
+# The signed-in person's release note email choice: their preferences row, or
+# none when they never changed it (email on).
+id: get_email_preference
+type: MongoDBFindOne
+connectionId:
+  _module.connectionId: release-notes-preferences
+properties:
+  query:
+    _id:
+      _user: id

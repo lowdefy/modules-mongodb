@@ -1,0 +1,34 @@
+# A note picked from the list: show it and mark it opened. The list reloads
+# first, so the note left behind loses its New mark and the one now shown
+# keeps it until the person moves on or comes back.
+- id: set_requested_note
+  type: SetState
+  params:
+    requested_note:
+      _state: notes.$._id
+- id: fetch_note
+  type: Request
+  params:
+    - get_notes
+    - get_note
+- id: set_note
+  type: SetState
+  params:
+    notes:
+      _if_none:
+        - _request: get_notes
+        - []
+    note:
+      _if_none:
+        - _request: get_note.0
+        - null
+- id: open_note
+  type: Request
+  params: update_note_opened
+- id: scroll_to_note
+  type: ScrollTo
+  params:
+    blockId: note_card
+    options:
+      behavior: smooth
+      block: nearest

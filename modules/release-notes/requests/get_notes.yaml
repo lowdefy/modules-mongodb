@@ -1,0 +1,30 @@
+# The notes announced to the signed-in person, newest first: one per recipient
+# row, which holds one per person per note. `new` is true until they open it.
+id: get_notes
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: release-notes-recipients
+properties:
+  pipeline:
+    - $match:
+        user_id:
+          _user: id
+    - $lookup:
+        from: release-notes
+        localField: note_id
+        foreignField: _id
+        as: note
+    - $unwind: $note
+    - $sort:
+        note.released_at: -1
+    - $project:
+        _id: $note._id
+        version: $note.version
+        title: $note.title
+        released_at: $note.released_at
+        new:
+          $eq:
+            - $ifNull:
+                - $opened_at
+                - null
+            - null
