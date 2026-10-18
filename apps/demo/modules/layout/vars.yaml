@@ -43,9 +43,14 @@ global_blocks:
       component: launcher
   - id: whats_new_launcher
     type: Button
+    # Hidden on What's new itself, where it would float over the note.
     visible:
-      _not:
-        _state: whats_new_dismissed
+      _and:
+        - _not:
+            _state: whats_new_dismissed
+        - _ne:
+            - _location: pageId
+            - release-notes/view
     style:
       position: fixed
       right: 24
