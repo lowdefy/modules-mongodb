@@ -1,0 +1,86 @@
+id: sweep
+type: InternalApi
+description: >-
+  Restarts delivery of any note whose chain stalled, since a detached call runs
+  once and is not retried. A note is stalled when no deliver call has worked on
+  it for 10 minutes and it has recipient rows not notified that were written
+  more than 10 minutes ago, or media not copied whose source links (refreshed
+  by each announcement, and lasting 7 days) were sent 10 minutes to 7 days
+  ago. Call it from an app endpoint with a schedules cron every 10 minutes.
+routine:
+  - id: stalled_notes
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: release-notes
+    properties:
+      pipeline:
+        - $match:
+            $expr:
+              $lt:
+                - $ifNull:
+                    - $delivering_at
+                    - $toDate: 0
+                - $subtract:
+                    - $$NOW
+                    - 600000
+        - $lookup:
+            from: release-notes-recipients
+            let:
+              note_id: $_id
+            pipeline:
+              - $match:
+                  $expr:
+                    $and:
+                      - $eq:
+                          - $note_id
+                          - $$note_id
+                      - $eq:
+                          - $notified
+                          - false
+                      - $lt:
+                          - $created
+                          - $subtract:
+                              - $$NOW
+                              - 600000
+              - $limit: 1
+              - $project:
+                  _id: 1
+            as: owed
+        - $match:
+            $or:
+              - owed.0:
+                  $exists: true
+              - media:
+                  $elemMatch:
+                    copied: false
+                $expr:
+                  $and:
+                    - $lt:
+                        - $updated.timestamp
+                        - $subtract:
+                            - $$NOW
+                            - 600000
+                    - $gte:
+                        - $updated.timestamp
+                        - $subtract:
+                            - $$NOW
+                            - 604800000
+        - $project:
+            _id: 1
+  - :for: note
+    :in:
+      _step: stalled_notes
+    :do:
+      - id: restart_delivery
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId: deliver
+          detached: true
+          payload:
+            note_id:
+              _item: note._id
+  - :return:
+      restarted:
+        _array.length:
+          _step: stalled_notes

@@ -1,0 +1,271 @@
+# release.announced: { event, at, delivery_id, release, audience, email }.
+# Quick database writes only, since Pelican's call times out after five
+# seconds; deliver copies the media and rings the bells, detached. Every step
+# is safe to repeat, since Pelican retries a failed delivery.
+#   1. Upserts the note, keyed {repository}@{version}. The first release
+#      announced for a version keeps its note; a later delivery only refreshes
+#      the source links of media not yet copied.
+#   2. Upserts a recipient row per person the audience reaches, kept as it is
+#      for a person who already has one.
+#   3. Calls deliver detached.
+#   4. Answers { notified, emailed, opted_out }, counted from the rows this
+#      delivery inserted.
+- :set_state:
+    selection:
+      _state: delivery.audience
+    release:
+      _state: delivery.release
+- :if:
+    _js: |
+      const release = state('release');
+      if (!release || typeof release !== 'object') return true;
+      if (typeof release.repository !== 'string' || release.repository === '') return true;
+      if (typeof release.version !== 'string' || release.version === '') return true;
+      const media = release.media;
+      if (media !== null && media !== undefined) {
+        if (!Array.isArray(media)) return true;
+        return media.some(
+          (file) =>
+          !file ||
+          typeof file.name !== 'string' ||
+          file.name === '' ||
+          typeof file.content_type !== 'string' ||
+          typeof file.url !== 'string',
+        );
+      }
+      return false;
+  :then:
+    - :reject: >-
+        release.announced names a release with its repository and version,
+        and each media file with a name, content_type and url.
+      :status: 400
+- _ref: api/parts/check-selection.yaml
+- _ref: api/parts/selection-match.yaml
+- :set_state:
+    note:
+      _js: |
+        const release = state('release');
+        const id = `${release.repository}@${release.version}`;
+        return {
+          _id: id,
+          release_id: release.id ?? null,
+          repository: release.repository,
+          version: release.version,
+          released_at: release.released_at ?? null,
+          title: release.title ?? null,
+          preview: release.preview ?? null,
+          body: release.body ?? null,
+          media: (release.media || []).map((file) => ({
+            name: file.name,
+            content_type: file.content_type,
+            key: `release-notes/${id}/${file.name}`,
+            source_url: file.url,
+            copied: false,
+          })),
+        };
+- id: upsert_note
+  type: MongoDBUpdateOne
+  connectionId:
+    _module.connectionId: release-notes
+  properties:
+    filter:
+      _id:
+        _state: note._id
+    options:
+      upsert: true
+    # A pipeline update: each field keeps its stored value, so only the
+    # first delivery for a version writes the note. Media not yet copied
+    # take this delivery's source link for the same name.
+    update:
+      - $set:
+          release_id:
+            $ifNull:
+              - $release_id
+              - $literal:
+                  _state: note.release_id
+          repository:
+            $ifNull:
+              - $repository
+              - $literal:
+                  _state: note.repository
+          version:
+            $ifNull:
+              - $version
+              - $literal:
+                  _state: note.version
+          released_at:
+            $ifNull:
+              - $released_at
+              - $literal:
+                  _state: note.released_at
+          title:
+            $ifNull:
+              - $title
+              - $literal:
+                  _state: note.title
+          preview:
+            $ifNull:
+              - $preview
+              - $literal:
+                  _state: note.preview
+          body:
+            $ifNull:
+              - $body
+              - $literal:
+                  _state: note.body
+          media:
+            $cond:
+              if:
+                $isArray: $media
+              then:
+                $map:
+                  input: $media
+                  as: stored
+                  in:
+                    $cond:
+                      if: $$stored.copied
+                      then: $$stored
+                      else:
+                        $mergeObjects:
+                          - $$stored
+                          - source_url:
+                              $ifNull:
+                                - $getField:
+                                    field: source_url
+                                    input:
+                                      $first:
+                                        $filter:
+                                          input:
+                                            $literal:
+                                              _state: note.media
+                                          as: delivered
+                                          cond:
+                                            $eq:
+                                              - $$delivered.name
+                                              - $$stored.name
+                                - $$stored.source_url
+              else:
+                $literal:
+                  _state: note.media
+          created:
+            $ifNull:
+              - $created
+              - $literal:
+                  _ref:
+                    module: events
+                    component: change_stamp
+          updated:
+            $literal:
+              _ref:
+                module: events
+                component: change_stamp
+- id: reached
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId: release-notes-members
+  properties:
+    pipeline:
+      _build.array.concat:
+        - _ref:
+            path: api/parts/match-members.yaml
+            vars:
+              match:
+                $and:
+                  - _state: organization_match
+                  - _state: audience_match
+        - - $lookup:
+              from: release-notes-preferences
+              localField: user_id
+              foreignField: _id
+              as: preference
+          - $project:
+              user_id: 1
+              organization_id: 1
+              email: 1
+              opted_out:
+                $eq:
+                  - $first: $preference.email
+                  - false
+- :set_state:
+    reached:
+      _step: reached
+    # Under pinned a recipient row records no organisation.
+    pinned:
+      _build.ne:
+        - _build.authConfig: organizations.policy
+        - tenant
+- :set_state:
+    recipient_writes:
+      _js: |
+        const note = state('note');
+        const email = state('delivery').email !== false;
+        const pinned = state('pinned');
+        return state('reached').map((person) => ({
+          updateOne: {
+            filter: { _id: `${note._id}:${person.user_id}` },
+            // A pipeline update: a row already there keeps every field.
+            update: [
+              {
+                $set: {
+                  note_id: { $ifNull: ['$note_id', { $literal: note._id }] },
+                  user_id: { $ifNull: ['$user_id', { $literal: person.user_id }] },
+                  organization_id: {
+                    $ifNull: ['$organization_id', { $literal: pinned ? null : person.organization_id }],
+                  },
+                  email: { $ifNull: ['$email', email] },
+                  notified: { $ifNull: ['$notified', false] },
+                  opened_at: { $ifNull: ['$opened_at', null] },
+                  created: { $ifNull: ['$created', '$$NOW'] },
+                },
+              },
+            ],
+            upsert: true,
+          },
+        }));
+    inserted: []
+- :if:
+    _gt:
+      - _array.length:
+          _state: recipient_writes
+      - 0
+  :then:
+    - id: write_recipients
+      type: MongoDBBulkWrite
+      connectionId:
+        _module.connectionId: release-notes-recipients
+      properties:
+        operations:
+          _state: recipient_writes
+        options:
+          ordered: false
+    # upsertedIds maps each inserted operation's index to its _id, so the
+    # people inserted are the reached rows at those indexes.
+    - :set_state:
+        upserted:
+          _if_none:
+            - _step: write_recipients.upsertedIds
+            - {}
+    - :set_state:
+        inserted:
+          _js: |
+            const reached = state('reached');
+            return Object.keys(state('upserted')).map((index) => reached[Number(index)]);
+- id: deliver
+  type: CallApi
+  properties:
+    endpointId:
+      _module.endpointId: deliver
+    detached: true
+    payload:
+      note_id:
+        _state: note._id
+- :return:
+    _js: |
+      const email = state('delivery').email !== false;
+      const inserted = state('inserted');
+      const hasAddress = (person) => typeof person.email === 'string' && person.email !== '';
+      return {
+        notified: inserted.length,
+        emailed: email ? inserted.filter((person) => !person.opted_out && hasAddress(person)).length : 0,
+        opted_out: inserted.filter((person) => person.opted_out).length,
+      };

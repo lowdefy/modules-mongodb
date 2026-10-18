@@ -196,7 +196,8 @@ connections:
           user:
             _user: true
 
-api: []
+api:
+  - _ref: api/release-notes-sweep.yaml
 
 agents:
   # The agent behind the ai-assistant module demo, as in apps/demo.

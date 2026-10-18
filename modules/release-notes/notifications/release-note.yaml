@@ -1,0 +1,28 @@
+# An announced release note, in the app's bell and by email: the headline,
+# the preview and a button to the note on What's new. The deliver endpoint
+# dispatches one per person per version, keyed on the note and the user.
+id: release-note
+type: NotificationEmail
+properties:
+  subject: "What's new: {{ title }}"
+  title: "{{ title }}"
+  message: "{{ preview }}"
+  preview: "{{ preview }}"
+  button:
+    label: Read the release note
+testData:
+  note_id: lowdefy/example-app@1.4.0
+  version: 1.4.0
+  title: Schedule jobs from the map
+  preview: Drag a job onto a technician's route to book it.
+  contact:
+    _id: U-TEST
+    user_id: U-TEST
+    email: jane@example.com
+    profile:
+      name: Jane Doe
+  links:
+    button:
+      pageId: release-notes/view
+      urlQuery:
+        note: lowdefy/example-app@1.4.0
