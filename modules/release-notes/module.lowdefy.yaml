@@ -9,15 +9,15 @@ dependencies:
   - id: layout
     description: Page layout wrapper
   - id: events
-    description: Change stamps on every write to a note.
+    description: >-
+      Change stamps on every write to a note and on each person's release
+      email choice.
   - id: notifications
     description: The bell notification and email each announcement sends.
   - id: files
     description: >-
       The public files bucket (FILES_S3_BUCKET_PUB) a note's images and videos
       are copied into.
-  - id: events
-    description: The change stamp on each person's release email choice.
 
 vars:
   audiences:

@@ -15,12 +15,12 @@ When the team announces, the module stores the note and who is owed it, copies t
 
 ## Dependencies
 
-| Module                                     | Why                                                          |
-| ------------------------------------------ | ------------------------------------------------------------ |
-| [layout](../layout/index.md)               | Page wrapper                                                 |
-| [notifications](../notifications/index.md) | The bell notification and email an announcement sends        |
-| [files](../files/index.md)                 | The public files bucket a note's images and videos copy into |
-| [events](../events/index.md)               | The change stamp on each person's release email choice       |
+| Module                                     | Why                                                              |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| [layout](../layout/index.md)               | Page wrapper                                                     |
+| [notifications](../notifications/index.md) | The bell notification and email an announcement sends            |
+| [files](../files/index.md)                 | The public files bucket a note's images and videos copy into     |
+| [events](../events/index.md)               | Change stamps on notes and on each person's release email choice |
 
 The app also needs the [support](../support/index.md) module, wired to Pelican with its key, webhook secret and webhook address. Release events arrive on its webhook; this module has no secret or address of its own.
 
