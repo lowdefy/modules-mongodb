@@ -58,7 +58,7 @@
         event: release_note_media_copy_failed
         note_id:
           _state: note_id
-        name:
+        file:
           _state: pending_media.name
         message: >-
           A release note's media file did not copy into the public files

@@ -15,14 +15,14 @@ routine:
     properties:
       pipeline:
         - $match:
-            $expr:
-              $lt:
-                - $ifNull:
+            $or:
+              - delivering_at: null
+              - $expr:
+                  $lt:
                     - $delivering_at
-                    - $toDate: 0
-                - $subtract:
-                    - $$NOW
-                    - 600000
+                    - $subtract:
+                        - $$NOW
+                        - 600000
         - $lookup:
             from: release-notes-recipients
             let:

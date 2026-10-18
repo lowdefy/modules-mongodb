@@ -140,6 +140,8 @@ To try it on a dev server, `apps/demo/scripts/release-audience-check.mjs` posts 
 
 A release without its repository and version, or a media file without a name, content type and url, answers 400.
 
+To try it on a server, `apps/demo/scripts/release-announced-check.mjs` posts signed announcements to the support webhook and checks the rows, the notifications and the sweep, under either policy.
+
 ## Delivering
 
 `deliver` runs in its own function call, does one bounded piece of work and calls itself, detached, while work remains:
