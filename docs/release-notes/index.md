@@ -144,11 +144,11 @@ To try it on a dev server, `apps/demo/scripts/release-audience-check.mjs` posts 
 
 `{ event, at, delivery_id, release, audience, email }`. `release` is `{ id, repository, version, released_at, title, preview, body, media: [{ name, content_type, url }] }`, each media `url` a presigned link; `audience` is a selection as above; `email: false` sends no email. The module does only quick database writes before it answers, then hands the rest to `deliver`, detached:
 
-1. Stores the note, keyed `{repository}@{version}`. The first release announced for a version keeps its note; a later delivery for the same version, from the same release or another Pelican space's, changes nothing but the source links of media not yet copied.
+1. Stores the note, keyed `{repository}@{version}`. The first release announced for a version keeps its note; a later delivery for the same version, from the same release or another Pelican space's, changes nothing but the source links and content types of media not yet copied.
 2. Writes a recipient row for every person the audience reaches, one per person per version. A person who already has one keeps it, so they are told about a version once.
 3. Answers `{ notified, emailed, opted_out }`, counted from the rows this delivery added: the people who will get a notice, those of them who will be emailed, and those who turned release emails off. A repeated delivery answers zeros.
 
-A release without its repository and version, or a media file without a name, content type and url, answers 400.
+A release without its repository and version, or a media file without a name, answers 400. A media file sent with no `url` or `content_type` is stored as not copied, so What's new shows its placeholder, and `deliver` leaves it until a later delivery for the version brings both.
 
 To try it on a server, `apps/demo/scripts/release-announced-check.mjs` posts signed announcements to the support webhook and checks the rows, the notifications and the sweep, under either policy.
 
@@ -159,7 +159,7 @@ To try it on a server, `apps/demo/scripts/release-announced-check.mjs` posts sig
 1. **Media.** Copies one file not yet copied from its source link into the public files bucket at `release-notes/{repository}@{version}/{name}`, and marks it copied. A file already in the bucket is not fetched again. A copy that fails is logged and left for the sweep.
 2. **Notices.** Takes up to 100 recipient rows not yet notified, all in one organisation, and dispatches the `release-note` notification to them through the notifications module. Under the tenant policy the dispatch is bound to that organisation, so the notice lands in its bell; a person in several organisations gets it in their earliest membership's. Each item's key is `release-note:{note id}:{user id}`, so a repeat never notifies twice. The email is left out when the announcement had `email: false` or the person turned release emails off. A person whose user is gone is skipped.
 
-A detached call runs once and is not retried. `sweep` restarts any note no `deliver` call has worked on for 10 minutes that still has recipient rows not notified, written more than 10 minutes ago, or media not copied whose source links are under 7 days old.
+A detached call runs once and is not retried. `sweep` restarts any note no `deliver` call has worked on for 10 minutes that still has recipient rows not notified, written more than 10 minutes ago, or media not copied, with a source link and content type, whose source links are under 7 days old.
 
 ## The notification
 

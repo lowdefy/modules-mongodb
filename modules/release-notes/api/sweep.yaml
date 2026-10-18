@@ -4,9 +4,9 @@ description: >-
   Restarts delivery of any note whose chain stalled, since a detached call runs
   once and is not retried. A note is stalled when no deliver call has worked on
   it for 10 minutes and it has recipient rows not notified that were written
-  more than 10 minutes ago, or media not copied whose source links (refreshed
-  by each announcement, and lasting 7 days) were sent 10 minutes to 7 days
-  ago. Call it from an app endpoint with a schedules cron every 10 minutes.
+  more than 10 minutes ago, or media not copied, with a source link and content
+  type, whose source links (refreshed by each announcement, and lasting 7
+  days) were sent 10 minutes to 7 days ago. Call it from an app endpoint with a schedules cron every 10 minutes.
 routine:
   - id: stalled_notes
     type: MongoDBAggregation
@@ -53,6 +53,10 @@ routine:
               - media:
                   $elemMatch:
                     copied: false
+                    source_url:
+                      $type: string
+                    content_type:
+                      $type: string
                 $expr:
                   $and:
                     - $lt:

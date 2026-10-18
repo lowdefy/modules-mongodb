@@ -46,13 +46,19 @@ routine:
   - :set_state:
       note:
         _step: stored_note
+  # A file with no source link or content type cannot be fetched or checked,
+  # so it waits for a delivery that brings both.
   - :set_state:
       pending_media:
         _js: |
           const failed = state('failed');
           return (
             (state('note').media || []).find(
-              (file) => file.copied !== true && !failed.includes(file.name),
+              (file) =>
+                file.copied !== true &&
+                typeof file.source_url === 'string' &&
+                typeof file.content_type === 'string' &&
+                !failed.includes(file.name),
             ) ?? null
           );
   - :if:

@@ -4,7 +4,9 @@
 # is safe to repeat, since Pelican retries a failed delivery.
 #   1. Upserts the note, keyed {repository}@{version}. The first release
 #      announced for a version keeps its note; a later delivery only refreshes
-#      the source links of media not yet copied.
+#      the source links and content types of media not yet copied. A file
+#      sent with no url or content type is stored as not copied, and deliver
+#      leaves it until a delivery brings both.
 #   2. Upserts a recipient row per person the audience reaches, kept as it is
 #      for a person who already has one.
 #   3. Calls deliver detached.
@@ -24,20 +26,13 @@
       const media = release.media;
       if (media !== null && media !== undefined) {
         if (!Array.isArray(media)) return true;
-        return media.some(
-          (file) =>
-          !file ||
-          typeof file.name !== 'string' ||
-          file.name === '' ||
-          typeof file.content_type !== 'string' ||
-          typeof file.url !== 'string',
-        );
+        return media.some((file) => !file || typeof file.name !== 'string' || file.name === '');
       }
       return false;
   :then:
     - :reject: >-
         release.announced names a release with its repository and version,
-        and each media file with a name, content_type and url.
+        and each media file with a name.
       :status: 400
 - _ref: api/parts/check-selection.yaml
 - _ref: api/parts/selection-match.yaml
@@ -57,9 +52,9 @@
           body: release.body ?? null,
           media: (release.media || []).map((file) => ({
             name: file.name,
-            content_type: file.content_type,
+            content_type: typeof file.content_type === 'string' ? file.content_type : null,
             key: `release-notes/${id}/${file.name}`,
-            source_url: file.url,
+            source_url: typeof file.url === 'string' ? file.url : null,
             copied: false,
           })),
         };
@@ -75,7 +70,8 @@
       upsert: true
     # A pipeline update: each field keeps its stored value, so only the
     # first delivery for a version writes the note. Media not yet copied
-    # take this delivery's source link for the same name.
+    # take this delivery's source link and content type for the same name,
+    # where it sends them.
     update:
       - $set:
           release_id:
@@ -126,24 +122,30 @@
                       if: $$stored.copied
                       then: $$stored
                       else:
-                        $mergeObjects:
-                          - $$stored
-                          - source_url:
-                              $ifNull:
-                                - $getField:
-                                    field: source_url
-                                    input:
-                                      $first:
-                                        $filter:
-                                          input:
-                                            $literal:
-                                              _state: note.media
-                                          as: delivered
-                                          cond:
-                                            $eq:
-                                              - $$delivered.name
-                                              - $$stored.name
-                                - $$stored.source_url
+                        $let:
+                          vars:
+                            delivered:
+                              $first:
+                                $filter:
+                                  input:
+                                    $literal:
+                                      _state: note.media
+                                  as: file
+                                  cond:
+                                    $eq:
+                                      - $$file.name
+                                      - $$stored.name
+                          in:
+                            $mergeObjects:
+                              - $$stored
+                              - source_url:
+                                  $ifNull:
+                                    - $$delivered.source_url
+                                    - $$stored.source_url
+                                content_type:
+                                  $ifNull:
+                                    - $$delivered.content_type
+                                    - $$stored.content_type
               else:
                 $literal:
                   _state: note.media

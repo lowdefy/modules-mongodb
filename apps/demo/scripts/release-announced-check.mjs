@@ -2,7 +2,7 @@
 // checks what the release-notes module stores and delivers: the answer and its time,
 // the note and recipient rows, the release-note notifications, a repeat delivery, a
 // second release of the same version, the email switches, a stalled chain the sweep
-// finishes, and a media file whose copy fails. Runs against apps/demo (policy pinned)
+// finishes, a media file whose copy fails, and media sent with no url or content type. Runs against apps/demo (policy pinned)
 // or apps/tenant-demo (policy tenant), served with `lowdefy dev` or `lowdefy start`.
 //
 //   node scripts/release-announced-check.mjs <app url> <mongodb uri> <webhook secret> <cron secret> <pinned|tenant>
@@ -498,6 +498,95 @@ try {
   ) {
     check("the sweep retries a media copy still owed", true);
   }
+
+  // 7. Media Pelican cannot link (no url) or type (no content_type) is stored as not
+  // copied and skipped, and the announcement still goes. A later delivery that
+  // brings both refreshes them.
+  const unlinked = await announce({
+    version: "1.4.0",
+    audience: {
+      audiences: ["team-alpha"],
+      organizations: { mode: "only", ids: [O3] },
+    },
+    extra: {
+      media: [
+        {
+          name: "a.png",
+          content_type: null,
+          url: "https://127.0.0.1/a.png",
+        },
+        { name: "b.mp4", content_type: "video/mp4", url: null },
+      ],
+    },
+  });
+  check(
+    "media with no url or content type answers 2xx with counts",
+    unlinked.status === 200 && unlinked.body?.notified > 0,
+    unlinked,
+  );
+  await waitFor("its notices go", async () => {
+    const found = await notices("1.4.0");
+    return (
+      (found.length === unlinked.body?.notified && found.length > 0) || {
+        notices: found.length,
+      }
+    );
+  });
+  const unlinkedNote = await notes.findOne({ _id: noteId("1.4.0") });
+  const fileNamed = (found, name) =>
+    found?.media?.find((file) => file.name === name);
+  check(
+    "each such file is stored as not copied",
+    fileNamed(unlinkedNote, "a.png")?.content_type === null &&
+      fileNamed(unlinkedNote, "a.png")?.copied === false &&
+      fileNamed(unlinkedNote, "b.mp4")?.source_url === null &&
+      fileNamed(unlinkedNote, "b.mp4")?.copied === false,
+    unlinkedNote?.media,
+  );
+  // The sweep leaves a note whose only media owed cannot be fetched.
+  await notes.updateOne(
+    { _id: noteId("1.4.0") },
+    { $set: { "updated.timestamp": old, delivering_at: old } },
+  );
+  check("the sweep answers a third time", (await sweep()) === 202);
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  const unswept = await notes.findOne({ _id: noteId("1.4.0") });
+  check(
+    "and leaves media with no url or content type alone",
+    unswept?.delivering_at?.getTime() === old.getTime(),
+    { delivering_at: unswept?.delivering_at },
+  );
+  const linked = await announce({
+    version: "1.4.0",
+    audience: {
+      audiences: ["team-alpha"],
+      organizations: { mode: "only", ids: [O3] },
+    },
+    extra: {
+      media: [
+        {
+          name: "a.png",
+          content_type: "image/png",
+          url: "https://127.0.0.1/a-later.png",
+        },
+        {
+          name: "b.mp4",
+          content_type: "video/mp4",
+          url: "https://127.0.0.1/b.mp4",
+        },
+      ],
+    },
+  });
+  const relinked = await notes.findOne({ _id: noteId("1.4.0") });
+  check(
+    "a later delivery fills in the url and content type",
+    linked.status === 200 &&
+      fileNamed(relinked, "a.png")?.content_type === "image/png" &&
+      fileNamed(relinked, "a.png")?.source_url ===
+        "https://127.0.0.1/a-later.png" &&
+      fileNamed(relinked, "b.mp4")?.source_url === "https://127.0.0.1/b.mp4",
+    relinked?.media,
+  );
 
   const bad = await deliver({
     event: "release.announced",
