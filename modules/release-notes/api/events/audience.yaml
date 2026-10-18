@@ -1,0 +1,174 @@
+# release.audience: live counts for Pelican's announce form, for the selection
+# it sends. Answers { version, audiences, organizations, totals }:
+#   version: the app's app_version, passed in by the support webhook.
+#   audiences: each declared audience counted alone over the selection's
+#     organisations, as { id, label, count }.
+#   organizations: under tenant, every organisation the selection's audiences
+#     reach, as { id, name, count }, by name; [] under pinned.
+#   totals: for the whole selection, { app, email, opted_out }: people reached
+#     in the app, people who would be emailed (have an address and have not
+#     turned email off), and people who turned email off.
+# A person counts once in each figure, whatever audiences and organisations
+# they are in.
+_build.array.concat:
+  - - :set_state:
+        selection:
+          _state: delivery.selection
+    - _ref: api/parts/check-selection.yaml
+    - _ref: api/parts/selection-match.yaml
+    - id: totals
+      type: MongoDBAggregation
+      connectionId:
+        _module.connectionId: release-notes-members
+      properties:
+        pipeline:
+          _build.array.concat:
+            - _ref:
+                path: api/parts/match-members.yaml
+                vars:
+                  match:
+                    $and:
+                      - _state: organization_match
+                      - _state: audience_match
+            - - $lookup:
+                  from: release-notes-preferences
+                  localField: user_id
+                  foreignField: _id
+                  as: preference
+              - $addFields:
+                  opted_out:
+                    $eq:
+                      - $first: "$preference.email"
+                      - false
+              - $group:
+                  _id: null
+                  app:
+                    $sum: 1
+                  opted_out:
+                    $sum:
+                      $cond:
+                        - "$opted_out"
+                        - 1
+                        - 0
+                  email:
+                    $sum:
+                      $cond:
+                        - $and:
+                            - $not:
+                                - "$opted_out"
+                            - $gt:
+                                - $strLenCP:
+                                    $ifNull:
+                                      - "$email"
+                                      - ""
+                                - 0
+                        - 1
+                        - 0
+    - :set_state:
+        audience_counts: []
+    - :for: audience
+      :in:
+        _state: declared_audiences
+      :do:
+        - id: audience_count
+          type: MongoDBAggregation
+          connectionId:
+            _module.connectionId: release-notes-members
+          properties:
+            pipeline:
+              _build.array.concat:
+                - _ref:
+                    path: api/parts/match-members.yaml
+                    vars:
+                      match:
+                        $and:
+                          - _state: organization_match
+                          - _item: audience.query
+                - - $count: count
+        - :set_state:
+            audience_counts:
+              _array.concat:
+                - _state: audience_counts
+                - - id:
+                      _item: audience.id
+                    label:
+                      _item: audience.label
+                    count:
+                      _if_none:
+                        - _step: audience_count.$.0.count
+                        - 0
+  - _build.if:
+      test:
+        _build.eq:
+          - _build.authConfig: organizations.policy
+          - tenant
+      then:
+        - id: organization_counts
+          type: MongoDBAggregation
+          connectionId:
+            _module.connectionId: release-notes-members
+          properties:
+            pipeline:
+              - $match:
+                  _state: audience_match
+              - $group:
+                  _id: "$user_id"
+                  organization_ids:
+                    $addToSet: "$organization_id"
+              - $lookup:
+                  from: users
+                  localField: _id
+                  foreignField: _id
+                  as: user
+                  pipeline:
+                    - $project:
+                        _id: 1
+              - $unwind: "$user"
+              - $unwind: "$organization_ids"
+              - $group:
+                  _id: "$organization_ids"
+                  count:
+                    $sum: 1
+              - $lookup:
+                  from: user-organizations
+                  localField: _id
+                  foreignField: _id
+                  as: organization
+                  pipeline:
+                    - $project:
+                        name: 1
+              - $unwind: "$organization"
+              - $project:
+                  _id: 0
+                  id: "$_id"
+                  name: "$organization.name"
+                  count: 1
+              - $sort:
+                  name: 1
+                  id: 1
+        - :set_state:
+            organization_counts:
+              _step: organization_counts
+      else:
+        - :set_state:
+            organization_counts: []
+  - - :return:
+        version:
+          _payload: app_version
+        audiences:
+          _state: audience_counts
+        organizations:
+          _state: organization_counts
+        totals:
+          app:
+            _if_none:
+              - _step: totals.0.app
+              - 0
+          email:
+            _if_none:
+              - _step: totals.0.email
+              - 0
+          opted_out:
+            _if_none:
+              - _step: totals.0.opted_out
+              - 0

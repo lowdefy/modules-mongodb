@@ -1,25 +1,104 @@
 name: Release Notes
 version: 0.44.1
-description: Display release notes from CHANGELOG.md
+description: >-
+  Release notes the team announces from Pelican: the app's What's new page,
+  and the counts Pelican shows before anyone announces. Pelican's release events
+  reach the module through the support module's signed webhook.
 
 dependencies:
   - id: layout
     description: Page layout wrapper
+  - id: notifications
+    description: The bell notification and email each announcement sends.
+  - id: files
+    description: >-
+      The public files bucket (FILES_S3_BUCKET_PUB) a note's images and videos
+      are copied into.
 
 vars:
-  content:
+  audiences:
+    type: array
+    default: []
+    description: >-
+      The groups of the app's members Pelican can announce to, besides
+      everyone, which is always offered. Each is { id, label, query }: query is
+      a MongoDB filter over the person's member row in user-members (app_roles,
+      attributes).
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The audience's id, which Pelican sends back in a selection.
+        label:
+          type: string
+          description: The name Pelican shows for the audience.
+        query:
+          type: object
+          description: >-
+            A MongoDB filter over a user-members row, such as
+            { app_roles: dispatcher }.
+  email_template:
     type: string
-    description: Markdown content to render (typically loaded from CHANGELOG.md via _ref)
+    default: null
+    description: >-
+      A notifications template id in the app's own config for the release note
+      email. Null uses the module's release-note template.
+  region:
+    type: string
+    required: true
+    description: >-
+      The AWS region of the public files bucket, for the URLs of a note's
+      images and videos.
 
 exports:
   pages:
     - id: view
-      description: Release notes page
+      description: What's new
   menus:
     - id: default
+  connections:
+    - id: release-notes
+      description: >-
+        The notes announced to the app (collection release-notes), one per
+        {repository}@{version}, outside the tenant wall
+    - id: release-notes-recipients
+      description: >-
+        Who each note was announced to (collection release-notes-recipients),
+        one row per person per note, outside the tenant wall
+    - id: release-notes-preferences
+      description: >-
+        Each person's release note email choice (collection
+        release-notes-preferences), one row per user, outside the tenant wall
+    - id: release-notes-members
+      description: Read-only view of the auth engine's user-members
+    - id: release-notes-users
+      description: Read-only view of the auth engine's users
+    - id: release-notes-organizations
+      description: Read-only view of the auth engine's user-organizations
+  api:
+    - id: receive
+      description: >-
+        Internal: the release events the support webhook hands on, named in the
+        support module's release_notes_endpoint var
+
+connections:
+  - _ref: connections/release-notes.yaml
+  - _ref: connections/release-notes-recipients.yaml
+  - _ref: connections/release-notes-preferences.yaml
+  - _ref: connections/release-notes-members.yaml
+  - _ref: connections/release-notes-users.yaml
+  - _ref: connections/release-notes-organizations.yaml
+
+api:
+  - _ref: api/receive.yaml
 
 pages:
   - _ref: pages/view.yaml
 
 menus:
   - _ref: menus.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI

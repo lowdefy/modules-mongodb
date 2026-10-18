@@ -131,6 +131,12 @@ auth:
     public:
       - "404"
       - router
+  # Listing public endpoints makes every unlisted one need a session. The one
+  # public endpoint is Pelican's support webhook: it has no session, its verify
+  # gate checks the signature, and Lowdefy requires a webhook listed here.
+  api:
+    public:
+      - support/webhook
 
 modules:
   _ref: modules.yaml

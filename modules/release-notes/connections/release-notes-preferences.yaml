@@ -1,0 +1,18 @@
+# Each person's choice about release note emails, one row per user (_id is the
+# user id). The choice holds across organisations, so the connection stands
+# outside the tenant wall, and every read and write filters by user_id.
+id: release-notes-preferences
+type: MongoDBCollection
+tenant: shared # one row per person, across organisations
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: release-notes-preferences
+  # A shared connection's change-log records carry no organization_id, so they
+  # go to log-changes-system rather than the walled log-changes.
+  changeLog:
+    collection: log-changes-system
+    meta:
+      user:
+        _user: true
+  write: true

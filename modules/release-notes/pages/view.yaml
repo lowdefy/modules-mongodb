@@ -3,7 +3,7 @@ _ref:
   component: page
   vars:
     id: view
-    title: Release Notes
+    title: What's new
     hide_title: true
     content_width: 900
     blocks:
@@ -12,18 +12,7 @@ _ref:
         style:
           padding: 32px
         blocks:
-          - id: release_notes_markdown
+          - id: release_notes_empty
             type: Markdown
             properties:
-              content:
-                _if:
-                  test:
-                    _eq:
-                      - _string.trim:
-                          _if_none:
-                            - _module.var: content
-                            - ""
-                      - ""
-                  then: "No release notes available yet."
-                  else:
-                    _module.var: content
+              content: No release notes yet.

@@ -1,0 +1,11 @@
+# The auth engine's users, read for the name and email of the people an
+# announcement reaches. Read-only, and read only by the user ids of matched
+# member rows.
+id: release-notes-users
+type: MongoDBCollection
+tenant: shared # a user is one person across organisations
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: users
+  write: false

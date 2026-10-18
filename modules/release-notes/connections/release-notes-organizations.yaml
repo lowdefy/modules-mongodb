@@ -1,0 +1,11 @@
+# The auth engine's organisations, read for the names of the organisations an
+# announcement can reach. Read-only, and read only by the organisation ids of
+# matched member rows.
+id: release-notes-organizations
+type: MongoDBCollection
+tenant: shared # engine-owned rows carry no organization field
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-organizations
+  write: false

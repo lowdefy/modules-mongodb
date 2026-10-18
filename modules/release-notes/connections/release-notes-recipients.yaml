@@ -1,0 +1,19 @@
+# Who a note was announced to, one row per person per note. A person hears
+# about a version once whichever organisations they belong to, so the
+# connection stands outside the tenant wall, and every read and write filters
+# by user_id or the note key.
+id: release-notes-recipients
+type: MongoDBCollection
+tenant: shared # one row per person per note, across organisations
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: release-notes-recipients
+  # A shared connection's change-log records carry no organization_id, so they
+  # go to log-changes-system rather than the walled log-changes.
+  changeLog:
+    collection: log-changes-system
+    meta:
+      user:
+        _user: true
+  write: true

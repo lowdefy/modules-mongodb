@@ -1,0 +1,37 @@
+# Aggregation stages on release-notes-members (user-members) giving the people
+# a member-row filter reaches, one per user: { user_id, organization_id, name,
+# email }. organization_id is the person's earliest membership among the
+# matched rows, so it holds when they join another organisation later. A
+# member row whose user is gone reaches nobody. users is read only by the
+# matched rows' user ids.
+#
+# Vars:
+#   match: the $match on member rows, usually
+#     { $and: [organization_match, audience_match] } from
+#     api/parts/selection-match.yaml.
+# Append $count, $group or other stages with _build.array.concat.
+- $match:
+    _var: match
+- $sort:
+    created_at: 1
+    _id: 1
+- $group:
+    _id: "$user_id"
+    organization_id:
+      $first: "$organization_id"
+- $lookup:
+    from: users
+    localField: _id
+    foreignField: _id
+    as: user
+    pipeline:
+      - $project:
+          name: 1
+          email: 1
+- $unwind: "$user"
+- $project:
+    _id: 0
+    user_id: "$_id"
+    organization_id: 1
+    name: "$user.name"
+    email: "$user.email"
