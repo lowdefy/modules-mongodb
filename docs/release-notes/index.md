@@ -11,6 +11,8 @@ Release notes the team writes and announces from [Pelican](https://pelican.lowde
 
 Before anyone announces, Pelican asks the app who an announcement would reach: the module answers live counts for each audience the app declares, each organisation, and the whole selection, with the version the app runs.
 
+When the team announces, the module stores the note and who is owed it, copies the note's images and videos into the public files bucket, and sends each person one `release-note` notification per version: in the bell, and by email unless the announcement or the person turned email off.
+
 ## Dependencies
 
 | Module                                     | Why                                                          |
@@ -48,6 +50,27 @@ The app also needs the [support](../support/index.md) module, wired to Pelican w
 - **The support module's `release_notes_endpoint`** names this module's receiver by its full endpoint id: `{entry id}/receive`. With it null, the support webhook answers every release event 404, "This app does not take release notes", which Pelican shows on the announce form.
 - **The support module's `app_version`** is the version Pelican compares with the release it announces, so it can warn while a deploy is still running. Set it from the app's build, such as `_build.env: APP_VERSION`.
 - **The files module's public bucket**, `FILES_S3_BUCKET_PUB`, and its region in `region`.
+- **`CRON_SECRET`** in the app's environment. Delivery runs as a chain of detached endpoint calls, which Lowdefy refuses without it.
+- **A scheduled call to `release-notes/sweep`** every 10 minutes, from a small app endpoint with a `schedules:` cron, registered in the app's `api:` section:
+
+```yaml
+# api/release-notes-sweep.yaml
+id: release-notes-sweep
+type: InternalApi
+schedules:
+  - cron: "*/10 * * * *"
+routine:
+  - id: sweep
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: sweep
+          module: release-notes
+      payload: {}
+```
+
+- **The notifications module's unique index on `key`** (see its docs). It is what stops a person getting a second notice for a version.
 - **The What's new link**, from the module's `default` menu:
 
 ```yaml
@@ -117,6 +140,31 @@ A bad selection answers 400 naming the field: an audience id the app does not de
 
 To try it on a dev server, `apps/demo/scripts/release-audience-check.mjs` posts signed deliveries to the support webhook and checks the counts, under either policy.
 
+### `release.announced`
+
+`{ event, at, delivery_id, release, audience, email }`. `release` is `{ id, repository, version, released_at, title, preview, body, media: [{ name, content_type, url }] }`, each media `url` a presigned link; `audience` is a selection as above; `email: false` sends no email. The module does only quick database writes before it answers, then hands the rest to `deliver`, detached:
+
+1. Stores the note, keyed `{repository}@{version}`. The first release announced for a version keeps its note; a later delivery for the same version, from the same release or another Pelican space's, changes nothing but the source links of media not yet copied.
+2. Writes a recipient row for every person the audience reaches, one per person per version. A person who already has one keeps it, so they are told about a version once.
+3. Answers `{ notified, emailed, opted_out }`, counted from the rows this delivery added: the people who will get a notice, those of them who will be emailed, and those who turned release emails off. A repeated delivery answers zeros.
+
+A release without its repository and version, or a media file without a name, content type and url, answers 400.
+
+To try it on a server, `apps/demo/scripts/release-announced-check.mjs` posts signed announcements to the support webhook and checks the rows, the notifications and the sweep, under either policy.
+
+## Delivering
+
+`deliver` runs in its own function call, does one bounded piece of work and calls itself, detached, while work remains:
+
+1. **Media.** Copies one file not yet copied from its source link into the public files bucket at `release-notes/{repository}@{version}/{name}`, and marks it copied. A file already in the bucket is not fetched again. A copy that fails is logged and left for the sweep.
+2. **Notices.** Takes up to 100 recipient rows not yet notified, all in one organisation, and dispatches the `release-note` notification to them through the notifications module. Under the tenant policy the dispatch is bound to that organisation, so the notice lands in its bell; a person in several organisations gets it in their earliest membership's. Each item's key is `release-note:{note id}:{user id}`, so a repeat never notifies twice. The email is left out when the announcement had `email: false` or the person turned release emails off. A person whose user is gone is skipped.
+
+A detached call runs once and is not retried. `sweep` restarts any note no `deliver` call has worked on for 10 minutes that still has recipient rows not notified, written more than 10 minutes ago, or media not copied whose source links are under 7 days old.
+
+## The notification
+
+The module ships the `release-note` NotificationEmail: the headline as title and subject, the preview, and a button to the note on What's new. To restyle it, copy it into the app's own `notifications:` config and set `email_template` to its id. The template gets `title`, `preview`, `version`, `note_id` and `links.button`.
+
 ## Collections
 
 All three collections hold a row per app or per person, not per organisation, so their connections stand outside the tenant wall (`tenant: shared`), and every read and write filters by `user_id` or the note key. Their change logs go to `log-changes-system`.
@@ -125,19 +173,20 @@ All three collections hold a row per app or per person, not per organisation, so
 
 One per announced version.
 
-| Field         | Value                                                                                  |
-| ------------- | -------------------------------------------------------------------------------------- |
-| `_id`         | `{repository}@{version}`                                                               |
-| `release_id`  | Pelican's release id                                                                   |
-| `repository`  | The repository the release is of                                                       |
-| `version`     | The version                                                                            |
-| `released_at` | The release date                                                                       |
-| `title`       | The headline                                                                           |
-| `preview`     | The preview line                                                                       |
-| `body`        | The note's markdown, with its `[[file:name]]` embeds                                   |
-| `media`       | `[{ name, content_type, key, source_url, copied }]`: each file's public key and source |
-| `created`     | Change stamp                                                                           |
-| `updated`     | Change stamp                                                                           |
+| Field           | Value                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------- |
+| `_id`           | `{repository}@{version}`                                                               |
+| `release_id`    | Pelican's release id                                                                   |
+| `repository`    | The repository the release is of                                                       |
+| `version`       | The version                                                                            |
+| `released_at`   | The release date                                                                       |
+| `title`         | The headline                                                                           |
+| `preview`       | The preview line                                                                       |
+| `body`          | The note's markdown, with its `[[file:name]]` embeds                                   |
+| `media`         | `[{ name, content_type, key, source_url, copied }]`: each file's public key and source |
+| `created`       | Change stamp                                                                           |
+| `updated`       | Change stamp                                                                           |
+| `delivering_at` | When a `deliver` call last worked on the note                                          |
 
 ### `release-notes-recipients`
 

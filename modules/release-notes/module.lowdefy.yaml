@@ -8,6 +8,8 @@ description: >-
 dependencies:
   - id: layout
     description: Page layout wrapper
+  - id: events
+    description: Change stamps on every write to a note.
   - id: notifications
     description: The bell notification and email each announcement sends.
   - id: files
@@ -83,6 +85,10 @@ exports:
       description: >-
         Internal: the release events the support webhook hands on, named in the
         support module's release_notes_endpoint var
+    - id: sweep
+      description: >-
+        Internal: restarts the delivery of any announced note that stalled.
+        Call it every 10 minutes from an app endpoint with a schedules cron.
 
 connections:
   - _ref: connections/release-notes.yaml
@@ -94,12 +100,17 @@ connections:
 
 api:
   - _ref: api/receive.yaml
+  - _ref: api/deliver.yaml
+  - _ref: api/sweep.yaml
 
 pages:
   - _ref: pages/view.yaml
 
 menus:
   - _ref: menus.yaml
+
+notifications:
+  - _ref: notifications/release-note.yaml
 
 secrets:
   - name: MONGODB_URI

@@ -271,6 +271,7 @@ api:
   - _ref: api/reporting-seed-conversations.yaml
   - _ref: api/files-demo-upload-policy.yaml
   - _ref: api/assistant-file-links.yaml
+  - _ref: api/release-notes-sweep.yaml
 
 agents:
   # The agent behind the ai-assistant module demo. The module brings the chat

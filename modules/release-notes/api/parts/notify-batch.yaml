@@ -1,0 +1,158 @@
+# Dispatches the release-note notification for one batch of state.note's
+# recipient rows still owed it: up to 100 rows, all in the organisation of the
+# oldest such row, then marks them notified. Sets state.batch_size, 0 when no
+# row is owed. A row whose user is gone is marked without a notification.
+#
+# Each item's key, release-note:{note_id}:{user_id}, makes the notifications
+# module skip a person it already notified, so a repeated batch sends nothing
+# twice. Under the tenant policy the dispatch is bound to the batch's
+# organisation, whose bell the notice lands in.
+- id: next_row
+  type: MongoDBFindOne
+  connectionId:
+    _module.connectionId: release-notes-recipients
+  properties:
+    query:
+      note_id:
+        _state: note_id
+      notified: false
+    options:
+      sort:
+        created: 1
+        _id: 1
+      projection:
+        organization_id: 1
+- :if:
+    _eq:
+      - _step: next_row
+      - null
+  :then:
+    - :set_state:
+        batch_size: 0
+- :if:
+    _ne:
+      - _step: next_row
+      - null
+  :then:
+    - :set_state:
+        batch_organization_id:
+          _if_none:
+            - _step: next_row.organization_id
+            - null
+    - id: batch
+      type: MongoDBAggregation
+      connectionId:
+        _module.connectionId: release-notes-recipients
+      properties:
+        pipeline:
+          - $match:
+              note_id:
+                _state: note_id
+              notified: false
+              organization_id:
+                _state: batch_organization_id
+          - $sort:
+              created: 1
+              _id: 1
+          - $limit: 100
+          - $lookup:
+              from: users
+              localField: user_id
+              foreignField: _id
+              as: user
+              pipeline:
+                - $project:
+                    name: 1
+                    email: 1
+          - $lookup:
+              from: release-notes-preferences
+              localField: user_id
+              foreignField: _id
+              as: preference
+          - $project:
+              user_id: 1
+              email: 1
+              user:
+                $first: $user
+              opted_out:
+                $eq:
+                  - $first: $preference.email
+                  - false
+    - :set_state:
+        batch:
+          _step: batch
+        view_page_id:
+          _module.pageId: view
+    - :set_state:
+        batch_size:
+          _array.length:
+            _state: batch
+        batch_ids:
+          _js: |
+            return state('batch').map((row) => row._id);
+        notice_items:
+          _js: |
+            const note = state('note');
+            return state('batch')
+              .filter((row) => row.user)
+              .map((row) => ({
+                key: `release-note:${note._id}:${row.user_id}`,
+                contact: {
+                  _id: row.user_id,
+                  user_id: row.user_id,
+                  email: row.user.email ?? null,
+                  profile: { name: row.user.name ?? null },
+                },
+                send_email: row.email !== false && row.opted_out !== true,
+                note_id: note._id,
+                version: note.version,
+                title: note.title ?? note.version,
+                preview: note.preview ?? '',
+                links: {
+                  button: {
+                    pageId: state('view_page_id'),
+                    urlQuery: { note: note._id },
+                  },
+                },
+              }));
+    - :if:
+        _gt:
+          - _array.length:
+              _state: notice_items
+          - 0
+      :then:
+        - id: dispatch_release_note
+          type: CallApi
+          properties:
+            endpointId:
+              _module.endpointId:
+                id: dispatch-notifications
+                module: notifications
+            organization:
+              _build.if:
+                test:
+                  _build.eq:
+                    - _build.authConfig: organizations.policy
+                    - tenant
+                then:
+                  _state: batch_organization_id
+                else: null
+            payload:
+              notification_id:
+                _if_none:
+                  - _module.var: email_template
+                  - _module.notificationId: release-note
+              items:
+                _state: notice_items
+    - id: mark_notified
+      type: MongoDBUpdateMany
+      connectionId:
+        _module.connectionId: release-notes-recipients
+      properties:
+        filter:
+          _id:
+            $in:
+              _state: batch_ids
+        update:
+          $set:
+            notified: true

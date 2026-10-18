@@ -1,0 +1,71 @@
+# Copies state.pending_media, one file of state.note, from its source link into
+# the public files bucket at its key, and marks it copied. A file already in
+# the bucket is not fetched again. A failed copy is logged and its name added
+# to state.failed, so the rest of this chain skips it and the sweep tries it
+# again later.
+- :try:
+    - id: media_head
+      type: AwsS3HeadObject
+      connectionId:
+        _module.connectionId:
+          id: files-bucket-public
+          module: files
+      properties:
+        key:
+          _state: pending_media.key
+    - :if:
+        _ne:
+          - _step: media_head.exists
+          - true
+      :then:
+        - id: media_copy
+          type: AwsS3PutObject
+          connectionId:
+            _module.connectionId:
+              id: files-bucket-public
+              module: files
+          properties:
+            key:
+              _state: pending_media.key
+            url:
+              _state: pending_media.source_url
+            contentTypes:
+              - _state: pending_media.content_type
+            # A note's videos are short screen recordings; 500 MB leaves room.
+            maxBytes: 524288000
+            timeout: 240000
+    - id: mark_copied
+      type: MongoDBUpdateOne
+      connectionId:
+        _module.connectionId: release-notes
+      properties:
+        filter:
+          _id:
+            _state: note_id
+        update:
+          $set:
+            media.$[file].copied: true
+            updated:
+              _ref:
+                module: events
+                component: change_stamp
+        options:
+          arrayFilters:
+            - file.name:
+                _state: pending_media.name
+  :catch:
+    - :log:
+        event: release_note_media_copy_failed
+        note_id:
+          _state: note_id
+        file:
+          _state: pending_media.name
+        message: >-
+          A release note's media file did not copy into the public files
+          bucket. The sweep tries it again while its source link lasts.
+      :level: warn
+    - :set_state:
+        failed:
+          _array.concat:
+            - _state: failed
+            - - _state: pending_media.name
