@@ -1,5 +1,57 @@
 # @lowdefy/modules-mongodb-layout
 
+## 1.0.0
+
+### Major Changes
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: the modules need Lowdefy 7.** This release moves every module and the plugins package to Lowdefy 7 and its auth engine, page paths, tenant wall, websockets and Lucide icons. Apps on Lowdefy 5 or 6 stay on the previous release.
+
+  To upgrade, move the app to Lowdefy 7 (`lowdefy upgrade` applies the framework codemods), then work through the breaking entries in this release, chiefly:
+
+  - **Icon names** are Lowdefy 7 semantic and Lucide names; icon names an app passes into module vars need the same rewrite.
+  - **`app_name` is gone.** Declare `slug:` on the root of `lowdefy.yaml` and drop the var from every module entry.
+  - **`user-account` and `user-admin` run on the Better Auth engine**, with contacts linked to their auth user and organization authority separate from app roles.
+  - **Search:** `request_stages.filter_match` takes plain `$match` clauses, the new `atlas_search` var picks Atlas `$search` or a regex fallback, and the Atlas Search index contract changes.
+  - **Events:** `contact_page_url` is replaced by `contact_page_id`.
+  - **ai-reporting:** the app lists the module's `report-policy` in `policies.dynamicBlocks`, and the report endpoints return `report_id` without `url`.
+  - **`profile.picture`** is derived by every write, and `create-contact` mints the contact `_id` itself.
+
+### Minor Changes
+
+- [#197](https://github.com/lowdefy/modules-mongodb/pull/197) [`04d9a26`](https://github.com/lowdefy/modules-mongodb/commit/04d9a2672da6a25d68c7be26155616e0e33846f6) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **App-wide seams on the layout `page` component.** New module vars apply to every page that uses the `page` component, so an app wires a widget or a style once on its `layout` entry instead of on each page:
+
+  - `global_blocks`: blocks appended after the page content, for floating widgets such as a help button or an assistant launcher.
+  - `global_requests`: requests declared on every page for those blocks. They are not fired on mount.
+  - `global_subscriptions`: websocket subscriptions declared on every page, such as a widget's live channel. The `page` component also takes a `subscriptions` var for a page's own; a page that subscribes to a websocket `global_subscriptions` also names keeps its own, so it holds one channel.
+  - `global_events.onInit` / `global_events.onMountAsync`: actions spliced into every page, the module-level counterpart of the per-page `events` var. `onMountAsync` runs after the `header_extra` request fetches and before the page's own actions, so an app can hang an app-wide guard, such as an onboarding gate, there.
+  - `content_style`: the content area style for every page, such as a different gutter (`padding: 0 24px 24px 24px`). A page's own `content_style` applies over it key by key, and a `full_bleed` page keeps zero padding.
+
+  A page can also replace the module-wide header blocks with the `header_blocks` var (`header_blocks: []` for a bare header).
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **The notifications inbox is redesigned, and notifications are live.**
+
+  - **Inbox.** The `all` page fills the screen with a rail of views and types, each with its unread count, a list of up to 1000 notifications that scrolls on its own, and a reading pane. Filters are Unread / All / Read, a date range, a search over title and preview, and a view or type from the rail. The new `views` var groups notification types, such as Mentions, at the top of the rail. Below tablet width the rail becomes a View selector and the list and pane take turns.
+  - **Mark all as read follows the filters.** It marks only the unread notifications the filters match, across all pages, and names the count whenever a view, type, search or date narrows it. A notification can be marked unread again from the pane.
+  - **The reading pane shows the message, not the email.** The stored email's canvas, card, logo, sign-off and footer are hidden, and the message takes the app's typography. Emails themselves are unchanged.
+  - **Appearance per type.** Each type takes its icon and colour from the app's `event_types` entry; a type with none gets a palette colour chosen consistently from its id. Every colour follows the app's theme, dark mode included.
+  - **Live.** The bell, the toasts and the inbox update the moment a notification arrives or is read in another tab or device, through the module's `notifications-live` websocket. The `layout` page component subscribes on every page with a signed-in user, unless the page passes `hide_notifications: true`. Each signed-in user with a page open holds one change stream and one pooled MongoDB connection, so size `maxPoolSize` for concurrent users. Change streams need a replica set; where they cannot run, set the new `live` var to `false` and the bell and toasts update on navigation.
+  - **Toasts.** A notification flagged `popup: true` toasts the moment it arrives. The toast is 360px wide under the header, with the type's icon, a one-line title, a two-line preview, the time, **Dismiss** and **Open** (now also for links stored at `data.links.button`). The dispatch pipeline stores `popup` from the item, default `false`.
+  - **Sound.** An opt-in chirp plays once per batch of popup notifications, after the viewer turns on **Sound** in the inbox header; the setting is kept per device. The module now declares `@lowdefy/modules-mongodb-plugins` for the `NotificationSound` block.
+  - **A record's type** reads `type` before `event_type` everywhere, so a record carrying both is filtered, counted and labelled under its notification id.
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Module links follow Lowdefy page paths and `basePath`.** No module builds a page URL by hand any more, so nothing breaks when a page has a `path` or the app has a `basePath`.
+
+  - **Pages with paths.** The layout `page` component takes a `path` var, such as `tickets/{ticket_id}`, to serve the page at a URL pattern.
+  - **Record links.** Links in HTML (company and contact lists, the activities timeline, the company hierarchy, the deal card and the deal's people, the workflow open-actions card and the overview subtitle) are `data-page-id` links, so they move within the app without a full page load. `DataDescriptions` and `SmartDescriptions` render contact and company links with Lowdefy's `Link`, and `ActionSteps`, `WorkflowProgress` and `EventsTimeline` pass a link's `pathParams` to it. The sign-in, sign-up, forgot-password and accept pages link to each other by page id.
+  - **Workflows.** A workflow's `entity:` block takes `id_path_key`, the entity page's path placeholder for the entity id (for a page at `deals/{deal_id}`, `id_path_key: deal_id`); the entity link then carries the id in `pathParams`. `id_query_key` defaults to `_id` only when `id_path_key` is not set, so set both to also pass the id in the query. `tracker.start_link` and the custom-kind `status_map` `link:` / `view_link:` cells take `pathParams` next to `urlQuery`, with the same `action_id: true` / `entity_id: true` sentinels. Breadcrumbs, the return to the entity after a terminal signal, the events timeline and the deal's open items pass `pathParams` too.
+  - **Breaking (events): `contact_page_url` is replaced by `contact_page_id`.** Set it to the contact page's id, such as `contacts/view`. The contact id goes in the query as `contact_id_query_key` (default `_id`), in the path value `contact_id_path_key` names when the page has a path like `contacts/{contact_id}`, or both. The events-timeline component takes the same three vars per call, and the `EventsTimeline` block takes `contactPageId`, `contactIdQueryKey` and `contactIdPathKey` in place of `contactPageUrl`. The timeline's avatar, timestamp and note @mentions link to the contact page; `note-capture` stores each @mention as a `#contact-<id>` link, and mentions in notes saved before this show unlinked.
+  - **Breaking (ai-reporting): `generate-report`, `create-report` and `duplicate-report` return `{ ok, report_id }` without `url`.** Open a report with a `Link` to the `report` page and `urlQuery: { report_id }`. The reporting agent points the user to the panel's "Reports from this chat" list instead of replying with a link.
+  - **Fix (deals):** deal event titles name the user as plain text. The old link pointed at `/contacts/view` with the user's id, which is not a contact id.
+
+### Patch Changes
+
+- [#277](https://github.com/lowdefy/modules-mongodb/pull/277) [`8ca77a4`](https://github.com/lowdefy/modules-mongodb/commit/8ca77a4b4a7752ac344d69bf6e44dd65434d12a1) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Pages whose title comes from a runtime operator no longer show "[object Object]" as the browser-tab title.** The server writes the tab title without evaluating operators, so the layout page component now uses `title` only when it is a string at build time, and otherwise the page's `type` (for example "Company"), or the page id when there is none. The new and edit pages of activities, companies, contacts and deals build their `type` at build time, so their tab reads, for example, "Edit Company".
+
 ## 0.48.0
 
 ### Minor Changes
