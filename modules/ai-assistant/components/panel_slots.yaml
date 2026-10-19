@@ -43,7 +43,11 @@ header:
                     - _state: ai_busy
                     - true
                 title: New chat
-                icon: add
+                icon:
+                  # A blank title: Lowdefy titles an icon's SVG from its name, and the browser
+                  # shows that as a second tooltip over the one beside it.
+                  name: add
+                  title: ''
                 type: text
                 size: small
               events:
@@ -72,7 +76,9 @@ header:
                     - _state: ai_busy
                     - true
                 title: Manage chats
-                icon: list
+                icon:
+                  name: list
+                  title: ''
                 type: text
                 size: small
               events:
@@ -97,7 +103,9 @@ header:
               type: Button
               properties:
                 title: Back to chat
-                icon: arrow-left
+                icon:
+                  name: arrow-left
+                  title: ''
                 type: text
                 size: small
               events:
@@ -177,7 +185,9 @@ toolbar:
                 # control is the one you least want to be a mystery glyph
                 # with no accessible name.
                 title: Delete chat
-                icon: delete
+                icon:
+                  name: delete
+                  title: ''
                 type: text
                 danger: true
                 size: small

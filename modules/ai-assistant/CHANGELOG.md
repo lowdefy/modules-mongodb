@@ -1,5 +1,46 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 0.48.0
+
+## 0.47.0
+
+### Patch Changes
+
+- [#264](https://github.com/lowdefy/modules-mongodb/pull/264) [`51b2790`](https://github.com/lowdefy/modules-mongodb/commit/51b2790aea96a956b861a619aa5946f0b5c310dd) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: one tooltip per toolbar button
+
+  - Fix the double tooltip on the embedded toolbar's icon-only buttons. `toolbar.icon_only` wrapped each button in a tooltip, but the Button already shows its title as a tooltip when the title is hidden, so each showed twice.
+  - The toolbar icons in both the panel and the embedded shell no longer show a browser tooltip naming the icon ("Outline Plus").
+
+## 0.46.0
+
+### Minor Changes
+
+- [#262](https://github.com/lowdefy/modules-mongodb/pull/262) [`6068a64`](https://github.com/lowdefy/modules-mongodb/commit/6068a64f02a22c35426e2e21b3f3d8acf6e5f70e) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: an icon-only toolbar for the embedded chat
+
+  - New `toolbar.icon_only` var hides the labels of New chat, Manage chats, Back to chat and Delete chat in the embedded shell. Each button keeps its icon, and a tooltip gives its name on hover. Off by default, so existing pages keep their labelled buttons.
+
+## 0.45.0
+
+### Minor Changes
+
+- [#260](https://github.com/lowdefy/modules-mongodb/pull/260) [`06a9e17`](https://github.com/lowdefy/modules-mongodb/commit/06a9e1771148a399ff13ba5af96bca00cb4b42a3) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: follow a scope that changes mid-session, and recolour the composer
+
+  - `enter` now notices when the `scope` var no longer matches the scope the open thread belongs to, drops that thread and its list, and resumes in the new scope. Apps with an active-company or active-record switcher no longer need their own reset on every visit. A page hosting `embedded` should splice `enter` into `onMount` as well as `onInit`.
+  - New `sender` var, merged over the chat's composer properties, so the composer's `styles` and `classNames` can be set. Together with `styles` under `message_display.roles`, this recolours the chat without `!important` (Lowdefy 6.1 or later).
+
+## 0.44.2
+
+### Patch Changes
+
+- [#259](https://github.com/lowdefy/modules-mongodb/pull/259) [`0eef584`](https://github.com/lowdefy/modules-mongodb/commit/0eef584c9b7148d59b7b175e436ea4c835e31eb7) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: keep threads and their names intact, and refuse calls with no session
+
+  - New chat, Manage chats and Delete are disabled while a reply streams. Switching mid-reply dropped the reply before it could be saved, and left the thread named after its question.
+  - A name the user types is kept. Renaming before the first reply skips titling, a rename while the title is generating wins, and a later save no longer puts an older name back.
+  - The generated title updates the thread list even after the user has switched threads.
+  - Every endpoint rejects a call with no signed-in user, and `title-thread` refuses when titling is off.
+  - The empty thread list reads in secondary text, and thread tag chips have a background.
+  - Docs: the panel mount example sets its vars on the module entry, and `on_before_send` is documented as a browser-side check that some sends skip.
+
 ## 0.44.1
 
 ## 0.44.0

@@ -1,5 +1,5 @@
 name: Walkthroughs
-version: 0.44.1
+version: 0.48.0
 description: >-
   Step-by-step walkthroughs, stored and played in-app. A walkthrough is a title,
   an overview and an ordered list of steps; a step is a caption with an optional
@@ -65,6 +65,8 @@ exports:
       description: Copy a walkthrough's draft up to its published content
     - id: presign-step-image
       description: Presign an upload for one step screenshot
+    - id: unpublish-walkthrough
+      description: Take a published walkthrough down, moving its content back into the draft
     - id: delete-walkthrough
       description: Soft-delete a walkthrough that has never been published
 
@@ -78,6 +80,7 @@ api:
   - _ref: api/save-draft.yaml
   - _ref: api/discard-draft.yaml
   - _ref: api/publish-walkthrough.yaml
+  - _ref: api/unpublish-walkthrough.yaml
   - _ref: api/presign-step-image.yaml
   - _ref: api/delete-walkthrough.yaml
 
@@ -112,4 +115,4 @@ secrets:
 
 plugins:
   - name: '@lowdefy/modules-mongodb-plugins'
-    version: "^0.44.1"
+    version: "^0.48.0"

@@ -35,7 +35,7 @@ notifications: # framework template configs — the pipeline renders these
 
 modules:
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.48.0"
     vars:
       server_url: https://my-app.example.com
       email:

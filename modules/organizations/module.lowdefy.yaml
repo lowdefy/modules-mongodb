@@ -431,4 +431,4 @@ plugins:
   # @lowdefy/community-plugin-mongodb pin is needed — the built-in is
   # auto-included.
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.44.1"
+    version: "^0.48.0"
