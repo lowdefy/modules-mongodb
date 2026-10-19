@@ -1,0 +1,267 @@
+# One row of the my-organizations page's list (`my_organizations.$`, a row of
+# get_my_organizations): logo, name with Current on the active one, the
+# caller's authority and the member count, and why Leave is missing or locked;
+# then its actions, which wrap under the text on a narrow screen.
+id: my_organizations.$
+type: Box
+layout:
+  gap: 12
+  align: middle
+  wrap: wrap
+style:
+  padding: 12px 0
+blocks:
+  - id: my_organizations.$.logo
+    type: Avatar
+    layout:
+      flex: 0 0 auto
+    properties:
+      shape: square
+      size: 40
+      src:
+        _state: my_organizations.$.logo
+      content:
+        _string.charAt:
+          - _if_none:
+              - _state: my_organizations.$.name
+              - ' '
+          - 0
+      color:
+        _if:
+          test:
+            _media: darkMode
+          then: '#3A4654'
+          else: '#17212C'
+      alt:
+        _if_none:
+          - _state: my_organizations.$.name
+          - ''
+  - id: my_organizations.$.text
+    type: Box
+    class: min-w-0
+    layout:
+      flex: 1 1 200px
+      direction: column
+      gap: 2
+    blocks:
+      - id: my_organizations.$.title
+        type: Box
+        layout:
+          gap: 8
+          align: middle
+          wrap: nowrap
+        blocks:
+          - id: my_organizations.$.name
+            type: Span
+            class: font-semibold truncate
+            layout:
+              flex: 0 1 auto
+            properties:
+              content:
+                _state: my_organizations.$.name
+          - id: my_organizations.$.current
+            type: Tag
+            visible:
+              _state: my_organizations.$.is_active
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Current
+              color: blue
+      - id: my_organizations.$.facts
+        type: Box
+        layout:
+          gap: 8
+          align: middle
+        blocks:
+          - id: my_organizations.$.authority_tag
+            type: Tag
+            visible:
+              _ne:
+                - _state: my_organizations.$.authority
+                - member
+            layout:
+              flex: 0 0 auto
+            properties:
+              title:
+                _if:
+                  test:
+                    _eq:
+                      - _state: my_organizations.$.authority
+                      - owner
+                  then: Owner
+                  else: Admin
+              color:
+                _if:
+                  test:
+                    _eq:
+                      - _state: my_organizations.$.authority
+                      - owner
+                  then: purple
+                  else: blue
+          - id: my_organizations.$.facts_text
+            type: Span
+            layout:
+              flex: 0 1 auto
+            class: text-[13px] text-[var(--ant-color-text-secondary)]
+            properties:
+              content:
+                _string.concat:
+                  - _if:
+                      test:
+                        _eq:
+                          - _state: my_organizations.$.authority
+                          - member
+                      then: 'Member · '
+                      else: ''
+                  - _string.concat:
+                      - _json.stringify:
+                          - _if_none:
+                              - _state: my_organizations.$.member_count
+                              - 0
+                      - _if:
+                          test:
+                            _eq:
+                              - _state: my_organizations.$.member_count
+                              - 1
+                          then: ' member'
+                          else: ' members'
+      - id: my_organizations.$.leave_hint
+        type: Span
+        layout:
+          flex: 0 1 auto
+        visible:
+          _or:
+            - _eq:
+                - _array.length:
+                    _if_none:
+                      - _state: my_organizations
+                      - []
+                - 1
+            - _and:
+                - _eq:
+                    - _state: my_organizations.$.authority
+                    - owner
+                - _eq:
+                    - _state: my_organizations.$.owner_count
+                    - 1
+        class: text-[12px] text-[var(--ant-color-text-tertiary)]
+        properties:
+          content:
+            _if:
+              test:
+                _eq:
+                  - _array.length:
+                      _if_none:
+                        - _state: my_organizations
+                        - []
+                  - 1
+              then:
+                _build.string.concat:
+                  - 'Your only '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+                  - " can't be left"
+              else: You are its only owner
+  - id: my_organizations.$.actions
+    type: Box
+    layout:
+      flex: 0 0 auto
+      gap: 8
+      align: middle
+      wrap: nowrap
+    blocks:
+      - id: my_organizations.$.settings
+        type: Button
+        visible:
+          _state: my_organizations.$.is_active
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Settings
+          icon: settings
+          size: small
+          variant: outlined
+          color: default
+        events:
+          onClick:
+            - id: open_organization_settings
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: general
+      - id: my_organizations.$.switch
+        type: Button
+        visible:
+          _not:
+            _state: my_organizations.$.is_active
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Switch
+          size: small
+          variant: outlined
+          color: default
+        events:
+          onClick:
+            - id: switch_to_organization
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: switch-organization
+                urlQuery:
+                  org:
+                    _state: my_organizations.$.organization_id
+      - id: my_organizations.$.leave
+        type: Button
+        visible:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _state: my_organizations
+                  - []
+            - 1
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Leave
+          size: small
+          color: danger
+          variant: outlined
+          disabled:
+            _and:
+              - _eq:
+                  - _state: my_organizations.$.authority
+                  - owner
+              - _eq:
+                  - _state: my_organizations.$.owner_count
+                  - 1
+        events:
+          onClick:
+            - id: leave_active_organization
+              type: Link
+              skip:
+                _not:
+                  _state: my_organizations.$.is_active
+              params:
+                pageId:
+                  _module.pageId: member
+                urlQuery:
+                  user_id:
+                    _user: id
+            - id: leave_other_organization
+              type: Link
+              skip:
+                _state: my_organizations.$.is_active
+              params:
+                pageId:
+                  _module.pageId: switch-organization
+                urlQuery:
+                  org:
+                    _state: my_organizations.$.organization_id
+                  to:
+                    _string.concat:
+                      - /
+                      - _module.pageId: member
+                      - '?user_id='
+                      - _user: id

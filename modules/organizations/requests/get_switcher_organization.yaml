@@ -1,0 +1,18 @@
+# The active organization's name, for an app's account menu. The logo is left
+# out: the menu does not draw it.
+#
+# A separate request from `get_active_organization`: the account menu's reads
+# are loaded by the layout with EVERY page, so their ids have to be ones no
+# page will ever declare for itself. The settings page reads the same row under
+# its own id, and a shared id would collide there.
+id: get_switcher_organization
+type: MongoDBFindOne
+connectionId:
+  _module.connectionId: user-organizations
+properties:
+  query:
+    _id:
+      _user: organization_id
+  options:
+    projection:
+      name: 1

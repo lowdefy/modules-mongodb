@@ -28,7 +28,7 @@ starting_actions:
 action_groups:
   - id: knob-group
     title: Knobs
-    icon: AiOutlineSetting
+    icon: settings
 
 actions:
   - _ref: modules/workflows/workflow_config/knob-behaviors/knobs.yaml

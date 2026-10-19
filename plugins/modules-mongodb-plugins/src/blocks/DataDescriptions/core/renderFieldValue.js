@@ -2,13 +2,13 @@ import React from "react";
 import { getFieldTypeConfig } from "../fieldTypes/getFieldTypeConfig.js";
 import renderArray from "./renderArray.js";
 
-function renderFieldValue(structure, Icon, methods, properties) {
+function renderFieldValue(structure, Icon, Link, methods, properties) {
   const { value, fieldType, isArray, enumMap } = structure;
   const config = getFieldTypeConfig(fieldType);
 
   // Handle arrays
   if (isArray) {
-    return renderArray(structure, config, Icon, methods, properties);
+    return renderArray(structure, config, Icon, Link, methods, properties);
   }
 
   // Non-arrays - use render function from registry
@@ -16,6 +16,7 @@ function renderFieldValue(structure, Icon, methods, properties) {
     return config.render({
       value,
       Icon,
+      Link,
       methods,
       properties,
       fieldType,

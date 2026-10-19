@@ -1,0 +1,39 @@
+# Withdraw a pending invitation. The link already emailed stops working; the
+# person can be invited again afterwards.
+id: cancel_invitation_modal
+type: Modal
+properties:
+  title: Cancel this invitation?
+  width: 440
+  okText: Cancel invitation
+  cancelText: Keep invitation
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    _build.array.concat:
+      - - id: cancel_invitation
+          type: CallAPI
+          messages:
+            loading: Cancelling…
+            success: Invitation cancelled.
+          params:
+            endpointId:
+              _module.endpointId: cancel-invitation
+            payload:
+              invitation_id:
+                _state: selected_invitation._id
+      - _ref: actions/refetch_members.yaml
+blocks:
+  - id: cancel_invitation_message
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: >-
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary)">The
+            invitation to <b>{{ email }}</b> will be withdrawn and the link already
+            sent will stop working. You can invite them again later.</div>
+          on:
+            email:
+              _state: selected_invitation.email

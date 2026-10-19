@@ -7,14 +7,14 @@
     _module.connectionId: notifications-collection
   payload:
     app_name:
-      _module.var: app_name
+      _build.app: slug
   properties:
     pipeline:
       - $match:
           read: false
           popup: true
-          contact_id:
-            _user: id
+          $or:
+            _ref: requests/match-recipient.yaml
           created.app_name:
             _payload: app_name
       - $sort:
@@ -30,14 +30,14 @@
     popup_id:
       _state: popup_id
     app_name:
-      _module.var: app_name
+      _build.app: slug
   properties:
     disableNoMatchError: true
     filter:
       _id:
         _payload: popup_id
-      contact_id:
-        _user: id
+      $or:
+        _ref: requests/match-recipient.yaml
       created.app_name:
         _payload: app_name
     update:

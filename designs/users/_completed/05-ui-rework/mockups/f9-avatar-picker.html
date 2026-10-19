@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>F9 — Avatar picker · current vs proposed</title>
+<style>
+  /* ────────────────────────────────────────────────────────────────────────
+     Tokens — copied from designs/user-account-better-auth/mockups/screens/
+     mock.css + account.html so this sheet is pixel-comparable with the
+     mockups it is arguing about. antd (compact), colorPrimary = violet.
+     ──────────────────────────────────────────────────────────────────────── */
+  :root{
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px;
+    --violet:#7c3aed; --violet-hover:#6d28d9; --violet-bg:#f4ecff; --violet-border:#d6bbfb;
+    --cover-a:#5729a6; --cover-b:#7c3aed;
+    --bg-layout:#f5f5f5; --bg-container:#ffffff;
+    --text:rgba(0,0,0,.88); --text-2:rgba(0,0,0,.62); --text-3:rgba(0,0,0,.42);
+    --border:#f0f0f0; --border-strong:#d9d9d9;
+    --radius:6px; --radius-lg:8px; --radius-card:12px;
+    --shadow-card:0 1px 2px 0 rgba(0,0,0,.03),0 1px 6px -1px rgba(0,0,0,.03),0 2px 4px 0 rgba(0,0,0,.02);
+    --shadow-pop:0 6px 16px 0 rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
+    --shadow-auth:0 12px 32px -8px rgba(60,30,110,.22),0 2px 8px rgba(0,0,0,.04);
+    --err-fg:#cf1322; --err-bd:#ffa39e; --err-bg:#fff1f0;
+    --ok-fg:#389e0d; --ok-bd:#b7eb8f; --ok-bg:#f6ffed;
+    --warn-fg:#d48806; --warn-bd:#ffe58f; --warn-bg:#fffbe6;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font);color:var(--text);background:#e9e9ec;font-size:14px;line-height:1.5714;-webkit-font-smoothing:antialiased}
+  code{font-family:var(--mono);font-size:12px;background:#efeaf9;color:#5b21b6;padding:1px 5px;border-radius:4px}
+
+  /* ── comparison sheet chrome (not app UI — the paper the variants sit on) ── */
+  .sheet{width:1440px;margin:0 auto;padding:var(--s8) var(--s8) 64px}
+  .sheet-head{margin-bottom:var(--s6)}
+  .sheet-head h1{margin:0 0 var(--s1);font-size:22px;font-weight:600;letter-spacing:-.01em}
+  .sheet-head p{margin:0;font-size:13px;color:var(--text-2);max-width:900px}
+  .section{margin-top:var(--s8)}
+  .section > h2{margin:0 0 var(--s1);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3)}
+  .section > .slead{margin:0 0 var(--s4);font-size:13px;color:var(--text-2);max-width:900px}
+  .row{display:flex;gap:var(--s8);align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:var(--s3)}
+  .col.w400{width:400px}
+  .col.w560{width:560px}
+  .vhead{display:flex;align-items:center;gap:var(--s2);font-size:13px;font-weight:600}
+  .pill{font-size:11px;font-weight:600;letter-spacing:.02em;padding:1px 8px;border-radius:10px;border:1px solid}
+  .pill.bad{color:var(--err-fg);border-color:var(--err-bd);background:var(--err-bg)}
+  .pill.mid{color:var(--warn-fg);border-color:var(--warn-bd);background:var(--warn-bg)}
+  .pill.good{color:var(--ok-fg);border-color:var(--ok-bd);background:var(--ok-bg)}
+  .note{font-size:12.5px;color:var(--text-2);border-left:3px solid var(--border-strong);padding:2px 0 2px var(--s3);margin:0}
+  .note.bad{border-left-color:var(--err-bd)}
+  .note.good{border-left-color:var(--ok-bd)}
+  .note ul{margin:var(--s1) 0 0;padding-left:18px}
+  .note li{margin-bottom:3px}
+  .note li:last-child{margin-bottom:0}
+
+  /* ── auth-page component (layout module export `auth-page`) ─────────────── */
+  .auth-card{width:100%;background:#fff;border-radius:var(--radius-card);box-shadow:var(--shadow-auth);overflow:hidden}
+  .auth-cover{background:linear-gradient(160deg,var(--cover-a) 0%,var(--cover-b) 100%);padding:30px var(--s8) 26px;display:flex;justify-content:center}
+  .auth-cover .logo{display:flex;align-items:center;gap:10px;color:#fff}
+  .auth-cover .logo .mk{width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);display:grid;place-items:center;font-weight:800;font-size:16px}
+  .auth-cover .logo .nm{font-size:16px;font-weight:600;letter-spacing:.01em}
+  .auth-blocks{padding:26px var(--s8) 28px;display:flex;flex-direction:column;gap:var(--s4)}
+  .auth-blocks h3{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .auth-blocks .lead{margin:-8px 0 0;font-size:13px;color:var(--text-2)}
+
+  /* auth-card form rows (40px controls, per the auth mocks) */
+  .afrow{display:flex;flex-direction:column;gap:5px}
+  .afrow label{font-size:13px;font-weight:500;color:var(--text-2);display:flex;align-items:center;gap:6px}
+  .afrow .req{color:var(--err-fg)}
+  .ainp{width:100%;height:40px;border:1px solid var(--border-strong);border-radius:var(--radius);padding:0 var(--s3);font:inherit;font-size:14px;color:var(--text);background:#fff;display:flex;align-items:center}
+  .ainp.ph{color:var(--text-3)}
+
+  /* ── modal (bespoke modal_profile chrome, per account.html) ─────────────── */
+  .modal{width:100%;background:#fff;border-radius:10px;box-shadow:var(--shadow-pop);overflow:hidden;display:flex;flex-direction:column}
+  .modal .mhead{padding:var(--s4) var(--s6);display:flex;gap:var(--s2);align-items:center;border-bottom:1px solid var(--border)}
+  .modal .mhead h4{margin:0;font-size:16px;font-weight:600}
+  .modal .mhead .mclose{margin-left:auto;border:none;background:transparent;color:var(--text-3);font-size:18px;cursor:pointer;line-height:1}
+  .modal .mbody{padding:var(--s6);font-size:13.5px;color:var(--text-2)}
+  .modal .mfoot{padding:var(--s4) var(--s6);display:flex;justify-content:flex-end;gap:var(--s2);border-top:1px solid var(--border)}
+  .fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3) var(--s4)}
+  .frow label{display:block;font-size:13px;font-weight:500;color:var(--text-2);margin-bottom:var(--s1)}
+  .frow .req{color:var(--err-fg)}
+  .inp{width:100%;height:32px;border:1px solid var(--border-strong);border-radius:var(--radius);padding:0 var(--s3);font:inherit;font-size:14px;color:var(--text);background:#fff;display:flex;align-items:center}
+  .inp.ph{color:var(--text-3)}
+
+  /* ── buttons (antd compact) ────────────────────────────────────────────── */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);height:32px;font-family:inherit;font-size:14px;line-height:1;border-radius:var(--radius);padding:0 var(--s4);border:1px solid var(--border-strong);background:#fff;color:var(--text);cursor:pointer;transition:.15s;white-space:nowrap}
+  .btn.pri{background:var(--violet);border-color:var(--violet);color:#fff;box-shadow:0 2px 0 rgba(124,58,237,.12)}
+  .btn.lg{height:40px;font-size:14.5px}
+  .btn.block{width:100%}
+  .btn.sm{height:24px;padding:0 var(--s2);font-size:12px}
+  .btn.round{border-radius:20px}
+  .btn .ic{font-size:12px;line-height:1}
+
+  /* ── avatar ────────────────────────────────────────────────────────────── */
+  .av{border-radius:50%;color:#fff;display:inline-grid;place-items:center;font-weight:600;flex:0 0 auto;overflow:hidden;letter-spacing:.02em}
+  .av.s64{width:64px;height:64px;font-size:24px}
+  .av.s72{width:72px;height:72px;font-size:26px}
+  /* avatar_colors palette index 0 — the same gradient in every variant, so the
+     only thing that differs between them is the layout. */
+  .g0{background:linear-gradient(135deg,#c62828,#ad1457)}
+  .av .qmark{opacity:.9}
+
+  /* ── the picker, three ways ────────────────────────────────────────────── */
+  /* (1) as shipped: layout.justify:center + style.flexDirection:column —
+         renders as a left-aligned column, unlabeled. */
+  .pick-shipped{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2);margin-bottom:var(--s1)}
+  /* (2) centred column, outlined button (the onboarding mock's intent). */
+  .pick-centred{display:flex;flex-direction:column;align-items:center;gap:var(--s2);margin-bottom:var(--s1)}
+  /* (3) proposed: labelled row, per account.html `.avatar-edit`. */
+  .pick-row{display:flex;align-items:center;gap:var(--s4);margin-bottom:var(--s5)}
+  .pick-row .ae-main{display:flex;flex-direction:column;gap:6px}
+  /* label, two ways: the account mock's eyebrow, vs the form's own field label */
+  .subeyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:0}
+  .flabel{font-size:13px;font-weight:500;color:var(--text-2);margin:0}
+
+  /* ── rejected: full swatch grid ────────────────────────────────────────── */
+  .pick-swatches{display:flex;flex-direction:column;gap:var(--s3);margin-bottom:var(--s5)}
+  .swatch-grid{display:grid;grid-template-columns:repeat(10,18px);gap:6px}
+  .swatch{width:18px;height:18px;border-radius:50%;cursor:pointer}
+  .swatch.on{outline:2px solid var(--violet);outline-offset:2px}
+
+  /* ── isolated control preview (no host card around it) ─────────────────── */
+  .preview{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:var(--s4)}
+
+  /* ── spec annotation ───────────────────────────────────────────────────── */
+  .spec{font-size:12px;color:var(--text-2);background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:var(--s3) var(--s4)}
+  .spec dl{margin:0;display:grid;grid-template-columns:112px 1fr;gap:var(--s1) var(--s3)}
+  .spec dt{color:var(--text-3)}
+  .spec dd{margin:0}
+  .spec dd code{font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="sheet-head">
+    <h1>F9 — Avatar picker</h1>
+    <p>Every variant below uses <strong>palette index 0</strong> (<code>#c62828 → #ad1457</code>) and the same
+      content, so the only difference between them is layout. Onboarding cards are 400px, the profile modal
+      560px — the real widths. Geometry, control heights and type scale are copied from
+      <code>user-account-better-auth/mockups/screens/</code>.</p>
+  </div>
+
+  <!-- ═══ Onboarding: three treatments ═══════════════════════════════════ -->
+  <div class="section" id="section_onboarding">
+    <h2>Onboarding · <code>pages/onboarding.yaml</code></h2>
+    <p class="slead">Shown with a name typed, which is the picker's best case. The empty first-render
+      state — what the F9 screenshot actually caught — is in the last section.</p>
+
+    <div class="row">
+
+      <!-- (1) as shipped -->
+      <div class="col w400" id="variant_shipped">
+        <div class="vhead">As shipped <span class="pill bad">defective</span></div>
+        <div class="auth-card" data-ldf-component="auth-page">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3>Welcome &mdash; let's set up your profile</h3>
+            <p class="lead">This is how teammates will see you across the app.</p>
+            <div class="pick-shipped" id="shipped_avatar">
+              <span class="av s72 g0">ST</span>
+              <button class="btn sm round pri"><span class="ic">&#10227;</span> Change colour</button>
+            </div>
+            <div class="afrow"><label>First name <span class="req">*</span></label><div class="ainp">Sam</div></div>
+            <div class="afrow"><label>Last name <span class="req">*</span></label><div class="ainp">Taylor</div></div>
+            <div class="afrow"><label>Job title</label><div class="ainp ph">Optional</div></div>
+            <button class="btn pri lg block">Save &amp; continue</button>
+          </div>
+        </div>
+        <div class="note bad"><strong>Four defects.</strong>
+          <ul>
+            <li>Unlabeled — the only element on the card without a label, so it reads as decoration.</li>
+            <li>Left-aligned, though the config asks for centred (<code>justify: center</code> centres on the
+              wrong axis once <code>flexDirection: column</code> is set in <code>style</code>).</li>
+            <li>Solid violet pill competes with <em>Save &amp; continue</em> — <code>Button.type</code> defaults
+              to <code>primary</code>, and onboarding never sets <code>variant</code>.</li>
+            <li>72px of saturated colour dominates a 400px card.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- (2) centred + outlined -->
+      <div class="col w400" id="variant_centred">
+        <div class="vhead">Centred + outlined <span class="pill mid">better, still floats</span></div>
+        <div class="auth-card" data-ldf-component="auth-page">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3>Welcome &mdash; let's set up your profile</h3>
+            <p class="lead">This is how teammates will see you across the app.</p>
+            <div class="pick-centred" id="centred_avatar">
+              <span class="av s72 g0">ST</span>
+              <button class="btn sm round"><span class="ic">&#10227;</span> Change colour</button>
+            </div>
+            <div class="afrow"><label>First name <span class="req">*</span></label><div class="ainp">Sam</div></div>
+            <div class="afrow"><label>Last name <span class="req">*</span></label><div class="ainp">Taylor</div></div>
+            <div class="afrow"><label>Job title</label><div class="ainp ph">Optional</div></div>
+            <button class="btn pri lg block">Save &amp; continue</button>
+          </div>
+        </div>
+        <p class="note">This is the onboarding mock's actual intent, and a real improvement — the quiet
+          outlined pill stops fighting the submit button. But the block is still an unlabeled island: it is
+          centred while every label, field and the submit button align left, so it has no edge to relate to.
+          That is the "floating in the emptiness" reading.</p>
+      </div>
+
+      <!-- (3) proposed -->
+      <div class="col w400" id="variant_row">
+        <div class="vhead">Proposed — labelled row <span class="pill good">recommended</span></div>
+        <div class="auth-card" data-ldf-component="auth-page">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3>Welcome &mdash; let's set up your profile</h3>
+            <p class="lead">This is how teammates will see you across the app.</p>
+            <div class="pick-row" id="avatar_picker" data-ldf-component="avatar-picker">
+              <span class="av s64 g0">ST</span>
+              <div class="ae-main">
+                <p class="flabel">Avatar</p>
+                <button class="btn sm round"><span class="ic">&#10227;</span> Change colour</button>
+              </div>
+            </div>
+            <div class="afrow"><label>First name <span class="req">*</span></label><div class="ainp">Sam</div></div>
+            <div class="afrow"><label>Last name <span class="req">*</span></label><div class="ainp">Taylor</div></div>
+            <div class="afrow"><label>Job title</label><div class="ainp ph">Optional</div></div>
+            <button class="btn pri lg block">Save &amp; continue</button>
+          </div>
+        </div>
+        <p class="note good">Now the form's first field: label on the same left edge as <em>First name</em>,
+          control beneath it, avatar reading as that field's value. Nothing is centred, so nothing floats —
+          the label and the left edge do the grounding, with no extra panel or divider. 64px keeps the disc
+          from dominating. This is what <code>account.html:261</code> already specified.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ Profile modal ══════════════════════════════════════════════════ -->
+  <div class="section" id="section_modal">
+    <h2>Profile modal · <code>components/view/modal_profile.yaml</code></h2>
+    <p class="slead">The same control in its second home. The proposed treatment is not new here — it is
+      what the account mockup drew; the shipped modal copied onboarding's centred column instead.</p>
+
+    <div class="row">
+
+      <div class="col w560" id="modal_shipped">
+        <div class="vhead">As shipped <span class="pill bad">drifted from the mock</span></div>
+        <div class="modal">
+          <div class="mhead"><h4>Edit profile</h4><button class="mclose">&#10005;</button></div>
+          <div class="mbody">
+            <div class="pick-centred" style="margin-bottom:var(--s5)">
+              <span class="av s64 g0">JM</span>
+              <button class="btn sm round"><span class="ic">&#10227;</span> Change colour</button>
+            </div>
+            <div class="fgrid2">
+              <div class="frow"><label>First name <span class="req">*</span></label><div class="inp">Jane</div></div>
+              <div class="frow"><label>Last name <span class="req">*</span></label><div class="inp">Mokoena</div></div>
+              <div class="frow"><label>Phone</label><div class="inp">+27 82 555 0142</div></div>
+              <div class="frow"><label>Job title</label><div class="inp">Operations Lead</div></div>
+              <div class="frow"><label>Department</label><div class="inp ph">Optional</div></div>
+            </div>
+          </div>
+          <div class="mfoot"><button class="btn">Cancel</button><button class="btn pri">Save profile</button></div>
+        </div>
+        <p class="note bad">A centred island above a left-aligned two-column grid — the misalignment is more
+          obvious here than on onboarding, because the grid gives it a strong left edge to ignore. The button
+          is correctly <code>outlined</code> here, which is the drift: two copies of one control, styled
+          differently.</p>
+      </div>
+
+      <div class="col w560" id="modal_row">
+        <div class="vhead">Proposed — labelled row <span class="pill good">recommended</span></div>
+        <div class="modal">
+          <div class="mhead"><h4>Edit profile</h4><button class="mclose">&#10005;</button></div>
+          <div class="mbody">
+            <div class="pick-row" data-ldf-component="avatar-picker">
+              <span class="av s64 g0">JM</span>
+              <div class="ae-main">
+                <p class="flabel">Avatar</p>
+                <button class="btn sm round"><span class="ic">&#10227;</span> Change colour</button>
+              </div>
+            </div>
+            <div class="fgrid2">
+              <div class="frow"><label>First name <span class="req">*</span></label><div class="inp">Jane</div></div>
+              <div class="frow"><label>Last name <span class="req">*</span></label><div class="inp">Mokoena</div></div>
+              <div class="frow"><label>Phone</label><div class="inp">+27 82 555 0142</div></div>
+              <div class="frow"><label>Job title</label><div class="inp">Operations Lead</div></div>
+              <div class="frow"><label>Department</label><div class="inp ph">Optional</div></div>
+            </div>
+          </div>
+          <div class="mfoot"><button class="btn">Cancel</button><button class="btn pri">Save profile</button></div>
+        </div>
+        <p class="note good">Byte-for-byte the same markup as the onboarding variant — one shared component,
+          two hosts, no drift possible. It shares the grid's left edge and the label matches the field labels
+          beside it.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ Label wording: what the label should say, or whether to have one ═ -->
+  <div class="section" id="section_label">
+    <h2>Label wording · open choice</h2>
+    <p class="slead">"Avatar colour" restates the button — the label names the action instead of the field,
+      so it carries no information the button doesn't. A form label's job is to name the thing; the button
+      says what you can do to it. All three drawn in the form's own label style (13px, weight 500, sentence
+      case), with <em>First name</em> beneath for reference.</p>
+
+    <div class="row">
+      <div class="col w400" id="label_redundant">
+        <div class="vhead">"Avatar colour" <span class="pill bad">redundant</span></div>
+        <div class="preview">
+          <div class="pick-row" style="margin:0">
+            <span class="av s64 g0">ST</span>
+            <div class="ae-main">
+              <p class="flabel">Avatar colour</p>
+              <button class="btn sm round"><span class="ic">&#10227;</span> Change colour</button>
+            </div>
+          </div>
+          <div class="afrow" style="margin-top:var(--s5)"><label>First name <span class="req">*</span></label><div class="ainp">Sam</div></div>
+        </div>
+        <p class="note bad">Label and button say the same word twice. It also names the wrong thing: the
+          field is the avatar, not its colour — colour is just the only part of it you can currently change.</p>
+      </div>
+
+      <div class="col w400" id="label_avatar">
+        <div class="vhead">"Avatar" <span class="pill good">recommended</span></div>
+        <div class="preview">
+          <div class="pick-row" style="margin:0">
+            <span class="av s64 g0">ST</span>
+            <div class="ae-main">
+              <p class="flabel">Avatar</p>
+              <button class="btn sm round"><span class="ic">&#10227;</span> Change colour</button>
+            </div>
+          </div>
+          <div class="afrow" style="margin-top:var(--s5)"><label>First name <span class="req">*</span></label><div class="ainp">Sam</div></div>
+        </div>
+        <p class="note good">Names the field; the button names the action. Reads exactly like
+          <em>First name</em> → its input. Also survives the control changing — if an upload ever lands
+          beside the colour cycle, the label is still right.</p>
+      </div>
+
+      <div class="col w400" id="label_none">
+        <div class="vhead">No label <span class="pill mid">grounding test</span></div>
+        <div class="preview">
+          <div class="pick-row" style="margin:0">
+            <span class="av s64 g0">ST</span>
+            <button class="btn sm round"><span class="ic">&#10227;</span> Change colour</button>
+          </div>
+          <div class="afrow" style="margin-top:var(--s5)"><label>First name <span class="req">*</span></label><div class="ainp">Sam</div></div>
+        </div>
+        <p class="note">Worth judging on its own: most of the grounding comes from the left edge and the
+          horizontal pairing, not from the label. This is still far better than the centred island. But with
+          nothing above the button the pair reads as a small toolbar rather than a field, and it is the one
+          row on the form with no label.</p>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:var(--s4)">
+      <div class="col" style="width:832px">
+        <p class="note">Settled sub-point: whichever wording wins, use the form's <strong>field-label</strong>
+          style rather than the account mock's <code>.subeyebrow</code> (11px, uppercase, tertiary). The
+          eyebrow is visibly quieter than <em>First name</em> beneath it, so it reads as a titled
+          sub-section — the opposite of the "this is a field" claim the row is making. That supersedes
+          <code>account.html:264</code>; update that mock in the same change so the two don't disagree.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ First render: the empty-name state ═════════════════════════════ -->
+  <div class="section" id="section_empty">
+    <h2>First render · empty name</h2>
+    <p class="slead">Onboarding always starts here — the name fields are what onboarding exists to collect.
+      This is the state the F9 screenshot caught.</p>
+
+    <div class="row">
+      <div class="col w400" id="empty_shipped">
+        <div class="vhead">As shipped <span class="pill bad">featureless disc</span></div>
+        <div class="preview">
+          <div class="pick-shipped" style="margin:0">
+            <span class="av s72 g0"></span>
+            <button class="btn sm round pri"><span class="ic">&#10227;</span> Change colour</button>
+          </div>
+        </div>
+        <p class="note bad">The inline <code>_nunjucks</code> initials template yields <code>""</code> for an
+          empty name, so the first thing a new user sees is a big blank red circle. Both screens do this.</p>
+      </div>
+
+      <div class="col w400" id="empty_proposed">
+        <div class="vhead">Proposed <span class="pill good">? fallback</span></div>
+        <div class="preview">
+          <div class="pick-row" style="margin:0" data-ldf-component="avatar-picker">
+            <span class="av s64 g0"><span class="qmark">?</span></span>
+            <div class="ae-main">
+              <p class="flabel">Avatar</p>
+              <button class="btn sm round"><span class="ic">&#10227;</span> Change colour</button>
+            </div>
+          </div>
+        </div>
+        <p class="note good">Driving the preview from the shared
+          <code>generate-avatar-svg.js.njk</code> gets the <code>?</code> fallback for free — and means the
+          preview renders the exact SVG that gets saved as <code>profile.picture</code>, instead of a
+          look-alike built from <code>Avatar.content</code> plus a CSS gradient.</p>
+      </div>
+
+      <div class="col" style="width:496px">
+        <div class="vhead">Spec</div>
+        <div class="spec">
+          <dl>
+            <dt>Row</dt><dd><code>Box</code> · <code>span: 24, direction: row, align: center, gap: 16</code></dd>
+            <dt>Inner column</dt><dd><code>Box</code> · <code>direction: column, gap: 6</code></dd>
+            <dt>Avatar</dt><dd>64px, gradient from <code>avatar_colors[i]</code>, <code>?</code> when nameless</dd>
+            <dt>Label</dt><dd>"Avatar colour" · the form's field-label style — 13px, weight 500, <code>--ant-color-text-secondary</code></dd>
+            <dt>Button</dt><dd><code>size: small, shape: round, variant: outlined</code></dd>
+            <dt>Below row</dt><dd>20px before the first field</dd>
+            <dt>Lives in</dt><dd><code>modules/shared/profile/avatar-picker.yaml</code></dd>
+          </dl>
+        </div>
+        <p class="note">Alignment is expressed through <code>layout</code> (<code>direction</code>,
+          <code>align</code>), never <code>style</code> — <code>style.alignItems</code> loses to the layout
+          system's own rule, which is defect (b).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Rejected: full swatch grid ═════════════════════════════════════ -->
+  <div class="section" id="section_rejected">
+    <h2>Rejected · full swatch grid</h2>
+    <p class="slead">Drawn so the rejection is checkable rather than asserted. All 20 gradient pairs from
+      <code>modules/shared/profile/avatar_colors.yaml</code>, at 18px, in the real 400px card.</p>
+
+    <div class="row">
+      <div class="col w400" id="variant_swatches">
+        <div class="vhead">Swatch grid <span class="pill bad">rejected</span></div>
+        <div class="auth-card" data-ldf-component="auth-page">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3>Welcome &mdash; let's set up your profile</h3>
+            <p class="lead">This is how teammates will see you across the app.</p>
+            <div class="pick-swatches" id="swatches_avatar">
+              <div class="pick-row" style="margin:0">
+                <span class="av s64 g0">ST</span>
+                <div class="ae-main"><p class="flabel">Avatar</p></div>
+              </div>
+              <div class="swatch-grid">
+                <span class="swatch on" style="background:linear-gradient(135deg,#c62828,#ad1457)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#ad1457,#6a1b9a)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#6a1b9a,#4527a0)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#4527a0,#283593)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#283593,#1565c0)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#1565c0,#0277bd)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#0277bd,#00838f)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#00838f,#00695c)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#00695c,#2e7d32)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#2e7d32,#558b2f)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#558b2f,#9e9d24)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#ef6c00,#d84315)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#d84315,#c62828)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#4e342e,#6d4c41)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#37474f,#546e7a)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#c62828,#4527a0)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#1565c0,#00695c)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#6a1b9a,#c62828)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#283593,#00838f)"></span>
+                <span class="swatch" style="background:linear-gradient(135deg,#00695c,#ef6c00)"></span>
+              </div>
+            </div>
+            <div class="afrow"><label>First name <span class="req">*</span></label><div class="ainp">Sam</div></div>
+            <div class="afrow"><label>Last name <span class="req">*</span></label><div class="ainp">Taylor</div></div>
+            <div class="afrow"><label>Job title</label><div class="ainp ph">Optional</div></div>
+            <button class="btn pri lg block">Save &amp; continue</button>
+          </div>
+        </div>
+        <p class="note bad">Twenty saturated dots become the loudest thing on a page whose job is to collect a
+          name. At 18px the gradients read as muddy solids — swatches 1/13, 2/18 and 5/19 are barely
+          distinguishable, so the extra precision it offers is precision the eye can't use. The concrete need
+          is "not this colour", which one cycle button serves.</p>
+      </div>
+
+      <div class="col" style="width:400px">
+        <div class="vhead">Also rejected</div>
+        <p class="note"><strong>Click the avatar to cycle.</strong> <code>Avatar</code> does support
+          <code>onClick</code>, but with no visible affordance nobody discovers it, and pairing it with the
+          button gives one action two triggers.</p>
+        <p class="note"><strong>Name + email preview beside the avatar.</strong> Tempting, since the lead says
+          "this is how teammates will see you" — but on onboarding the name is blank at first render, so it
+          would read "Your name", and in the modal the form and the tile behind it already show both.</p>
+        <p class="note"><strong>A tinted panel around the row.</strong> Chrome that isn't in the mockup. The
+          auth card and the modal already contain the control; the label is what it was missing.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

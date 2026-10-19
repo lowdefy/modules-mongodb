@@ -48,7 +48,7 @@ _ref:
               vars:
                 id: tile_activities_capture
                 label: Log activity
-                icon: AiOutlinePlus
+                icon: add
                 button_type: link
                 size: small
                 mode: modal

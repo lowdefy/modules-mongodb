@@ -1,0 +1,39 @@
+# The keys of this chat's files already sent on any of the user's tickets, into
+# state.sent_chat_files, so a second ticket or a follow-up never carries the
+# files of another problem again.
+- :set_state:
+    chat_request_keys:
+      _array.map:
+        - _agent:
+            key: files
+            default: []
+        - _function:
+            __if_none:
+              - __args: 0.key
+              - null
+- id: sent_chat_files
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId: support-tickets
+  properties:
+    pipeline:
+      - $match:
+          user_id:
+            _user: id
+          chat_files:
+            $in:
+              _state: chat_request_keys
+      - $unwind: $chat_files
+      - $match:
+          chat_files:
+            $in:
+              _state: chat_request_keys
+      - $group:
+          _id: null
+          keys:
+            $addToSet: $chat_files
+- :set_state:
+    sent_chat_files:
+      _if_none:
+        - _step: sent_chat_files.0.keys
+        - []

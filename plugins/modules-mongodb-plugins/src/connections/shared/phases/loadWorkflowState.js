@@ -71,7 +71,7 @@ export function gateAllows(gate, userRoles) {
  *     live in the lifecycle handlers, task 17), no access gate.
  *
  * Context contract: `context.mongoDb` (the `Db` from `mongo/getMongoDb.js`,
- * set up at handler entry), `context.connection` (`app_name`, collection
+ * set up at handler entry), `context.connection` (`slug`, collection
  * names), `context.workflowsConfig`, `context.user`.
  *
  * Part 48 render-config seam: after resolving `workflowConfig`, this function
@@ -117,6 +117,10 @@ async function loadWorkflowState(
   const { mongoDb, connection } = context;
   const workflowsCollection = connection?.workflowsCollection ?? "workflows";
   const actionsCollection = connection?.actionsCollection ?? "actions";
+  // Tenant verdict (tenant-wall contract): every load-phase read is org-scoped,
+  // so a cross-org action/workflow id surfaces as the same not-found error as a
+  // genuinely missing doc — the wall never leaks existence.
+  const tenant = context.tenant ?? null;
   // Action-targeted modes: Submit (`signal`) and Fields (`verb`). They share
   // the read path; only the gating differs. `signal`/`verb` are mutually
   // exclusive — a transition and a signal-less operation can't both apply.
@@ -135,6 +139,7 @@ async function loadWorkflowState(
       mongoDb,
       collection: actionsCollection,
       query: { _id: actionId },
+      tenant,
     });
     if (!targetActionDoc) {
       throw new WorkflowEngineError(
@@ -149,6 +154,7 @@ async function loadWorkflowState(
     mongoDb,
     collection: workflowsCollection,
     query: { _id: workflowId },
+    tenant,
   });
   if (!workflow) {
     throw new WorkflowEngineError(
@@ -161,6 +167,7 @@ async function loadWorkflowState(
     mongoDb,
     collection: actionsCollection,
     query: { workflow_id: workflowId },
+    tenant,
   });
 
   const workflowConfig = (context.workflowsConfig ?? []).find(
@@ -206,7 +213,7 @@ async function loadWorkflowState(
     );
   }
 
-  const currentApp = connection?.app_name;
+  const currentApp = connection?.slug;
   const userRoles = context.user?.roles ?? [];
 
   // ── Fields mode (Part 24 `UpdateActionFields`): signal-less ──────────────

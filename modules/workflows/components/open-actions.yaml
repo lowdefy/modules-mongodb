@@ -10,8 +10,8 @@
 # of `entity_workflows` state. Both re-evaluate on every render, so the list
 # recomputes whenever `entity_workflows` changes — including when a host (e.g.
 # the deal view) reseeds it on selection change — with no host wiring, no item
-# cap, and one flatten per render. Navigation is an anchor href to each action's
-# page (the compact-card idiom).
+# cap, and one flatten per render. Navigation is an HTML page link
+# (`data-page-id`) to each action's page (the compact-card idiom).
 #
 # Vars:
 #   entity_id            — (required) the entity whose open actions render.
@@ -50,7 +50,7 @@ blocks:
             {% else %}
             <div style="display: flex; flex-direction: column; gap: 4px;">
             {% for a in actions %}
-            <a {% if a.href %}href="{{ a.href }}" {% endif %}style="display: block; text-decoration: none; padding: 8px 10px; border-radius: 6px; border: 1px solid {{ a.border }}; background: color-mix(in srgb, {{ a.border }} 18%, transparent); cursor: {% if a.href %}pointer{% else %}default{% endif %};">
+            <a {% if a.link %}data-page-id="{{ a.link.pageId }}" data-path-params="{{ (a.link.pathParams or {}) | dump }}" data-url-query="{{ (a.link.urlQuery or {}) | urlencode }}" {% endif %}style="display: block; text-decoration: none; padding: 8px 10px; border-radius: 6px; border: 1px solid {{ a.border }}; background: color-mix(in srgb, {{ a.border }} 18%, transparent); cursor: {% if a.link %}pointer{% else %}default{% endif %};">
               <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: {{ a.title_color }}; margin-bottom: 4px;">{{ a.label }}</div>
               <div style="font-size: 11px; color: var(--ant-color-text); line-height: 1.4;">{{ a.message }}</div>
             </a>
@@ -72,20 +72,12 @@ blocks:
                       for (const act of (g.actions || [])) {
                         if (TERMINAL.includes(act.status)) continue;
                         const sc = statuses[act.status] || {};
-                        let href = null;
-                        if (act.link && act.link.pageId) {
-                          const uq = act.link.urlQuery || {};
-                          const qs = Object.keys(uq)
-                            .map(function (k) { return k + '=' + uq[k]; })
-                            .join('&');
-                          href = '/' + act.link.pageId + (qs ? '?' + qs : '');
-                        }
                         out.push({
                           label: g.title || wf.title || 'Action',
                           message: act.message || '',
                           border: sc.borderColor || 'var(--ant-color-primary-border)',
                           title_color: sc.titleColor || 'var(--ant-color-primary)',
-                          href: href,
+                          link: act.link && act.link.pageId ? act.link : null,
                         });
                       }
                     }

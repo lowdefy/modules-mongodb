@@ -28,7 +28,7 @@
  *     present on `display` (each app bucket the rendered event already has). The
  *     comment travels wherever the event travels.
  *   - **internal** — write into **only** the submitting app's bucket
- *     (`appName`); this is Part 33's original single-bucket behaviour.
+ *     (`slug`); this is Part 33's original single-bucket behaviour.
  * `internal` is honoured ONLY when the submitting app's connection has opted in
  * via `enableInternalComments` (Part 61 D2): the engine never trusts the client
  * for who-sees-what, so a flag-off app's `internal` request is coerced to the
@@ -52,7 +52,7 @@
  *
  * @param {Object} eventPayload — the event payload carrying `display`.
  * @param {{ html?: string, text?: string, fileList?: any[] } | null} comment
- * @param {string} appName — the display bucket key (workflows entry app_name).
+ * @param {string} slug — the display bucket key (the submitting app's slug).
  * @param {'shared'|'internal'} [visibility='shared'] — writer's per-comment choice.
  * @param {boolean} [enableInternalComments=false] — connection opt-in; gates `internal`.
  * @returns {Object} the same `eventPayload`.
@@ -60,7 +60,7 @@
 function foldCommentIntoEvent(
   eventPayload,
   comment,
-  appName,
+  slug,
   visibility = "shared",
   enableInternalComments = false,
 ) {
@@ -74,15 +74,16 @@ function foldCommentIntoEvent(
   // A pre-hook/author override merge can produce a `display` without the app
   // key — ensure the submitting app's bucket exists before writing into it.
   eventPayload.display ??= {};
-  eventPayload.display[appName] ??= {};
+  eventPayload.display[slug] ??= {};
 
   // `internal` is honoured only when the connection opted in; otherwise the
   // request is coerced to `shared` (the engine never trusts the client for who
   // sees what — Part 61 D2). Everything else is `shared`.
-  const isInternal = visibility === "internal" && enableInternalComments === true;
+  const isInternal =
+    visibility === "internal" && enableInternalComments === true;
 
   if (isInternal) {
-    eventPayload.display[appName].description = comment.html;
+    eventPayload.display[slug].description = comment.html;
   } else {
     // Shared: fan out into every bucket the rendered event already has.
     for (const key of Object.keys(eventPayload.display)) {

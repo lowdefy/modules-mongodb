@@ -17,7 +17,7 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  * Cross-stream behaviour:
  *   - workflow_id set   → full workflow enrichment: computeAllowed access gate
  *     (drop if no verb held) + collapseLink for the resolved action link.
- *   - workflow_id null  → pass through status + <app_name>.message only;
+ *   - workflow_id null  → pass through status + <display_key>.message only;
  *     no access/link logic (safety valve for future task-kind docs).
  *
  * Card-worthiness and latest-event-per-action dedup faithfully port the YAML
@@ -31,9 +31,9 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  */
 async function GetEventsTimeline(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection } = context;
+  const { params, mongoDb, connection, tenant } = context;
   const { reference_field, reference_value } = params;
-  const app_name = connection.app_name;
+  const display_key = connection.display_key;
   const userRoles = context.user?.roles;
   const eventsCollection = connection.eventsCollection ?? "log-events";
   const actionsCollection = connection.actionsCollection ?? "actions";
@@ -43,7 +43,7 @@ async function GetEventsTimeline(lowdefyContext) {
   //
   // Mirrors the pipeline in events-timeline.yaml:
   //   1. $match events by reference_field / reference_value, AND the event has
-  //      a display block for this app (app_name field not null).
+  //      a display block for this app (display_key field not null).
   //   2. $lookup actions joined on action_ids → _id.
   //   3. $unwind + $setWindowFields to find the last event per action.
   //   4. $group to reattach each action only to its latest referencing event.
@@ -55,6 +55,19 @@ async function GetEventsTimeline(lowdefyContext) {
   // visible_verbs / resolve_action_link are NOT run in the aggregation pipeline
   // because they rely on the per-request session user — they are applied in JS
   // post-processing below.
+  //
+  // Tenant-wall (framework tenant contract): when the connection carries a
+  // tenant verdict, the events $match gains the tenant clause AND both $lookup
+  // sub-pipelines are prefixed with a tenant $match — the joined actions and
+  // contacts collections carry the tenant field too, and an unfiltered $lookup
+  // would leak them across the wall (mirrors the framework's recursive-
+  // injection contract for lookups). `tenantClause`/`tenantLookupMatch` are
+  // empty when tenant is null, so tenant-less behavior is unchanged.
+
+  const tenantClause = tenant ? [{ [tenant.field]: tenant.value }] : [];
+  const tenantLookupMatch = tenant
+    ? [{ $match: { [tenant.field]: tenant.value } }]
+    : [];
 
   const pipeline = [
     // ── Match events to the target reference ──
@@ -64,7 +77,9 @@ async function GetEventsTimeline(lowdefyContext) {
           { [reference_field]: reference_value },
           // Events that have a display block for this app (mirrors the
           // display_key $ne null guard from events-timeline.yaml).
-          { [app_name]: { $ne: null } },
+          { [display_key]: { $ne: null } },
+          // Tenant-wall: only this org's events.
+          ...tenantClause,
         ],
       },
     },
@@ -78,6 +93,8 @@ async function GetEventsTimeline(lowdefyContext) {
         foreignField: "_id",
         as: "actions",
         pipeline: [
+          // Tenant-wall: joined actions must sit inside the same org.
+          ...tenantLookupMatch,
           // Card-worthiness filter (from timeline_action_lookup.yaml):
           //   1. Current stage must not be 'blocked'.
           //   2. At least one stage in history must be neither 'blocked' nor
@@ -196,30 +213,36 @@ async function GetEventsTimeline(lowdefyContext) {
     // ── Sort events newest-first ──
     { $sort: { date: -1 } },
 
-    // ── Add display fields from the app_name display block ──
+    // ── Add display fields from the display_key display block ──
     // Mirrors the final $addFields in events-timeline.yaml.
     {
       $addFields: {
-        title: `$${app_name}.title`,
-        description: `$${app_name}.description`,
-        info: `$${app_name}.info`,
+        title: `$${display_key}.title`,
+        description: `$${display_key}.description`,
+        info: `$${display_key}.info`,
       },
     },
 
     // ── Resolve the event author's avatar from the contacts collection ──
     // Events store created.user.{id,name} only; the timeline avatar wants a
-    // picture src. Join the contact by _id === created.user.id and project
+    // picture src. Join the contact by user_id === created.user.id and project
     // profile.picture onto created.user.picture. The EventsTimeline block
     // reads user.picture and falls back to initials when it is absent, so an
     // unmatched join (system events, deleted contacts) degrades gracefully.
-    // A user IS a contact — shared collection, shared _id space.
+    // A contact links to its auth user through user_id, not _id: a person
+    // holds one contact per organization, each with its own _id. The tenant
+    // $match keeps the join to this organization's contact.
     {
       $lookup: {
         from: contactsCollection,
         localField: "created.user.id",
-        foreignField: "_id",
+        foreignField: "user_id",
         as: "author_contact",
-        pipeline: [{ $project: { _id: 0, picture: "$profile.picture" } }],
+        pipeline: [
+          // Tenant-wall: joined contacts must sit inside the same org.
+          ...tenantLookupMatch,
+          { $project: { _id: 0, picture: "$profile.picture" } },
+        ],
       },
     },
     {
@@ -262,7 +285,7 @@ async function GetEventsTimeline(lowdefyContext) {
         // ── Workflow card: apply access gate + link collapse ──
         const allowed = computeAllowed({
           access: action.access,
-          app_name,
+          slug: display_key,
           userRoles,
         });
         if (
@@ -274,9 +297,9 @@ async function GetEventsTimeline(lowdefyContext) {
           // Drop: user holds no verb on this card.
           continue;
         }
-        const links = action[app_name]?.links ?? null;
+        const links = action[display_key]?.links ?? null;
         const link = collapseLink({ links, allowed });
-        const message = action[app_name]?.message ?? null;
+        const message = action[display_key]?.message ?? null;
         card = {
           _id: action._id,
           kind: action.kind ?? null,
@@ -287,13 +310,13 @@ async function GetEventsTimeline(lowdefyContext) {
         };
       } else {
         // ── Non-workflow card (workflow_id null): pass through ──
-        // No access/link logic. Expose status + app_name.message only.
+        // No access/link logic. Expose status + display_key.message only.
         card = {
           _id: action._id,
           kind: action.kind ?? null,
           status: action.status ?? null,
           link: null,
-          message: action[app_name]?.message ?? null,
+          message: action[display_key]?.message ?? null,
           updated: action.updated ?? null,
         };
       }

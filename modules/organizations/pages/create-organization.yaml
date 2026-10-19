@@ -1,0 +1,110 @@
+# `create-organization` page: name a new organization and become its owner.
+# The endpoint creates it; the page then hands off to the switch page, which
+# moves the session into it and goes on to setup. Present only when the module
+# var `allow_create_organization` is true.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: create-organization
+    content_width: 560
+    title:
+      _build.string.concat:
+        - 'New '
+        - _build.string.toLowerCase:
+            _module.var: label
+    description: You'll be its owner. You can invite people once it exists.
+    events:
+      # The page's state lasts the browser session, so a create that handed off
+      # leaves its in-flight flag set. Each visit starts with a fresh form.
+      onMount:
+        - id: reset_create_form
+          type: SetState
+          params:
+            creating_organization: false
+            create_refused_message: null
+            new_organization:
+              name: null
+    breadcrumbs:
+      - label:
+          _build.string.concat:
+            - 'New '
+            - _build.string.toLowerCase:
+                _module.var: label
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            blocks:
+              - id: new_organization.name
+                type: TextInput
+                required: true
+                properties:
+                  title: Name
+                  placeholder: For example, your company or team
+                  maxLength:
+                    _ref: components/organization_name_max_length.yaml
+                  label:
+                    extra:
+                      _build.string.concat:
+                        - 'You can change it later in '
+                        - _module.var: label
+                        - ' settings.'
+                  autoFocus: true
+                  disabled:
+                    _eq:
+                      - _state: creating_organization
+                      - true
+                events:
+                  onChange:
+                    - id: clear_create_refused
+                      type: SetState
+                      params:
+                        create_refused_message: null
+                  onPressEnter:
+                    _ref: actions/create_organization.yaml
+              - id: create_refused_text
+                type: Paragraph
+                visible:
+                  _ne:
+                    - _state: create_refused_message
+                    - null
+                properties:
+                  type: danger
+                  content:
+                    _state: create_refused_message
+            footer_buttons:
+              - id: create_organization_btn
+                type: Button
+                layout:
+                  flex: 0 0 auto
+                properties:
+                  title:
+                    _build.string.concat:
+                      - 'Create '
+                      - _build.string.toLowerCase:
+                          _module.var: label
+                  color: primary
+                  variant: solid
+                  disabled:
+                    _eq:
+                      - _state: creating_organization
+                      - true
+                events:
+                  onClick:
+                    _ref: actions/create_organization.yaml
+              - id: cancel_create_organization_btn
+                type: Button
+                layout:
+                  flex: 0 0 auto
+                properties:
+                  title: Cancel
+                  color: default
+                  variant: outlined
+                events:
+                  onClick:
+                    - id: cancel_create_organization
+                      type: Link
+                      params:
+                        home: true

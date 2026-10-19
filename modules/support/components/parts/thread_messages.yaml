@@ -1,0 +1,27 @@
+# A stored view's messages as ChatThread takes them. A removed message keeps
+# its place as "Removed", with no files. Pelican names no file type, so a file
+# is an image unless its name ends in .pdf.
+#
+# Vars:
+#   messages  an operator resolving to the view's messages
+_js:
+  fn: |
+    const mime = (name) =>
+      /\.pdf$/i.test(name || '') ? 'application/pdf' : 'image/*';
+    return (args.messages || []).map((message) => ({
+      _id: message.id,
+      author_type: message.from,
+      author: { name: message.author ? message.author.name : null },
+      body: message.deleted ? 'Removed' : message.text,
+      attachments: message.deleted
+        ? []
+        : (message.files || []).map((file) => ({
+            name: file.name,
+            url: file.url,
+            mime: mime(file.name),
+          })),
+      seq: message.at,
+    }));
+  args:
+    messages:
+      _var: messages

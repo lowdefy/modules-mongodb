@@ -51,7 +51,7 @@ import recomputeGroups from "./recomputeGroups.js";
  * @param {string} args.event_id — per-level event id (minted per level).
  * @param {{ timestamp: Date, user: Object }} args.now — shared per-request stamp.
  * @param {() => string} [args.newId] — id source (passed through unchanged).
- * @param {Object} args.connection — engine connection config (app_name,
+ * @param {Object} args.connection — engine connection config (slug,
  *   collection names, changeLog) — `{ workflowId }`-mode `loadWorkflowState`
  *   does not return it, so the cascade threads it in from the level context.
  * @param {Object} [args.lowdefyContext] — request context for change-log fields.

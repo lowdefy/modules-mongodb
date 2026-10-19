@@ -1,0 +1,10 @@
+# Re-read both member-facing lists. Every mutation on the members page changes
+# one or the other (an invite adds a pending row; an accept, removal or role
+# change moves or rewrites a member row), and they are cheap org-scoped reads,
+# so both refetch together rather than each caller reasoning about which moved.
+- id: refetch_members
+  type: Request
+  params: get_members
+- id: refetch_invitations
+  type: Request
+  params: get_invitations

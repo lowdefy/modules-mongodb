@@ -1,0 +1,40 @@
+id: mark-read
+type: Api
+description: >-
+  Marks one of the session user's tickets read, by id or key. The open thread
+  calls it as messages arrive.
+payloadSchema:
+  type: object
+  required:
+    - ticket
+  additionalProperties: false
+  properties:
+    ticket:
+      type: string
+      minLength: 1
+routine:
+  - _ref: api/parts/require-user.yaml
+  - id: mark_read
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: support-tickets
+    properties:
+      disableNoMatchError: true
+      filter:
+        user_id:
+          _user: id
+        $or:
+          - _id:
+              _payload: ticket
+          - view.key:
+              _payload: ticket
+      update:
+        $set:
+          read_at:
+            _date: now
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+  - :return:
+      ok: true

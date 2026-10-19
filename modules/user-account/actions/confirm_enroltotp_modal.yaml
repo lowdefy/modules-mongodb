@@ -1,0 +1,31 @@
+# The scan-phase confirm chain, `_ref`'d by both the Confirm button's onClick and
+# the code field's onPressEnter so click and Enter run the identical sequence.
+# A wrong code throws inside TwoFactorVerify (its error toast shows) and stops the
+# chain before advance_to_codes, keeping the modal on the scan phase. The tile
+# refetch rides this chain rather than the Done button so the tile is never stale
+# while the user reads their codes, and so a failed refetch is not silent on close.
+_build.array.concat:
+  - - id: validate_confirmation_code
+      type: Validate
+      params:
+        blockIds:
+          - enroltotp.confirmation_code
+    - id: verify_totp
+      type: TwoFactorVerify
+      messages:
+        loading: Confirming…
+        success: Two-factor authentication is on.
+        error: That code is incorrect or has expired. Try again.
+      params:
+        code:
+          _state: enroltotp.confirmation_code
+        # Without this, a successful verify navigates to its default home
+        # callbackUrl, unmounting the modal before the one-time backup codes on
+        # the next phase can be read. `false` suppresses navigation so the modal
+        # holds on phase `codes`.
+        callbackUrl: false
+    - id: advance_to_codes
+      type: SetState
+      params:
+        enroltotp.phase: codes
+  - _ref: actions/refetch_account.yaml

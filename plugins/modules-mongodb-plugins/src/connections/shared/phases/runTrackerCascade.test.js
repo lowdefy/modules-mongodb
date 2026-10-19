@@ -121,7 +121,7 @@ function makeBaseContext({ callApi } = {}) {
       entry_id: "workflows",
       workflowsCollection: "workflows",
       actionsCollection: "actions",
-      app_name: "test-app",
+      slug: "test-app",
       endpoints: {
         new_event: "events/new-event",
         send_notification: "notifications/send-notification",
@@ -678,16 +678,14 @@ function makeRacingDb(db, { collectionName = "workflows" } = {}) {
             return async (filter, update, options) => {
               if (!raced) {
                 raced = true;
-                await db
-                  .collection(name)
-                  .updateOne(
-                    { _id: filter._id },
-                    {
-                      $set: {
-                        "updated.timestamp": new Date("2099-01-01T00:00:00Z"),
-                      },
+                await db.collection(name).updateOne(
+                  { _id: filter._id },
+                  {
+                    $set: {
+                      "updated.timestamp": new Date("2099-01-01T00:00:00Z"),
                     },
-                  );
+                  },
+                );
               }
               return target.findOneAndUpdate(filter, update, options);
             };

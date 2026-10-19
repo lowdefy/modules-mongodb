@@ -231,7 +231,7 @@ reports list's ⋯ column uses, plus the cell-renderer identity fix that menu ne
 `blocks-echarts` (re-applying a changed theme to the live chart through ECharts 6's
 `setTheme`, so a dark-mode toggle re-inks charts without a reload,
 [lowdefy/lowdefy#2358](https://github.com/lowdefy/lowdefy/pull/2358)). All four
-merged and ship in Lowdefy `6.0.0`, which the demo now pins. `pnpm check:patches`
+merged and ship in Lowdefy `6.0.0` and later. `pnpm check:patches`
 still runs in CI so that any future patch is keyed to the pinned Lowdefy version.
 
 ## 7. Chat → saved report
@@ -254,16 +254,21 @@ spec. `api/generate-report.yaml`:
 - L65-88 — insert the spec **raw**. The comment at L2-7 is the key decision: the
   reconstructed pipeline is discarded and the AI's verbatim pipeline is stored,
   because _resolve-time revalidation is the guarantee_, not sanitization-at-write.
-- L89-98 — return the report URL, which the agent hands back in chat.
+- L102-105 — return the report id. The `emit-data-parts` hook streams the saved
+  report into the panel's "Reports from this chat" list, which opens it.
 
 ## 8. Report render
 
-`pages/report.yaml:12-79` is a single `Dynamic` block resolved by
-`resolve-report`. `properties.types` (L30-69) is a bundling declaration — the
-compiled output's block/action/operator types must be listed so they ship to the
-client. Among them the `Link` action and the `_url_query` operator, which the
-owner-only chat links and the drop-and-reload recovery need; the `Box` type the
-old pooled filter row required is gone.
+`pages/report.yaml` is a single `Dynamic` block resolved by `resolve-report`,
+under the module's dynamic blocks policy (`components/report_policy.yaml`). The
+compiled blocks are data built from a stored spec, and Lowdefy renders data as
+blocks only under a policy: it lists every block, action and operator type the
+compiled output may use (and bundles them into the client), the endpoints its
+`CallAPI` actions may call and the pages its `Link` actions may open. Among them
+the `Link` action and the `_url_query` operator, which the owner-only chat links
+and the drop-and-reload recovery need. The app lists the policy under
+`policies.dynamicBlocks`, because Lowdefy reads policies only from
+`lowdefy.yaml`.
 
 `api/resolve-report.yaml`:
 
@@ -277,9 +282,20 @@ old pooled filter row required is gone.
   connection-bound catalog with the **viewing** user's roles, on every single
   resolve. A section the viewer cannot reach, or that drifted out of the catalog,
   fails as one entry — not the whole report.
-- L53-67 — `_analytics.compileReport`. The catalog is passed here for exactly one
-  thing (L60-61): resolving select-filter options from a field's enum values. A
-  display convenience, explicitly not a gate.
+- `_analytics.compileReport`, inside a `ValidateDynamic` step that checks its
+  blocks against the report policy; `:return` hands back that step's blocks,
+  the only data a Dynamic endpoint may return as blocks. The policy checks every
+  string the blocks carry, row values included, and refuses HTML tag syntax and
+  URLs on origins it does not list. So the first check runs with
+  `throwOnInvalid: false`: when it refuses anything, the compiler runs again with
+  those errors (`policyErrors`), maps each error's path back to the section whose
+  blocks it falls in, renders that section as an Alert, and a second, throwing
+  `ValidateDynamic` checks the result. A refusal in the header (the report title
+  or description) still fails the report. The compiler also reads the policy's
+  `limits.bytes` (`maxBytes`) and renders a section that would take the report
+  over it as an Alert beside its ⤓. The catalog is passed to the compiler for
+  exactly one thing: resolving select-filter options from a field's enum values.
+  A display convenience, explicitly not a gate.
 
 `compileReport.js:727-1090` turns spec + rows into blocks:
 
@@ -395,7 +411,7 @@ old pooled filter row required is gone.
   **Icons are the same class of problem with a quieter failure.** The build collects
   icon imports by scanning the _static_ page config for icon names, and nothing
   compiled at runtime is visible to it — so an icon only the compiled header names
-  (`AiOutlineEllipsis` on the ⋯, typically) was bundled only if the consuming app
+  (`more` on the ⋯, typically) was bundled only if the consuming app
   happened to use it on some other page, and rendered as the exclamation-circle
   fallback otherwise. `report.yaml` lists every icon the compiler emits under the
   Dynamic block's `properties.icons` — unread by the block, present for the scan —
@@ -443,12 +459,9 @@ old pooled filter row required is gone.
   "refresh what you are looking at" re-renders the original and leaves the copy
   invisible. The list refetches its scope (the copy lands in Mine); the report
   page opens the copy in a new tab, navigating by `pageId` + `urlQuery` on
-  `duplicate-report`'s returned `report_id`. **Not** the `url` the same response
-  carries: `Link`'s `url` param means an _external_ address and gets an `https://`
-  prefix whenever the value has no scheme, so a root-relative
-  `/{entry}/report?report_id=…` resolves to a host named after the entry. That
-  returned url is for the assistant to hand a person in chat; every in-app
-  navigation in this module goes through `pageId`/`urlQuery`.
+  `duplicate-report`'s returned `report_id`. Every navigation in this module goes
+  through `pageId`/`urlQuery`, so it follows the report page's path and the
+  app's `basePath`.
 - Vertical rhythm comes from two distances, not one. `report.yaml`'s
   `layout.gap` y value is small — it spaces a heading off the chart or table it
   names — and `SECTION_TOP_GAP` adds the larger distance ahead of each section
@@ -507,7 +520,13 @@ old pooled filter row required is gone.
   is a wide-viewport behaviour only.
 
 **Filters** are the clever bit. `requeryActions` (L91-114) emits a
-`CallAPI`/`SetState` pair per bound section. The payload's filter values are
+`CallAPI`/`SetState` pair per bound section. The payload names the section
+(`report_id` from the page URL, `section_id`) rather than carrying its query;
+`query-data` and `chart-data` load the stored section
+(`api/steps/load_report_section.yaml`, readable on the same terms as the report)
+and run its query. The query is AI-authored data, and compiled actions are config
+the client runs, so an operator-shaped key inside it never reaches the browser.
+The ⤓ and download sections send the same reference. The payload's filter values are
 `{ __state: ... }` — deferred client operators (double underscore; the Dynamic
 block's server resolution leaves them alone and the client unescapes them,
 L41-44). `dataBinding` makes a filtered kpi/table section read

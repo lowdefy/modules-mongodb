@@ -1,0 +1,10 @@
+# For the layout's global_requests: the requests the support panel calls on
+# demand. None runs on page load.
+- _ref:
+    path: requests/upload_policy.yaml
+    vars:
+      block_id: support_report_files
+- _ref:
+    path: requests/upload_policy.yaml
+    vars:
+      block_id: support_reply_files

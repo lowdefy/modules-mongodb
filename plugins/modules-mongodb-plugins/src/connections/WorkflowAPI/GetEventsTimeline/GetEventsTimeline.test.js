@@ -44,15 +44,17 @@ beforeEach(async () => {
 
 function buildContext({
   request,
-  app_name = "test-app",
+  display_key = "test-app",
   user = {
     id: "U1",
     profile: { name: "Test User" },
     roles: ["account-manager"],
   },
+  tenant = null,
 } = {}) {
   return {
     request,
+    tenant,
     blockId: "test-block",
     connectionId: "test-conn",
     pageId: "test-page",
@@ -64,7 +66,7 @@ function buildContext({
       workflowsCollection: "workflows",
       actionsCollection: "actions",
       eventsCollection: "log-events",
-      app_name,
+      display_key,
       changeStamp,
       user,
       endpoints: {
@@ -78,8 +80,8 @@ function buildContext({
 
 /**
  * Seed a log event. The event's action_ids array links it to zero or more
- * action docs. `app_name_block` is the display block stored under `app_name`
- * on the event doc (title/description/info).
+ * action docs. `display_key` names the display block stored on the event doc
+ * (title/description/info).
  */
 async function seedEvent({
   _id,
@@ -89,7 +91,7 @@ async function seedEvent({
   date = new Date("2026-05-01T10:00:00Z"),
   created_timestamp = new Date("2026-05-01T10:00:00Z"),
   user_id = "u1",
-  app_name = "test-app",
+  display_key = "test-app",
   title = "Event Title",
   description = "Event Description",
   info = "Event Info",
@@ -100,23 +102,28 @@ async function seedEvent({
     action_ids,
     date,
     created: { timestamp: created_timestamp, user: { id: user_id } },
-    [app_name]: { title, description, info },
+    [display_key]: { title, description, info },
   });
 }
 
 /**
- * Seed a contact doc in the shared user-contacts collection. `picture` is
- * stored under `profile.picture` (the field GetEventsTimeline joins onto the
- * event author's created.user.picture).
+ * Seed a contact doc in the shared user-contacts collection. `user_id` links
+ * the contact to its auth user (the field GetEventsTimeline joins on) and
+ * defaults to `_id`. `picture` is stored under `profile.picture` (the field
+ * projected onto the event author's created.user.picture).
  */
 async function seedContact({
   _id,
+  user_id = _id,
   picture = null,
   name = "Contact Name",
+  extra = {},
 } = {}) {
   await mongo.db.collection("user-contacts").insertOne({
     _id,
+    user_id,
     profile: { name, picture },
+    ...extra,
   });
 }
 
@@ -138,7 +145,7 @@ async function seedAction({
   status_history = null, // full status array override
   stage = "action-required",
   updated_timestamp = new Date("2026-05-01T09:00:00Z"),
-  app_name = "test-app",
+  display_key = "test-app",
   message = "Action message",
   links = null,
   access = null,
@@ -160,7 +167,7 @@ async function seedAction({
     error: null,
   };
   const defaultAccess = {
-    [app_name]: { view: true, edit: ["account-manager"] },
+    [display_key]: { view: true, edit: ["account-manager"] },
   };
 
   await mongo.db.collection("actions").insertOne({
@@ -173,7 +180,7 @@ async function seedAction({
     decl_index,
     kind,
     status: status_history ?? [{ stage, event_id: "e0", created: changeStamp }],
-    [app_name]: {
+    [display_key]: {
       links: links ?? defaultLinks,
       message,
     },
@@ -198,7 +205,7 @@ describe("basic return shape", () => {
     expect(result).toEqual([]);
   });
 
-  test("returns events with title, description, info display fields from app_name block", async () => {
+  test("returns events with title, description, info display fields from display_key block", async () => {
     await seedEvent({
       _id: "ev-1",
       title: "My Event",
@@ -719,11 +726,11 @@ describe("reference value filter", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Events without the app_name display block are excluded
+// Events without the display_key display block are excluded
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("events without app_name display block are excluded", () => {
-  test("event without app_name display block does not appear in results", async () => {
+describe("events without display_key display block are excluded", () => {
+  test("event without display_key display block does not appear in results", async () => {
     // Insert an event doc without the 'test-app' field.
     await mongo.db.collection("log-events").insertOne({
       _id: "ev-no-display",
@@ -742,7 +749,7 @@ describe("events without app_name display block are excluded", () => {
     expect(result.find((e) => e._id === "ev-no-display")).toBeUndefined();
   });
 
-  test("event with app_name display block set to null is excluded", async () => {
+  test("event with display_key display block set to null is excluded", async () => {
     await mongo.db.collection("log-events").insertOne({
       _id: "ev-null-display",
       lot_ids: "lot-1",
@@ -766,7 +773,7 @@ describe("events without app_name display block are excluded", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("event author avatar resolution", () => {
-  test("resolves created.user.picture from the matching contact", async () => {
+  test("resolves the picture of a contact whose _id equals its user_id", async () => {
     await seedContact({ _id: "u1", picture: "https://cdn.example/u1.png" });
     await seedEvent({ _id: "ev-1", user_id: "u1" });
 
@@ -776,6 +783,38 @@ describe("event author avatar resolution", () => {
       }),
     );
     expect(result[0].created.user.picture).toBe("https://cdn.example/u1.png");
+  });
+
+  test("resolves the picture of a contact whose _id differs from its user_id", async () => {
+    await seedContact({
+      _id: "c1",
+      user_id: "u1",
+      picture: "https://cdn.example/c1.png",
+    });
+    await seedEvent({ _id: "ev-1", user_id: "u1" });
+
+    const result = await GetEventsTimeline(
+      buildContext({
+        request: { reference_field: "lot_ids", reference_value: "lot-1" },
+      }),
+    );
+    expect(result[0].created.user.picture).toBe("https://cdn.example/c1.png");
+  });
+
+  test("does not match a contact whose _id equals the author id but whose user_id differs", async () => {
+    await seedContact({
+      _id: "u1",
+      user_id: "u2",
+      picture: "https://cdn.example/u2.png",
+    });
+    await seedEvent({ _id: "ev-1", user_id: "u1" });
+
+    const result = await GetEventsTimeline(
+      buildContext({
+        request: { reference_field: "lot_ids", reference_value: "lot-1" },
+      }),
+    );
+    expect(result[0].created.user.picture).toBeNull();
   });
 
   test("leaves created.user.picture null when no contact matches", async () => {
@@ -800,5 +839,93 @@ describe("event author avatar resolution", () => {
       }),
     );
     expect(result[0].created.user.picture).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenant scoping (framework tenant-wall contract)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("tenant scoping", () => {
+  const tenant = { field: "organizationId", value: "org-a" };
+  const request = { reference_field: "lot_ids", reference_value: "lot-1" };
+
+  // Stamp the org onto seeded docs via the seed helpers' passthrough fields.
+  async function stampOrg(collection, _id, organizationId) {
+    await mongo.db
+      .collection(collection)
+      .updateOne({ _id }, { $set: { organizationId } });
+  }
+
+  test("events of another org are excluded from the timeline", async () => {
+    await seedEvent({ _id: "ev-mine" });
+    await seedEvent({ _id: "ev-theirs" });
+    await stampOrg("log-events", "ev-mine", "org-a");
+    await stampOrg("log-events", "ev-theirs", "org-b");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result.map((e) => e._id)).toEqual(["ev-mine"]);
+  });
+
+  test("actions lookup is tenant-filtered — a cross-org action linked to my event is dropped", async () => {
+    await seedAction({ _id: "a-mine", stage: "action-required" });
+    await seedAction({ _id: "a-theirs", stage: "action-required" });
+    await stampOrg("actions", "a-mine", "org-a");
+    await stampOrg("actions", "a-theirs", "org-b");
+    await seedEvent({ _id: "ev-1", action_ids: ["a-mine", "a-theirs"] });
+    await stampOrg("log-events", "ev-1", "org-a");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result[0].actions.map((a) => a._id)).toEqual(["a-mine"]);
+  });
+
+  test("contacts lookup is tenant-filtered — a cross-org author contact resolves no picture", async () => {
+    await seedContact({ _id: "u1", picture: "https://cdn.example/u1.png" });
+    await stampOrg("user-contacts", "u1", "org-b");
+    await seedEvent({ _id: "ev-1", user_id: "u1" });
+    await stampOrg("log-events", "ev-1", "org-a");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result[0].created.user.picture).toBeNull();
+  });
+
+  test("same-org contact still resolves the picture through the tenant-filtered lookup", async () => {
+    await seedContact({ _id: "u1", picture: "https://cdn.example/u1.png" });
+    await stampOrg("user-contacts", "u1", "org-a");
+    await seedEvent({ _id: "ev-1", user_id: "u1" });
+    await stampOrg("log-events", "ev-1", "org-a");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result[0].created.user.picture).toBe("https://cdn.example/u1.png");
+  });
+
+  test("the same user's contact in another org is not picked up", async () => {
+    await seedContact({
+      _id: "c-theirs",
+      user_id: "u1",
+      picture: "https://cdn.example/theirs.png",
+      extra: { organizationId: "org-b" },
+    });
+    await seedContact({
+      _id: "c-mine",
+      user_id: "u1",
+      picture: "https://cdn.example/mine.png",
+      extra: { organizationId: "org-a" },
+    });
+    await seedEvent({ _id: "ev-1", user_id: "u1" });
+    await stampOrg("log-events", "ev-1", "org-a");
+
+    const result = await GetEventsTimeline(buildContext({ request, tenant }));
+    expect(result[0].created.user.picture).toBe("https://cdn.example/mine.png");
+  });
+
+  test("null tenant leaves the pipeline unscoped (both orgs' events returned)", async () => {
+    await seedEvent({ _id: "ev-mine" });
+    await seedEvent({ _id: "ev-theirs" });
+    await stampOrg("log-events", "ev-mine", "org-a");
+    await stampOrg("log-events", "ev-theirs", "org-b");
+
+    const result = await GetEventsTimeline(buildContext({ request }));
+    expect(result.map((e) => e._id).sort()).toEqual(["ev-mine", "ev-theirs"]);
   });
 });

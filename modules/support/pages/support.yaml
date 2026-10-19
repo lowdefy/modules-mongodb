@@ -1,0 +1,48 @@
+# My tickets: every ticket the user has, open and resolved, newest activity
+# first, with a search box and filters. A row opens the ticket page (ticket.yaml).
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: support
+    title: My tickets
+    breadcrumbs:
+      - label: Support
+      - label: My tickets
+    events:
+      onInit:
+        - id: support_list_init
+          type: SetState
+          params:
+            support_list_tickets: []
+            support_list_tickets_error: null
+            support_list_loaded: false
+            support_list_filter.search: null
+            support_list_filter.status: open
+            support_list_filter.type: null
+      onMount:
+        _build.array.concat:
+          # The ticket page may have left its live thread open.
+          - _ref:
+              path: actions/leave_live_thread.yaml.njk
+              vars:
+                prefix: support_page
+          - _ref:
+              path: actions/open_tickets.yaml.njk
+              vars:
+                prefix: support_list
+          - - id: support_list_loaded_set
+              type: SetState
+              params:
+                support_list_loaded: true
+    blocks:
+      - id: support_list_column
+        type: Box
+        style:
+          maxWidth: 960
+          width: 100%
+        layout:
+          gap: 16
+        blocks:
+          - _ref: components/my_tickets/filters.yaml
+          - _ref: components/my_tickets/list.yaml

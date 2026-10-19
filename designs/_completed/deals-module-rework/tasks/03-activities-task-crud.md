@@ -9,6 +9,7 @@ Deals' `create-task` is deal-specific in two ways that must not be lost (host-co
 ## Task
 
 Add to the **activities** module:
+
 - exported `create-task` / `update-task` APIs writing into activities' `actions-collection`, with two seams:
   - **arbitrary entity link** — `entity_type` / `entity_id` payload inputs (not a hardcoded deal reference), so a task can hang off a deal, a meeting, or any entity.
   - **configurable emitted event** — event `type` + display template supplied by the consumer, so deals keeps `deal-task-created` + its markup while activities keeps its own meeting-task semantics.
@@ -35,4 +36,4 @@ Then rewire **deals** to consume the activities task APIs + `task-modal`, passin
 
 ## Notes
 
-Deals' `actions-collection` connection may still be read by `get_selected_deal_open_actions` — leave that connection in place until task 5 removes the last reader. This task removes the task *write* path only.
+Deals' `actions-collection` connection may still be read by `get_selected_deal_open_actions` — leave that connection in place until task 5 removes the last reader. This task removes the task _write_ path only.

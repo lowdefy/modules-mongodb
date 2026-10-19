@@ -1,0 +1,120 @@
+/* Inbox rendering of a stored notification email (record body).
+
+   body is the framework's email render: react-email tables with every style
+   inline, wrapped in the email chrome — grey canvas, white 600px card, logo
+   header, signature, footer. In the inbox the page already provides the card,
+   the title and the date, so the chrome is dropped and the content is
+   restyled to the surrounding app typography. Inline styles beat stylesheets,
+   hence the !important throughout. Selectors follow the EmailLayout tree:
+
+     .notification-email > table (canvas) > … > td
+       > table (card) > … > td
+         > table (section) × header | content | signature | footer
+
+   A section counts as content when its cell carries a heading, markdown div,
+   metadata/actions/button table or quote; header (img / company name p),
+   signature (p) and footer (hr + p) do not, so they hide whichever of them
+   the sending app's email theme rendered. */
+
+.notification-email > table > tbody > tr > td {
+  background: transparent !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+}
+
+.notification-email > table > tbody > tr > td > table {
+  max-width: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.notification-email
+  > table
+  > tbody
+  > tr
+  > td
+  > table
+  > tbody
+  > tr
+  > td
+  > table {
+  margin: 0 !important;
+}
+
+.notification-email
+  > table
+  > tbody
+  > tr
+  > td
+  > table
+  > tbody
+  > tr
+  > td
+  > table:not(
+    :has(> tbody > tr > td > :is(h1, h2, h3, div, table, blockquote))
+  ) {
+  display: none;
+}
+
+/* The email heading repeats the inbox title above the divider. */
+.notification-email
+  > table
+  > tbody
+  > tr
+  > td
+  > table
+  > tbody
+  > tr
+  > td
+  > table
+  h2:first-child {
+  display: none;
+}
+
+.notification-email p,
+.notification-email li,
+.notification-email div,
+.notification-email td {
+  color: inherit !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  line-height: 22px !important;
+}
+
+.notification-email p:last-child {
+  margin-bottom: 0 !important;
+}
+
+.notification-email h1,
+.notification-email h3 {
+  color: inherit !important;
+  font-family: inherit !important;
+}
+
+.notification-email a {
+  color: var(--ant-color-link, inherit) !important;
+}
+
+/* Call-to-action button: keep the email theme's primary colour, size it like
+   an app button. */
+.notification-email a[style*="background-color"] {
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  padding: 6px 16px !important;
+  border-radius: var(--ant-border-radius, 6px) !important;
+  line-height: 22px !important;
+}
+
+/* Metadata rows: quieter labels. */
+.notification-email td[style*="nowrap"] {
+  color: var(--ant-color-text-secondary, inherit) !important;
+  padding-right: 24px !important;
+}
+
+/* Quotes and blockquotes. */
+.notification-email blockquote,
+.notification-email div[style*="border-left"] {
+  border-left-color: var(--ant-color-border, #d9d9d9) !important;
+  color: var(--ant-color-text-secondary, inherit) !important;
+}

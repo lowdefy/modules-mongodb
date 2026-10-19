@@ -1,0 +1,91 @@
+id: sync-ticket
+type: Api
+description: >-
+  Fetches one of the session user's tickets from Pelican, by id or key, writes
+  its view into the copy and marks it read. Opening a thread calls it, which also
+  renews the file links. On a failed call it returns the stored row with the
+  error, so the thread still shows what the copy holds.
+payloadSchema:
+  type: object
+  required:
+    - ticket
+  additionalProperties: false
+  properties:
+    ticket:
+      type: string
+      minLength: 1
+routine:
+  - _ref: api/parts/require-user.yaml
+  - _ref:
+      path: api/parts/call-pelican.yaml
+      vars:
+        step: get_ticket
+        endpoint: support-get-ticket
+        body:
+          user:
+            _module.var: user
+          ticket:
+            _payload: ticket
+  - :if:
+      _eq:
+        - _state: pelican_error
+        - null
+    :then:
+      - _ref:
+          path: api/parts/write-view.yaml
+          vars:
+            view:
+              _state: pelican_answer.data
+            user_id:
+              _user: id
+      - id: mark_read
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: support-tickets
+        properties:
+          filter:
+            _id:
+              _state: copy._id
+            user_id:
+              _user: id
+          update:
+            $set:
+              read_at:
+                _date: now
+              updated:
+                _ref:
+                  module: events
+                  component: change_stamp
+      - id: read_ticket
+        type: MongoDBFindOne
+        connectionId:
+          _module.connectionId: support-tickets
+        properties:
+          query:
+            _id:
+              _state: copy._id
+            user_id:
+              _user: id
+      - :return:
+          ok: true
+          ticket:
+            _step: read_ticket
+  - id: stored_ticket
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: support-tickets
+    properties:
+      query:
+        user_id:
+          _user: id
+        $or:
+          - _id:
+              _payload: ticket
+          - view.key:
+              _payload: ticket
+  - :return:
+      ok: false
+      error:
+        _state: pelican_error
+      ticket:
+        _step: stored_ticket

@@ -1,0 +1,134 @@
+# Edit the active organization's name and logo (owners and admins). Opened by
+# the General page's Edit button, which seeds `organization` from the stored
+# row. A refusal is shown as written and keeps the modal open.
+id: edit_identity_modal
+type: Modal
+properties:
+  title:
+    _build.string.concat:
+      - 'Edit '
+      - _build.string.toLowerCase:
+          _module.var: label
+  width: 520
+  okText: Save
+events:
+  onOk:
+    - id: validate_identity
+      type: Validate
+      params: organization.name
+    - id: update_organization
+      type: CallAPI
+      messages:
+        loading: Saving…
+      params:
+        endpointId:
+          _module.endpointId: update-organization
+        payload:
+          name:
+            _state: organization.name
+          logo:
+            _if_none:
+              - _state: organization.logo
+              - null
+    - id: show_identity_refusal
+      type: DisplayMessage
+      skip:
+        _eq:
+          - _actions: update_organization.response.response.refused
+          - null
+      params:
+        content:
+          _actions: update_organization.response.response.refused.message
+        status: error
+    - id: stop_on_identity_refusal
+      type: Throw
+      messages:
+        error: false
+      params:
+        throw:
+          _ne:
+            - _actions: update_organization.response.response.refused
+            - null
+        message: update-organization refused the change.
+    - id: refetch_identity
+      type: Request
+      params:
+        - get_active_organization
+        - get_settings_organization
+    - id: show_identity_saved
+      type: DisplayMessage
+      params:
+        content: Saved.
+        status: success
+blocks:
+  - id: edit_identity_fields
+    type: Box
+    layout:
+      direction: column
+      gap: 16
+    blocks:
+      - id: organization.name
+        type: TextInput
+        required: true
+        properties:
+          title: Name
+          placeholder:
+            _build.string.concat:
+              - 'Your '
+              - _build.string.toLowerCase:
+                  _module.var: label
+              - '''s name'
+          maxLength:
+            _ref: components/organization_name_max_length.yaml
+      - id: logo_field
+        type: Box
+        layout:
+          direction: column
+          gap: 8
+        blocks:
+          - id: logo_label
+            type: Span
+            properties:
+              content: Logo
+          - id: logo_row
+            type: Box
+            layout:
+              gap: 16
+              align: middle
+              wrap: nowrap
+            blocks:
+              - _ref:
+                  path: components/organization_logo_input.yaml
+                  vars:
+                    initials:
+                      _string.charAt:
+                        - _if_none:
+                            - _state: organization.name
+                            - ' '
+                        - 0
+              - id: logo_hint
+                type: Span
+                layout:
+                  flex: 1 1 0
+                properties:
+                  content: >-
+                    Click the square to pick an image, or drop one on it. It is
+                    cropped square and resized to 128px.
+                class: block min-w-0 text-[13px] text-[var(--ant-color-text-secondary)]
+      - id: slug_field
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template:
+                _build.string.concat:
+                  - '<div>Slug</div><div style="margin-top:4px"><code>{{ slug }}</code></div>'
+                  - '<div data-tone="secondary" style="font-size:13px; margin-top:4px">Fixed. It identifies the '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+                  - ' and cannot be changed.</div>'
+              on:
+                slug:
+                  _if_none:
+                    - _request: get_active_organization.slug
+                    - ''

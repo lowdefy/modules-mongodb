@@ -1,0 +1,33 @@
+# path-params — a workflow whose entity page and engine links use Lowdefy page
+# path parameters.
+#
+# The entity page `thing-at-path` is served at `thing/{thing_id}`, so the entity
+# id goes in the path (`id_path_key`), not the query string. The overview
+# subtitle, the breadcrumbs and the return-to-entity step after a terminal
+# signal all link to `/thing/<id>`.
+#
+# The custom action's `link:` and the tracker's `start_link` point at
+# `path-link-target` (`path-link/{source}/{action_id}`) with the `action_id`
+# sentinel and a static `source` in `pathParams`, so each resolves to the page
+# instance of its own action.
+type: path-params
+title: Path params
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-at-path
+  id_path_key: thing_id
+  title: Thing
+
+starting_actions:
+  - type: path-check
+    status: action-required
+  - type: path-review
+    status: action-required
+  - type: path-track
+    status: action-required
+
+actions:
+  - _ref: modules/workflows/workflow_config/path-params/path-check.yaml
+  - _ref: modules/workflows/workflow_config/path-params/path-review.yaml
+  - _ref: modules/workflows/workflow_config/path-params/path-track.yaml

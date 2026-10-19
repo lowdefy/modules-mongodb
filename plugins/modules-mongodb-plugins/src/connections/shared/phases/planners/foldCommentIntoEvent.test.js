@@ -181,7 +181,7 @@ describe("foldCommentIntoEvent", () => {
     );
   });
 
-  test("missing display[appName] bucket is created via ??=", () => {
+  test("missing display[slug] bucket is created via ??=", () => {
     const payload = payloadWith({ portal: { title: "Updated" } });
     expect(() =>
       foldCommentIntoEvent(

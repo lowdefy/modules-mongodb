@@ -63,6 +63,18 @@ properties:
     _build.object.assign:
       - placeholder:
           _module.var: sender_placeholder
+      # Left out entirely when unset: the block's schema types `attachments` as an object.
+      - _build.if:
+          test:
+            _build.ne:
+              - _build.if_none:
+                  - _module.var: sender_attachments
+                  - null
+              - null
+          then:
+            attachments:
+              _module.var: sender_attachments
+          else: {}
       - _module.var: sender
   messageDisplay:
     _build.object.assign:
@@ -370,7 +382,6 @@ events:
             duration: 6
             content:
               _event: message
-
 
     # onLinkClick is added ONLY when the consumer supplies actions. The block turns link
     # interception on whenever the event is present (`Boolean(events?.onLinkClick)`), and an

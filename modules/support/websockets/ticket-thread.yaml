@@ -1,0 +1,14 @@
+# Every change to one of the user's tickets in the copy, for the open thread.
+# The subscriber names the ticket by its id; the user filter makes another
+# user's ticket id deliver nothing.
+id: ticket-thread
+type: MongoDBChangeStream
+connectionId:
+  _module.connectionId: support-tickets
+properties:
+  pipeline:
+    - $match:
+        documentKey._id:
+          _payload: ticket_id
+        fullDocument.user_id:
+          _user: id

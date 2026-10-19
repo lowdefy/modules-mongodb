@@ -1,0 +1,56 @@
+# Shared magic-link send affordance. Dispatches the one `Login` action with
+# `magicLink: true` off the canonical `id: email` input the page owns. The send
+# returns `{ status: true }` and no session, so it cannot navigate; on success
+# it applies the caller-supplied `on_sent` SetState (the page's own view flip)
+# to show that page's "check your email" state. The send
+# carries the two verify-callback targets the module owns as structured targets:
+# `callbackUrl` -> the inbound `?callbackUrl=` or app home, `newUserCallbackUrl`
+# -> the app home, or the inbound `?callbackUrl=` when it is the accept page.
+# A new user is sent home, not to onboarding, because the module cannot tell at
+# send time whether they will hold an organization: under `policy: tenant` an
+# invitee who has not accepted yet holds none and is refused every protected
+# page, onboarding included, which the engine renders as a 404. The app's
+# router reads the caller and sends a first-time member on to onboarding and an
+# invitee on to the public accept page. `errorCallbackUrl` is deliberately
+# unset. The engine
+# defaults it to authPages.error (the login page), so an expired/consumed link
+# lands there with `?error=INVALID_TOKEN`.
+#
+# `magic_link_cooldown` disables the button between sends (set on click, cleared
+# by a delayed SetState) so a user can't tap through the plugin's send rate
+# limit (5 / 60s per IP). Referenced from login (primary send + resend) and
+# signup (alternative-method send + resend); placements differ only in the
+# id / label / styling vars and the page-specific `on_sent` flip.
+id:
+  _var: id
+type: Button
+visible:
+  _var:
+    key: visible
+    default: true
+properties:
+  title:
+    _var: label
+  block: true
+  size: large
+  color:
+    _var:
+      key: color
+      default: primary
+  variant:
+    _var:
+      key: variant
+      default: solid
+  icon:
+    _var:
+      key: icon
+      default: null
+  disabled:
+    _state: magic_link_cooldown
+events:
+  onClick:
+    _ref:
+      path: actions/send_magic_link.yaml
+      vars:
+        on_sent:
+          _var: on_sent

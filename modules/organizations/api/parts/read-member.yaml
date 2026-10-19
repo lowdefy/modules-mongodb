@@ -1,0 +1,21 @@
+# One member of the caller's active organisation, by member row id, through the
+# member join (components/member-join.yaml). Endpoints read it before a write
+# to name the person and the old value in the event they log. Reached as
+# `_step: <id>.0`.
+#
+# Vars:
+#   id          step id
+#   member_id   the member row id
+id:
+  _var: id
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    _ref:
+      path: components/member-join.yaml
+      vars:
+        match:
+          _id:
+            _var: member_id

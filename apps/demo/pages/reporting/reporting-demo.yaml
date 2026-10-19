@@ -13,7 +13,7 @@ _ref:
       alt: Reporting
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Reporting
     blocks:
       - id: intro
@@ -58,7 +58,7 @@ _ref:
               flex: 0 1 auto
             properties:
               title: Seed demo orders
-              icon: AiOutlineDatabase
+              icon: Database
               type: primary
             events:
               onClick:
@@ -157,7 +157,7 @@ _ref:
               flex: 0 1 auto
             properties:
               title: Seed example report
-              icon: AiOutlineFileAdd
+              icon: FilePlus
               type: primary
             events:
               onClick:
@@ -196,7 +196,7 @@ _ref:
               flex: 0 1 auto
             properties:
               title: Seed ownership fixtures
-              icon: AiOutlineTeam
+              icon: users
             events:
               onClick:
                 - id: seed_ownership
@@ -222,7 +222,7 @@ _ref:
               flex: 0 1 auto
             properties:
               title: Seed conversation fixtures
-              icon: AiOutlineMessage
+              icon: message
             events:
               onClick:
                 - id: seed_conversations
@@ -250,7 +250,7 @@ _ref:
               flex: 0 1 auto
             properties:
               title: Chat
-              icon: AiOutlineMessage
+              icon: message
             events:
               onClick:
                 - id: go_chat
@@ -266,7 +266,7 @@ _ref:
               flex: 0 1 auto
             properties:
               title: Saved reports
-              icon: AiOutlineFileText
+              icon: document
             events:
               onClick:
                 - id: go_reports

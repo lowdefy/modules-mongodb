@@ -1,0 +1,47 @@
+# The records, each with `appearance: { type, icon, color, title, label }`
+# added (label is the title, else the type id written out). Map a whole
+# list once rather than resolving row by row.
+# A record's type is `type ?? event_type`. Its icon, colour and label come from
+# the type's enums.event_types entry, else a bell in a palette colour chosen
+# deterministically from the type, so types nobody configured still tell apart.
+# Palette entries are Ant Design preset tokens with the default hex as fallback,
+# so they follow the app theme and dark mode.
+# Vars: records — operator resolving to an array of records.
+_js:
+  args:
+    records:
+      _var: records
+    types:
+      _global: enums.event_types
+  fn: |
+    const types = args.types || {};
+    const palette = [
+      'var(--ant-blue-6, #1677ff)',
+      'var(--ant-green-6, #52c41a)',
+      'var(--ant-gold-6, #faad14)',
+      'var(--ant-purple-6, #722ed1)',
+      'var(--ant-cyan-6, #13c2c2)',
+      'var(--ant-magenta-6, #eb2f96)',
+      'var(--ant-volcano-6, #fa541c)',
+      'var(--ant-geekblue-6, #2f54eb)',
+      'var(--ant-orange-6, #fa8c16)',
+      'var(--ant-lime-6, #a0d911)',
+    ];
+    return (Array.isArray(args.records) ? args.records : []).map((record) => {
+      const type = (record && (record.type ?? record.event_type)) ?? '';
+      const entry = types[type] || {};
+      let hash = 0;
+      for (const ch of String(type)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+      return {
+        ...record,
+        appearance: {
+          icon: entry.icon ?? 'Bell',
+          color: entry.color ?? palette[hash % palette.length],
+          title: entry.title ?? null,
+          label:
+            entry.title ??
+            (String(type).replace(/[-_]+/g, ' ').replace(/^./, (c) => c.toUpperCase()) || 'Notification'),
+          type,
+        },
+      };
+    });

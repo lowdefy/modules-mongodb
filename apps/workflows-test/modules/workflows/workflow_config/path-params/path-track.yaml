@@ -1,0 +1,29 @@
+# A tracker whose start_link carries the tracker action id in the target page's
+# path and the entity id in the query string.
+type: path-track
+kind: tracker
+sort_order: 30
+description: Tracks a child workflow started from a page addressed by action id.
+access:
+  test:
+    view: true
+    edit: true
+tracker:
+  child_workflow_type: tracker-child-flow
+  start_link:
+    pageId: path-link-target
+    pathParams: { source: start, action_id: true }
+    urlQuery: { entity_id: true }
+status_map:
+  action-required:
+    test:
+      message: Start the child workflow from its path.
+  in-progress:
+    test:
+      message: Child workflow in progress.
+  done:
+    test:
+      message: Child workflow complete.
+  not-required:
+    test:
+      message: Child workflow cancelled.

@@ -10,6 +10,11 @@ import { MongoClient } from "mongodb";
  * reused across handler invocations. A persistent pooled client is required for
  * transactions anyway (a session is bound to its client) and avoids a cold-start
  * connection storm in Lambda. See design D8/D11.
+ *
+ * Only the client and the topology are cached. The database is resolved from
+ * `databaseName` on every call: one URI can serve several databases (a Lowdefy
+ * data-set journey keeps one server URI and gives each run its own database
+ * name), so the database is never cached with the client.
  */
 
 const clientCache = new Map();
@@ -21,12 +26,11 @@ function detectUseTransactions(helloResult) {
 }
 
 async function connect(connection, logger) {
-  const { databaseUri, databaseName, options } = connection;
+  const { databaseUri, options } = connection;
   const mongoClient = new MongoClient(databaseUri, options);
   await mongoClient.connect();
-  const mongoDb = mongoClient.db(databaseName);
 
-  const helloResult = await mongoDb.admin().command({ hello: 1 });
+  const helloResult = await mongoClient.db().admin().command({ hello: 1 });
   let useTransactions = detectUseTransactions(helloResult);
   // Allow an operator to force the standalone ordered-writes path explicitly.
   if (connection.useTransactions === false) {
@@ -43,16 +47,17 @@ async function connect(connection, logger) {
     }`,
   );
 
-  return { mongoClient, mongoDb, useTransactions };
+  return { mongoClient, useTransactions };
 }
 
 /**
- * Returns `{ mongoClient, mongoDb, useTransactions }` for the connection's
- * `databaseUri`, constructing and caching the client on first use. Subsequent
- * calls with the same `databaseUri` return the same connected client.
+ * Returns `{ mongoClient, mongoDb, useTransactions }` for the connection,
+ * constructing and caching the client on first use of its `databaseUri`.
+ * Subsequent calls with the same `databaseUri` reuse the connected client;
+ * `mongoDb` is always the connection's own `databaseName` on that client.
  */
 async function getMongoDb(connection, { logger = console } = {}) {
-  const { databaseUri } = connection ?? {};
+  const { databaseUri, databaseName } = connection ?? {};
   if (!databaseUri) {
     throw new Error("getMongoDb: connection.databaseUri is required");
   }
@@ -64,7 +69,12 @@ async function getMongoDb(connection, { logger = console } = {}) {
     });
     clientCache.set(databaseUri, pending);
   }
-  return clientCache.get(databaseUri);
+  const { mongoClient, useTransactions } = await clientCache.get(databaseUri);
+  return {
+    mongoClient,
+    mongoDb: mongoClient.db(databaseName),
+    useTransactions,
+  };
 }
 
 /**

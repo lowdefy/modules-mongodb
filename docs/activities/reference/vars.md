@@ -13,20 +13,20 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `app_name` |  |  | Yes | App identifier used to key event_display titles when no override is supplied. |
 | `label` |  | `Activity` |  | Singular display label |
 | `label_plural` |  | `Activities` |  | Plural display label |
 | `activity_types` | object | `{}` |  | App-level additions to the built-in activity-type enum. Same shape as event_types — keys are type strings, values have title, color, icon, default_stage, plus optional behavior flags: `agenda: true` renders the Agenda Topics section in the form, `duration: true` / `direction: true` show those meta fields, and `contact_label` titles the linked-contacts selector (default "Participants"). The built-in `meeting` type carries `agenda`, `duration`, and `contact_label: Attendees` as its defaults. Merging is by top-level key — overriding a built-in type replaces its whole entry, flags included. |
-| `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge. |
+| `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under the app slug. When set, the override fully replaces the defaults — no merge. |
 | `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
 | `form_requests` |  | `[]` |  | Request configs spliced into the new and edit page request lists and fired on page init, so request-backed consumer `fields.*` blocks (e.g. a Selector whose options come from an app collection) have their option sources available. Each entry is a full request definition with an `id`. NOT added to the capture_activity modal — a modal can't own page requests. Blocks that depend on these should gate on `state.activity_form_context` (`page` on the new/edit pages, `view` on the detail page, `modal` in the capture modal) so they don't render broken in the modal; the host page must supply the requests itself if such a field is wanted there. |
+| `atlas_search` | boolean | `true` |  | Whether the deployment's MongoDB has Atlas Search available. When true, text search uses Atlas `$search` (indexed, relevance-ranked). When false, text search falls back to a case-insensitive regex `$match` that runs on any MongoDB (community/local) — substring matching, no relevance ranking, and an unindexed collection scan, so suitable for development or small collections. See docs/shared/search.md. |
 | `disable_company_edit` | boolean | `false` |  | Render the linked-companies selector read-only (disabled) on the edit page, so linked companies stay visible but can't be changed after creation. The new page and quick-capture prefill still set companies, and display-only company chips on the detail page are unaffected. |
 | `company_name_field` |  | `name` |  | Field on company docs used as the display name in linked-company chips (company_list_items) and the list-table company tags (table_activities). Mirrors the companies module's `name_field` var — set both to the same value when an app stores its company display name under a non-default field (e.g. `trading_name`). The `lookup_companies` stage projects this field under the stable alias `name`, so templates always read `company.name` regardless of the source field. |
 | `fields` | object |  |  | Field block arrays rendered in the edit form and SmartDescriptions view |
 | `components` | object |  |  | Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, form_attachments, view_attachments |
 | `hooks` | object |  |  | Action-list extension points spliced into built-in flows: on_created |
 | `request_stages` | object |  |  | Pipeline overrides |
-| `lookup_collections` | object |  |  | Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections. |
+| `lookup_collections` | object |  |  | Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections. Tenant wall: under `auth.organizations.policy: tenant` the activities connection is walled and these joins are filtered mechanically, so any substituted collection must itself carry the `organization_id` field — a collection without it fails closed (the join returns nothing). Under `pinned` (the default) the wall is inert and no field is required. |
 
 ## Nested var details
 
@@ -71,12 +71,12 @@ Pipeline overrides
 |---|---|---|---|---|
 | `get_all_activities` |  | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the activities list and Excel export aggregations. |
 | `selector` |  | `[]` |  | Pipeline stages appended to the activity-selector aggregation. |
-| `filter_match` |  | `[]` |  | Atlas Search compound clauses appended to the list-page `$search` query. |
+| `filter_match` | array | `[]` |  | Plain MongoDB `$match` clauses ANDed into the list-page and Excel-export filter. Each element is one query clause (e.g. `{ region: "x" }`, `{ score: { $gte: 10 } }`); they are composed via `$and`, so a clause using `$or` is safe. Applies in both Atlas and regex-fallback modes. |
 | `write` |  | `[]` |  | Pipeline update stages appended to both create-activity and update-activity flows. |
 
 ### `lookup_collections`
 
-Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections.
+Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections. Tenant wall: under `auth.organizations.policy: tenant` the activities connection is walled and these joins are filtered mechanically, so any substituted collection must itself carry the `organization_id` field — a collection without it fails closed (the join returns nothing). Under `pinned` (the default) the wall is inert and no field is required.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|

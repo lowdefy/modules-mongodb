@@ -1,0 +1,123 @@
+# `member` settings page: one person in the active organization, opened with
+# `?user_id=` (their user id, which survives removal and re-invitation). Every
+# member may open it.
+#
+# Identity for everyone; the access form (authority and app roles, one Save)
+# for owners and admins; the person's activity for owners and admins, and for
+# the person themselves; the app's own section (`member_page_blocks`, with the
+# page's `user_id` in state); and remove or leave. A former member (events
+# about them, no member row) shows their name, "Former member" and their
+# activity. Anyone else shows a not-found line.
+_ref:
+  path: components/settings-page.yaml
+  vars:
+    id: member
+    # The person's name (their email when it has none) once get_member
+    # returns; "Member" while it loads or when no one has that id.
+    title:
+      _if_none:
+        - _request: get_member.0.name
+        - _if_none:
+            - _request: get_member.0.email
+            - Member
+    group:
+      _build.string.concat:
+        - _module.var: label
+        - ' · Members'
+    description:
+      _build.string.concat:
+        - 'What this person may do in the '
+        - _build.string.toLowerCase:
+            _module.var: label
+        - ', and what they have done lately.'
+    requests:
+      _build.array.concat:
+        - - _ref: requests/get_member.yaml
+          - _ref: requests/get_owner_count.yaml
+          - _ref: requests/get_leave_memberships.yaml
+          - _ref:
+              path: requests/get_audit_log.yaml
+              vars:
+                id: get_member_activity
+                user_id:
+                  _if_none:
+                    - _url_query: user_id
+                    - null
+        - _module.var: member_page_requests
+    events:
+      onInit:
+        - id: set_member_user_id
+          type: SetState
+          params:
+            user_id:
+              _if_none:
+                - _url_query: user_id
+                - null
+      onMountAsync:
+        _build.array.concat:
+          - - id: fetch_member
+              type: Request
+              params:
+                _build.array.concat:
+                  - - get_member
+                    - get_owner_count
+                    - get_leave_memberships
+                    - get_member_activity
+                  - _build.array.map:
+                      on:
+                        _module.var: member_page_requests
+                      callback:
+                        _build.function:
+                          __build.args: 0.id
+          - _ref: actions/seed_member_access.yaml
+          - _module.var: member_page_on_mount
+    blocks:
+      - id: member_not_found
+        type: Result
+        visible:
+          _and:
+            - _ne:
+                - _request: get_member
+                - null
+            - _eq:
+                - _request: get_member.0
+                - null
+        properties:
+          status: info
+          icon: UserX
+          title:
+            _build.string.concat:
+              - 'No one with that id is in this '
+              - _build.string.toLowerCase:
+                  _module.var: label
+              - .
+      - id: member_found
+        type: Box
+        visible:
+          _ne:
+            - _request: get_member.0
+            - null
+        layout:
+          gap: 16
+          align: top
+        blocks:
+          - id: member_main
+            type: Box
+            layout:
+              flex: 2 1 480px
+              direction: column
+              gap: 16
+            blocks:
+              - _ref: components/member_identity_card.yaml
+              - _ref: components/member_access_card.yaml
+              - _ref: components/member_activity_card.yaml
+          - id: member_side
+            type: Box
+            layout:
+              flex: 1 1 280px
+              direction: column
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - _module.var: member_page_blocks
+                - - _ref: components/member_danger_zone.yaml

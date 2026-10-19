@@ -2,6 +2,7 @@ _ref:
   module: layout
   component: card
   vars:
+    id: tile_contacts
     title: Contacts
     header_buttons:
       - id: view_all_contacts

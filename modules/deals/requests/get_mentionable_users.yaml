@@ -9,20 +9,20 @@ connectionId:
     module: contacts
 properties:
   pipeline:
-    # App-scoped user flags are dot-notation keys parameterised by the host
-    # app_name, so build the $match object at build time.
+    # App-scoped user flags are dot-notation keys parameterised by the app
+    # slug, so build the $match object at build time.
     - $match:
         _build.object.fromEntries:
           - - removed
             - null
           - - _build.string.concat:
                 - "apps."
-                - _module.var: app_name
+                - _build.app: slug
                 - ".is_user"
             - true
           - - _build.string.concat:
                 - "apps."
-                - _module.var: app_name
+                - _build.app: slug
                 - ".disabled"
             - $ne: true
     - $project:

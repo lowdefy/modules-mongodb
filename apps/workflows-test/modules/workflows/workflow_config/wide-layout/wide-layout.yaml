@@ -30,7 +30,7 @@ starting_actions:
 action_groups:
   - id: main
     title: Main
-    icon: AiOutlineForm
+    icon: SquarePen
 
 actions:
   - _ref: modules/workflows/workflow_config/wide-layout/wide-form.yaml

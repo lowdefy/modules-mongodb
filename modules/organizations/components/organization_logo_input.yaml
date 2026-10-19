@@ -1,0 +1,57 @@
+# The organization's logo as an upload control: the AvatarUpload block in a
+# rounded square. A picked image is cropped square, scaled to 128px and
+# re-encoded in the browser until it fits the byte cap below, so the value is a
+# data URL small enough for the organization row (update-organization refuses
+# one over components/organization_logo_max_length.yaml characters). Removing
+# the image sets the value to null.
+#
+# Vars:
+#   id        the state path the data URL is written to (default organization.logo)
+#   initials  the text shown when there is no logo
+#   size      the square's side in px (default 64)
+#   disabled  default false
+id:
+  _var:
+    key: id
+    default: organization.logo
+type: AvatarUpload
+layout:
+  flex: 0 0 auto
+# The block draws a circle; a logo reads as a rounded square, so both the
+# image frame and its hover overlay (the block's two direct children) are
+# re-rounded here.
+class:
+  .element: '[&>div]:!rounded-[10px]'
+properties:
+  size:
+    _var:
+      key: size
+      default: 64
+  # Decoded bytes; base64 grows it by a third, which keeps the stored data URL
+  # under the endpoint's cap.
+  maxBytes: 17000
+  maxDimension: 128
+  initials:
+    _var:
+      key: initials
+      default: ''
+  background:
+    _if:
+      test:
+        _media: darkMode
+      then: '#3A4654'
+      else: '#17212C'
+  disabled:
+    _var:
+      key: disabled
+      default: false
+  changeLabel: Change logo
+  emptyLabel: Add logo
+events:
+  onError:
+    - id: show_logo_error
+      type: DisplayMessage
+      params:
+        content:
+          _event: message
+        status: error

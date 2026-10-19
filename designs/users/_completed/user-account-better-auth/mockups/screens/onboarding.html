@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Onboarding — user-account</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  .auth-page{width:400px}
+  .onboarding-avatar{display:flex;flex-direction:column;align-items:center;gap:var(--s2);margin:2px 0 var(--s1)}
+</style>
+</head>
+<body>
+<div class="mock">
+  <div class="stage">
+    <div class="auth-page" id="onboarding_page" data-ldf-component="auth-page">
+      <div class="auth-card">
+        <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+        <div class="auth-blocks">
+          <h3 id="onboarding_title">Welcome &mdash; let's set up your profile</h3>
+          <p class="lead">This is how teammates will see you across the app.</p>
+          <div class="onboarding-avatar" id="onboarding_avatar"><span class="av s72 g-ap">ST</span><button class="btn sm" style="border-radius:20px"><span class="ic">&#10227;</span> Change colour</button></div>
+          <div class="frow" id="onboarding_first_name"><label>First name <span class="req">*</span></label><div class="inp"><input value="Sam"/></div></div>
+          <div class="frow" id="onboarding_last_name"><label>Last name <span class="req">*</span></label><div class="inp"><input value="Taylor"/></div></div>
+          <div class="frow" id="onboarding_job_title"><label>Job title</label><div class="inp"><input class="placeholder" placeholder="Optional"/></div></div>
+          <button class="btn pri lg block" id="onboarding_submit">Save &amp; continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

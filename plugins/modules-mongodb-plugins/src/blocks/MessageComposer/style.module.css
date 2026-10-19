@@ -1,0 +1,211 @@
+/* MessageComposer: one bordered box holding the text, the attached files and a
+   bottom bar. Colours come from antd's CSS variables, so light and dark both
+   hold. Selectors are :global so the class names stay themeable. */
+@layer components {
+  :global(.mc-element) {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: var(--ant-color-bg-container);
+    border: 1px solid var(--ant-color-border);
+    border-radius: var(--ant-border-radius-lg, 8px);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  :global(.mc-element:focus-within) {
+    border-color: var(--ant-color-primary);
+    box-shadow: 0 0 0 2px var(--ant-color-primary-bg);
+  }
+
+  :global(.mc-element.mc-invalid) {
+    border-color: var(--ant-color-error);
+  }
+
+  :global(.mc-element.mc-disabled) {
+    background: var(--ant-color-bg-container-disabled);
+  }
+
+  :global(.mc-element.mc-dragging) {
+    border-color: var(--ant-color-primary);
+    border-style: dashed;
+  }
+
+  :global(.mc-text) {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px 4px;
+    border: 0;
+    outline: 0;
+    resize: none;
+    background: transparent;
+    color: var(--ant-color-text);
+    font: inherit;
+    font-size: var(--ant-font-size);
+    line-height: var(--ant-line-height);
+  }
+
+  :global(.mc-text::placeholder) {
+    color: var(--ant-color-text-placeholder);
+  }
+
+  :global(.mc-chips) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 10px 0;
+  }
+
+  :global(.mc-chip) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 220px;
+    padding: 4px 4px 4px 4px;
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: var(--ant-border-radius, 6px);
+    background: var(--ant-color-fill-quaternary);
+    font-size: var(--ant-font-size-sm);
+  }
+
+  :global(.mc-chip.mc-chip-error) {
+    border-color: var(--ant-color-error-border);
+    background: var(--ant-color-error-bg);
+  }
+
+  :global(.mc-chip-thumb) {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+    display: block;
+  }
+
+  :global(.mc-chip-icon) {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    background: var(--ant-color-fill-tertiary);
+    color: var(--ant-color-text-secondary);
+  }
+
+  :global(.mc-chip-error .mc-chip-icon) {
+    color: var(--ant-color-error);
+  }
+
+  :global(.mc-chip-text) {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  :global(.mc-chip-name) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ant-color-text);
+  }
+
+  :global(.mc-chip-note) {
+    color: var(--ant-color-error);
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  :global(.mc-chip-text .ant-progress) {
+    line-height: 1;
+    margin: 0;
+  }
+
+  :global(.mc-chip-remove) {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ant-color-text-tertiary);
+    cursor: pointer;
+  }
+
+  :global(.mc-chip-remove:hover) {
+    background: var(--ant-color-fill-secondary);
+    color: var(--ant-color-text);
+  }
+
+  :global(.mc-bar) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 8px;
+  }
+
+  :global(.mc-attach) {
+    flex: none;
+    color: var(--ant-color-text-tertiary);
+  }
+
+  :global(.mc-hint) {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ant-color-text-tertiary);
+    font-size: var(--ant-font-size-sm);
+  }
+
+  :global(.mc-key) {
+    display: inline-block;
+    min-width: 20px;
+    margin: 0 2px;
+    padding: 0 4px;
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: 4px;
+    background: var(--ant-color-fill-quaternary);
+    color: var(--ant-color-text-secondary);
+    font: inherit;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  :global(.mc-send) {
+    flex: none;
+  }
+
+  :global(.mc-drop) {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    background: var(--ant-color-primary-bg);
+    color: var(--ant-color-primary);
+    font-weight: 500;
+    opacity: 0.92;
+    pointer-events: none;
+  }
+
+  /* On a phone the hint gives way to the buttons. */
+  @media (max-width: 480px) {
+    :global(.mc-hint .mc-key),
+    :global(.mc-hint) {
+      font-size: 12px;
+    }
+  }
+}

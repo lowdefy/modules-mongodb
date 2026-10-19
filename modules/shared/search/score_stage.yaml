@@ -1,0 +1,21 @@
+# searchScore projection — only meaningful when a $search stage actually ran.
+# Same build/runtime shape as text_lead: the slot is fixed at build time, so the
+# no-term branch is an empty $addFields rather than nothing.
+_build.if:
+  test:
+    _var: atlas_search
+  then:
+    - _if:
+        test:
+          _ne:
+            - _if_none:
+                - _var: term
+                - ""
+            - ""
+        then:
+          $addFields:
+            score:
+              $meta: searchScore
+        else:
+          $addFields: {}
+  else: []

@@ -1,32 +1,81 @@
 name: User Account
 version: 0.48.0
-description: User account pages — login, email verification, profile view/edit/create
+description: >-
+  Self-service auth pages (login, signup, password reset, email verification,
+  2FA challenge, invitation accept, logout) and the signed-in account workspace
+  (profile, security, sessions) for the BetterAuth auth engine.
 
 dependencies:
   - id: layout
-    description: Page layout wrapper
+    description: Page layout wrapper (page + auth-page shells)
   - id: events
     description: Audit event logging and change stamp
 
 vars:
-  app_name:
-    required: true
-    description: App name for event metadata
   login_message:
-    default: <p>Welcome. Please provide your work email to sign in.</p>
-    description: HTML message shown on the login page
+    default: <p>Welcome. Please sign in to continue.</p>
+    description: HTML message shown on the login page.
+  signup_message:
+    default: <p>Create your account to get started.</p>
+    description: HTML message shown on the signup page.
   verify_email_message:
-    default: A sign in link has been sent to your email. Follow the link to sign in.
-    description: Message shown on the verify email request page
+    default: A verification link has been sent to your email. Follow the link to verify your address.
+    description: Message shown on the verify-email page (post-signup "check your email" state).
   event_display:
-    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
+    description: >-
+      Event display templates: a flat map of event type to a Nunjucks title
+      template. Templates receive `user` (the acting user); the
+      `org-member-joined` template also receives `inviter` ({ id, name }) and
+      `organization` ({ id, name }), and the `org-mcp-token-created` /
+      `org-mcp-token-revoked` templates receive `token` ({ name, start }). When
+      unset, the
+      module's `defaults/event_display.yaml` renders. When set, the override
+      fully replaces the defaults, no merge. The rendered block is written to
+      the event under the app slug, which is where the events module's
+      `display_key` reads it back.
+  mcp_tokens:
+    type: boolean
+    default: false
+    description: >-
+      Adds an Access tokens tile to the account page, where a signed-in member
+      lists, creates and switches off their own MCP member tokens in their
+      active organization; each create and switch-off is logged as an audit
+      event. Needs the app's MCP authorization server (`auth.oauthProvider`).
+      When false the tile, its requests, endpoints and the `user-mcp-tokens`
+      connection are left out of the build.
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
     description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+  providers:
+    default: []
+    description: >-
+      OAuth provider display metadata layered over `_build.authConfig.providers`
+      (which carries only `{ id, type }`). The login/signup pages render a
+      button for each provider the auth config reports enabled, drawing
+      label/icon/order from this var (a configured provider with no metadata
+      entry falls back to its id). Method *enablement* is read from
+      `_build.authConfig`, never from a var.
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          required: true
+          description: Provider id, matched against `_build.authConfig.providers[].id`.
+        label:
+          type: string
+          description: Display label for the provider button.
+        icon:
+          type: string
+          description: Icon name for the provider button.
+        order:
+          type: number
+          description: Sort order among provider buttons (ascending).
   fields:
     type: object
-    description: "Field block arrays: profile. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
+    description: "Field block arrays: profile. Same blocks used for the profile edit modal, onboarding, and view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
     properties:
       show_honorific:
         type: boolean
@@ -35,8 +84,8 @@ vars:
       profile:
         default: []
         description: >-
-          Profile field blocks rendered in the user-account profile form and
-          view. Block ids must be prefixed with `profile.` so they bind to
+          Profile field blocks rendered in the profile edit modal, onboarding,
+          and view. Block ids must be prefixed with `profile.` so they bind to
           `state.profile.*`.
   components:
     type: object
@@ -44,72 +93,71 @@ vars:
     properties:
       main_slots:
         default: []
-        description: Extra blocks appended to the main column on the profile page.
+        description: Extra tiles appended to the main column on the account workspace page.
   request_stages:
     type: object
-    description: "MongoDB pipeline stage overrides: write. write stages are appended to both create and update profile flows."
+    description: "MongoDB pipeline stage overrides: write. write stages are appended to the profile write flow."
     properties:
       write:
         default: []
         description: >-
-          Pipeline update stages appended to both create-profile and
-          update-profile flows. Used for derived fields or extra transforms
-          beyond the built-in profile write.
+          Pipeline update stages appended to the profile contact write (via the
+          shared write-profile fragment). Used for derived fields or extra
+          transforms beyond the built-in profile write.
 
 connections:
-  - _ref: connections/user-contacts-collection.yaml
+  _build.array.concat:
+    - - _ref: connections/user-contacts-collection.yaml
+      - _ref: connections/user-contacts-system.yaml
+      - _ref: connections/users.yaml
+      - _ref: connections/user-sessions.yaml
+      - _ref: connections/user-accounts.yaml
+      - _ref: connections/user-passkeys.yaml
+      - _ref: connections/user-invitations.yaml
+      - _ref: connections/user-events-system.yaml
+    - _build.if:
+        test:
+          _module.var: mcp_tokens
+        then:
+          - _ref: connections/user-mcp-tokens.yaml
+        else: []
 
 api:
-  - _ref: api/create-profile.yaml
-  - _ref: api/update-profile.yaml
+  _build.array.concat:
+    - - _ref: api/update-profile.yaml
+      - _ref: api/ensure-contact-on-signup.yaml
+      - _ref: api/log-invitation-rejection.yaml
+      - _ref: api/log-member-joined.yaml
+    - _build.if:
+        test:
+          _module.var: mcp_tokens
+        then:
+          - _ref: api/create-mcp-token.yaml
+          - _ref: api/revoke-mcp-token.yaml
+        else: []
 
 pages:
-  - _ref: pages/login.yaml
-  - _ref: pages/verify-email-request.yaml
-  - _ref: pages/view.yaml
-  - _ref: pages/edit.yaml
-  - _ref: pages/new.yaml
-  - _ref: pages/logout.yaml
-
-exports:
-  pages:
-    - id: login
-      description: Email-based passwordless login page
-    - id: verify-email-request
-      description: Confirmation page after sign-in link is sent
-    - id: view
-      description: View user profile details
-    - id: edit
-      description: Edit user profile fields
-    - id: new
-      description: First-time profile creation after sign-up
-    - id: logout
-      description: Logout page — logs user out and shows login link
-  connections:
-    - id: user-contacts-collection
-      description: MongoDB connection for user contact records
-  api:
-    - id: create-profile
-      description: Create a new user profile record
-    - id: update-profile
-      description: Update existing user profile fields
-  components:
-    - id: profile-avatar
-      description: Avatar config for PageHeaderMenu profile — user picture with first-letter fallback
-    - id: user-selector
-      description: Single-select autocomplete for picking one app user
-    - id: user-multi-selector
-      description: Multi-select picker for an array of app users
-    - id: user-avatar
-      description: Inline avatar + name chip rendered from a user-contacts doc
-  menus:
-    - id: default
-      description: User account navigation links
-    - id: profile-default
-      description: >
-        Default profile dropdown (Profile + Divider + Logout). Drop into the
-        app's `id: profile` menu for zero-config use, or define your own menu
-        inline when you need custom links.
+  _build.array.concat:
+    - - _ref: pages/login.yaml
+      - _ref: pages/forgot-password.yaml
+      - _ref: pages/reset-password.yaml
+      - _ref: pages/verify-email.yaml
+      - _ref: pages/magic-link.yaml
+      - _ref: pages/two-factor.yaml
+      - _ref: pages/accept.yaml
+      - _ref: pages/logout.yaml
+      - _ref: pages/view.yaml
+      - _ref: pages/onboarding.yaml
+      - _ref: pages/two-factor-enrol.yaml
+    # Signup is a distinct page only where a password registration form
+    # exists (emailAndPassword.enabled). In a passwordless deployment signup ≡
+    # login, so the page is not assembled and no /signup route exists.
+    - _build.if:
+        test:
+          _build.authConfig: emailAndPassword.enabled
+        then:
+          - _ref: pages/signup.yaml
+        else: []
 
 components:
   - id: profile-avatar
@@ -124,16 +172,161 @@ components:
   - id: user-avatar
     component:
       _ref: components/user-avatar.yaml
+
 menus:
   - _ref: menu.yaml
   - _ref: menus/profile-default.yaml
+
+# Module-contributed auth wiring (upstream ask 2/4, delivered). The build
+# contributes auth.authPages.* and pages.public from these declarations and
+# binds the signup hook endpoint; app config wins on collision.
+auth:
+  pages:
+    signIn: login
+    # signUp targets the signup page, which `pages` above builds only when
+    # emailAndPassword.enabled. This role value cannot be gated the same way:
+    # _build.authConfig is unavailable inside any auth: block. It would read the
+    # auth-config projection that authPages is itself part of (a self-reference,
+    # rejected as null), and _module.var is banned in manifest headers. Other
+    # build operators resolve here, but neither dynamic input can read
+    # emailAndPassword.enabled, so the role stays a static page id. A passwordless
+    # deployment (signup page not built) repoints this role at login via an
+    # app-level authPages override (app wins per role).
+    signUp: signup
+    forgotPassword: forgot-password
+    resetPassword: reset-password
+    verifyEmail: verify-email
+    # Landing page for the emailed sign-in link. With this role set the engine
+    # links the email here instead of at the verify endpoint, so a mail-security
+    # prefetch cannot consume the single-use token; the page verifies on a click.
+    # A role page is auto-public, and a deployment with magic link off simply
+    # never links to it.
+    magicLink: magic-link
+    # No dedicated error page: the login page serves the error role,
+    # rendering the failure as a login-page state (Decision 2).
+    error: login
+    # The invitation-accept page serves the acceptInvitation role (Decisions 1
+    # & 4): the engine builds the invitation-email accept URL from it. Do NOT
+    # route around it with a plain auth.public entry: the accept page stays
+    # public + AcceptInvitation action, but it earns public via THIS role, not
+    # auth.public.
+    acceptInvitation: accept
+    # The 2FA sign-in challenge. Required whenever twoFactor.enabled is true
+    # (auth-hardening). The engine deletes the sign-in session and sets a signed
+    # two_factor cookie, then routes here. Registered as an authPages role (not a
+    # plain public page) so Login/PhoneNumberVerify can navigate to it and it is
+    # auto-public without a session to authenticate against.
+    twoFactor: two-factor
+    # Forced-enrolment target for the engine's `required` enforcement. Unlike
+    # every other auth page this one is protected (public: false). The caller
+    # arrives holding a valid session, only missing a factor, so it is
+    # contributed via THIS role, never an auth.public entry, and the engine
+    # exempts it from its own enrolment gate.
+    twoFactorEnrol: two-factor-enrol
+  # Public pages beyond the authPages roles (role pages, including accept via
+  # acceptInvitation and the two-factor challenge, are auto-public): logout must
+  # render when signed out.
+  public:
+    - logout
+  # One binding at session.create.after, the provider-agnostic choke point
+  # where the active organization is resolved (org-aware-modules upstream
+  # ask 4). The endpoint is idempotent, so every later login re-asserts the
+  # contact without writing.
+  hooks:
+    - point: session.create.after
+      endpoint: ensure-contact-on-signup
+
+exports:
+  pages:
+    - id: login
+      description: Sign-in page (email/password, magic link, OAuth); also serves the authPages error role.
+    - id: signup
+      description: Account signup page.
+    - id: forgot-password
+      description: Request a password-reset email.
+    - id: reset-password
+      description: Set a new password from a reset link.
+    - id: verify-email
+      description: Post-signup "check your email" prompt and the emailed-link landing.
+    - id: magic-link
+      description: Landing page for the emailed sign-in link; verifies the token on a click (the authPages.magicLink target).
+    - id: two-factor
+      description: Two-factor (TOTP / backup code) sign-in challenge; module-internal routing.
+    - id: accept
+      description: Public invitation-accept page (AcceptInvitation client action).
+    - id: logout
+      description: Sign the user out and offer a sign-in link.
+    - id: view
+      description: Account workspace. Profile, security, and session tiles, plus access tokens when `mcp_tokens` is true.
+    - id: onboarding
+      description: First-login profile completion.
+    - id: two-factor-enrol
+      description: Forced two-factor enrolment (TOTP + passkey); the twoFactorEnrol authPages target.
+  connections:
+    - id: user-contacts-collection
+      description: Read-write MongoDB connection for the app-owned contact records (tenant-walled).
+    - id: user-contacts-system
+      description: Deliberately unwalled user-contacts connection for the system-context merge-on-signup mint; writes are explicitly org-stamped from the session hook payload (org-aware-modules Decision 7). Change-logs into its own `log-changes-system` collection, which no walled connection reads.
+    - id: users
+      description: Read-only native read of the BetterAuth users collection.
+    - id: user-sessions
+      description: Read-only native read of the sessions collection.
+    - id: user-accounts
+      description: Read-only native read of the linked-accounts collection.
+    - id: user-passkeys
+      description: Read-only native read of the passkeys collection.
+    - id: user-invitations
+      description: Read-only native read of the invitations collection.
+    - id: user-mcp-tokens
+      description: >-
+        Read-only, walled read of the member-token collection. Present only
+        when `mcp_tokens` is true.
+    - id: user-events-system
+      description: Deliberately unwalled log-events connection for the org-member-joined event; the write stamps the accepted invitation's organization explicitly. Change-logs into `log-changes-system`, which no walled connection reads.
+  api:
+    - id: update-profile
+      description: Update the caller's contact profile and re-denormalize onto their session user.
+    - id: ensure-contact-on-signup
+      description: Merge-on-signup hook endpoint. Ensures the caller has a contact in the session's organization.
+    - id: log-invitation-rejection
+      description: >-
+        Best-effort server-side log line naming which guard rejected an
+        invitation-accept attempt. Authenticated (not public) — the
+        rejecting views it logs from all require a session.
+    - id: log-member-joined
+      description: Save the org-member-joined event for an invitation the caller accepted, once per invitation, in the invitation's organization.
+    - id: create-mcp-token
+      description: >-
+        Create a member token for the caller in their active organization and
+        log `org-mcp-token-created`. Returns the token, its only appearance.
+        Present only when `mcp_tokens` is true.
+    - id: revoke-mcp-token
+      description: >-
+        Switch off one of the caller's own member tokens in their active
+        organization and log `org-mcp-token-revoked`. Present only when
+        `mcp_tokens` is true.
+  components:
+    - id: profile-avatar
+      description: Avatar config for the PageHeaderMenu profile. User image with first-letter fallback.
+    - id: user-selector
+      description: Single-select autocomplete for picking one app user.
+    - id: user-multi-selector
+      description: Multi-select picker for an array of app users.
+    - id: user-avatar
+      description: Inline avatar + name chip rendered from a user-contacts doc.
+  menus:
+    - id: default
+      description: Account navigation link.
+    - id: profile-default
+      description: >
+        Default profile dropdown (Profile + Divider + Logout). Drop into the
+        app's `id: profile` menu for zero-config use, or define your own menu
+        inline when you need custom links.
 
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^3"
   - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.48.0"

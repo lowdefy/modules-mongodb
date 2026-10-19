@@ -1,0 +1,39 @@
+# The caller's own membership of the organisation the switch page was opened
+# for, with that organisation's name: one row, or none when the caller is not a
+# member. Scoped by `user_id: { _user: id }`, the caller's own member rows, so
+# a non-member learns nothing about the organisation.
+id: get_switch_membership
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+payload:
+  organization_id:
+    _if:
+      test:
+        _type:
+          type: string
+          on:
+            _url_query: org
+      then:
+        _url_query: org
+      else: null
+properties:
+  pipeline:
+    - $match:
+        user_id:
+          _user: id
+        organization_id:
+          _payload: organization_id
+    - $limit: 1
+    - $lookup:
+        from: user-organizations
+        localField: organization_id
+        foreignField: _id
+        as: organization
+    - $unwind:
+        path: "$organization"
+        preserveNullAndEmptyArrays: true
+    - $project:
+        _id: 0
+        organization_id: 1
+        organization_name: "$organization.name"

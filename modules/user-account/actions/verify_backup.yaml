@@ -1,0 +1,57 @@
+# The backup-code verify chain, `_ref`'d by both the Verify button's onClick and
+# the backup_code field's onPressEnter so click and Enter run the identical
+# sequence. Same TwoFactorVerify action as the TOTP chain but dispatches on the
+# backupCode param, with the same success navigation.
+try:
+  - id: tf_verify_backup
+    type: TwoFactorVerify
+    messages:
+      error: false
+    params:
+      backupCode:
+        _state: backup_code
+      # Coerce to boolean: the trust-device switch is hidden on the backup view,
+      # so its state key is undefined here, and TwoFactorVerify rejects a
+      # non-boolean trustDevice before the request fires.
+      trustDevice:
+        _if_none:
+          - _state: trust_device
+          - false
+  - id: tf_backup_continue
+    type: Link
+    params:
+      # `url` is an external target: a value with no scheme gets `https://`
+      # prefixed, which promotes the first path segment to the hostname.
+      # Resolving the inbound `?callbackUrl=` against the current origin keeps it
+      # on-site; `home: true` covers the no-query case, which `url` cannot express.
+      _if:
+        test:
+          _ne:
+            - _url_query: callbackUrl
+            - null
+        then:
+          url:
+            _string.concat:
+              - _location: origin
+              - _url_query: callbackUrl
+        else:
+          home: true
+catch:
+  - id: tf_backup_no_cookie
+    type: Link
+    skip:
+      _ne:
+        - _actions: tf_verify_backup.error.cause.code
+        - INVALID_TWO_FACTOR_COOKIE
+    params:
+      pageId:
+        _module.pageId: login
+  - id: tf_backup_error
+    type: DisplayMessage
+    skip:
+      _eq:
+        - _actions: tf_verify_backup.error.cause.code
+        - INVALID_TWO_FACTOR_COOKIE
+    params:
+      status: error
+      content: That backup code is invalid or has already been used. Try another.

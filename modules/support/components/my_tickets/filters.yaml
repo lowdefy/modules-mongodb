@@ -1,0 +1,48 @@
+# The search box, the Open / Resolved / All switch and the type filter over the
+# loaded tickets, in one toolbar. They set support_list_filter.*, which the list
+# reads; nothing is fetched again.
+id: support_list_filters
+type: Box
+layout:
+  direction: row
+  wrap: wrap
+  align: middle
+  gap: 8
+blocks:
+  - id: support_list_filter.search
+    type: TextInput
+    layout:
+      flex: 1 1 200px
+    class:
+      .block: min-w-0
+    properties:
+      label:
+        disabled: true
+      placeholder: Search by title or key
+      prefixIcon: Search
+      allowClear: true
+  - id: support_list_filter.status
+    type: ButtonSelector
+    layout:
+      flex: 0 0 auto
+    properties:
+      label:
+        disabled: true
+      options:
+        - label: Open
+          value: open
+        - label: Resolved
+          value: resolved
+        - label: All
+          value: all
+  - id: support_list_filter.type
+    type: Selector
+    layout:
+      flex: 0 0 150px
+    properties:
+      label:
+        disabled: true
+      placeholder: Any type
+      allowClear: true
+      options:
+        _module.var: types

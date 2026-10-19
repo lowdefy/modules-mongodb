@@ -91,7 +91,7 @@ const ContactListItem = ({
               <Button
                 size="small"
                 type="default"
-                icon={<Icon properties={{ name: "AiOutlineEdit" }} />}
+                icon={<Icon properties={{ name: "edit" }} />}
                 onClick={() => editContact(contact)}
               />
             )
@@ -101,7 +101,7 @@ const ContactListItem = ({
               size="small"
               type="default"
               danger
-              icon={<Icon properties={{ name: "AiOutlineDelete" }} />}
+              icon={<Icon properties={{ name: "delete" }} />}
               onClick={() => removeContact(contact)}
             />
           )}

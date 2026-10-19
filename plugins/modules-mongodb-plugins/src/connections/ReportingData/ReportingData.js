@@ -5,6 +5,9 @@ import AnalyticsPipeline from "./AnalyticsPipeline/AnalyticsPipeline.js";
 // request, and validatePipeline rejects every write stage.
 const ReportingData = {
   schema,
+  // Data-set journeys redirect it: it reads only from databaseUri and
+  // databaseName (mongo/getMongoDb.js).
+  meta: { dataSet: "redirect" },
   requests: {
     AnalyticsPipeline,
   },

@@ -106,8 +106,8 @@ formConfig:
     component: button_selector
     title: Outcome
     enum:
-      won: { title: Won, color: "#52c41a", icon: AiOutlineCheckCircle }
-      lost: { title: Lost, color: "#ff4d4f", icon: AiOutlineCloseCircle }
+      won: { title: Won, color: "#52c41a", icon: check-circle }
+      lost: { title: Lost, color: "#ff4d4f", icon: close-circle }
 ```
 
 ### Theme

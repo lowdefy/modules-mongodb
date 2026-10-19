@@ -1,0 +1,29 @@
+# The stored section a report re-query or download names by `report_id` and
+# `section_id`, read under the same rules resolve-report opens the report with:
+# not soft-deleted, and owned by the caller or published to the app. A report's
+# compiled actions name the section rather than carry its query, because the
+# query is AI-authored data and compiled actions are config the client runs.
+#
+# The result is an array of at most one row: `_step: report_section.0` is the
+# section, and is absent when the report is not readable or has no such section.
+id: report_section
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: reports-store
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: report_id
+        deleted.timestamp:
+          $exists: false
+        $or:
+          - owner.user_id:
+              _user: id
+          - visibility: shared
+    - $unwind: "$spec.sections"
+    - $match:
+        spec.sections.id:
+          _payload: section_id
+    - $replaceWith: "$spec.sections"
+    - $limit: 1

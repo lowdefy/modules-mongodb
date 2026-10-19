@@ -1,0 +1,51 @@
+# cancel-invitation: CancelInvitation (design Decision 7). Cancels a pending
+# invitation by id. `organizationId` is named explicitly: an absent one falls back
+# to the APP's pinned organization, so an instance administering another
+# organization would be authorized against the wrong one. Role-gated app-side; the
+# step declares the permission it needs and the engine floors it against the
+# caller's member row in the organization the step names. Audit event is the final
+# step.
+#
+# Payload: { invitation_id, email? }
+id: cancel-invitation
+type: Api
+routine:
+  - id: cancel
+    type: CancelInvitation
+    properties:
+      invitationId:
+        _payload: invitation_id
+      organizationId:
+        _module.var: org_slug
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: invitation-cancelled
+        display:
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.invitation-cancelled
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: invitation-cancelled
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        email:
+                          _payload: email
+                description: null
+        metadata:
+          invitation_id:
+            _payload: invitation_id
+  - :return:
+      success: true

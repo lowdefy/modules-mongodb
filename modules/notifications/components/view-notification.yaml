@@ -1,47 +1,121 @@
 id: view_notification
 type: Box
 blocks:
-  - id: header
-    type: Html
-    properties:
-      html:
-        _nunjucks:
-          template: |
-            <div style="display: flex; gap: 1em;">
-              <div style="flex: 0 1 auto;">
-              {% if status %}
-                <div style="font-size: 0.7rem; background: {{ status.color }}; padding: 6px; border-radius: 4px; color: white; min-width: 80px; text-align: center; margin-top: 8px;">
-                  <b>{{ status.title | safe }}</b>
+  - id: pane_header
+    type: Box
+    class:
+      .element: nx-pane-header
+    layout:
+      gap: 12
+    blocks:
+      - id: pane_back
+        type: Button
+        visible:
+          _or:
+            - _eq:
+                - _media: size
+                - xs
+            - _eq:
+                - _media: size
+                - sm
+        layout:
+          span: 24
+        properties:
+          title: Back
+          type: link
+          size: small
+          icon: ArrowLeft
+        events:
+          onClick:
+            - id: close_pane
+              type: SetState
+              params:
+                pane_open: false
+      - id: pane_title
+        type: Html
+        layout:
+          flex: 1 1 0
+        style:
+          minWidth: 0
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <div class="nx-pane-head">
+                  <span class="nx-icon nx-icon--lg" style="--c: {{ appearance.color }}"><i data-icon="{{ appearance.icon }}"></i></span>
+                  <div>
+                    <h2>{{ notification.title }}</h2>
+                    <div class="nx-pane-meta"><span data-tag="{{ appearance.color }}">{{ appearance.label }}</span><time datetime="{{ received }}" data-time="D MMM YYYY, HH:mm"></time><span>·</span><time datetime="{{ received }}" data-time="relative"></time></div>
+                  </div>
                 </div>
-              {% endif %}
-              </div>
-              <div style="flex: 1 1 auto; width: 100%;">
-                <h3 style="margin: 0;">{{ notification.title | safe }}</h3>
-                <p><small style="color: var(--ant-color-text-secondary);">Received on {{ notification.created.timestamp | date('D MMM YYYY') }}</small></p>
-              </div>
-            </div>
-          on:
-            notification:
-              _var: notification
-            status:
-              _global:
-                _string.concat:
-                  - enums.event_types.
-                  - _get:
-                      key: event_type
-                      from:
-                        _var: notification
-  - id: divider
-    type: Divider
-    properties:
-      title: Notification Details
+              on:
+                notification:
+                  _var: notification
+                received:
+                  _js:
+                    args:
+                      at:
+                        _get:
+                          key: created.timestamp
+                          from:
+                            _var: notification
+                    fn: |
+                      return args.at ? new Date(args.at).toISOString() : '';
+                appearance:
+                  _get:
+                    key: 0.appearance
+                    from:
+                      _ref:
+                        path: components/notification-appearance.yaml
+                        vars:
+                          records:
+                            - _var: notification
+      - id: button_mark_unread
+        type: Button
+        layout:
+          flex: 0 0 auto
+        # Opening a notification reads it, so the row in the list says whether
+        # it is read now; the fetched record predates the open.
+        visible:
+          _js:
+            args:
+              list:
+                _if_none:
+                  - _state: list
+                  - []
+              id:
+                _state: open_id
+            fn: |
+              const row = args.list.find((r) => r._id === args.id);
+              return !row || row.read === true;
+        properties:
+          title: Mark as unread
+          type: text
+          size: small
+          icon: Mail
+        events:
+          onClick:
+            _ref: actions/mark-unread.yaml
   - id: notification_details
     type: Html
-    style:
-      marginBottom: 2em
+    class:
+      .element: notification-email nx-pane-body
     properties:
       html:
-        _get:
-          key: body
-          from:
-            _var: notification
+        # The stylesheet trails the document: the HTML parser hoists a leading
+        # <style> into <head>, which the block's sanitizer discards with it.
+        _string.concat:
+          # body is the rendered HTML on both record shapes; fall back to the
+          # pipeline records' plain text if body is ever absent.
+          - _if_none:
+              - _get:
+                  key: body
+                  from:
+                    _var: notification
+              - _get:
+                  key: text
+                  from:
+                    _var: notification
+          - "<style>"
+          - _ref: components/notification-email.css
+          - "</style>"

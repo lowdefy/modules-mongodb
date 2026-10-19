@@ -33,7 +33,10 @@ payloadSchema:
       type: string
       description: The provisional title this replaces. A thread renamed since keeps its name.
     context:
-      type: string
+      # Null when the `title_context` var is left at its default.
+      type:
+        - string
+        - "null"
 routine:
   - _ref: api/routines/require_user.yaml
   - :if:

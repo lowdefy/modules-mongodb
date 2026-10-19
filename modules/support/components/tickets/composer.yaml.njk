@@ -1,0 +1,66 @@
+# The reply composer under a thread: one box holding the message, the files
+# attached to it (up to five images or PDFs, each uploaded to the app's files
+# bucket as it is added) and Send. Ctrl or Cmd with Enter sends. The reply
+# writes under {{ prefix }}_reply, which Send validates.
+#
+# Vars:
+#   prefix  the state and block id prefix of the surface
+id: {{ prefix }}_composer
+type: Box
+visible:
+  _ne:
+    - _state: {{ prefix }}_thread
+    - null
+layout:
+  gap: 8
+blocks:
+  - id: {{ prefix }}_reply.message
+    type: MessageComposer
+    required: true
+    properties:
+      placeholder: Write a reply
+      maxLength: 4000
+      s3PostPolicyRequestId: upload_policy_{{ prefix }}_reply_files
+      files:
+        _if_none:
+          - _state: {{ prefix }}_reply.files
+          - []
+      loading:
+        _state: {{ prefix }}_posting
+    events:
+      onUploaded:
+        - id: {{ prefix }}_reply_add_file
+          type: SetState
+          params:
+            {{ prefix }}_reply.files:
+              _event: files
+            {{ prefix }}_reply_error: null
+      onRemove:
+        - id: {{ prefix }}_reply_remove_file
+          type: SetState
+          params:
+            {{ prefix }}_reply.files:
+              _event: files
+            {{ prefix }}_reply_error: null
+      onError:
+        - id: {{ prefix }}_reply_file_refused
+          type: SetState
+          params:
+            {{ prefix }}_reply_error:
+              _event: message
+      onSubmit:
+        _ref:
+          path: actions/post_reply.yaml.njk
+          vars:
+            prefix: {{ prefix }}
+  - id: {{ prefix }}_reply_error
+    type: Alert
+    visible:
+      _ne:
+        - _state: {{ prefix }}_reply_error
+        - null
+    properties:
+      type: error
+      showIcon: true
+      message:
+        _state: {{ prefix }}_reply_error

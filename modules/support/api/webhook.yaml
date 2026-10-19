@@ -1,0 +1,93 @@
+id: webhook
+type: Api
+description: >-
+  Pelican's webhook: every change to one of the app's tickets. The verify gate
+  checks the delivery was signed with SUPPORT_WEBHOOK_SECRET in the last five
+  minutes, else Lowdefy answers 401. A ticket event writes the reporter view
+  into the copy of the user the body names, creating the row for a ticket the
+  team logged, and a new team message sends that user a support-reply
+  notification. A test delivery answers 200 and writes nothing. The app lists
+  support/webhook in auth.api.public.
+webhook:
+  verify:
+    type: SupportWebhookVerify
+    connectionId:
+      _module.connectionId: support_webhook
+    properties:
+      rawBody:
+        _payload: rawBody
+      timestamp:
+        _payload: headers.pelican-timestamp
+      signature:
+        _payload: headers.pelican-signature
+routine:
+  - :set_state:
+      delivery:
+        _payload: body
+  - :if:
+      _eq:
+        - _state: delivery.event
+        - test
+    :then:
+      - :return:
+          ok: true
+  - :if:
+      _js: |
+        const delivery = state('delivery');
+        const events = [
+          'ticket.created',
+          'ticket.message',
+          'ticket.message_deleted',
+          'ticket.stage',
+          'ticket.updated',
+        ];
+        if (!delivery || typeof delivery !== 'object') return true;
+        if (!events.includes(delivery.event)) return true;
+        if (typeof delivery.user_id !== 'string' || delivery.user_id === '') return true;
+        const ticket = delivery.ticket;
+        if (!ticket || typeof ticket !== 'object') return true;
+        if (typeof ticket.id !== 'string' || ticket.id === '') return true;
+        return typeof ticket.version !== 'number';
+    :then:
+      - :reject: >-
+          A support webhook names an event, the user_id the ticket belongs to,
+          and the ticket's reporter view with its id and version.
+  # No session here: the user filter comes from the verified body.
+  - id: stored_row
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: support-tickets
+    properties:
+      query:
+        _id:
+          _state: delivery.ticket.id
+        user_id:
+          _state: delivery.user_id
+  - :set_state:
+      stored_row:
+        _step: stored_row
+  - :if:
+      _gte:
+        - _if_none:
+            - _state: stored_row.view.version
+            - 0
+        - _state: delivery.ticket.version
+    :then:
+      - :return:
+          ok: true
+  - _ref:
+      path: api/parts/write-view.yaml
+      vars:
+        view:
+          _state: delivery.ticket
+        user_id:
+          _state: delivery.user_id
+        organization: null
+  - :if:
+      _eq:
+        - _state: delivery.event
+        - ticket.message
+    :then:
+      - _ref: api/parts/notify-reply.yaml
+  - :return:
+      ok: true

@@ -1,0 +1,135 @@
+# The audit log's entries (get_audit_log), grouped under a line per day
+# (Today, Yesterday, then the date) in the browser's time zone, each with its
+# kind's icon, its line, an optional detail line (the expiry on an invitation's
+# line) and the time. An entry about a person links to their member page.
+#
+# Vars:
+#   request  the audit log request's id (default get_audit_log)
+#   empty    the text shown when there are no entries
+id:
+  _build.string.concat:
+    - _var:
+        key: request
+        default: get_audit_log
+    - _list
+type: Html
+properties:
+  html:
+    _nunjucks:
+      template: >-
+        {% if entries | length == 0 %}<div data-tone="secondary"
+        style="padding:24px 0; text-align:center">{{ empty }}</div>{% endif %}
+        {% for e in entries %}{% if loop.first or e.day != entries[loop.index0 - 1].day %}<div
+        style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;
+        color:var(--ant-color-text-tertiary); padding:16px 0 6px">{{ e.day_label }}</div>{% endif %}<div
+        style="display:flex; gap:12px; align-items:flex-start; padding:8px 0;
+        border-top:1px solid var(--ant-color-border-secondary)"><span
+        style="flex:0 0 auto; color:var(--ant-color-text-secondary); padding-top:2px"><i
+        data-icon="{{ icons[e.type] or 'History' }}"></i></span><div style="flex:1 1 0; min-width:0">{% if e.subject_id %}<a data-page-id="{{ member_page }}"
+        data-url-query="user_id={{ e.subject_id }}">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}{% if e.detail %}<div
+        data-tone="secondary" style="font-size:13px">{{ e.detail }}</div>{% endif %}</div><time
+        datetime="{{ e.at }}" data-time="HH:mm" data-tone="secondary"
+        style="flex:0 0 auto; font-size:13px"></time></div>{% endfor %}
+      on:
+        member_page:
+          _module.pageId: member
+        icons:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.object.keys:
+                  _ref: enums/event_types.yaml
+              callback:
+                _build.function:
+                  - __build.args: 0
+                  - __build.get:
+                      from:
+                        _ref: enums/event_types.yaml
+                      key:
+                        __build.string.concat:
+                          - __build.args: 0
+                          - .icon
+        empty:
+          _var:
+            key: empty
+            default: Nothing has been recorded yet.
+        entries:
+          _array.map:
+            on:
+              _if_none:
+                - _request:
+                    _var:
+                      key: request
+                      default: get_audit_log
+                - []
+            callback:
+              _function:
+                at:
+                  __args: 0.at
+                title:
+                  __args: 0.title
+                detail:
+                  __if:
+                    test:
+                      __eq:
+                        - __if_none:
+                            - __args: 0.expires_at
+                            - null
+                        - null
+                    then:
+                      __args: 0.detail
+                    else:
+                      # Both branches are evaluated, so the format never
+                      # receives null.
+                      __string.concat:
+                        - 'Expires '
+                        - __dayjs.format:
+                            on:
+                              __if_none:
+                                - __args: 0.expires_at
+                                - __args: 0.at
+                            format: D MMM
+                type:
+                  __args: 0.type
+                subject_id:
+                  __args: 0.subject.user_id
+                day:
+                  __dayjs.format:
+                    on:
+                      __args: 0.at
+                    format: YYYY-MM-DD
+                day_label:
+                  __if:
+                    test:
+                      __eq:
+                        - __dayjs.format:
+                            on:
+                              __args: 0.at
+                            format: YYYY-MM-DD
+                        - _dayjs.format:
+                            on:
+                              _date: now
+                            format: YYYY-MM-DD
+                    then: Today
+                    else:
+                      __if:
+                        test:
+                          __eq:
+                            - __dayjs.format:
+                                on:
+                                  __args: 0.at
+                                format: YYYY-MM-DD
+                            - _dayjs.format:
+                                on:
+                                  _date:
+                                    _subtract:
+                                      - _date.valueOf:
+                                          _date: now
+                                      - 86400000
+                                format: YYYY-MM-DD
+                        then: Yesterday
+                        else:
+                          __dayjs.format:
+                            on:
+                              __args: 0.at
+                            format: D MMMM YYYY

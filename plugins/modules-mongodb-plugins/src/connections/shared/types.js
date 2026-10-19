@@ -27,8 +27,8 @@
  * @property {ChangeStamp} created
  * @property {ChangeStamp} updated
  *
- * Part 66: the denormalised `summary`/`groups[]` fields were removed — overview
- * progress counts derive on read from the action docs.
+ * The doc has no denormalised `summary`/`groups[]` fields — overview progress
+ * counts derive on read from the action docs.
  */
 
 /**
@@ -46,7 +46,7 @@
  * @property {{ connection_id: string, id: string }} entity
  * @property {string[]} assignees
  * @property {Date | null} due_date
- * @property {{ child_workflow_type: string, start_link?: { pageId: string, urlQuery?: Object } } | null} tracker
+ * @property {{ child_workflow_type: string, start_link?: { pageId: string, urlQuery?: Object, pathParams?: Object } } | null} tracker
  * @property {string | null} child_workflow_id
  * @property {{ connection_id: string, id: string } | null} child_entity
  */

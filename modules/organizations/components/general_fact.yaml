@@ -1,0 +1,32 @@
+# One fact card on the General settings page: a value over its label.
+#
+# Vars:
+#   id     the fact's id (block ids are fact_<id>)
+#   title  the label
+#   value  what the card shows, evaluated on the page
+#   visible  optional, default true
+id:
+  _build.string.concat:
+    - fact_
+    - _var: id
+type: Card
+visible:
+  _var:
+    key: visible
+    default: true
+layout:
+  flex: 1 1 160px
+properties:
+  size: small
+blocks:
+  - id:
+      _build.string.concat:
+        - fact_
+        - _var: id
+        - _value
+    type: Statistic
+    properties:
+      title:
+        _var: title
+      value:
+        _var: value

@@ -6,11 +6,11 @@ Reviewed against the module source on `feat/deals-module`. The design is sound a
 
 ### 1. A2's "sort/filter by value before pagination" rationale misdescribes current behaviour
 
-> **Resolved.** A2 rationale rewritten to stand on consistency with the `deal.outcome` stamp pattern, removing host math from shared reads, and read-cost — noting the module computes value post-pagination today (no sort-by-value) and that a stored field only *enables* sort-by-value as a future benefit, not a committed goal. Rejected-alternative reasoning corrected too.
+> **Resolved.** A2 rationale rewritten to stand on consistency with the `deal.outcome` stamp pattern, removing host math from shared reads, and read-cost — noting the module computes value post-pagination today (no sort-by-value) and that a stored field only _enables_ sort-by-value as a future benefit, not a committed goal. Rejected-alternative reasoning corrected too.
 
 A2 (design line 61) justifies the stored-field approach over a `request_stages` tail stage by saying value "must be computed before the list sort/paginate." But the current module computes `deal_value` **inside a `$facet`, after `$sort`/`$skip`/`$limit`** (`get_deals_list.yaml:174-181` then `:215-221`), and `request_stages.get_deals_list` injects at `:287`. So the list does **not** sort or filter by value today — value is derived per-page, post-pagination, for display only.
 
-The stored-field approach is still the right call (it *enables* pre-sort value access and is consistent with `deal.outcome`), but the stated justification is wrong: there is no existing sort-by-value to preserve. Rewrite the rationale to rest on (a) consistency with the `deal.outcome` stamp pattern, (b) removing host-specific math from shared reads, and (c) *enabling* future sort/filter-by-value — not on preserving a capability that doesn't exist. If sort-by-value is actually a desired new capability, state it as an explicit goal; if not, drop the sort argument entirely.
+The stored-field approach is still the right call (it _enables_ pre-sort value access and is consistent with `deal.outcome`), but the stated justification is wrong: there is no existing sort-by-value to preserve. Rewrite the rationale to rest on (a) consistency with the `deal.outcome` stamp pattern, (b) removing host-specific math from shared reads, and (c) _enabling_ future sort/filter-by-value — not on preserving a capability that doesn't exist. If sort-by-value is actually a desired new capability, state it as an explicit goal; if not, drop the sort argument entirely.
 
 ## Component extraction scoping (Workstream B)
 
@@ -19,6 +19,7 @@ The stored-field approach is still the right call (it *enables* pre-sort value a
 > **Resolved.** B3 now requires two seams on the extracted events component: a mention-source seam (request-id var / injected options for `get_mentionable_users`) and entity/context inputs (entity id, company id, display key). deals wires its own mention request + deal context. Final home still tracked as open question #2.
 
 The `add_note_modal` is not just capture UI. It depends on:
+
 - `get_mentionable_users` (`add_note_modal.yaml:9-11,106`), which is an **app-coupled request** — its `$match` is built at build time from `_module.var: app_name` (`get_mentionable_users.yaml:14-25`) and queries the app's users collection.
 - deals' own `get_selected_deal.0.company_id` (`add_note_modal.yaml:51`) and `app_name`-keyed event display (`:37`).
 
@@ -29,6 +30,7 @@ Extracting the modal into events therefore means the **mention-source request an
 > **Resolved.** B2 now requires two seams on the shared activities task API: an arbitrary entity link (`entity_type`/`entity_id`) and a configurable emitted event (type + display template). deals consumes it passing `entity_type: deal` + its `deal-task-created` event config.
 
 Storage is compatible — deals' and activities' `actions-collection` both resolve to the same `actions` collection (`connections/actions-collection.yaml:6` in each). But deals' `create-task` (`api/create-task.yaml`) emits a **deal-specific** event (`type: deal-task-created`, `:38`) with deal-specific display markup (`:42-50`) and links the task to a deal. A shared activities task API must:
+
 - accept an arbitrary entity link (`entity_type`/`entity_id`), not assume meeting or deal;
 - make the emitted **event type + display configurable** so deals keeps `deal-task-created` semantics and activities keeps its own.
 
@@ -39,6 +41,7 @@ Otherwise the consolidation is lossy for the host. Add these as explicit vars on
 > **Resolved.** Split by ownership: workflows exports an actions-only card, activities owns the tasks card, deals composes both side by side. No cross-module fetch, no dependency inversion. B1 rewritten; open question #4 removed (now decided).
 
 B1 puts the open-actions/tasks widget in **workflows**; B2 puts task storage/CRUD in **activities**. But the widget renders "open workflow actions **+ tasks**" (design line 104) — so a workflows component would need to read tasks from activities' collection, i.e. a **workflows → activities dependency**, which likely inverts the intended layering (workflows is the lower-level engine). Resolve the home explicitly:
+
 - Option A: the workflows widget renders **actions only**; tasks render via a separate activities-owned component, composed side-by-side by the host/deals.
 - Option B: the unified widget lives in whichever module is allowed to depend on both (neither workflows nor activities cleanly can).
 

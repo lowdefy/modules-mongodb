@@ -4,7 +4,7 @@ _ref:
   vars:
     id: edit
     type:
-      _string.concat:
+      _build.string.concat:
         - "Edit "
         - _module.var: label
     title:
@@ -12,7 +12,7 @@ _ref:
     content_width: 600
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
         pageId:
@@ -35,7 +35,7 @@ _ref:
                 key:
                   _string.concat:
                     - "apps."
-                    - _module.var: app_name
+                    - _build.app: slug
                     - ".is_user"
                 from:
                   _request: get_contact.0
@@ -106,7 +106,7 @@ _ref:
                   flex: 0 1 auto
                 properties:
                   title: Cancel
-                  icon: AiOutlineCloseCircle
+                  icon: close-circle
                   type: default
                 events:
                   onClick:
@@ -120,20 +120,11 @@ _ref:
                   flex: 0 1 auto
                 properties:
                   title: Save
-                  icon: AiOutlineSave
+                  icon: save
                 events:
                   onClick:
                     - id: validate
                       type: Validate
-                    - id: generate_avatar
-                      type: SetState
-                      params:
-                        profile.picture:
-                          _js:
-                            _ref:
-                              path: ../shared/profile/generate-avatar-svg.js.njk
-                              vars:
-                                prefix: profile
                     - id: update_contact
                       type: CallAPI
                       params:

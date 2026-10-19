@@ -11,10 +11,6 @@ const TERMINAL = ["done", "not-required"];
  * `planActionTransition` — new status[] entry (reusing the per-invocation
  * `event_id` / `now`), re-rendered cell, recomputed links, change-log delta.
  *
- * Replaces `SubmitWorkflowAction/computeAutoUnblocks.js` +
- * `reevaluateBlockedActions.js` — their two passes bracketing the group
- * recompute unify into one alternating fixpoint here.
- *
  * Each `blocked_by` entry is satisfied iff:
  *   - (action type) every doc of that type in the planned view is terminal —
  *     the keyed-action rule: a type isn't terminal until all its keyed

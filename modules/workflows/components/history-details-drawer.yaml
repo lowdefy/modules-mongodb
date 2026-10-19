@@ -47,7 +47,7 @@ blocks:
               - 0
           then: Details & History
           else: History
-      icon: AiOutlineHistory
+      icon: history
       type: default
     events:
       onClick:

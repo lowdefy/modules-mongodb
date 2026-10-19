@@ -3,7 +3,7 @@ import { getBlock } from "@lowdefy/e2e-utils";
 
 // Cluster: access-verbs (Part 22 task 10). Mode: Spine (UI) + endpoint tail.
 //
-// Proves the per-app, per-verb access gates (access.{app_name}.{verb}) BIND
+// Proves the per-app, per-verb access gates (access.{slug}.{verb}) BIND
 // THROUGH THE WIRED APP, per role — not just in the unit layer. Three concerns:
 //   1. Entity-surface VISIBILITY: GetEntityWorkflows drops an action with no
 //      accessible verb, so admin-only is invisible to non-admins.

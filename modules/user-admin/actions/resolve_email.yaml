@@ -1,0 +1,78 @@
+# Resolve state.email to one of four invite outcomes (design Decision 7) and drive
+# the invite_state machine. Shared by the Check button and the pending panel's
+# Resend re-resolve so the branching + prefill logic lives in one place.
+# The check routine's "contact" outcome maps to the form's "existing" (prefilled)
+# layer; "unknown" is the blank form.
+# CallAPI stores the endpoint's return value under `<id>.response.response`
+# (`<id>.response` is the call record: loading / success / response / …).
+# Vars: skip (optional): skips both actions, for the page's onInit when the URL
+# carries no email.
+- id: check_invite
+  type: CallAPI
+  skip:
+    _var:
+      key: skip
+      default: false
+  params:
+    endpointId:
+      _module.endpointId: check-invite-email
+    payload:
+      email:
+        _state: email
+- id: apply_resolution
+  type: SetState
+  skip:
+    _var:
+      key: skip
+      default: false
+  params:
+    invite_state:
+      _if:
+        test:
+          _eq:
+            - _actions: check_invite.response.response.state
+            - contact
+        then: existing
+        else:
+          _actions: check_invite.response.response.state
+    # The normalised (trimmed, lower-cased) address the check matched on, so
+    # the invite / resend / cancel payloads send exactly what was looked up.
+    email:
+      _actions: check_invite.response.response.email
+    resolved_member:
+      _actions: check_invite.response.response.member
+    resolved_invitation:
+      _actions: check_invite.response.response.invitation
+    resolved_contact:
+      _actions: check_invite.response.response.contact
+    profile:
+      _actions: check_invite.response.response.contact.profile
+    # App roles, org tier and member attributes come from the latest expired
+    # invitation when there is one, so a re-invite keeps what the expired row
+    # granted. With none, roles and attributes start empty and the tier is
+    # `member`, the no-authority value, so an admin who ignores the field invites
+    # app roles and nothing more. Re-seeded on every resolve, so values from one
+    # email cannot ride along to the next one checked. A stored `owner` seeds
+    # `admin`: the form does not mint the protected creator tier, and `admin`
+    # carries the same capabilities. With the `org_authority` var false the tier
+    # control does not render and the tier is always `member`.
+    roles:
+      _actions: check_invite.response.response.expired_invitation.app_roles
+    member_attributes:
+      _actions: check_invite.response.response.expired_invitation.attributes
+    org_role:
+      _build.if:
+        test:
+          _module.var: org_authority
+        then:
+          _if:
+            test:
+              _eq:
+                - _actions: check_invite.response.response.expired_invitation.role
+                - owner
+            then: admin
+            else:
+              _if_none:
+                - _actions: check_invite.response.response.expired_invitation.role
+                - member
+        else: member

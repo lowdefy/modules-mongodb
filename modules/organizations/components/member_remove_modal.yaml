@@ -1,0 +1,119 @@
+# Confirms removing the member page's person from the organization. The app
+# adds its own line through the `remove_confirmation_note` module var. After
+# the removal the page shows them as a former member.
+id: member_remove_modal
+type: Modal
+properties:
+  title:
+    _string.concat:
+      - 'Remove '
+      - _if_none:
+          - _request: get_member.0.name
+          - _if_none:
+              - _request: get_member.0.email
+              - this member
+      - '?'
+  width: 440
+  okText:
+    _build.string.concat:
+      - 'Remove from '
+      - _build.string.toLowerCase:
+          _module.var: label
+  cancelText:
+    _string.concat:
+      - 'Keep '
+      - _if_none:
+          - _request: get_member.0.name
+          - _if_none:
+              - _request: get_member.0.email
+              - them
+  okButtonProps:
+    danger: true
+events:
+  onOk:
+    - id: remove_member
+      type: CallAPI
+      messages:
+        loading: Removing…
+      params:
+        endpointId:
+          _module.endpointId: remove-member
+        payload:
+          member_id:
+            _request: get_member.0.member_id
+    - id: show_remove_refusal
+      type: DisplayMessage
+      skip:
+        _eq:
+          - _actions: remove_member.response.response.refused
+          - null
+      params:
+        status: error
+        duration: 8
+        content:
+          _actions: remove_member.response.response.refused.message
+    - id: stop_on_remove_refusal
+      type: Throw
+      messages:
+        error: false
+      params:
+        throw:
+          _ne:
+            - _actions: remove_member.response.response.refused
+            - null
+        message:
+          _if_none:
+            - _actions: remove_member.response.response.refused.message
+            - ''
+    - id: show_member_removed
+      type: DisplayMessage
+      params:
+        status: success
+        content: Member removed.
+    - id: refetch_removed_member
+      type: Request
+      params:
+        - get_member
+        - get_owner_count
+        - get_member_activity
+blocks:
+  - id: member_remove_message
+    type: Paragraph
+    style:
+      .element:
+        margin: 0
+    properties:
+      type: secondary
+      content:
+        _string.concat:
+          - _if_none:
+              - _request: get_member.0.name
+              - _if_none:
+                  - _request: get_member.0.email
+                  - They
+          - ' will lose access to '
+          - _if_none:
+              - _request: get_settings_organization.name
+              - _build.string.concat:
+                  - 'this '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+          - ' and everything in it. You can invite them again later.'
+  - id: member_remove_note
+    type: Paragraph
+    visible:
+      _ne:
+        - _if_none:
+            - _module.var: remove_confirmation_note
+            - null
+        - null
+    style:
+      .element:
+        margin: 0
+        marginTop: 8
+    properties:
+      type: secondary
+      content:
+        _if_none:
+          - _module.var: remove_confirmation_note
+          - ''

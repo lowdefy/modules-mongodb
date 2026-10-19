@@ -1,0 +1,260 @@
+<!-- Two-factor enrolment redesign — restacked to the standard auth-card width (420px),
+     no 560 override. Renders on the layout module `auth-page` shell (subtle-logo interior
+     treatment). Three phases drawn as separable, toggleable layers (radio switcher, top).
+       phase = password  → choose a route (authenticator app or passkey)
+       phase = scan       → QR primary; manual key grouped in 4-char chunks behind a disclosure (F49)
+       phase = done       → backup codes + save-and-continue
+     F49 fixes here: QR is the primary path; the long base32 key moves behind a
+     "Can't scan?" disclosure and is rendered grouped in 4-char blocks that wrap cleanly. -->
+<style>
+  :root {
+    --primary: #7c3aed;
+    --primary-deep: #4a1f8c;
+    --radius: 12px;
+    --card-w: 420px;
+    --bg-layout: #f5f5f5;
+    --surface: #ffffff;
+    --border: #f0f0f0;
+    --border-strong: #d9d9d9;
+    --fill-quaternary: #fafafa;
+    --text: rgba(0, 0, 0, 0.88);
+    --text-secondary: rgba(0, 0, 0, 0.45);
+    --text-tertiary: rgba(0, 0, 0, 0.25);
+    --warn-bg: #fffbe6;
+    --warn-border: #ffe58f;
+    --control-h: 40px;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 1440px; background: #e9e9ec; color: var(--text); }
+
+  /* review-only phase switcher */
+  .switcher {
+    display: flex; justify-content: center; gap: 8px;
+    padding: 20px 0 4px;
+  }
+  .switcher label {
+    font-size: 12px; padding: 5px 14px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--border-strong);
+    color: var(--text-secondary); cursor: pointer; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .switcher_note { text-align: center; font-size: 12px; color: var(--text-tertiary); padding-bottom: 8px; }
+  input[name="phase"] { display: none; }
+
+  .phase { display: none; }
+  #p_password:checked ~ .stage .phase_password,
+  #p_scan:checked     ~ .stage .phase_scan,
+  #p_done:checked     ~ .stage .phase_done { display: flex; }
+  /* switcher active state */
+  #p_password:checked ~ .switcher label[for="p_password"],
+  #p_scan:checked     ~ .switcher label[for="p_scan"],
+  #p_done:checked     ~ .switcher label[for="p_done"] {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+  }
+
+  /* ---- auth page shell (layout module `auth-page`, subtle interior treatment) ---- */
+  .stage {
+    min-height: 720px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: var(--bg-layout); padding: 40px 20px;
+  }
+  .auth_container { width: 100%; max-width: var(--card-w); }
+  .auth_logo_top {
+    display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px;
+  }
+  .auth_logo_top .mark {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: linear-gradient(160deg, var(--primary-deep), var(--primary));
+    display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px;
+  }
+  .auth_logo_top .wordmark { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+
+  .auth_card {
+    background: var(--surface); border-radius: var(--radius);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 24px rgba(20,10,40,0.06);
+  }
+  .auth_body { padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; }
+  .phase { flex-direction: column; gap: 16px; }
+
+  .auth_title { font-size: 22px; font-weight: 600; line-height: 1.3; }
+  .auth_lead { font-size: 13px; color: var(--text-secondary); margin-top: -8px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; }
+  .input {
+    height: var(--control-h); border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 0 12px; display: flex; align-items: center; font-size: 14px;
+    color: var(--text-tertiary); background: #fff;
+  }
+  .input.code {
+    font-family: var(--mono); letter-spacing: 0.5em; font-size: 18px;
+    justify-content: center; color: var(--text); height: 48px;
+  }
+  .btn {
+    height: var(--control-h); border-radius: 8px; display: grid; place-items: center;
+    font-size: 14px; font-weight: 500; cursor: default; gap: 8px; grid-auto-flow: column;
+  }
+  .btn.lg { height: 44px; }
+  .btn.primary { background: var(--primary); color: #fff; }
+  .btn.ghost { background: #fff; border: 1px solid var(--border-strong); color: var(--text); }
+  .btn.primary.disabled { opacity: 0.4; }
+
+  .divider {
+    text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-tertiary); display: flex; align-items: center; gap: 12px;
+  }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  /* ---- scan phase: QR primary ---- */
+  .qr_wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .qr {
+    width: 164px; height: 164px; border-radius: 10px; padding: 10px;
+    background:
+      repeating-linear-gradient(90deg, #000 0 6px, #fff 6px 12px),
+      repeating-linear-gradient(0deg, #000 0 6px, #fff 6px 12px);
+    background-blend-mode: multiply;
+    border: 1px solid var(--border);
+  }
+
+  /* disclosure: "Can't scan? Enter this key instead" */
+  .manual { border-top: 1px solid var(--border); padding-top: 14px; }
+  .manual_toggle {
+    font-size: 13px; color: var(--primary); cursor: pointer; display: flex;
+    align-items: center; gap: 6px; user-select: none;
+  }
+  .manual_toggle::before { content: "▸"; font-size: 10px; }
+  .manual_panel { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
+  #manual_open:checked ~ .manual_panel { display: flex; }
+  #manual_open:checked ~ .manual_toggle::before { content: "▾"; }
+  #manual_open { display: none; }
+  .manual_hint { font-size: 12px; color: var(--text-secondary); }
+  .key_grid {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    background: var(--fill-quaternary); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px;
+  }
+  .key_grid .chunk {
+    font-family: var(--mono); font-size: 14px; letter-spacing: 0.08em;
+    text-align: center; color: var(--text); padding: 5px 9px;
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+  }
+  .key_copy {
+    font-size: 12px; color: var(--primary); cursor: default; display: flex;
+    align-items: center; gap: 6px; align-self: flex-start;
+  }
+
+  /* ---- done phase ---- */
+  .codes_grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0;
+  }
+  .codes_grid .code {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; text-align: center;
+    background: var(--fill-quaternary); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px;
+  }
+  .alert {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--warn-bg); border: 1px solid var(--warn-border);
+    border-radius: 8px; padding: 10px 12px; font-size: 13px;
+  }
+  .alert .ico { color: #d48806; font-weight: 700; }
+  .switch_row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text); }
+  .switch {
+    width: 40px; height: 22px; border-radius: 999px; background: var(--primary);
+    position: relative; flex: none;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; right: 2px; width: 18px; height: 18px;
+    border-radius: 50%; background: #fff;
+  }
+</style>
+
+<input type="radio" name="phase" id="p_password">
+<input type="radio" name="phase" id="p_scan" checked>
+<input type="radio" name="phase" id="p_done">
+
+<div class="switcher">
+  <label for="p_password">1 · Choose</label>
+  <label for="p_scan">2 · Scan</label>
+  <label for="p_done">3 · Done</label>
+</div>
+<div class="switcher_note">review-only phase switcher · each phase is a separable layer</div>
+
+<div class="stage" data-ldf-component="auth-page">
+  <div class="auth_container">
+    <div class="auth_logo_top">
+      <div class="mark">L</div>
+      <div class="wordmark">Lowdefy</div>
+    </div>
+    <div class="auth_card">
+      <div class="auth_body">
+
+        <!-- ============ PHASE: password / choose a route ============ -->
+        <div class="phase phase_password">
+          <div class="auth_title">Add a second factor</div>
+          <div class="auth_lead">Your account needs a second step at sign-in before you can continue. Set up an authenticator app or add a passkey.</div>
+          <div class="field">
+            <label>Account password</label>
+            <div class="input">••••••••</div>
+          </div>
+          <div class="btn primary">Generate QR code</div>
+          <div class="divider">or</div>
+          <div class="btn ghost">🔑 Add a passkey</div>
+        </div>
+
+        <!-- ============ PHASE: scan (QR primary, key behind disclosure) ============ -->
+        <div class="phase phase_scan">
+          <div class="auth_title">Scan the QR code</div>
+          <div class="auth_lead">Scan this with your authenticator app, then enter the 6-digit code it shows.</div>
+
+          <div class="qr_wrap">
+            <div class="qr"></div>
+          </div>
+
+          <div class="field">
+            <label>6-digit code</label>
+            <div class="input code">123 456</div>
+          </div>
+
+          <div class="btn primary lg">Confirm &amp; enable</div>
+
+          <!-- disclosure: manual key grouped in 4-char chunks -->
+          <div class="manual">
+            <input type="checkbox" id="manual_open" checked>
+            <label class="manual_toggle" for="manual_open">Can't scan? Enter this key instead</label>
+            <div class="manual_panel">
+              <div class="manual_hint">Type this into your authenticator app's "enter key manually" option.</div>
+              <!-- Real length: BetterAuth's 256-bit secret → 52-char base32 → 13 chunks of 4. -->
+              <div class="key_grid">
+                <span class="chunk">LBCT</span><span class="chunk">QS27</span><span class="chunk">K5KG</span><span class="chunk">OT3C</span>
+                <span class="chunk">IEWV</span><span class="chunk">EZRS</span><span class="chunk">OFWX</span><span class="chunk">KSCY</span>
+                <span class="chunk">MNST</span><span class="chunk">I2DK</span><span class="chunk">NJDW</span><span class="chunk">KUZQ</span>
+                <span class="chunk">IZFA</span>
+              </div>
+              <div class="key_copy">⧉ Copy key</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ PHASE: done (backup codes) ============ -->
+        <div class="phase phase_done">
+          <div class="auth_title">Two-factor is on</div>
+          <div class="auth_lead">Store these backup codes somewhere safe. Each works once if you lose your authenticator.</div>
+          <div class="codes_grid">
+            <span class="code">4KZ9-QW1P</span><span class="code">7GHT-2M0X</span>
+            <span class="code">R3VB-8LZK</span><span class="code">P0QN-6DYF</span>
+            <span class="code">M2WC-1XAE</span><span class="code">9JHU-5TRB</span>
+            <span class="code">D7SK-3PON</span><span class="code">B1LM-4EVQ</span>
+          </div>
+          <div class="alert"><span class="ico">⚠</span><span>You won't see these again. Copy them before continuing.</span></div>
+          <div class="btn ghost">⧉ Copy codes</div>
+          <div class="switch_row"><div class="switch"></div> I've saved my backup codes</div>
+          <div class="btn primary lg">Continue</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

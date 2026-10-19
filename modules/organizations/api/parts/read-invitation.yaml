@@ -1,0 +1,48 @@
+# One invitation to the caller's active organisation, by id: email, the
+# invitee's user id when they already have an account (null otherwise), role,
+# app_roles, attributes, status, its expiry (expires_at) and whether it has
+# expired. Reached as `_step: <id>.0`.
+#
+# Vars:
+#   id              step id
+#   invitation_id   the invitation id
+id:
+  _var: id
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-invitations
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _var: invitation_id
+        organization_id:
+          _user: organization_id
+    - $lookup:
+        from: users
+        localField: email
+        foreignField: email
+        as: user
+    - $project:
+        _id: 0
+        invitation_id: "$_id"
+        email: 1
+        user_id:
+          $ifNull:
+            - $first: "$user._id"
+            - null
+        role: 1
+        app_roles:
+          $ifNull:
+            - "$app_roles"
+            - []
+        attributes:
+          $ifNull:
+            - "$attributes"
+            - {}
+        status: 1
+        expires_at: 1
+        expired:
+          $lte:
+            - "$expires_at"
+            - _date: now

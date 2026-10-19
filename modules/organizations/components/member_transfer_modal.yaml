@@ -1,0 +1,128 @@
+# Confirms handing ownership to the member page's person (transfer-ownership).
+# If the step down is refused after the promotion, both are owners and the
+# message says the caller can step down from their own page. Afterwards the
+# session is re-read so the caller's own authority shows as it now is.
+id: member_transfer_modal
+type: Modal
+properties:
+  title:
+    _string.concat:
+      - 'Transfer ownership to '
+      - _if_none:
+          - _request: get_member.0.name
+          - _if_none:
+              - _request: get_member.0.email
+              - this member
+      - '?'
+  width: 440
+  okText: Transfer ownership
+  cancelText: Cancel
+events:
+  onOk:
+    _build.array.concat:
+      - - id: transfer_ownership
+          type: CallAPI
+          messages:
+            loading: Transferring…
+          params:
+            endpointId:
+              _module.endpointId: transfer-ownership
+            payload:
+              member_id:
+                _request: get_member.0.member_id
+        - id: show_transfer_refusal
+          type: DisplayMessage
+          skip:
+            _or:
+              - _eq:
+                  - _actions: transfer_ownership.response.response.refused
+                  - null
+              - _actions: transfer_ownership.response.response.promoted
+          params:
+            status: error
+            duration: 8
+            content:
+              _actions: transfer_ownership.response.response.refused.message
+        - id: stop_on_transfer_refusal
+          type: Throw
+          messages:
+            error: false
+          params:
+            throw:
+              _and:
+                - _ne:
+                    - _actions: transfer_ownership.response.response.refused
+                    - null
+                - _not:
+                    _actions: transfer_ownership.response.response.promoted
+            message:
+              _if_none:
+                - _actions: transfer_ownership.response.response.refused.message
+                - ''
+        - id: show_step_down_refusal
+          type: DisplayMessage
+          skip:
+            _not:
+              _actions: transfer_ownership.response.response.promoted
+          params:
+            status: warning
+            duration: 10
+            content:
+              _string.concat:
+                - _if_none:
+                    - _request: get_member.0.name
+                    - _if_none:
+                        - _request: get_member.0.email
+                        - They
+                - ' is now an owner, but you are still an owner too. You can step down from your own page. '
+                - _if_none:
+                    - _actions: transfer_ownership.response.response.refused.message
+                    - ''
+        - id: show_transferred
+          type: DisplayMessage
+          skip:
+            _ne:
+              - _actions: transfer_ownership.response.response.refused
+              - null
+          params:
+            status: success
+            content: Ownership transferred. You are now an admin.
+        - id: resync_after_transfer
+          type: UpdateSession
+        - id: refetch_after_transfer
+          type: Request
+          params:
+            - get_member
+            - get_owner_count
+            - get_member_activity
+      - _ref: actions/seed_member_access.yaml
+blocks:
+  - id: member_transfer_message
+    type: Paragraph
+    style:
+      .element:
+        margin: 0
+    properties:
+      type: secondary
+      content:
+        _string.concat:
+          - _if_none:
+              - _request: get_member.0.name
+              - _if_none:
+                  - _request: get_member.0.email
+                  - They
+          - ' becomes an owner of '
+          - _if_none:
+              - _request: get_settings_organization.name
+              - _build.string.concat:
+                  - 'this '
+                  - _build.string.toLowerCase:
+                      _module.var: label
+          - '. You stay as an admin, so you can still manage members, but you can no longer make owners or transfer ownership.'
+  - id: member_transfer_hint
+    type: Alert
+    style:
+      marginTop: 12
+    properties:
+      type: info
+      message: If the second step is refused, you both stay owners and you can step down from your own member page.

@@ -1,0 +1,43 @@
+# The settings sections that take over the side menu on every settings page
+# (the layout page's `shell.settings_sections`), built on the page at runtime: the
+# organisation's own (General, Members, and for owners and admins of the
+# active organization Audit log, Billing and Security), then the app's
+# sections (module var `settings_sections`). Each link's id is its page id,
+# which the settings page lights by default.
+_array.concat:
+  - - id: settings_organization
+      title:
+        _module.var: label
+      links:
+        _array.concat:
+          - - id:
+                _module.pageId: general
+              title: General
+              pageId:
+                _module.pageId: general
+            - id:
+                _module.pageId: members
+              title: Members
+              pageId:
+                _module.pageId: members
+          - _if:
+              test:
+                _ref: components/caller_is_org_admin.yaml
+              then:
+                - id:
+                    _module.pageId: audit-log
+                  title: Audit log
+                  pageId:
+                    _module.pageId: audit-log
+                - id:
+                    _module.pageId: billing
+                  title: Billing
+                  pageId:
+                    _module.pageId: billing
+                - id:
+                    _module.pageId: security
+                  title: Security
+                  pageId:
+                    _module.pageId: security
+              else: []
+  - _module.var: settings_sections

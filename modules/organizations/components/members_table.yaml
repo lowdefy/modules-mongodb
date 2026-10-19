@@ -1,0 +1,98 @@
+# Members of the active organization, narrowed by the search box
+# (`members_search`, name or email) and ordered by `members_sort`, which the
+# sort menu sets. A row links to the person's member page.
+id: members_table
+type: Table
+properties:
+  size: comfortable
+  headerMenu: false
+  reorderable: false
+  emptyText: No members
+  rowKey: member_id
+  loading:
+    _not:
+      _request: get_members
+  defaultColumn:
+    sortable: false
+    filterable: false
+  rowLink:
+    pageId:
+      _module.pageId: member
+    urlQuery:
+      user_id: user_id
+  columns:
+    - key: name
+      title: Person
+      type: avatar
+      flex: 2
+      minWidth: 240
+      cell:
+        nameField: name
+        srcField: picture
+        idField: user_id
+        descriptionField: email
+    - key: authority
+      title: Authority
+      type: tag
+      width: 110
+      options:
+        Owner:
+          color: purple
+        Admin:
+          color: blue
+    - key: app_roles
+      title: Roles
+      type: tags
+      flex: 3
+      minWidth: 200
+      options:
+        _ref: components/role_options.yaml
+    - key: joined
+      title: Joined
+      type: date
+      width: 120
+      cell:
+        format: D MMM YYYY
+      rules:
+        - color: var(--ant-color-text-secondary)
+  data:
+    _mql.aggregate:
+      on:
+        _array.filter:
+          on:
+            _if_none:
+              - _request: get_members
+              - []
+          callback:
+            _function:
+              __string.includes:
+                - __args: 0.search_text
+                - __string.toLowerCase:
+                    __string.trim:
+                      __if_none:
+                        - __state: members_search
+                        - ''
+      pipeline:
+        - $sort:
+            _switch:
+              branches:
+                - if:
+                    _eq:
+                      - _state: members_sort
+                      - name_desc
+                  then:
+                    sort_name: -1
+                - if:
+                    _eq:
+                      - _state: members_sort
+                      - joined_desc
+                  then:
+                    joined: -1
+                - if:
+                    _eq:
+                      - _state: members_sort
+                      - joined_asc
+                  then:
+                    joined: 1
+              default:
+                sort_name: 1

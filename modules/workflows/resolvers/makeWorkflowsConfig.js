@@ -10,16 +10,16 @@ import { PAGE_LAYOUTS } from "./pageLayouts.js";
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
-// they're consumed by build-time resolvers (parts 12, 13, 15) against
-// the raw workflow YAML, not via workflowsConfig at runtime.
+// they're consumed by build-time resolvers against the raw workflow YAML, not
+// via workflowsConfig at runtime.
 //
-// `status_map` is deliberately NOT picked here (Part 48): it's the blob's one
-// heavy per-stage × per-app field, paid for all workflows on every connection
-// call. It now arrives per-request via the write endpoints' `render_config`
-// and is spliced onto the action config at load time (loadWorkflowState seam,
-// task 3). Build-time validation of `status_map` cells (validateStatusMapCells)
-// still runs against the raw workflow — the field is validated here even though
-// it's no longer carried on the blob.
+// `status_map` is deliberately NOT picked here: it's the blob's one heavy
+// per-stage × per-app field, paid for all workflows on every connection call.
+// It arrives per-request via the write endpoints' `render_config` and is
+// spliced onto the action config at load time (loadWorkflowState seam).
+// Build-time validation of `status_map` cells (validateStatusMapCells) still
+// runs against the raw workflow — the field is validated here but not carried
+// on the blob.
 const ACTION_FIELDS = [
   "type",
   "title",
@@ -143,10 +143,9 @@ const RESERVED_BUTTON_IDS = [
   "button_edit",
 ];
 
-// Part 24 / Part 64: the universal action fields an author may declare for the
-// UI presence list. The action doc carries both; this list only controls which
-// the templates render. (Part 64 removed `description` from the universal set —
-// it is now author-authored config rendered by GetWorkflowAction.)
+// The universal action fields an author may declare for the UI presence list.
+// The action doc carries both; this list only controls which the templates
+// render.
 const UNIVERSAL_FIELDS = ["assignees", "due_date"];
 
 function pick(source, fields) {
@@ -328,18 +327,18 @@ function validateActionAccess(workflow, action) {
   if (access === null || typeof access !== "object" || Array.isArray(access)) {
     fail(
       workflow.type,
-      `${where} access must be a map of {app_name}: { verb: gate } (got: ${JSON.stringify(access)}).`,
+      `${where} access must be a map of {slug}: { verb: gate } (got: ${JSON.stringify(access)}).`,
     );
   }
 
-  for (const [appName, block] of Object.entries(access)) {
-    if (appName === "roles") {
+  for (const [slug, block] of Object.entries(access)) {
+    if (slug === "roles") {
       fail(
         workflow.type,
         `${where} access.roles (the action-wide role gate) is removed (Part 34 D4). Every gate is per-app per-verb — move it under access.{app}.{verb}.`,
       );
     }
-    if (appName === "notification_roles") {
+    if (slug === "notification_roles") {
       fail(
         workflow.type,
         `${where} notification_roles lives at the action root, not under access (Part 34 D9).`,
@@ -348,13 +347,13 @@ function validateActionAccess(workflow, action) {
     if (Array.isArray(block)) {
       fail(
         workflow.type,
-        `${where} access.${appName} is the removed shorthand list form (Part 34 D1). Use the verb→gate map: access.${appName}.{verb}: true | [roles].`,
+        `${where} access.${slug} is the removed shorthand list form (Part 34 D1). Use the verb→gate map: access.${slug}.{verb}: true | [roles].`,
       );
     }
     if (block === null || typeof block !== "object") {
       fail(
         workflow.type,
-        `${where} access.${appName} must be a verb→gate map object (got: ${JSON.stringify(block)}).`,
+        `${where} access.${slug} must be a verb→gate map object (got: ${JSON.stringify(block)}).`,
       );
     }
 
@@ -362,13 +361,13 @@ function validateActionAccess(workflow, action) {
       if (!ACCESS_VERBS.includes(verb)) {
         fail(
           workflow.type,
-          `${where} access.${appName} has unknown verb key "${verb}" (expected one of: ${ACCESS_VERBS.join(", ")}).`,
+          `${where} access.${slug} has unknown verb key "${verb}" (expected one of: ${ACCESS_VERBS.join(", ")}).`,
         );
       }
       if (Array.isArray(gate) && gate.length === 0) {
         fail(
           workflow.type,
-          `${where} access.${appName}.${verb} is the empty list [] — invalid. Omit the verb key to deny access instead (Part 34).`,
+          `${where} access.${slug}.${verb} is the empty list [] — invalid. Omit the verb key to deny access instead (Part 34).`,
         );
       }
       const gateOk =
@@ -377,7 +376,7 @@ function validateActionAccess(workflow, action) {
       if (!gateOk) {
         fail(
           workflow.type,
-          `${where} access.${appName}.${verb} gate must be true or a non-empty array of role strings (got: ${JSON.stringify(gate)}).`,
+          `${where} access.${slug}.${verb} gate must be true or a non-empty array of role strings (got: ${JSON.stringify(gate)}).`,
         );
       }
     }
@@ -386,7 +385,7 @@ function validateActionAccess(workflow, action) {
       "edit" in block || "review" in block || "error" in block;
     if (!("view" in block) && declaresPrivileged) {
       console.warn(
-        `makeWorkflowsConfig: workflow "${workflow.type}": ${where} access.${appName} declares edit/review/error without view — users granted those verbs may be unable to read the action. Add "view" if that's unintended (Part 34 D4).`,
+        `makeWorkflowsConfig: workflow "${workflow.type}": ${where} access.${slug} declares edit/review/error without view — users granted those verbs may be unable to read the action. Add "view" if that's unintended (Part 34 D4).`,
       );
     }
   }
@@ -423,13 +422,15 @@ function validateTrackerChildWorkflowType(workflow, action) {
 
 // Part 44 / Part 28: the engine-link shape, shared by tracker.start_link and
 // the custom-kind status_map link:/view_link: cells. An object
-// { pageId: string, urlQuery?: object }. Reserved urlQuery keys action_id /
-// entity_id are sentinel-only (value must be exactly true); all other keys
-// must carry string values (static params, passed through verbatim). Any
-// other key at the top level (e.g. title:) hard-errors because the engine-link
-// shape only supports pageId / urlQuery.
-const ENGINE_LINK_ALLOWED_KEYS = new Set(["pageId", "urlQuery"]);
-const ENGINE_LINK_URL_QUERY_SENTINEL_KEYS = new Set(["action_id", "entity_id"]);
+// { pageId: string, urlQuery?: object, pathParams?: object }. In urlQuery and
+// pathParams the reserved keys action_id / entity_id are sentinel-only (value
+// must be exactly true); all other keys must carry string values (static
+// params, passed through verbatim). Any other key at the top level (e.g.
+// title:) hard-errors because the engine-link shape only supports pageId /
+// urlQuery / pathParams.
+const ENGINE_LINK_ALLOWED_KEYS = new Set(["pageId", "urlQuery", "pathParams"]);
+const ENGINE_LINK_PARAMS_KEYS = ["urlQuery", "pathParams"];
+const ENGINE_LINK_SENTINEL_KEYS = new Set(["action_id", "entity_id"]);
 
 // Validate one engine-link object. `label` names the source for error messages
 // (e.g. `tracker.start_link`, `status_map.action-required.demo.link`). One
@@ -449,12 +450,12 @@ function validateEngineLinkShape(workflow, action, link, label) {
     if (!ENGINE_LINK_ALLOWED_KEYS.has(key)) {
       fail(
         workflow.type,
-        `${where} ${label} has unknown key "${key}" — only pageId and urlQuery are allowed (note: "title" is not part of the engine-link shape).`,
+        `${where} ${label} has unknown key "${key}" — only pageId, urlQuery and pathParams are allowed (note: "title" is not part of the engine-link shape).`,
       );
     }
   }
 
-  const { pageId, urlQuery } = link;
+  const { pageId } = link;
 
   if (typeof pageId !== "string" || pageId === "") {
     fail(
@@ -463,33 +464,33 @@ function validateEngineLinkShape(workflow, action, link, label) {
     );
   }
 
-  if (urlQuery !== undefined) {
+  for (const paramsKey of ENGINE_LINK_PARAMS_KEYS) {
+    const params = link[paramsKey];
+    if (params === undefined) continue;
     if (
-      urlQuery === null ||
-      typeof urlQuery !== "object" ||
-      Array.isArray(urlQuery)
+      params === null ||
+      typeof params !== "object" ||
+      Array.isArray(params)
     ) {
       fail(
         workflow.type,
-        `${where} ${label}.urlQuery must be a plain object (got: ${JSON.stringify(urlQuery)}).`,
+        `${where} ${label}.${paramsKey} must be a plain object (got: ${JSON.stringify(params)}).`,
       );
     }
 
-    for (const [key, value] of Object.entries(urlQuery)) {
-      if (ENGINE_LINK_URL_QUERY_SENTINEL_KEYS.has(key)) {
+    for (const [key, value] of Object.entries(params)) {
+      if (ENGINE_LINK_SENTINEL_KEYS.has(key)) {
         if (value !== true) {
           fail(
             workflow.type,
-            `${where} ${label}.urlQuery.${key} is a reserved sentinel key — its value must be exactly true (got: ${JSON.stringify(value)}).`,
+            `${where} ${label}.${paramsKey}.${key} is a reserved sentinel key — its value must be exactly true (got: ${JSON.stringify(value)}).`,
           );
         }
-      } else {
-        if (typeof value !== "string") {
-          fail(
-            workflow.type,
-            `${where} ${label}.urlQuery.${key} must be a string (static param passed through verbatim) (got: ${JSON.stringify(value)}).`,
-          );
-        }
+      } else if (typeof value !== "string") {
+        fail(
+          workflow.type,
+          `${where} ${label}.${paramsKey}.${key} must be a string (static param passed through verbatim) (got: ${JSON.stringify(value)}).`,
+        );
       }
     }
   }
@@ -828,13 +829,15 @@ function validateWorkflow(workflow) {
 
   // Part 57: a workflow's entity wiring is one nested `entity:` block, carried
   // into the materialized config as authored (nothing lifted to flat aliases).
-  // Required strings: connection_id, ref_key, page_id, title; id_query_key is
-  // optional and defaults to "_id" in the materialized output.
+  // Required strings: connection_id, ref_key, page_id, title. Optional
+  // id_query_key / id_path_key name where the entity id goes on the entity page
+  // link (query string / path placeholder); without id_path_key, id_query_key
+  // defaults to "_id" in the materialized output.
   const entity = workflow.entity;
   if (entity === null || typeof entity !== "object" || Array.isArray(entity)) {
     fail(
       workflow.type,
-      'missing required "entity" block — the workflow\'s entity wiring (entity.connection_id, entity.ref_key, entity.page_id, entity.title; optional entity.id_query_key).',
+      'missing required "entity" block — the workflow\'s entity wiring (entity.connection_id, entity.ref_key, entity.page_id, entity.title; optional entity.id_query_key, entity.id_path_key).',
     );
   }
 
@@ -873,6 +876,16 @@ function validateWorkflow(workflow) {
     fail(
       workflow.type,
       `entity.id_query_key must be a non-empty string when present (got: ${JSON.stringify(entity.id_query_key)}).`,
+    );
+  }
+
+  if (
+    "id_path_key" in entity &&
+    (typeof entity.id_path_key !== "string" || entity.id_path_key === "")
+  ) {
+    fail(
+      workflow.type,
+      `entity.id_path_key must be a non-empty string when present (got: ${JSON.stringify(entity.id_path_key)}).`,
     );
   }
 
@@ -1114,7 +1127,8 @@ function makeWorkflowsConfig(_, vars) {
       // from `type`. Set after the pick so it fills the gap when omitted.
       title: workflow.title ?? humanizeSlug(workflow.type, title_acronyms),
       // Part 57: carry the whole authored `entity` block wholesale (no field is
-      // lifted to a flat alias), applying only the id_query_key default.
+      // lifted to a flat alias), applying only the id_query_key default when
+      // the id does not go in a path placeholder.
       // Part 26: the build-only `data` routine is stripped (heavy, never read at
       // runtime); when present, a resolved `data_endpoint` _module.endpointId ref
       // is carried so the read handlers can callApi the generated InternalApi.
@@ -1124,7 +1138,9 @@ function makeWorkflowsConfig(_, vars) {
         const { data, ...rest } = workflow.entity;
         return {
           ...rest,
-          id_query_key: workflow.entity.id_query_key ?? "_id",
+          ...(rest.id_path_key == null
+            ? { id_query_key: rest.id_query_key ?? "_id" }
+            : {}),
           ...(data
             ? {
                 data_endpoint: {

@@ -53,10 +53,6 @@
 # mode from `_state: current_action.*` would read the stale (empty) value; the
 # response is available at parse time, the state is not. The single-SetState
 # pattern is also kept for parity with the workspace page (action.yaml.njk).
-# (Part 65 removed the status-history List from the surface, so
-# `current_action.status` is no longer bound by a block and never pruned — the
-# earlier "splitting the writes would prune the List's state" rationale no
-# longer applies.)
 #
 # The events timeline is NOT rendered in the modal (page-level only, D1).
 id: check_action_modal

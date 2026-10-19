@@ -1,0 +1,137 @@
+# setup-organization: what the setup page runs on load, inside the new
+# organization (the caller's ACTIVE one) through the module's walled
+# connections. Idempotent, so a reload or retry converges:
+#
+# 1. Refuses anyone but an owner of the active organization, as data.
+# 2. Mints the owner's contact with the shared ensure-contact fragment and,
+#    while it has no name, writes their profile onto it from their user record
+#    (the account module keeps that record in step with the profile;
+#    ensure-contact writes a bare contact).
+# 3. Logs `org-created` when the organization has no such event yet.
+#
+# Payload: none. Returns { success: true, logged }, or
+# { refused: { rule: owner_only, message } }.
+id: setup-organization
+type: Api
+routine:
+  - id: read_owner
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-members
+    properties:
+      pipeline:
+        - $match:
+            user_id:
+              _user: id
+            organization_id:
+              _user: organization_id
+        - $match:
+            $expr:
+              $in:
+                - owner
+                - $split:
+                    - $ifNull:
+                        - "$role"
+                        - ''
+                    - ','
+        - $limit: 1
+        - $lookup:
+            from: users
+            localField: user_id
+            foreignField: _id
+            as: user
+        - $unwind: "$user"
+        - $lookup:
+            from: log-events
+            as: created_events
+            pipeline:
+              - $match:
+                  organization_id:
+                    _user: organization_id
+                  type: org-created
+              - $limit: 1
+              - $project:
+                  _id: 1
+        - $project:
+            _id: 0
+            email: "$user.email"
+            profile:
+              $mergeObjects:
+                - $ifNull:
+                    - "$user.profile"
+                    - {}
+                - name:
+                    $ifNull:
+                      - "$user.profile.name"
+                      - "$user.name"
+                  picture:
+                    $ifNull:
+                      - "$user.profile.picture"
+                      - "$user.image"
+            created_logged:
+              $gt:
+                - $size: "$created_events"
+                - 0
+
+  - :if:
+      _eq:
+        - _step: read_owner.0
+        - null
+    :then:
+      - :return:
+          refused:
+            rule: owner_only
+            message:
+              _build.string.concat:
+                - 'Only an owner can set up this '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - .
+
+  - _ref:
+      path: ../shared/contact/ensure-contact.yaml
+      vars:
+        connection_id:
+          _module.connectionId: user-contacts-collection
+        email:
+          _step: read_owner.0.email
+        user_id:
+          _user: id
+
+  - :if:
+      _eq:
+        - _if_none:
+            - _step: read_contact.profile.name
+            - null
+        - null
+    :then:
+      - id: write_owner_profile
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: user-contacts-collection
+        properties:
+          filter:
+            _id:
+              _step: read_contact._id
+          update:
+            $set:
+              profile:
+                _step: read_owner.0.profile
+              updated:
+                _ref:
+                  module: events
+                  component: change_stamp
+
+  - _ref:
+      path: api/parts/log-event.yaml
+      vars:
+        type: org-created
+        changed:
+          _not:
+            _step: read_owner.0.created_logged
+
+  - :return:
+      success: true
+      logged:
+        _not:
+          _step: read_owner.0.created_logged

@@ -1,0 +1,106 @@
+# update-profile: the shared write-profile fragment (change-stamped `contact`
+# write + `UpdateUserProfile` re-denorm of the TARGET's user.profile bag), then
+# the audit event (design Decision 3). Role-gated app-side; the re-denorm step
+# declares the permission it needs and the engine floors it against the caller's
+# member row in the organization the step names (it targets the edited user, never
+# the admin, so the self-target exemption is not hit).
+#
+# The fragment's `organization_id` var is the organization that floor authorizes
+# in. It must be `org_slug`, not the fragment's absent-means-pinned default: an
+# instance administering another organization would otherwise ask whether the
+# caller administers the APP's organization, and refuse.
+#
+# Payload: { user_id, contact_id, profile, email?, target_name? }
+# The audit event is the FINAL step, so it fires only on full success.
+id: update-profile
+type: Api
+routine:
+  # write-profile is a two-step fragment (contact write + UpdateUserProfile),
+  # inlined here as a nested routine array; runRoutine recurses into it.
+  - _ref:
+      path: ../shared/contact/write-profile.yaml
+      vars:
+        connection_id:
+          _module.connectionId: user-contacts-collection
+        user_id:
+          _payload: user_id
+        contact_id:
+          _payload: contact_id
+        profile:
+          _payload: profile
+        avatar_colors:
+          _module.var: avatar_colors
+        write_stages:
+          _module.var: request_stages.write
+        organization_id:
+          _module.var: org_slug
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: profile-updated
+        display:
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.profile-updated
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: profile-updated
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        name:
+                          _string.trim:
+                            _string.concat:
+                              - _if_none:
+                                  - _payload: profile.given_name
+                                  - ""
+                              - " "
+                              - _if_none:
+                                  - _payload: profile.family_name
+                                  - ""
+                        email:
+                          _payload: email
+                description: null
+        references:
+          user_ids:
+            - _payload: user_id
+          contact_ids:
+            - _payload: contact_id
+        # The submitted profile fields whose stored value the save changed, as
+        # stored on the contact before and after the write: the fragment reads the
+        # contact before writing (read_profile_contact) and re-reads it after
+        # (reread_contact). The form posts the whole stored profile, so the
+        # payload's keys alone would record every field. `photo` and `picture`
+        # are left out: both hold image data URIs.
+        metadata:
+          _js:
+            fn: |
+              const before = args.before ?? {};
+              const after = args.after ?? {};
+              const keys = Object.keys(args.written ?? {}).filter(
+                (key) =>
+                  key !== 'photo' &&
+                  key !== 'picture' &&
+                  JSON.stringify(before[key] ?? null) !== JSON.stringify(after[key] ?? null)
+              );
+              const pick = (bag) => Object.fromEntries(keys.map((key) => [key, bag[key] ?? null]));
+              return { before: pick(before), after: pick(after) };
+            args:
+              written:
+                _payload: profile
+              before:
+                _step: read_profile_contact.profile
+              after:
+                _step: reread_contact.profile
+  - :return:
+      success: true

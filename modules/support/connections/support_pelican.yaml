@@ -1,0 +1,20 @@
+# Pelican's support API. Every endpoint is POST /api/endpoints/<id> with a JSON
+# body, authorised by the support app's key.
+id: support_pelican
+type: AxiosHttp
+properties:
+  baseURL:
+    _module.var: pelican_url
+  method: post
+  headers:
+    Authorization:
+      _string.concat:
+        - "Bearer "
+        - _if_none:
+            - _secret: SUPPORT_PELICAN_KEY
+            - ""
+  # Every status comes back as a result. A thrown response error keeps the
+  # status but loses Pelican's { error: { code, message, retry_after } } body.
+  validateStatus: null
+  # Creating a ticket waits while Pelican copies its files.
+  timeout: 30000

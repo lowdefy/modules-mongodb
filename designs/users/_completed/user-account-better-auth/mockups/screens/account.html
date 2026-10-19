@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Account — user-account</title>
+<style>
+  :root{
+    --violet:#7c3aed;--violet-hover:#6d28d9;--violet-active:#5b21b6;--violet-bg:#f4ecff;--violet-border:#d6bbfb;
+    --bg-layout:#f5f5f5;--bg-container:#ffffff;
+    --text:rgba(0,0,0,.88);--text-2:rgba(0,0,0,.62);--text-3:rgba(0,0,0,.42);
+    --border:#f0f0f0;--border-strong:#d9d9d9;
+    --shadow-card:0 1px 2px 0 rgba(0,0,0,.03),0 1px 6px -1px rgba(0,0,0,.03),0 2px 4px 0 rgba(0,0,0,.02);
+    --shadow-pop:0 6px 16px 0 rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
+    --ok-bg:#f6ffed;--ok-bd:#b7eb8f;--ok-fg:#389e0d;--info-bg:#e6f7ff;--info-bd:#91d5ff;--info-fg:#096dd9;
+    --err-bg:#fff1f0;--err-bd:#ffa39e;--err-fg:#cf1322;--warn-bg:#fffbe6;--warn-bd:#ffe58f;--warn-fg:#d48806;
+    --neutral-bg:#fafafa;--neutral-bd:#d9d9d9;--neutral-fg:#595959;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font);color:var(--text);background:#e9e9ec;font-size:14px;line-height:1.5714;-webkit-font-smoothing:antialiased}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  [hidden]{display:none!important}
+  code{font-size:12px;background:#efeaf9;color:var(--violet-active);padding:1px 5px;border-radius:4px}
+
+  /* ── page shell (layout `page` component) ───────────────────── */
+  .app{width:1440px;margin:0 auto;background:var(--bg-layout);min-height:100vh}
+  .appbar{display:flex;align-items:center;gap:16px;background:var(--bg-container);padding:0 24px;height:56px;border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+  .brand .mark{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--violet),#4527a0);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800}
+  .topmenu{display:flex;gap:4px;align-items:center;height:100%}
+  .topmenu a{height:100%;display:flex;align-items:center;padding:0 16px;font-size:14px;color:var(--text-2);text-decoration:none;border-bottom:2px solid transparent}
+  .topmenu a.on{color:var(--violet);border-bottom-color:var(--violet);font-weight:500}
+  .appbar .right{margin-left:auto;display:flex;align-items:center;gap:16px;color:var(--text-2)}
+  .bell{width:16px;height:16px;border:2px solid currentColor;border-bottom:none;border-radius:8px 8px 0 0;position:relative;display:inline-block}
+  .bell::after{content:"";position:absolute;left:-3px;bottom:-2px;width:20px;height:2px;background:currentColor;border-radius:2px}
+
+  .canvas{padding:24px 32px 40px;max-width:1200px;margin:0 auto}
+  .crumbs{font-size:12px;color:var(--text-3);margin-bottom:12px;display:flex;gap:8px;align-items:center}
+  .crumbs a{color:var(--text-3);text-decoration:none}.crumbs .cur{color:var(--text-2)}.crumbs .sep{opacity:.5}
+  .crumbs .ic{width:12px;height:12px;fill:currentColor;vertical-align:-1px}
+
+  /* ── page header = shared `title-block` component ──────────────
+     Chunky pill (left) · title column (h2 + subtitle) · page-actions slot
+     (right). The AVATAR is the one addition — a proposed new title-block slot
+     (matching the user-admin view mock's proposal). Verified/MFA badges live
+     in the Security tile, not here (title-block has no tags slot). Edits are
+     section-scoped (Decision 5), so the page-actions slot stays empty. */
+  .pagehead{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .pagehead .tcol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .pagehead h1{font-size:24px;font-weight:600;margin:0;letter-spacing:-.01em}
+  .pagehead .sub{font-size:13px;color:var(--text-2)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;font-family:inherit;font-size:14px;line-height:1;border-radius:6px;padding:0 16px;border:1px solid var(--border-strong);background:#fff;color:var(--text);cursor:pointer;transition:.15s;white-space:nowrap}
+  .btn:hover{color:var(--violet);border-color:var(--violet)}
+  .btn .ic{width:14px;height:14px;fill:currentColor;flex:0 0 auto}
+  .btn.pri{background:var(--violet);border-color:var(--violet);color:#fff}
+  .btn.pri:hover{background:var(--violet-hover);border-color:var(--violet-hover);color:#fff}
+  .btn.danger{color:var(--err-fg);border-color:var(--err-bd)}
+  .btn.danger:hover{background:var(--err-fg);border-color:var(--err-fg);color:#fff}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--text-2);padding:0 8px}
+  .btn.ghost:hover{background:var(--violet-bg);color:var(--violet)}
+  .btn.sm{height:24px;padding:0 8px;font-size:12px}
+  .btn.sm .ic{width:12px;height:12px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+
+  .av{border-radius:50%;color:#fff;display:inline-grid;place-items:center;font-weight:600;flex:0 0 auto;overflow:hidden}
+  .av.s20{width:20px;height:20px;font-size:9px}.av.s28{width:28px;height:28px;font-size:11px}.av.s48{width:48px;height:48px;font-size:18px}.av.s64{width:64px;height:64px;font-size:24px}
+  .g-jm{background:linear-gradient(135deg,#6a1b9a,#c62828)}
+  .avatar-edit{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+  .avatar-edit .ae-main{display:flex;flex-direction:column;gap:6px}
+
+  .tag{display:inline-flex;align-items:center;gap:4px;padding:0 8px;border-radius:4px;font-size:12px;line-height:20px;border:1px solid var(--neutral-bd);background:var(--neutral-bg);color:var(--neutral-fg)}
+  .tag.ok{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok-fg)}
+  .tag.violet{background:var(--violet-bg);border-color:var(--violet-border);color:var(--violet-active)}
+  .muted{color:var(--text-3)}
+
+  /* ── two-column account layout ──────────────────────────────── */
+  .grid{display:flex;gap:16px;align-items:flex-start}
+  .col{min-width:0}.col.main{flex:1.4 1 0}.col.side{flex:1 1 0}
+  .stack{display:flex;flex-direction:column;gap:16px}
+
+  /* ── card (layout `card` component) ─────────────────────────── */
+  .card{background:var(--bg-container);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-card)}
+  .card .chead{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+  .card .chead h3{font-size:16px;font-weight:600;margin:0}
+  .card .chead .ch-ic{color:var(--violet);display:inline-flex;align-items:center;flex:0 0 auto}
+  .card .chead .ch-ic svg{width:16px;height:16px;fill:currentColor}
+  .card .chead .spacer{margin-left:auto}
+  .card .cbody{padding:16px}
+
+  /* ── SmartDescriptions block (antd Descriptions, bordered, column 1, small) ─ */
+  .sdesc{display:grid;grid-template-columns:max-content 1fr;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .sdesc>*{padding:8px 16px;font-size:13px}
+  .sdesc>dt{background:var(--neutral-bg);color:var(--text);border-right:1px solid var(--border);white-space:nowrap}
+  .sdesc>dd{margin:0}
+  .sdesc>*:nth-child(n+3){border-top:1px solid var(--border)}
+
+  .hint{font-size:12px;color:var(--text-3);margin-top:8px}
+  .divider{height:1px;background:var(--border);margin:16px 0}
+  .subeyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:8px;display:flex;align-items:center}
+  .subeyebrow .spacer{margin-left:auto}
+
+  /* setting/list rows (antd List-style): icon dot · main · action */
+  .rowitem{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .rowitem:last-child{border-bottom:none}
+  .rowitem .ri-ic{width:28px;height:28px;border-radius:6px;background:var(--violet-bg);color:var(--violet);display:grid;place-items:center;flex:0 0 auto;font-size:14px;font-weight:700}
+  .rowitem .ri-ic svg{width:15px;height:15px;fill:currentColor}
+  .rowitem .ri-ic.neutral{background:var(--neutral-bg);color:var(--text-2)}
+  .rowitem .ri-ic.google{background:conic-gradient(from -45deg,#ea4335,#fbbc05,#34a853,#4285f4,#ea4335);color:#fff}
+  .rowitem .ri-main{flex:1 1 auto;min-width:0}
+  .rowitem .ri-t{display:flex;align-items:center;gap:8px}
+  .rowitem .ri-sub{color:var(--text-3);font-size:12px;margin-top:1px}
+  .rowitem .ri-act{flex:0 0 auto;display:flex;gap:8px;align-items:center}
+  .listcaps{display:flex;flex-direction:column}
+
+  /* ── overlay + modal layers (interaction states) ────────────── */
+  .overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:24px}
+  .modal{width:100%;max-width:480px;background:#fff;border-radius:10px;box-shadow:var(--shadow-pop);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 48px)}
+  .modal.wide{max-width:560px}
+  .modal .mhead{padding:16px 24px;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--border)}
+  .modal .mhead h4{margin:0;font-size:16px;font-weight:600}
+  .modal .mhead .mic{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;font-size:15px}
+  .modal .mhead .mic.ok{background:var(--ok-bg);color:var(--ok-fg)}
+  .modal .mhead .mic.violet{background:var(--violet-bg);color:var(--violet)}
+  .modal .mhead .mclose{margin-left:auto;border:none;background:transparent;color:var(--text-3);font-size:18px;cursor:pointer;line-height:1}
+  .modal .mbody{padding:24px;overflow:auto;font-size:13.5px;color:var(--text-2)}
+  .modal .mfoot{padding:16px 24px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border)}
+
+  .frow{margin-bottom:16px}.frow:last-child{margin-bottom:0}
+  .frow label{display:block;font-size:13px;font-weight:500;color:var(--text-2);margin-bottom:4px}
+  .frow label .req{color:var(--err-fg)}
+  .inp{width:100%;height:32px;border:1px solid var(--border-strong);border-radius:6px;padding:0 12px;font:inherit;color:var(--text);background:#fff}
+  .inp:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 2px var(--violet-bg)}
+  .inp.locked{background:#fafafa;color:var(--text-2)}
+  .fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2)}
+  .chk input{accent-color:var(--violet);width:15px;height:15px}
+
+  /* 2FA enrol + backup codes */
+  .qrwrap{display:flex;gap:16px;align-items:flex-start}
+  .qr{width:132px;height:132px;flex:0 0 auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:#fff}
+  .otp{display:flex;gap:6px}
+  .otp .cell{width:30px;height:38px;border:1px solid var(--border-strong);border-radius:6px;display:grid;place-items:center;font-size:16px;font-weight:600;font-family:var(--mono)}
+  .otp .cell.on{border-color:var(--violet);box-shadow:0 0 0 2px var(--violet-bg)}
+  .otp .cell.empty{color:var(--text-3)}
+  .backupgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+  .backupgrid .bc{font-family:var(--mono);font-size:13px;background:#fafafa;border:1px solid var(--border);border-radius:6px;padding:7px 10px;text-align:center;letter-spacing:.04em}
+  .authalert{display:flex;gap:10px;align-items:flex-start;border-radius:8px;padding:11px 13px;font-size:13px;background:var(--warn-bg);border:1px solid var(--warn-bd);color:#7a5300}
+
+  /* ── mock-only state switcher (chrome, ignored by pipeline) ─── */
+  .mockbar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:200;display:flex;gap:6px;align-items:center;background:#1f1f28;color:#fff;padding:8px 12px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:12px;flex-wrap:wrap}
+  .mockbar .lbl{opacity:.55;margin-right:4px}
+  .mockbar button{font:inherit;background:rgba(255,255,255,.1);color:#fff;border:1px solid transparent;border-radius:6px;padding:4px 10px;cursor:pointer}
+  .mockbar button.on{background:var(--violet);border-color:var(--violet)}
+
+  @media (max-width:1180px){.grid{flex-direction:column}}
+</style>
+</head>
+<body>
+  <!-- ═══ BASE SCREEN (resting) ═══ -->
+  <div class="app" data-ldf-component="page" data-ldf-state="resting" id="account_page">
+    <div class="appbar">
+      <div class="brand"><span class="mark">M</span> Module Demo App</div>
+      <nav class="topmenu"><a href="#">Dashboard</a><a href="#">Contacts</a><a href="#">Activity</a><a href="#" class="on">Account</a></nav>
+      <div class="right"><span style="font-size:15px">◐</span><span class="bell"></span><span class="av s28 g-jm">JM</span></div>
+    </div>
+
+    <main class="canvas">
+      <div class="crumbs">
+        <a href="#"><svg class="ic" viewBox="0 0 1024 1024" data-ldf-icon="AiOutlineHome" aria-hidden="true"><path d="M946.5 505L560.1 118.8l-25.9-25.9a31.5 31.5 0 0 0-44.4 0L77.5 505a63.9 63.9 0 0 0-18.8 46c.4 35.2 29.7 63.3 64.9 63.3h42.5V940h691.8V614.3h43.4c17.1 0 33.2-6.7 45.3-18.8a63.6 63.6 0 0 0 18.7-45.3c0-17-6.7-33.1-18.8-45.2zM568 868H456V664h112v204zm217.9-325.7V868H632V640c0-22.1-17.9-40-40-40H432c-22.1 0-40 17.9-40 40v228H238.1V542.3h-96l370-369.7 23.1 23.1L882 542.3h-96.1z"/></svg> Home</a>
+        <span class="sep">/</span><span class="cur">Account</span>
+      </div>
+
+      <!-- Page header = the shared `title-block` component: avatar (proposed slot) ·
+           title column (h1 + subtitle). Edits are section-scoped, so the
+           page-actions slot is empty; verified/MFA live in the Security tile. -->
+      <header class="pagehead" data-ldf-component="title-block" id="account_titlebar">
+        <span class="av s48 g-jm">JM</span>
+        <div class="tcol">
+          <h1>Account</h1>
+          <div class="sub">Manage your profile, sign-in, and sessions</div>
+        </div>
+        <!-- page-actions slot: empty — edits are section-scoped (Decision 5) -->
+      </header>
+
+      <div class="grid">
+        <div class="col main"><div class="stack">
+
+          <div class="card" data-ldf-component="card" id="profile_tile">
+            <div class="chead"><span class="ch-ic"><svg viewBox="64 64 896 896" data-antd-icon="UserOutlined" aria-hidden="true"><path d="M858.5 763.6a374 374 0 00-80.6-119.5 375.63 375.63 0 00-119.5-80.6c-.4-.2-.8-.3-1.2-.5C719.5 518 760 444.7 760 362c0-137-111-248-248-248S264 225 264 362c0 82.7 40.5 156 102.8 201.1-.4.2-.8.3-1.2.5-44.8 18.9-85 46-119.5 80.6a375.63 375.63 0 00-80.6 119.5A371.7 371.7 0 00136 901.8a8 8 0 008 8.2h60c4.4 0 7.9-3.5 8-7.8 2-77.2 33-149.5 87.8-204.3 56.7-56.7 132-87.9 212.2-87.9s155.5 31.2 212.2 87.9C779 752.7 810 825 812 902.2c.1 4.4 3.6 7.8 8 7.8h60a8 8 0 008-8.2c-1-47.8-10.9-94.3-29.5-138.2zM512 534c-45.9 0-89.1-17.9-121.6-50.4S340 407.9 340 362c0-45.9 17.9-89.1 50.4-121.6S466.1 190 512 190s89.1 17.9 121.6 50.4S684 316.1 684 362c0 45.9-17.9 89.1-50.4 121.6S557.9 534 512 534z"/></svg></span><h3>Profile</h3><span class="spacer"></span><button class="btn sm" data-open="modal_profile"><svg class="ic" viewBox="0 0 1024 1024" data-ldf-icon="AiOutlineEdit" aria-hidden="true"><path d="M257.7 752c2 0 4-.2 6-.5L431.9 722c2-.4 3.9-1.3 5.3-2.8l423.9-423.9a9.96 9.96 0 0 0 0-14.1L694.9 114.9c-1.9-1.9-4.4-2.9-7.1-2.9s-5.2 1-7.1 2.9L256.8 538.8c-1.5 1.5-2.4 3.3-2.8 5.3l-29.5 168.2a33.5 33.5 0 0 0 9.4 29.8c6.6 6.4 14.9 9.9 23.8 9.9zm67.4-174.4L687.8 215l73.3 73.3-362.7 362.6-88.9 15.7 15.6-89zM880 836H144c-17.7 0-32 14.3-32 32v36c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-36c0-17.7-14.3-32-32-32z"/></svg> Edit</button></div>
+            <div class="cbody">
+              <!-- SmartDescriptions: contact profile fields (fields.profile) -->
+              <dl class="sdesc" id="profile_view">
+                <dt>Name</dt><dd>Jane Mokoena</dd>
+                <dt>Email</dt><dd>jane.mokoena@example.com</dd>
+                <dt>Phone</dt><dd>+27 82 555 0142</dd>
+                <dt>Job title</dt><dd>Operations Lead</dd>
+                <dt>Department</dt><dd class="muted">—</dd>
+              </dl>
+              <!-- impl: Save = write-profile routine — contact write (change-stamped) + UpdateUserProfile re-denorm onto _user; email non-editable (v1 non-goal) -->
+            </div>
+          </div>
+
+          <div class="card" data-ldf-component="card" id="security_tile">
+            <div class="chead"><span class="ch-ic"><svg viewBox="0 0 1024 1024" data-antd-icon="SafetyOutlined" aria-hidden="true"><path d="M512 64L128 192v384c0 212.1 171.9 384 384 384s384-171.9 384-384V192L512 64zm312 512c0 172.3-139.7 312-312 312S200 748.3 200 576V246l312-110 312 110v330z"/><path d="M378.4 475.1a35.91 35.91 0 00-50.9 0 35.91 35.91 0 000 50.9l129.4 129.4 2.1 2.1a33.98 33.98 0 0048.1 0L730.6 434a33.98 33.98 0 000-48.1l-2.8-2.8a33.98 33.98 0 00-48.1 0L483 579.7 378.4 475.1z"/></svg></span><h3>Security</h3><span class="spacer"></span><span class="tag ok">✓ Email verified</span></div>
+            <div class="cbody">
+              <div class="subeyebrow">Sign-in</div>
+              <div class="listcaps">
+                <div class="rowitem"><span class="ri-ic"><svg viewBox="64 64 896 896" data-antd-icon="KeyOutlined" aria-hidden="true"><path d="M608 112c-167.9 0-304 136.1-304 304 0 70.3 23.9 135 63.9 186.5l-41.1 41.1-62.3-62.3a8.15 8.15 0 00-11.4 0l-39.8 39.8a8.15 8.15 0 000 11.4l62.3 62.3-44.9 44.9-62.3-62.3a8.15 8.15 0 00-11.4 0l-39.8 39.8a8.15 8.15 0 000 11.4l62.3 62.3-65.3 65.3a8.03 8.03 0 000 11.3l42.3 42.3c3.1 3.1 8.2 3.1 11.3 0l253.6-253.6A304.06 304.06 0 00608 720c167.9 0 304-136.1 304-304S775.9 112 608 112zm161.2 465.2C726.2 620.3 668.9 644 608 644c-60.9 0-118.2-23.7-161.2-66.8-43.1-43-66.8-100.3-66.8-161.2 0-60.9 23.7-118.2 66.8-161.2 43-43.1 100.3-66.8 161.2-66.8 60.9 0 118.2 23.7 161.2 66.8 43.1 43 66.8 100.3 66.8 161.2 0 60.9-23.7 118.2-66.8 161.2z"/></svg></span><div class="ri-main"><div class="ri-t">Password</div><div class="ri-sub">Last changed 3 months ago</div></div><div class="ri-act"><button class="btn sm" data-open="modal_changepw">Change</button></div></div>
+                <div class="rowitem"><span class="ri-ic"><svg viewBox="64 64 896 896" data-antd-icon="MobileOutlined" aria-hidden="true"><path d="M744 62H280c-35.3 0-64 28.7-64 64v768c0 35.3 28.7 64 64 64h464c35.3 0 64-28.7 64-64V126c0-35.3-28.7-64-64-64zm-8 824H288V134h448v752zM472 784a40 40 0 1080 0 40 40 0 10-80 0z"/></svg></span><div class="ri-main"><div class="ri-t">Two-factor authentication <span class="tag ok">On</span></div><div class="ri-sub">Authenticator app · 8 backup codes left</div></div><div class="ri-act"><button class="btn sm" data-open="modal_enroltotp">Manage</button><button class="btn sm danger">Turn off</button></div></div>
+                <div class="rowitem"><span class="ri-ic"><svg viewBox="0 0 1024 1024" data-antd-icon="SafetyOutlined" aria-hidden="true"><path d="M512 64L128 192v384c0 212.1 171.9 384 384 384s384-171.9 384-384V192L512 64zm312 512c0 172.3-139.7 312-312 312S200 748.3 200 576V246l312-110 312 110v330z"/><path d="M378.4 475.1a35.91 35.91 0 00-50.9 0 35.91 35.91 0 000 50.9l129.4 129.4 2.1 2.1a33.98 33.98 0 0048.1 0L730.6 434a33.98 33.98 0 000-48.1l-2.8-2.8a33.98 33.98 0 00-48.1 0L483 579.7 378.4 475.1z"/></svg></span><div class="ri-main"><div class="ri-t">Passkeys</div><div class="ri-sub">MacBook Pro · iPhone</div></div><div class="ri-act"><button class="btn sm">Add passkey</button></div></div>
+              </div>
+              <!-- impl: each control is a self-service BetterAuth client action on the caller's session; 2FA/passkeys rows gated on _build.authConfig + a credential read -->
+            </div>
+          </div>
+
+        </div></div>
+
+        <div class="col side"><div class="stack">
+
+          <div class="card" data-ldf-component="card" id="sessions_tile">
+            <div class="chead"><span class="ch-ic"><svg viewBox="64 64 896 896" data-antd-icon="LaptopOutlined" aria-hidden="true"><path d="M956.9 845.1L896.4 632V168c0-17.7-14.3-32-32-32h-704c-17.7 0-32 14.3-32 32v464L67.9 845.1C60.4 866 75.8 888 98 888h828.8c22.2 0 37.6-22 30.1-42.9zM200.4 208h624v395h-624V208zm228.3 608l8.1-37h150.3l8.1 37H428.7zm224 0l-19.1-86.7c-.8-3.7-4.1-6.3-7.8-6.3H398.2c-3.8 0-7 2.6-7.8 6.3L371.3 816H151l42.3-149h638.2l42.3 149H652.7z"/></svg></span><h3>Active sessions</h3><span class="spacer"></span><button class="btn sm danger" id="sessions_sign_out_others">Sign out others</button></div>
+            <div class="cbody">
+              <div class="listcaps">
+                <div class="rowitem"><span class="ri-ic neutral"><svg viewBox="64 64 896 896" data-antd-icon="LaptopOutlined" aria-hidden="true"><path d="M956.9 845.1L896.4 632V168c0-17.7-14.3-32-32-32h-704c-17.7 0-32 14.3-32 32v464L67.9 845.1C60.4 866 75.8 888 98 888h828.8c22.2 0 37.6-22 30.1-42.9zM200.4 208h624v395h-624V208zm228.3 608l8.1-37h150.3l8.1 37H428.7zm224 0l-19.1-86.7c-.8-3.7-4.1-6.3-7.8-6.3H398.2c-3.8 0-7 2.6-7.8 6.3L371.3 816H151l42.3-149h638.2l42.3 149H652.7z"/></svg></span><div class="ri-main"><div class="ri-t">Chrome · macOS</div><div class="ri-sub">41.203.11.8 · Johannesburg · expires in 6 days</div></div><span class="tag ok">This device</span></div>
+                <div class="rowitem"><span class="ri-ic neutral"><svg viewBox="64 64 896 896" data-antd-icon="MobileOutlined" aria-hidden="true"><path d="M744 62H280c-35.3 0-64 28.7-64 64v768c0 35.3 28.7 64 64 64h464c35.3 0 64-28.7 64-64V126c0-35.3-28.7-64-64-64zm-8 824H288V134h448v752zM472 784a40 40 0 1080 0 40 40 0 10-80 0z"/></svg></span><div class="ri-main"><div class="ri-t">Safari · iPhone</div><div class="ri-sub">102.54.9.2 · Cape Town · expires in 2 days</div></div></div>
+                <div class="rowitem"><span class="ri-ic neutral"><svg viewBox="64 64 896 896" data-antd-icon="LaptopOutlined" aria-hidden="true"><path d="M956.9 845.1L896.4 632V168c0-17.7-14.3-32-32-32h-704c-17.7 0-32 14.3-32 32v464L67.9 845.1C60.4 866 75.8 888 98 888h828.8c22.2 0 37.6-22 30.1-42.9zM200.4 208h624v395h-624V208zm228.3 608l8.1-37h150.3l8.1 37H428.7zm224 0l-19.1-86.7c-.8-3.7-4.1-6.3-7.8-6.3H398.2c-3.8 0-7 2.6-7.8 6.3L371.3 816H151l42.3-149h638.2l42.3 149H652.7z"/></svg></span><div class="ri-main"><div class="ri-t">Firefox · Windows</div><div class="ri-sub">196.25.8.14 · expires in 5 days</div></div></div>
+              </div>
+              <div class="hint">Devices currently signed in to your account. “Sign out others” ends every session except this one.</div>
+              <!-- impl: native read over user-sessions (token projected out); action = RevokeOtherSessions; per-session revoke deferred -->
+            </div>
+          </div>
+
+          <div class="card" data-ldf-component="card" id="linked_accounts_tile">
+            <div class="chead"><span class="ch-ic"><svg viewBox="64 64 896 896" data-antd-icon="GlobalOutlined" aria-hidden="true"><path d="M854.4 800.9c.2-.3.5-.6.7-.9C920.6 722.1 960 621.7 960 512s-39.4-210.1-104.8-288c-.2-.3-.5-.5-.7-.8-1.1-1.3-2.1-2.5-3.2-3.7-.4-.5-.8-.9-1.2-1.4l-4.1-4.7-.1-.1c-1.5-1.7-3.1-3.4-4.6-5.1l-.1-.1c-3.2-3.4-6.4-6.8-9.7-10.1l-.1-.1-4.8-4.8-.3-.3c-1.5-1.5-3-2.9-4.5-4.3-.5-.5-1-1-1.6-1.5-1-1-2-1.9-3-2.8-.3-.3-.7-.6-1-1C736.4 109.2 629.5 64 512 64s-224.4 45.2-304.3 119.2c-.3.3-.7.6-1 1-1 .9-2 1.9-3 2.9-.5.5-1 1-1.6 1.5-1.5 1.4-3 2.9-4.5 4.3l-.3.3-4.8 4.8-.1.1c-3.3 3.3-6.5 6.7-9.7 10.1l-.1.1c-1.6 1.7-3.1 3.4-4.6 5.1l-.1.1c-1.4 1.5-2.8 3.1-4.1 4.7-.4.5-.8.9-1.2 1.4-1.1 1.2-2.1 2.5-3.2 3.7-.2.3-.5.5-.7.8C103.4 301.9 64 402.3 64 512s39.4 210.1 104.8 288c.2.3.5.6.7.9l3.1 3.7c.4.5.8.9 1.2 1.4l4.1 4.7c0 .1.1.1.1.2 1.5 1.7 3 3.4 4.6 5l.1.1c3.2 3.4 6.4 6.8 9.6 10.1l.1.1c1.6 1.6 3.1 3.2 4.7 4.7l.3.3c3.3 3.3 6.7 6.5 10.1 9.6 80.1 74 187 119.2 304.5 119.2s224.4-45.2 304.3-119.2a300 300 0 0010-9.6l.3-.3c1.6-1.6 3.2-3.1 4.7-4.7l.1-.1c3.3-3.3 6.5-6.7 9.6-10.1l.1-.1c1.5-1.7 3.1-3.3 4.6-5 0-.1.1-.1.1-.2 1.4-1.5 2.8-3.1 4.1-4.7.4-.5.8-.9 1.2-1.4a99 99 0 003.3-3.7zM813.8 366.8h-98.5c-4.6-71.7-21.3-137.7-46.9-188.4 66.2 34.4 116.9 96.6 145.4 188.4zM623.3 366.8H400.7c15.7-96.3 55.6-166.5 111.3-166.5s95.6 70.2 111.3 166.5zM365.7 366.8h-98.5c28.5-91.8 79.2-154 145.4-188.4-25.6 50.7-42.3 116.7-46.9 188.4zm-98.8 90.4h100.8c1.9 79.3 22 149.5 55.6 200.3-70.8-36.7-124.5-107.6-156.4-200.3zm365.6 0h100.8c-31.9 92.7-85.6 163.6-156.4 200.3 33.6-50.8 53.7-121 55.6-200.3z"/></svg></span><h3>Linked accounts</h3></div>
+            <div class="cbody">
+              <div class="listcaps">
+                <div class="rowitem"><span class="ri-ic google">G</span><div class="ri-main"><div class="ri-t">Google</div><div class="ri-sub">jane.mokoena@gmail.com</div></div><span class="tag ok">Connected</span></div>
+                <div class="rowitem"><span class="ri-ic neutral">✉</span><div class="ri-main"><div class="ri-t">Email &amp; password</div><div class="ri-sub">Primary sign-in</div></div><span class="tag">Active</span></div>
+              </div>
+              <div class="hint">Accounts you can use to sign in.</div>
+              <!-- impl: native read over user-accounts, read-only; link/unlink management is a v1 non-goal -->
+            </div>
+          </div>
+
+        </div></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══ INTERACTION-STATE LAYERS (each toggleable; triggers live in the base) ═══ -->
+
+  <!-- LAYER: Edit profile (write-profile routine → contact write + UpdateUserProfile) -->
+  <div class="overlay" data-overlay id="modal_profile" data-ldf-state="overlay" data-backdrop hidden>
+    <div class="modal wide" id="modal_profile_panel">
+      <div class="mhead"><h4>Edit profile</h4><button class="mclose" data-close>✕</button></div>
+      <div class="mbody">
+        <!-- profile-avatar shared component: preview + avatar_colors picker -->
+        <div class="avatar-edit" id="profile_avatar_edit">
+          <span class="av s64 g-jm">JM</span>
+          <div class="ae-main">
+            <div class="subeyebrow" style="margin:0">Avatar colour</div>
+            <button class="btn sm" style="border-radius:20px">↻ Change colour</button>
+          </div>
+        </div>
+        <div class="fgrid2">
+          <div class="frow"><label>First name <span class="req">*</span></label><input class="inp" value="Jane" /></div>
+          <div class="frow"><label>Last name <span class="req">*</span></label><input class="inp" value="Mokoena" /></div>
+          <div class="frow"><label>Phone</label><input class="inp" value="+27 82 555 0142" /></div>
+          <div class="frow"><label>Job title</label><input class="inp" value="Operations Lead" /></div>
+          <div class="frow"><label>Department</label><input class="inp" placeholder="Optional" /></div>
+        </div>
+      </div>
+      <div class="mfoot"><button class="btn" data-close>Cancel</button><button class="btn pri" data-close>Save profile</button></div>
+    </div>
+  </div>
+
+  <!-- LAYER: Change password (ChangePassword client action) -->
+  <div class="overlay" data-overlay id="modal_changepw" data-ldf-state="overlay" data-backdrop hidden>
+    <div class="modal" id="modal_changepw_panel">
+      <div class="mhead"><span class="mic violet">🔑</span><h4>Change password</h4><button class="mclose" data-close>✕</button></div>
+      <div class="mbody">
+        <div class="frow"><label>Current password</label><input class="inp" type="password" value="············" /></div>
+        <div class="frow"><label>New password</label><input class="inp" type="password" value="············" /><div class="hint">At least 8 characters.</div></div>
+        <label class="chk"><input type="checkbox" checked /> Sign out my other sessions</label>
+      </div>
+      <div class="mfoot"><button class="btn" data-close>Cancel</button><button class="btn pri" data-close>Update password</button></div>
+    </div>
+  </div>
+
+  <!-- LAYER: Set up 2FA (TwoFactorEnable → totpURI QR + confirm code) -->
+  <div class="overlay" data-overlay id="modal_enroltotp" data-ldf-state="overlay" data-backdrop hidden>
+    <div class="modal wide" id="modal_enroltotp_panel">
+      <div class="mhead"><span class="mic violet">📱</span><h4>Set up two-factor authentication</h4><button class="mclose" data-close>✕</button></div>
+      <div class="mbody">
+        <div style="margin-bottom:16px">Scan this with your authenticator app, then enter the 6-digit code to confirm.</div>
+        <div class="qrwrap">
+          <svg class="qr" viewBox="0 0 116 116" role="img" aria-label="Authenticator QR code">
+            <rect width="116" height="116" fill="#fff"/>
+            <g fill="#1a1a1a"><rect x="0" y="0" width="28" height="28"/><rect x="88" y="0" width="28" height="28"/><rect x="0" y="88" width="28" height="28"/></g>
+            <g fill="#fff"><rect x="4" y="4" width="20" height="20"/><rect x="92" y="4" width="20" height="20"/><rect x="4" y="92" width="20" height="20"/></g>
+            <g fill="#1a1a1a">
+              <rect x="8" y="8" width="12" height="12"/><rect x="96" y="8" width="12" height="12"/><rect x="8" y="96" width="12" height="12"/>
+              <rect x="36" y="4" width="4" height="4"/><rect x="44" y="4" width="4" height="4"/><rect x="52" y="8" width="4" height="4"/><rect x="60" y="4" width="4" height="4"/><rect x="72" y="8" width="4" height="4"/>
+              <rect x="4" y="36" width="4" height="4"/><rect x="16" y="36" width="4" height="4"/><rect x="28" y="36" width="4" height="4"/><rect x="40" y="36" width="4" height="4"/><rect x="52" y="36" width="4" height="4"/><rect x="64" y="36" width="4" height="4"/><rect x="80" y="36" width="4" height="4"/><rect x="92" y="36" width="4" height="4"/><rect x="104" y="36" width="4" height="4"/>
+              <rect x="36" y="72" width="4" height="4"/><rect x="48" y="72" width="4" height="4"/><rect x="56" y="72" width="4" height="4"/><rect x="68" y="72" width="4" height="4"/><rect x="84" y="72" width="4" height="4"/><rect x="100" y="72" width="4" height="4"/>
+              <rect x="40" y="100" width="4" height="4"/><rect x="52" y="104" width="4" height="4"/><rect x="64" y="100" width="4" height="4"/><rect x="80" y="104" width="4" height="4"/><rect x="96" y="100" width="4" height="4"/><rect x="108" y="104" width="4" height="4"/>
+            </g>
+          </svg>
+          <div style="flex:1 1 auto;min-width:0">
+            <div class="subeyebrow">Can't scan?</div>
+            <input class="inp locked" readonly value="otpauth://totp/…JBSWY3DP" style="font-family:var(--mono);font-size:12px" />
+            <div class="frow" style="margin-top:16px"><label>Confirmation code</label><div class="otp"><span class="cell">2</span><span class="cell">4</span><span class="cell">8</span><span class="cell on">1</span><span class="cell empty">·</span><span class="cell empty">·</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="mfoot"><button class="btn" data-close>Cancel</button><button class="btn pri" data-open="modal_backupcodes">Confirm &amp; enable</button></div>
+    </div>
+  </div>
+
+  <!-- LAYER: Save backup codes (post-enrolment) -->
+  <div class="overlay" data-overlay id="modal_backupcodes" data-ldf-state="overlay" data-backdrop hidden>
+    <div class="modal" id="modal_backupcodes_panel">
+      <div class="mhead"><span class="mic ok">🔒</span><h4>Save your backup codes</h4><button class="mclose" data-close>✕</button></div>
+      <div class="mbody">
+        <div>Two-factor is on. Store these one-time codes somewhere safe — each works once if you lose your authenticator.</div>
+        <div class="backupgrid"><span class="bc">7F3K-9QP2</span><span class="bc">L2M8-XR4V</span><span class="bc">B6N1-TW5H</span><span class="bc">C9D4-ZK7Q</span><span class="bc">R3S8-VM2P</span><span class="bc">J5W6-YB1N</span></div>
+        <div class="authalert"><span>⚠</span><div>You won't see these again. Download or copy them before closing.</div></div>
+      </div>
+      <div class="mfoot"><button class="btn" data-close>Copy</button><button class="btn pri" data-close>I've saved them</button></div>
+    </div>
+  </div>
+
+  <!-- mock-only: jump straight to any interaction-state layer (real triggers are the tile buttons) -->
+  <div class="mockbar" data-mock-chrome>
+    <span class="lbl">State:</span>
+    <button data-show="base" class="on">Resting</button>
+    <button data-show="modal_profile">Edit profile</button>
+    <button data-show="modal_changepw">Change password</button>
+    <button data-show="modal_enroltotp">Enrol 2FA</button>
+    <button data-show="modal_backupcodes">Backup codes</button>
+  </div>
+
+  <script>
+    // Overlay open/close + mock switcher — chrome only, not part of the config.
+    function closeAll(){document.querySelectorAll('[data-overlay]').forEach(function(o){o.hidden=true;});}
+    function open(id){closeAll();var el=document.getElementById(id);if(el)el.hidden=false;}
+    document.addEventListener('click',function(e){
+      var o=e.target.closest('[data-open]'); if(o){open(o.getAttribute('data-open'));syncBar(o.getAttribute('data-open'));return;}
+      var c=e.target.closest('[data-close]'); if(c){closeAll();syncBar('base');return;}
+      var bd=e.target.closest('[data-backdrop]'); if(bd&&e.target===bd){closeAll();syncBar('base');return;}
+      var s=e.target.closest('.mockbar [data-show]'); if(s){var id=s.getAttribute('data-show'); if(id==='base'){closeAll();}else{open(id);} syncBar(id); return;}
+    });
+    function syncBar(id){document.querySelectorAll('.mockbar [data-show]').forEach(function(x){x.classList.toggle('on',x.getAttribute('data-show')===id);});}
+  </script>
+</body>
+</html>

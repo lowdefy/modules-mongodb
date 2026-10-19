@@ -1,0 +1,46 @@
+# The entity page of the `path-params` workflow, served at `thing/{thing_id}`.
+# The same view as thing-view, with the thing id read from the path.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: thing-at-path
+    path: thing/{thing_id}
+    title:
+      _request: get_thing.0.title
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params:
+            - get_thing
+    requests:
+      - id: get_thing
+        type: MongoDBAggregation
+        connectionId: things-collection
+        payload:
+          _id:
+            _path_params: thing_id
+        properties:
+          pipeline:
+            - $match:
+                _id:
+                  _payload: _id
+            - $limit: 1
+    blocks:
+      - id: thing_title
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: '<h2 id="thing-title">{{ title }}</h2>'
+              on:
+                title:
+                  _request: get_thing.0.title
+      - _ref:
+          module: workflows
+          component: actions-on-entity
+          vars:
+            entity_id:
+              _path_params: thing_id
+            entity_connection_id: things-collection

@@ -1,0 +1,18 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: home
+    title:
+      _app: name
+    breadcrumbs:
+      - home: true
+        icon: home
+    blocks:
+      - id: description
+        type: Paragraph
+        properties:
+          content: |
+            Passwordless demo app — email + password is disabled and magic-link
+            sign-in is enabled, so the user-account login page renders the
+            email-only shape.

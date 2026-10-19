@@ -1,0 +1,224 @@
+# Shared write-profile fragment — one canonical spec, `_ref`'d by relative path
+# from BOTH user-account (self-service) and user-admin (an operator editing
+# another user's profile). It pairs the change-stamped contact write with the
+# `UpdateUserProfile` re-denorm so the denormalized `user.profile` bag and the
+# top-level `user.name` / `user.image` display copies can NEVER drift from the
+# contact (design Decisions 6 & 8, upstream ask 5). Neither module can write
+# contact profile data without re-denormalizing the target's user row in the
+# same routine, with one exception: the invite flow, whose target is not yet a
+# member, writes the contact alone (see `user_id` below).
+#
+# This is a var-free file — every input is an `_ref` var (NEVER `_module.var`).
+# It resolves in any consumer that depends on the `events` module (for the
+# change stamp) with no cross-module dependency edge.
+#
+# Vars (all required unless noted):
+#   connection_id  — the caller's scoped user-contacts connection id
+#   contact_id     — target contact `_id`
+#   user_id        — target auth user id (the user whose address resolves to
+#                    contact_id in that contact's organization).
+#                    MAY be absent (undefined/null) — the invite flow leaves it
+#                    out because its target is not yet a member, which the
+#                    `UpdateUserProfile` floor requires. The re-denorm is guarded
+#                    on presence and no-ops when absent (the contact write still
+#                    lands). All other callers always pass a user_id.
+#   profile        — the profile fields to merge onto the contact (object). May
+#                    carry `photo`, an uploaded image data URI (or null to remove
+#                    it); stage 5 makes it the stored `picture`.
+#   avatar_colors  — the `{from, to}` gradient palette the derivation draws from
+#                    when the profile carries no `avatar_color` (the caller's
+#                    `avatar_colors` module var)
+#   write_stages   — extra MongoDB update stages appended to the contact write
+#                    (the caller's `request_stages.write`; pass [] if none)
+#   organization_id — OPTIONAL. The organization the `UpdateUserProfile` floor
+#                     authorizes in: the caller must administer it and the target
+#                     must hold a member row there. Absent resolves to null, which
+#                     the engine reads as "default to the app's pinned
+#                     organization" — right for a self-service caller, wrong for an
+#                     admin surface administering a DIFFERENT organization, which
+#                     must name it.
+#
+# It is a YAML sequence of routine steps — splice it into a routine with
+# `_build.array.concat` so the steps flatten inline. Routine steps share one flat
+# namespace across splices, so the read step is `read_profile_contact` rather than
+# `read_contact` — the sibling `create-or-link-contact` fragment already owns that
+# id, and `user-admin/api/invite.yaml` splices both into one routine. Nothing in the
+# build rejects a duplicate step id, so a collision would shadow silently.
+
+# The stored profile, which the derivation needs: a payload that omits `given_name`
+# must still derive a name from the value already on the contact.
+- id: read_profile_contact
+  type: MongoDBFindOne
+  connectionId:
+    _var: connection_id
+  properties:
+    query:
+      _id:
+        _var: contact_id
+
+- id: write_contact
+  type: MongoDBUpdateOne
+  connectionId:
+    _var: connection_id
+  properties:
+    filter:
+      _id:
+        _var: contact_id
+    update:
+      _build.array.concat:
+        # Stage 1: merge the incoming profile fields onto the existing bag and
+        # stamp the write. The merge is done in MQL rather than in the routine
+        # because it is atomic per document — a routine-side merge would let one
+        # form save revert a field another had just written. `$literal` because a
+        # payload string beginning with `$` would otherwise read as a field path.
+        - - $set:
+              profile:
+                $mergeObjects:
+                  - $ifNull:
+                      - "$profile"
+                      - {}
+                  - $literal:
+                      _if_none:
+                        - _var: profile
+                        - {}
+              updated:
+                _ref:
+                  module: events
+                  component: change_stamp
+        # Stage 2: the write-owned derived fields — `name`, `avatar_color` and
+        # `picture`. One call, merged onto stage 1's bag: a second call would draw a
+        # second random colour, and merging the whole derived bag would revert
+        # fields stage 1 preserved.
+        - - $set:
+              profile:
+                $mergeObjects:
+                  - "$profile"
+                  - $literal:
+                      _js:
+                        fn:
+                          _ref:
+                            path: ../shared/profile/derive-profile.js.njk
+                        args:
+                          stored:
+                            _step: read_profile_contact.profile
+                          incoming:
+                            _var: profile
+                          palette:
+                            _var: avatar_colors
+        # Stage 3: an unnamed profile carries no picture, so the Avatar block's
+        # person icon renders rather than initials that claim an identity. The
+        # derivation still returns one — the colour picker's preview needs it before
+        # a name is typed.
+        - - $set:
+              profile.picture:
+                $cond:
+                  if:
+                    $eq:
+                      - $ifNull:
+                          - "$profile.name"
+                          - null
+                      - null
+                  then: "$$REMOVE"
+                  else: "$profile.picture"
+        # Stage 4: T1 repair — the stamp above resolves from the session, but a
+        # SELF-write that CREATES the caller's name (onboarding) stamps from a
+        # session that doesn't hold one yet, leaving `updated.user.name` empty.
+        # When the stamped name is empty/null and the write is the caller's own
+        # contact (the var'd target user is the session user), take the
+        # freshly-derived profile name from stage 2 instead. Never fires for an
+        # admin editing another user (target ≠ caller), so the actor is never
+        # replaced by the target. Assumes the change_stamp template's
+        # `user.name` path — the module default and documented shape.
+        - - $set:
+              updated.user.name:
+                $cond:
+                  if:
+                    $and:
+                      - $in:
+                          - $ifNull: ["$updated.user.name", null]
+                          - [null, ""]
+                      # Resolved before MongoDB sees the pipeline: true only
+                      # when the target user is the session caller. `_user: id`
+                      # coalesces to a sentinel so a caller-less system run can
+                      # never equal an absent user_id.
+                      - _eq:
+                          - _if_none:
+                              - _var: user_id
+                              - null
+                          - _if_none:
+                              - _user: id
+                              - "__no_caller__"
+                  then:
+                    $ifNull:
+                      - "$profile.name"
+                      - "$updated.user.name"
+                  else: "$updated.user.name"
+        # Stage 5: an uploaded photo is the picture. Stage 2 always derives the
+        # initials SVG, so the photo has to be applied AFTER it — with a photo
+        # set, `picture` becomes the photo; with none, the derived initials
+        # stand, so removing a photo falls back to initials on the same write.
+        # The re-denorm below then copies the result onto `user.image`. A null
+        # `photo` (removed in the form) is unset rather than stored.
+        - - $set:
+              profile.picture:
+                $cond:
+                  if:
+                    $eq:
+                      - $ifNull:
+                          - "$profile.photo"
+                          - null
+                      - null
+                  then:
+                    $ifNull:
+                      - "$profile.picture"
+                      - "$$REMOVE"
+                  else: "$profile.photo"
+          - $set:
+              profile.photo:
+                $ifNull:
+                  - "$profile.photo"
+                  - "$$REMOVE"
+        # Caller-supplied write-stage extensions.
+        - _var: write_stages
+
+# Re-read the freshly-written contact so the re-denorm copies exactly what was
+# stored (including the derived name).
+- id: reread_contact
+  type: MongoDBFindOne
+  connectionId:
+    _var: connection_id
+  properties:
+    query:
+      _id:
+        _var: contact_id
+
+# Re-denormalize onto the auth user: the whole profile bag onto `user.profile`,
+# and the name / image display copies onto top-level `user.name` / `user.image`.
+# Because `resolveAuthentication` reads the target's user row per request, the
+# bag is fresh on the target's next request with no UpdateSession needed. (A
+# caller refreshing their OWN session is the caller routine's job, not the
+# fragment's — see update-profile.)
+#
+# Guarded on `user_id` presence: coalesce to null first, so BOTH the absent
+# (`undefined`, e.g. the invite flow) and the explicit-`null` cases skip. A bare `_ne: [user_id, null]` would pass on
+# `undefined` and fire UpdateUserProfile with no user_id.
+- :if:
+    _ne:
+      - _if_none:
+          - _var: user_id
+          - null
+      - null
+  :then:
+    - id: denorm_user_profile
+      type: UpdateUserProfile
+      properties:
+        userId:
+          _var: user_id
+        organizationId:
+          _var: organization_id
+        profile:
+          _step: reread_contact.profile
+        name:
+          _step: reread_contact.profile.name
+        image:
+          _step: reread_contact.profile.picture

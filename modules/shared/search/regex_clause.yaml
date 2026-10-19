@@ -1,0 +1,49 @@
+# Fallback text clause, ANDed into the request's $match. Mirror image of
+# text_lead: emitted only when atlas_search is false (build) and a term is
+# present (runtime).
+#
+# The $or is fanned out over `paths`, and this file is the only place user input
+# is regex-escaped. Inside the callback the term uses a SINGLE underscore, so it
+# resolves once when the callback is created; only the path varies per iteration
+# (__args: 0, double underscore, evaluated per call). $& puts the matched
+# metacharacter back after the added backslash, and single-quoted YAML keeps both
+# patterns literal.
+#
+# atlas_search defaults to false so a module with no Atlas path at all
+# (user-admin's members filter) can call this with just `term` and `paths`.
+_build.if:
+  test:
+    _var:
+      key: atlas_search
+      default: false
+  then: []
+  else:
+    _if:
+      test:
+        _ne:
+          - _if_none:
+              - _var: term
+              - ""
+          - ""
+      then:
+        - $or:
+            _array.map:
+              on:
+                _var: paths
+              callback:
+                _function:
+                  __object.defineProperty:
+                    on: {}
+                    key:
+                      __args: 0
+                    descriptor:
+                      value:
+                        $regex:
+                          _string.replace:
+                            on:
+                              _var: term
+                            regex: '[.*+?^${}()|[\]\\/]'
+                            newSubstr: '\$&'
+                            regexFlags: g
+                        $options: i
+      else: []

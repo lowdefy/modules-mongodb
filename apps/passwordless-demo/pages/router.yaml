@@ -1,0 +1,30 @@
+# Entry router. The user-account module links here (id `router`) after
+# login/logout, so the app must provide it. Sends signed-out visitors to the
+# module login page, first-time users to onboarding, everyone else to home.
+id: router
+type: Box
+events:
+  onMount:
+    - id: router
+      type: Link
+      params:
+        pageId:
+          _switch:
+            branches:
+              - if:
+                  _eq:
+                    - _user: true
+                    - null
+                then:
+                  _module.pageId:
+                    module: user-account
+                    id: login
+              - if:
+                  _ne:
+                    - _user: profile.profile_created
+                    - true
+                then:
+                  _module.pageId:
+                    module: user-account
+                    id: onboarding
+            default: home

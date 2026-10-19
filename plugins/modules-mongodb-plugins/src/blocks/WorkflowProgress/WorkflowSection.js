@@ -53,6 +53,7 @@ const ActionGroup = ({
             <Link
               className="wp-section-link"
               pageId={groupLink.pageId}
+              pathParams={groupLink.pathParams}
               urlQuery={groupLink.urlQuery}
               input={groupLink.input}
               newTab={groupLink.newTab ?? false}
@@ -150,7 +151,7 @@ const WorkflowSection = ({
               >
                 <Icon
                   blockId={`${blockId}_wf_overview_${wfIdx}`}
-                  properties={{ name: "LuWorkflow", size: 18 }}
+                  properties={{ name: "Workflow", size: 18 }}
                 />
               </Link>
             </Tooltip>

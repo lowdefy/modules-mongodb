@@ -22,7 +22,7 @@ starting_actions:
 action_groups:
   - id: steps
     title: Steps
-    icon: AiOutlineCheckSquare
+    icon: SquareCheck
 
 actions:
   - _ref: modules/workflows/workflow_config/tracker-child/child-step.yaml

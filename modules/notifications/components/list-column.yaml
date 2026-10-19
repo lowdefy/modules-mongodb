@@ -1,0 +1,143 @@
+# The list column: toolbar, then up to 1000 rows in a virtualised list that
+# scrolls in its own container, then the pager (hidden on one page).
+id: list_column
+type: Box
+class:
+  .element:
+    _if:
+      test:
+        _state: pane_open
+      then: nx-region nx-list-column nx-narrow-hidden
+      else: nx-region nx-list-column
+layout:
+  flex: 0 0 400px
+blocks:
+  - _ref: components/form-filter.yaml
+  - id: new_rows_pill
+    type: Button
+    visible:
+      _gt:
+        - _if_none:
+            - _state: new_count
+            - 0
+        - 0
+    layout:
+      span: 24
+    style:
+      .element:
+        margin: 8px auto 0
+        display: block
+    properties:
+      shape: round
+      size: small
+      icon: ArrowUp
+      title:
+        _nunjucks:
+          template: "{{ n }} new"
+          on:
+            n:
+              _state: new_count
+    events:
+      onClick:
+        _ref: actions/update-list.yaml
+  - id: list_empty
+    type: Html
+    visible:
+      _and:
+        - _ne:
+            - _request: get_notifications
+            - null
+        - _eq:
+            - _array.length:
+                _if_none:
+                  - _state: list
+                  - []
+            - 0
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            {% if caught_up %}
+            <div class="nx-empty"><div class="nx-ring nx-ring--success"><i data-icon="CheckCheck"></i></div><strong>You're all caught up</strong>No unread notifications. New ones appear here.</div>
+            {% else %}
+            <div class="nx-empty"><div class="nx-ring"><i data-icon="Inbox"></i></div><strong>No matching notifications</strong>Change the filter to see more.</div>
+            {% endif %}
+          on:
+            caught_up:
+              _and:
+                - _eq:
+                    - _state: filter.status
+                    - unread
+                - _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: filter.types
+                          - []
+                    - 0
+                - _eq:
+                    - _if_none:
+                        - _state: filter.search
+                        - ""
+                    - ""
+  - id: selected_id
+    type: ListSelector
+    class:
+      .element: nx-list
+    visible:
+      _gt:
+        - _array.length:
+            _if_none:
+              - _state: list
+              - []
+        - 0
+    properties:
+      data:
+        _if_none:
+          - _state: list
+          - []
+      valueKey: _id
+      allowDeselect: false
+      bordered: false
+      gap: 0
+      size: small
+      height: var(--notifications-list-height)
+      html: |
+        <div class="nx-row{% if not item.read %} nx-row--unread{% endif %}">
+          <span class="nx-icon" style="--c: {{ item.appearance.color }}"><i data-icon="{{ item.appearance.icon }}"></i></span>
+          <div class="nx-main">
+            <div class="nx-head"><span class="nx-row-title">{{ item.title }}</span>{% if item.created_at %}<time class="nx-time" datetime="{{ item.created_at }}" data-time="relative"></time>{% endif %}</div>
+            {% if item.preview %}<div class="nx-preview" data-truncate="2">{{ item.preview }}</div>{% endif %}
+            <div class="nx-foot"><span data-tag="{{ item.appearance.color }}">{{ item.appearance.label }}</span>{% if not item.read %}<span class="nx-dot" aria-label="Unread"></span>{% endif %}</div>
+          </div>
+        </div>
+    style:
+      .selected:
+        background: var(--ant-color-primary-bg)
+        borderLeftColor: var(--ant-color-primary)
+        boxShadow: none
+    events:
+      onChange:
+        _ref: actions/set-selected.yaml
+  - id: pagination
+    type: Pagination
+    style:
+      padding: 8px 16px
+    properties:
+      size: small
+      align: end
+      hideOnSinglePage: true
+      showSizeChanger: false
+      total:
+        _if_none:
+          - _request: get_notifications.0.total_count.0.total
+          - 0
+    events:
+      onChange:
+        - id: fetch_page
+          type: Request
+          params: get_notifications
+        - id: set_page
+          type: SetState
+          params:
+            list:
+              _ref: components/list-rows.yaml

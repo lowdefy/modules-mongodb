@@ -24,11 +24,11 @@ Useful for showing a checklist-style progression where each stage has multiple s
       kickoff:
         order: 1
         title: Kickoff
-        icon: AiOutlineFlag
+        icon: Flag
       review:
         order: 2
         title: Review
-        icon: AiOutlineAudit
+        icon: ClipboardCheck
         link:
           pageId: review-view
           urlQuery:
@@ -36,7 +36,7 @@ Useful for showing a checklist-style progression where each stage has multiple s
       sign-off:
         order: 3
         title: Sign-off
-        icon: AiOutlineCheckSquare
+        icon: SquareCheck
     items:
       - action_group: kickoff
         actions:
@@ -105,7 +105,7 @@ Badge-dot and group-icon colours come from `actionStatusConfig` — the shared `
 | `in-progress`      | `process`   | Badge animates (`processing`); enum colour is a distinct teal. |
 | `in-review`        | `wait`      |                                                                |
 | `changes-required` | `error`     |                                                                |
-| `done`             | `finish`    | Step icon overridden to `AiOutlineCheckCircle`.                |
+| `done`             | `finish`    | Step icon overridden to `check-circle`.                |
 | `error`            | `error`     |                                                                |
 | `not-required`     | `wait`      | Message and group title rendered with `<strike>`.              |
 
@@ -131,7 +131,7 @@ The group's effective status is derived from its actions in this order:
 `onActionClick` lets a host page handle a clicked action in-context (e.g. open a check action in a modal) rather than navigating to the action's link.
 
 - **When wired**, clicking a linked action row fires `onActionClick` with the clicked `action` object and does not navigate.
-- **When not wired** (the default), each action row is a `Link` to its server-resolved `action.link` (`pageId` / `urlQuery`).
+- **When not wired** (the default), each action row is a `Link` to its server-resolved `action.link` (`pageId` / `pathParams` / `urlQuery`).
 - **Linkless rows stay inert in both modes.** A row whose `action.link` is missing or has `disabled: true` never fires the event.
 
 Group-title links (`actionGroupConfig[group].link`) are unaffected; `onActionClick` is per-action, not per-group.
@@ -165,4 +165,4 @@ Group-title links (`actionGroupConfig[group].link`) are unaffected; `onActionCli
 
 - **HTML in `message` and `actionGroupConfig.title` is rendered through `renderHtml`** from `@lowdefy/block-utils`. Sanitize upstream if the source isn't trusted.
 - **Ordering** comes from `actionGroupConfig[group].order`. Items without an `order` will sort as `undefined` — set `order` on every configured group.
-- **`done` step icon** is forced to `AiOutlineCheckCircle` regardless of the `actionGroupConfig` icon.
+- **`done` step icon** is forced to `check-circle` regardless of the `actionGroupConfig` icon.

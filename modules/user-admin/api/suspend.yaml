@@ -1,0 +1,70 @@
+# suspend: BanUser, PERMANENT (design Decision 4). No ban duration is passed, so
+# `ban_expires` is never set (timed bans are out of scope). Ban is user-level, so
+# it blocks sign-in across EVERY app in the suite and revokes sessions.
+#
+# Behind the `suspension` var (default true): when false, the routine is a bare
+# reject. Role-gated app-side via the app's own `auth.api.roles`; BanUser
+# additionally declares the permission
+# it needs and the engine floors it against the caller's member row in the
+# organization the step names before it runs.
+#
+# `organizationId` names the organization the floor authorizes in. The ban reaches
+# a deployment-wide `user` row, so the floor asks whether the caller administers
+# THAT organization and whether the target holds a member row in it; an absent one
+# falls back to the APP's pinned organization, which refuses an administrator of
+# any other.
+#
+# Payload: { user_id, target_name?, target_email? }
+# The audit event is the FINAL step, so it fires only on full success.
+id: suspend
+type: Api
+routine:
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _module.var: suspension
+        then:
+          - - :reject: Suspension is disabled for this deployment (the "suspension" var is false).
+        else: []
+    - - id: ban
+        type: BanUser
+        properties:
+          userId:
+            _payload: user_id
+          organizationId:
+            _module.var: org_slug
+      - id: audit
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: user-suspended
+            display:
+              _build.object.fromEntries:
+                - - _build.app: slug
+                  - title:
+                      _nunjucks:
+                        template:
+                          _build.if_none:
+                            - _module.var: event_display.user-suspended
+                            - _ref:
+                                path: defaults/event_display.yaml
+                                key: user-suspended
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _payload: target_name
+                            email:
+                              _payload: target_email
+                    description: null
+            references:
+              user_ids:
+                - _payload: user_id
+      - :return:
+          success: true

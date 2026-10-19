@@ -1,0 +1,70 @@
+# Phase 3 — User-admin console (`user-admin`)
+
+> **Depends on:** Phases 0, 1. · **Legend:** `[ ]` to do · `[x]` done · `[~]` partial · `[-]` N/A this run · **"Verify in Compass"** = check the rig DB. · Context: [`../design.md`](../design.md) · index: [`tasks.md`](./tasks.md).
+
+### Page role gate
+
+- [x] **`user-admin/*` page gate holds:** a signed-in user **without** the `user-admin` role is denied the console pages (redirect/403), not just the endpoints — `auth.pages.roles.user-admin: [user-admin/*]`. Test by visiting `/user-admin/all` as a plain member (a second account, or temporarily strip the role) and confirming access is refused; then confirm the bootstrapped admin is admitted. — non-admin gets Lowdefy 404 + no menu entry (gate holds)
+
+### `all` page
+
+- [x] **Members** tab: name/email/roles/status + created/updated/signed-up dates; joined contact name renders. No-filter load must **not** crash (F24); the custom Department column is populated (F26) — passes
+- [x] **Invitations** tab with pending-count badge; **Invited** vs **Expired** derived correctly (`pending` + `expiresAt` vs now) — passes
+- [x] Filters: name/email are regex; **role filter matches exact split elements** (`admin` does not match `super-admin`) — passes
+- [x] Sort via `sort-filters` is server-side (orders across pages); direction toggle flips order — passes
+- [x] Excel export (`download: true`) merges members + invitations into one sheet with a `status` column — passes
+
+### Invite flow (`invite` page — email-first check)
+
+> ⛔ **BROKEN** — after Check, email locks ("Use a different email") but no outcome
+> layer renders: no form, no send. Existing contacts don't look up. All items below
+> blocked; left for a debugging agent.
+
+- [ ] **Unknown email** → blank form → creates contact + `InviteMember`; branded invitation email in Mailpit; accept link carries `?invitationId=`
+- [ ] **Existing contact, no membership** → prefilled from `contact.profile`
+- [ ] **Pending invitation** → shown with resend / cancel
+- [ ] **Already a member** → links to their user detail page
+- [ ] Captured profile is **persisted** to the contact (write-profile); the members list shows a name pre-onboarding
+- [ ] **Re-invite an Expired row** → cancel-then-invite; **no duplicate `pending`** row (Verify in Compass: `user-invitations`)
+- [ ] Member attributes captured on the invite are applied to the member at accept-time
+
+### Invite-only posture (`signup: invite-only`)
+
+> **Posture flip.** The rest of the campaign runs under `auth.organizations.signup: open`
+> (Phase 1) so the first admin can self-signup. This section is the **only** run under the
+> module default `invite-only`, which exists precisely to make an invite the _sole_ way in.
+> Flip `auth.organizations.signup: invite-only` in `lowdefy.yaml` and **restart the dev
+> server** (auth config loads at boot, not on hot reload). The bootstrapped admin and any
+> member minted during the `open` run keep their membership — you cannot bootstrap a _first_
+> admin under `invite-only`, which is why this runs after Phases 0/1, not before. Restore
+> `open` afterwards.
+
+- [ ] **Uninvited self-signup is refused and writes nothing.** A brand-new email (no
+      invitation) completes signup + email verification, then login yields the
+      **MEMBERSHIP_REQUIRED** "no access" state — **no session, no auto-join**. Verify in
+      Compass: **no `user-members` row** for that user (contrast the `open` run, where signup
+      auto-joins the pinned org). _(This is the reject-and-**write-nothing** assertion deferred
+      out of [`01-public-auth-pages.md`](./01-public-auth-pages.md) line "Verified but no
+      membership".)_
+- [ ] **Invited user gets in.** Using an invite minted in the Invite-flow section above,
+      the invited email signs up / signs in and — via the Phase 1 accept flow — lands with a
+      `user-members` row carrying the **invite's** roles/attributes (membership comes from the
+      invitation, not auto-join). Confirms the invite is the working path under `invite-only`.
+- [ ] **Restore posture** — flip `signup` back to `open` + restart, so later phases run under
+      the campaign's default posture.
+
+### `view` (user detail)
+
+- [x] **Profile** tile edit (admin editing the target) → write-profile → the **target's** `users.profile` re-denormed; the change stamp carries `updated.user {name, id}` (Verify in Compass). Form UX → **F27**. — passes, sets data fine
+- [x] **Attributes** tile: roles from the catalog (labels + descriptions in the picker); save → `UpdateMemberRoles` + `UpdateMemberAttributes` (Verify in Compass) — passes, sets data fine
+- [x] **Orphaned role** (in `member.appRoles` but not in the catalog) → shown as a flagged "no longer configured" chip, editable and removable, and **saving with the orphan present succeeds** — no `ROLE_NOT_FOUND`, nothing silently stripped. Verify in Compass the orphan is still on the row. _(Supersedes F29 — orphan `appRoles` are now first-class; see Phase 5.)_ — passes
+- [x] **Global attributes** tile → `UpdateUserAttributes` (Verify in Compass) — passes
+- [x] **Security** tile: sessions (token projected out), "sign out everywhere" (`RevokeUserSessions`); auth methods read-only (linked providers, passkey count, MFA, email-verified) — passes: no token in req, badges (email-verified/passkey/TOTP) correct, reset-2FA/revoke-passkey buttons conditional, sign-out-everywhere logs user out immediately. Copy → **F51** (em-dash sweep).
+- [x] **Suspend** (`BanUser`) → `users.banned: true`, sessions revoked, status → Suspended; blast-radius dialog enumerates other memberships (when any exist) — passes: ban works (earlier `banReason` null bug now fixed), status pill shows Suspended. Compass confirmed (admin@demo.test): `banned: true`, `user-sessions` 0 rows (revoked), `ban_reason` defaulted to "No reason".
+- [ ] **Reinstate** (`UnbanUser`) → back to Active — ⛔ **BROKEN**: no reinstate affordance exists. Security tile has no banned-state variant — **Suspend button still shows on an already-banned user** and there's no Reinstate button (tile_security.yaml: `suspend_btn` has no `visible` gate; no reinstate control). Bug — left for a debugging agent.
+- [ ] Suspend/reinstate surface **hidden** when `suspension: false` (separate config run)
+- [x] **Remove from app** (`RemoveMember`) → member row deleted; contact survives — passes (test2@demo.test: `user-members` 0 rows, `user-contacts` + `users` survive)
+- [x] **Delete login identity** (`DeleteUser`) — available **only** when the user has no other memberships; user row hard-deleted, contact survives — passes (test3@demo.test: `users` row gone, `user-contacts` survives)
+- [~] **Apps** tile: cross-app badges from other memberships; **hidden** when the user belongs only to this app — hidden half confirmed (only one app configured → tile correctly absent). Badges-shown half needs a 2nd membership: defer to **Phase 5** (second instance).
+- [x] **Activity** tile: the event timeline renders the module audit events for the target (read-side schema alignment — **F28**) — passes
+- [x] **Organization authority** (Attributes tile, behind `org_authority`, default on): its own selector and its own submit → `UpdateMemberOrgRole` writes `user-members.role` (`owner` / `admin` / `member`); revoking writes `member`, not an empty value; demoting the organization's sole owner is refused with the plugin's own message. **Verify in Compass** — passes: admin can't promote-to-owner (throws), owner can create/demote owners, revoke writes `member`. Two follow-ups: **F52** (admin-demotes-owner is a silent no-op reporting success), **F53** (authority submit UX buried in edit-role modal).

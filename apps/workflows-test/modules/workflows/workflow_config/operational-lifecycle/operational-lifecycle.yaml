@@ -33,7 +33,7 @@ starting_actions:
 action_groups:
   - id: routine
     title: Routine
-    icon: AiOutlineUnorderedList
+    icon: list
 
 actions:
   - _ref: modules/workflows/workflow_config/operational-lifecycle/routine-step.yaml

@@ -65,7 +65,7 @@
             selfAlign: top
           properties:
             icon:
-              name: AiOutlineExpandAlt
+              name: Maximize2
               title: Expand table
             hideTitle: true
             type: text

@@ -185,8 +185,8 @@ blocks:
                     _eq:
                       - _state: walkthrough_whole
                       - true
-                  then: AiOutlineZoomIn
-                  else: AiOutlineFullscreen
+                  then: ZoomIn
+                  else: Fullscreen
               title:
                 _if:
                   test:

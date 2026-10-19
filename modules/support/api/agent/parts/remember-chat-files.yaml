@@ -1,0 +1,35 @@
+# Records the keys in state.chat_files on the user's copy of a ticket the agent
+# has just sent them on, so a later message does not send them again.
+#
+# Vars:
+#   ticket_id  the ticket's id
+- :set_state:
+    chat_file_keys:
+      _js: |
+        return state('chat_files').map((file) => file.key);
+- :if:
+    _gt:
+      - _array.length:
+          _state: chat_file_keys
+      - 0
+  :then:
+    - id: remember_chat_files
+      type: MongoDBUpdateOne
+      connectionId:
+        _module.connectionId: support-tickets
+      properties:
+        filter:
+          _id:
+            _var: ticket_id
+          user_id:
+            _user: id
+        update:
+          $addToSet:
+            chat_files:
+              $each:
+                _state: chat_file_keys
+          $set:
+            updated:
+              _ref:
+                module: events
+                component: change_stamp

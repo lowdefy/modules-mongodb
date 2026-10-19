@@ -127,7 +127,7 @@ blocks:
               - null
           then: Generate summary
           else: Refresh
-      icon: AiOutlineBulb
+      icon: Lightbulb
       type: primary
     events:
       onClick:

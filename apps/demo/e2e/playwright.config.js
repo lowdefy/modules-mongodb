@@ -43,6 +43,20 @@ export default {
     env: {
       ...process.env,
       AUTH_SECRET: process.env.AUTH_SECRET || "build-only-not-a-real-secret",
+      // Presigning an S3 link is computed locally, so the ai-assistant file-links spec
+      // signs with these placeholders and never reaches a bucket.
+      LOWDEFY_SECRET_FILES_S3_ACCESS_KEY_ID:
+        process.env.LOWDEFY_SECRET_FILES_S3_ACCESS_KEY_ID ||
+        "e2e-not-a-real-key",
+      LOWDEFY_SECRET_FILES_S3_SECRET_ACCESS_KEY:
+        process.env.LOWDEFY_SECRET_FILES_S3_SECRET_ACCESS_KEY ||
+        "e2e-not-a-real-secret",
+      LOWDEFY_SECRET_FILES_S3_BUCKET:
+        process.env.LOWDEFY_SECRET_FILES_S3_BUCKET || "e2e-bucket",
+      // The support module talks to a stub Pelican the support specs start on this port
+      // (e2e/support/pelican-stub.js), never to a real one.
+      SUPPORT_PELICAN_URL: "http://127.0.0.1:3102",
+      LOWDEFY_SECRET_SUPPORT_PELICAN_KEY: "e2e-support-key",
     },
   },
 };

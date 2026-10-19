@@ -8,22 +8,22 @@ Implements `designs/deals-module-rework/design.md`: generalize the deals module 
 
 ## Tasks
 
-| #   | File                                   | Summary                                                                                      | Depends On |
-| --- | -------------------------------------- | -------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-connection-id-var.md`              | Promote the literal `deals` connection_id to an `entity_connection_id` var (deals)           | —          |
-| 2   | `02-deal-value-stored-field.md`        | Read stored `value`/`close_date` (+`$ifNull`); volumes tile → host info-grid slot (deals)     | —          |
-| 3   | `03-activities-task-crud.md`           | Move task create/update + task-modal to activities with entity-link + event seams            | —          |
-| 4   | `04-workflows-open-actions-card.md`    | Add compact actions-only `open-actions` card to workflows; deals consumes it                  | —          |
-| 5   | `05-activities-open-tasks-card.md`     | Add `open-tasks` card to activities; deals composes both cards; retire deals' actions surface | 3, 4       |
-| 6   | `06-events-note-capture.md`            | Extract @mention note-capture to events with mention-source + context seams; deals consumes   | —          |
-| 7   | `07-deal-view-gap-closes.md`           | Drop shared `check-action-modal` + use `entity-workflows-refetch` on the deal view (deals)     | 4, 5, 6    |
-| 8   | `08-onboarding-workflow-on-deals.md`   | Author onboarding workflow on deals (port actions, drop tracker, carry deal-outcome, register) | 2          |
-| 9   | `09-quote-builder-demo-page.md`        | Build the lightweight deal-scoped quote-builder demo page send-quote links to                 | 8          |
-| 10  | `10-demo-vars-and-verification.md`     | Demo deals vars (workflow_type: onboarding, stages/groups/outcomes) + full runtime + host gate | 1–9        |
-| 11  | `11-generic-fields-create-write.md`    | Module: add `fields` var; strip 7 domain create blocks + 4 taxonomy vars; generic `attributes` write | —          |
-| 12  | `12-generic-view-and-deproduct.md`     | Module: SmartDescriptions `fields` on view; remove `product` (var, header, list requests, card)      | 11         |
-| 13  | `13-demo-resupply-fields.md`           | Demo: re-supply the 7 domain fields via the `fields` var + enums; de-dup sector; product column      | 11, 12     |
-| 14  | `14-build-docs-verify.md`              | Deals changeset + docs + build + runtime round-trip verification + host-reconstitution note          | 11–13      |
+| #   | File                                 | Summary                                                                                              | Depends On |
+| --- | ------------------------------------ | ---------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-connection-id-var.md`            | Promote the literal `deals` connection_id to an `entity_connection_id` var (deals)                   | —          |
+| 2   | `02-deal-value-stored-field.md`      | Read stored `value`/`close_date` (+`$ifNull`); volumes tile → host info-grid slot (deals)            | —          |
+| 3   | `03-activities-task-crud.md`         | Move task create/update + task-modal to activities with entity-link + event seams                    | —          |
+| 4   | `04-workflows-open-actions-card.md`  | Add compact actions-only `open-actions` card to workflows; deals consumes it                         | —          |
+| 5   | `05-activities-open-tasks-card.md`   | Add `open-tasks` card to activities; deals composes both cards; retire deals' actions surface        | 3, 4       |
+| 6   | `06-events-note-capture.md`          | Extract @mention note-capture to events with mention-source + context seams; deals consumes          | —          |
+| 7   | `07-deal-view-gap-closes.md`         | Drop shared `check-action-modal` + use `entity-workflows-refetch` on the deal view (deals)           | 4, 5, 6    |
+| 8   | `08-onboarding-workflow-on-deals.md` | Author onboarding workflow on deals (port actions, drop tracker, carry deal-outcome, register)       | 2          |
+| 9   | `09-quote-builder-demo-page.md`      | Build the lightweight deal-scoped quote-builder demo page send-quote links to                        | 8          |
+| 10  | `10-demo-vars-and-verification.md`   | Demo deals vars (workflow_type: onboarding, stages/groups/outcomes) + full runtime + host gate       | 1–9        |
+| 11  | `11-generic-fields-create-write.md`  | Module: add `fields` var; strip 7 domain create blocks + 4 taxonomy vars; generic `attributes` write | —          |
+| 12  | `12-generic-view-and-deproduct.md`   | Module: SmartDescriptions `fields` on view; remove `product` (var, header, list requests, card)      | 11         |
+| 13  | `13-demo-resupply-fields.md`         | Demo: re-supply the 7 domain fields via the `fields` var + enums; de-dup sector; product column      | 11, 12     |
+| 14  | `14-build-docs-verify.md`            | Deals changeset + docs + build + runtime round-trip verification + host-reconstitution note          | 11–13      |
 
 ## Ordering Rationale
 
@@ -37,7 +37,7 @@ Three dependency chains, largely parallelizable until C:
 
 **Cross-repo note:** the host-reconstitution gate (task 10) and the host-side backfill migration are Phase-D concerns performed by someone with host access — not automatable in this repo's CI. Task 10 records the gate; it does not implement the host migration.
 
-- **Workstream D (tasks 11–14)** — generic create/display fields. Task 11 (module: `fields` var + generic create form + generic write) is the foundation. Task 12 (module: SmartDescriptions view + remove `product` from the read side) depends on 11 and owns all remaining `view.yaml`/list edits — the two module tasks are split by file ownership (11 owns `new.yaml`/`create-deal.yaml`; 12 owns `view.yaml`/list requests/card) so each leaves the build green. Task 13 (demo re-supply) needs both module seams (11, 12). Task 14 (release hygiene + runtime verification) depends on 11–13. Each task keeps `product` build-safe: 11 stops *writing* it, 12 removes the last *readers* + the var atomically.
+- **Workstream D (tasks 11–14)** — generic create/display fields. Task 11 (module: `fields` var + generic create form + generic write) is the foundation. Task 12 (module: SmartDescriptions view + remove `product` from the read side) depends on 11 and owns all remaining `view.yaml`/list edits — the two module tasks are split by file ownership (11 owns `new.yaml`/`create-deal.yaml`; 12 owns `view.yaml`/list requests/card) so each leaves the build green. Task 13 (demo re-supply) needs both module seams (11, 12). Task 14 (release hygiene + runtime verification) depends on 11–13. Each task keeps `product` build-safe: 11 stops _writing_ it, 12 removes the last _readers_ + the var atomically.
 
 ## Scope
 

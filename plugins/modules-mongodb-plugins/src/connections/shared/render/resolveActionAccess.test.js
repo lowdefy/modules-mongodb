@@ -27,7 +27,7 @@ test("computeAllowed: true gate grants all four verbs when declared", () => {
   const access = {
     demo: { view: true, edit: true, review: true, error: true },
   };
-  expect(computeAllowed({ access, app_name: "demo", userRoles: [] })).toEqual({
+  expect(computeAllowed({ access, slug: "demo", userRoles: [] })).toEqual({
     view: true,
     edit: true,
     review: true,
@@ -42,7 +42,7 @@ test("computeAllowed: array gate with matching role grants verb", () => {
   expect(
     computeAllowed({
       access,
-      app_name: "demo",
+      slug: "demo",
       userRoles: ["account-manager"],
     }),
   ).toEqual({ view: true, edit: true, review: false, error: false });
@@ -51,14 +51,14 @@ test("computeAllowed: array gate with matching role grants verb", () => {
 test("computeAllowed: array gate with no matching role denies verb", () => {
   const access = { demo: { view: ["manager"], edit: ["manager"] } };
   expect(
-    computeAllowed({ access, app_name: "demo", userRoles: ["support-rep"] }),
+    computeAllowed({ access, slug: "demo", userRoles: ["support-rep"] }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
 });
 
 test("computeAllowed: absent verb key denies that verb", () => {
   const access = { demo: { view: true } };
   expect(
-    computeAllowed({ access, app_name: "demo", userRoles: ["any-role"] }),
+    computeAllowed({ access, slug: "demo", userRoles: ["any-role"] }),
   ).toEqual({ view: true, edit: false, review: false, error: false });
 });
 
@@ -67,7 +67,7 @@ test("computeAllowed: absent app block denies every verb", () => {
   expect(
     computeAllowed({
       access,
-      app_name: "demo",
+      slug: "demo",
       userRoles: ["account-manager"],
     }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
@@ -77,7 +77,7 @@ test("computeAllowed: null access denies every verb", () => {
   expect(
     computeAllowed({
       access: null,
-      app_name: "demo",
+      slug: "demo",
       userRoles: ["account-manager"],
     }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
@@ -87,7 +87,7 @@ test("computeAllowed: undefined access denies every verb", () => {
   expect(
     computeAllowed({
       access: undefined,
-      app_name: "demo",
+      slug: "demo",
       userRoles: ["account-manager"],
     }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
@@ -96,14 +96,14 @@ test("computeAllowed: undefined access denies every verb", () => {
 test("computeAllowed: undefined userRoles treated as empty array", () => {
   const access = { demo: { view: ["manager"] } };
   expect(
-    computeAllowed({ access, app_name: "demo", userRoles: undefined }),
+    computeAllowed({ access, slug: "demo", userRoles: undefined }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
 });
 
 test("computeAllowed: true gate passes with undefined userRoles", () => {
   const access = { demo: { view: true } };
   expect(
-    computeAllowed({ access, app_name: "demo", userRoles: undefined }),
+    computeAllowed({ access, slug: "demo", userRoles: undefined }),
   ).toEqual({ view: true, edit: false, review: false, error: false });
 });
 
@@ -113,7 +113,7 @@ test.each(gateCases)(
   "computeAllowed view-verb matches the oracle: $name",
   ({ gate, userRoles, expected }) => {
     const access = gate === undefined ? {} : { demo: { view: gate } };
-    const allowed = computeAllowed({ access, app_name: "demo", userRoles });
+    const allowed = computeAllowed({ access, slug: "demo", userRoles });
     expect(allowed.view).toBe(expected);
     // Other verbs are absent → false
     expect(allowed.edit).toBe(false);

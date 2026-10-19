@@ -1,0 +1,25 @@
+- id: update_selected_unread
+  type: Request
+  params: update_selected_unread
+- id: set_row_unread
+  type: SetState
+  params:
+    list:
+      _js:
+        args:
+          list:
+            _if_none:
+              - _state: list
+              - []
+          id:
+            _state: open_id
+        fn: |
+          return args.list.map((row) =>
+            row._id === args.id ? { ...row, read: false } : row,
+          );
+- id: refresh_after_unread
+  type: Request
+  params:
+    - get_notification_facets
+    - notifications_unread_count
+    - get_notifications

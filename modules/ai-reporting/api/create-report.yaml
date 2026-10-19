@@ -12,7 +12,7 @@ description: >
   Save the chat page's ticked findings as a navigable report. Takes a report
   spec — title, optional description, sections — plus the source conversation_id,
   validates it against the catalog exactly as generate-report does, and returns
-  the report URL.
+  the report's id.
 payloadSchema:
   type: object
   required:
@@ -98,9 +98,3 @@ routine:
       ok: true
       report_id:
         _step: insert_report.insertedId
-      url:
-        _string.concat:
-          - "/"
-          - _module.id: true
-          - "/report?report_id="
-          - _step: insert_report.insertedId

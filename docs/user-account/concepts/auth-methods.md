@@ -1,0 +1,393 @@
+---
+title: Auth methods
+module: user-account
+type: concept
+concepts:
+  [
+    auth-methods,
+    providers,
+    build-authConfig,
+    error-handling,
+    two-factor,
+    backup-codes,
+    two-factor-required,
+    two_factor_enrolled,
+    magic-link,
+    magic-link-landing,
+    email-otp,
+    passwordless,
+  ]
+---
+
+# Auth methods
+
+The login and signup pages are **method-driven**: they render whichever sign-in
+methods the deployment enables, and nothing else. This page explains where "which
+methods" comes from, what the module configures, and how errors and the 2FA
+challenge are handled.
+
+## Enablement is read, not configured
+
+**Which** methods exist is the app's `auth:` config's decision, read at build time
+through `_build.authConfig`:
+
+| `_build.authConfig` field      | Enables                                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `emailAndPassword.enabled`     | Password form (login + signup) and change-password / reset flows                                                   |
+| `magicLink.enabled`            | Magic-link send (email → "send me a link"); passwordless when password is off; Email link row in the Security tile |
+| `emailOTP.enabled`             | A sign-in code in the same email, entered on the "check your email" render                                         |
+| `passkey.enabled`              | Passkey button (login) and passkey management (workspace)                                                          |
+| `twoFactor.enabled`            | 2FA enrolment in the Security tile                                                                                 |
+| `twoFactor.trustDevice`        | The "trust this device 30 days" switch on the 2FA challenge (off ⇒ hidden)                                         |
+| `providers` (`[{ id, type }]`) | One OAuth button per configured provider                                                                           |
+
+There are **no `methods` / `two_factor` / `passkeys` module vars**. Restating an
+`auth:` fact as a module var is exactly the drift `_build.authConfig` exists to
+prevent — a mirror var and the real config inevitably fall out of sync. Turn a
+method on or off in `auth:` and the pages follow with no module change.
+
+## What the module owns: OAuth display metadata
+
+The auth config's provider projection carries only `{ id, type }` — no label,
+icon, or ordering. That display metadata is genuinely the module's to own, so it
+lives in the `providers` var, keyed by provider id:
+
+```yaml
+providers:
+  - id: google
+    label: Google
+    icon: Search
+    order: 1
+  - id: github
+    label: GitHub
+    icon: GitBranch
+    order: 2
+```
+
+The page cross-references the two sources: it renders a button for **each provider
+`_build.authConfig` reports enabled**, drawing label / icon / order from this var.
+A provider enabled in `auth:` but absent from `providers` falls back to rendering
+its id; a `providers` entry for a provider the config does not enable renders
+nothing. Enablement is the config's call; appearance is the var's.
+
+> Contrast with roles: role display labels live in the platform role catalog
+> (`auth.roles[].label`, projected via `_build.authConfig.roles`), which is why
+> `user-admin`'s old `roles` var was retired. Providers go the other way — the
+> projection omits their display metadata, so it stays a module var.
+
+## Magic-link: send a link, never navigate inline
+
+When `magicLink.enabled` is true the login page adds an email → "send me a link"
+affordance. It reads the one canonical `id: email` input (the same field the
+password submit uses when both methods are on). Pressing send dispatches a single
+sign-in call in magic-link mode and — because that send returns `{ status: true }`
+with **no session** — it cannot navigate. Instead the page flips to a
+**`link-sent`** render: a "Check your email" result naming the address, a **Resend
+link** button, and a "Use a different email" link back to the form. Resend is
+guarded by a **short cooldown** (the button disables for ~30s after each send) so a
+user can't tap through the send rate limit.
+
+Placement follows how many methods are enabled — the login `signin` view adapts:
+
+- **Password only:** the password form shows directly — one method, no chooser.
+- **Password off (passwordless deployment):** the send is the primary action
+  directly under the email — see [Passwordless-primary](#passwordless-primary-sign-up-collapses-into-sign-in).
+- **Password plus at least one alternative (mixed deployment):** the view is a
+  **method chooser** — the email input leads, then a **Use password** button and
+  the alternative-method buttons (the magic-link send, then any OAuth / passkey
+  below a single "or" divider). Choosing **Use password** reveals the password
+  field, its submit and **Forgot password?**, and hides the other methods; an
+  **← Other options** link returns to the chooser. The email input is shared by
+  both layouts, so a typed address survives switching between them.
+
+### Where the emailed link lands
+
+The send carries the two verify-callback targets the module owns:
+
+- a **new** user — an unknown-but-admittable email, created at verify time — lands
+  on the app home, except when the inbound `?callbackUrl=` is the **`accept`**
+  page: an invitee signing in from their invitation lands back on it. The app's
+  router places them from there: a first-time member goes on to the module's
+  **`onboarding`** page;
+- a returning user lands on the inbound `?callbackUrl=` (or the app home).
+
+The new user goes home rather than straight to onboarding because the module
+cannot tell at send time whether they will hold an organization. Under
+`policy: tenant` an invitee who has not accepted holds no membership and is
+refused every protected page, onboarding included, which renders as a 404. An
+invitee who signs in from the login page rather than from their invitation is
+one: the engine marks them `_user.awaiting_organization: true` and carries their
+invitation as `_user.pending_invitation_id`, so a tenant app's router sends them
+to the public `accept` page with that id (see `apps/tenant-demo/pages/router.yaml`).
+Accepting enters the app, and the router then sends them on to onboarding.
+
+The error callback is left to the engine default — `authPages.error`, i.e. the
+login page — so an **expired or already-used link** returns to login with
+`?error=INVALID_TOKEN` (see the error table below).
+
+### The link lands on a page, not the verify endpoint
+
+The module contributes a **`magic-link` landing page** under the
+`authPages.magicLink` role, so the emailed link opens that page (carrying the
+token and the callback targets) rather than the verify endpoint. The page shows
+one **Sign in** button, and only that click verifies the token.
+
+The indirection exists because corporate mail security — Defender Safe Links,
+Proofpoint, Mimecast — fetches every link in a message at delivery, and the
+verify endpoint consumes its single-use token on the first fetch. Without the
+landing page a scanned invitation is spent before the recipient ever opens it,
+and they land on `INVALID_TOKEN`. **Nothing on the landing page verifies
+automatically** — no redirect, no on-load action — because a scanner that runs
+JavaScript would consume the token just as the endpoint fetch does.
+
+The app configures nothing: the role is contributed by the module, a role page
+is public without a session, and a deployment with `magicLink.enabled: false`
+simply never links to the page. A
+token that is genuinely expired or already used still fails at the endpoint and
+lands on the login page's retryable "Link expired" notice, as before.
+
+## Email codes: `auth.emailOTP.enabled`
+
+Set `auth.emailOTP.enabled: true` alongside magic link and the one send produces
+**one email carrying both the link and a short code**. The "check your email"
+render on login (and signup) then also offers a code box and a **Sign in with
+code** button, for the reader whose mail client strips the link, who is reading
+mail on another device, or who simply prefers typing six digits.
+
+```yaml
+auth:
+  magicLink:
+    enabled: true
+  emailOTP:
+    enabled: true # otpLength, expiresIn and allowedAttempts have engine defaults
+```
+
+There is no second send affordance: **Resend link** re-sends the same combined
+email, and the code follows the link's fate — a fresh send invalidates the
+previous code. A code that is wrong or expired surfaces as a message on the
+same screen, leaving the code box and the resend in place. A 2FA-enrolled user
+who signs in with a code is routed to the two-factor challenge exactly as the
+password and link paths are.
+
+The code also rescues an **expired or already-used link**. A link spent before
+the reader opened it (a mail scanner, a second click) lands on the login page
+with `?error=INVALID_TOKEN`, but the code in the same email is still valid. With
+`emailOTP` on, that render shows the email input, a **Code from the email** box
+and **Sign in with code**, with **Email me a new link** as the secondary action,
+so the reader types the code instead of waiting for another email.
+
+Enabling `emailOTP` without `magicLink` is not a shape this module renders — the
+code box lives on the link-sent render, which only the magic-link send reaches.
+
+## Passwordless-primary: sign-up collapses into sign-in
+
+When `emailAndPassword.enabled` is **false** and `magicLink.enabled` is **true**,
+the deployment is _passwordless_: the login page renders **email-only** — no
+password field, no "Forgot?" link — with the magic-link send as the primary action
+under the email. There is a single email → link action for everyone: a known user
+signs in, an unknown-but-admittable email is created at verify time and routed to
+onboarding. So **sign-up collapses into sign-in**, with these consumer-observable
+consequences:
+
+- **There is no `/signup` route.** The signup page is assembled only when
+  `emailAndPassword.enabled` is true, so a passwordless build ships no `/signup`.
+- **The app must repoint the `signUp` auth-page role at login.** The module
+  declares a static `authPages.signUp: signup`. This one role cannot be gated
+  module-side: an `auth:` block can't read `_build.authConfig` — it would be
+  reading the very auth-config projection that `authPages` is itself part of, a
+  self-reference — so the role stays a fixed page id the build always emits.
+  A passwordless deployment **must** therefore set `auth.authPages.signUp: login`
+  in its own app config (app config wins per role). Omit it and the `signUp` role
+  points at a page that was never built and **404s at runtime** — the build does
+  not catch this.
+
+A **mixed** deployment (password _and_ magic-link) is the other case: `/signup`
+**is** built, and its form view is the same **method chooser** as `/login` — a
+**Use a password** button plus the magic-link send (and any OAuth below the "or"
+divider), with the password registration field revealed on demand.
+
+> Passwordless is the migration path for a formerly-passwordless (v0.x
+> email-link) deployment. See
+> [Migrating from the v0.x surface](../how-to/migration.md).
+
+## Error handling splits by method
+
+Sign-in errors arrive by two routes, and the page handles both through **one
+error-code → message table**:
+
+- **Password** sign-in returns errors inline on the `Login` call — the page maps
+  the code to a friendly message in place.
+- **OAuth and magic-link** can't return inline (the user has left for the
+  provider or clicked an emailed link), so membership / verification failures
+  arrive as a **redirect to `auth.authPages.error`**, which points at the login
+  page. The page reads the code off the query string (`_url_query: error`) and
+  maps it through the same table.
+
+Mapped codes:
+
+| Code                        | Meaning                                                          | Disposition                                                             |
+| --------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `MEMBERSHIP_REQUIRED`       | The hard wall — the account exists but has no access to this app | **Terminal** — form-hiding "no access" wall                             |
+| `EMAIL_NOT_VERIFIED`        | Sign-in blocked pending email verification                       | **Terminal** — form-hiding wall                                         |
+| `INVALID_EMAIL_OR_PASSWORD` | Bad email or password                                            | Inline toast (password path only)                                       |
+| `INVALID_TOKEN`             | Magic link expired or already used                               | **Retryable** — stays on the login form, warning notice, send reachable |
+
+`INVALID_TOKEN` is the one **retryable** redirect code: unlike the terminal codes
+(which replace the form with a "no access" wall), it leaves the login form — and
+so the email input and magic-link send — in place, and raises a dedicated warning
+notice ("this link has expired or was already used — request a new one") so the
+user can send a fresh link without leaving the page. With `auth.emailOTP` on, the
+notice points at the code instead, and the form offers code entry above the new
+link send (see [Email codes](#email-codes-authemailotpenabled)).
+
+The table keeps a **catch-all `default` branch**, so any unmapped code (a provider
+error, a rate limit / 429) degrades to a generic "an error occurred" message
+rather than rendering blank. The named codes are the mapped set, not an exhaustive
+list.
+
+There is **no dedicated error page** — the login page serves the
+`authPages.error` role and renders the failure as a login-page state.
+
+## The two-factor challenge page
+
+When a 2FA-enrolled user signs in, the engine deletes the session the sign-in
+just created, sets a signed `two_factor` cookie, and `Login` (and
+`PhoneNumberVerify`) navigate to `auth.authPages.twoFactor`, carrying the inbound
+`?callbackUrl=`. The challenge page collects a TOTP code or a backup code (with an
+optional trust-device switch) and verifies through `TwoFactorVerify`, which
+restores the session; the page then navigates to the `callbackUrl` to complete
+sign-in.
+
+**The module contributes this page under the `authPages.twoFactor` role**
+(`pages/two-factor.yaml`). The engine **requires `authPages.twoFactor` whenever
+`twoFactor.enabled` is true**, and the build fails without it — so a deployment
+using this module gets a valid challenge page for free and need not supply one.
+
+The page is **public**: by the time the user reaches it there is no session to
+authenticate against — protection lives in the signed `two_factor` cookie, which
+BetterAuth validates when `TwoFactorVerify` fires (the same shape as the
+password-reset page). Reached without a valid cookie — visited directly, or the
+cookie has expired — verification fails with `INVALID_TWO_FACTOR_COOKIE`, and the
+page returns the user to sign-in rather than showing a code box that can never
+succeed.
+
+## Two-factor enrolment
+
+Enrolling an authenticator — first-time setup or replacing an existing one — is
+**password-gated**: BetterAuth requires the account password to issue a new
+authenticator secret, so the Security tile's enrolment flow collects the
+password before it will show a QR code.
+
+**Backup codes are shown once and cannot be fetched again.** BetterAuth returns
+them alongside the new TOTP secret at enable time, and the flow renders them
+only in its final step — nothing in the module fetches them again afterwards.
+Dismissing that step without saving them discards them for good. A fresh set can
+be issued at any time from **Manage → Get new backup codes** (below) without
+enrolling again.
+
+**Manage opens on a choice between two distinct operations.** For an
+already-enrolled user the Security tile's **Manage** button opens a choice
+screen, because the two reasons to open it differ in blast radius and a support
+agent must not conflate them:
+
+- **Get new backup codes** rotates _only_ the recovery codes. It is
+  password-gated and leaves the authenticator secret, the `verified` flag and
+  the account-level two-factor flag untouched — so the existing authenticator
+  keeps working, the tile stays **On**, and only the previous backup codes are
+  invalidated. This is the common case: codes are consumed one per use with no
+  remaining-count surface, so reaching zero is silent.
+- **Replace authenticator** rotates the TOTP secret, invalidating the current
+  authenticator app — see below.
+
+A first-time (not-yet-enrolled) user skips the choice screen: **Set up** opens
+straight on the password step and enrols an authenticator.
+
+**Replacing an authenticator turns two-factor off for the duration of the
+flow.** BetterAuth's enable call deletes the caller's existing authenticator
+row and writes a new one with a fresh secret, but never touches the
+account-level two-factor flag itself — so the replacement flow first switches
+two-factor off, then re-enables against the new secret, rotating the secret and
+invalidating the previous authenticator. Two-factor comes back on only once
+the user confirms a code from the new authenticator. **An abandoned
+replacement therefore leaves the account with two-factor off** until the user
+enrols again: the account stays reachable with the password alone, and the
+Security tile reads **Off** in the meantime — this is expected behaviour, not
+a lockout.
+
+## Required enrolment: `auth.twoFactor.required`
+
+When the deployment sets `auth.twoFactor.required`, the engine enforces that
+every member holds a second factor. An unenrolled caller is redirected to the
+module's contributed **`twoFactorEnrol`** page (`pages/two-factor-enrol.yaml`),
+which offers **both TOTP and passkey enrolment** — either is reachable by every
+caller, including a passwordless one (a caller with no password credential can
+still complete TOTP enrolment; BetterAuth waives the password requirement
+per-user for anyone holding none).
+
+This page is **protected**, unlike every other auth page the module ships —
+the caller reaching it already holds a valid session and is missing a factor,
+not an identity, so there is no sign-in-behind-the-wall paradox. Enrolment runs
+on the BetterAuth client actions directly — it drives `TwoFactorEnable`,
+`TwoFactorVerify`, and `PasskeyRegister` against `/api/auth/*`. It also runs one
+self-scoped Lowdefy read, `get_accounts`, for the `has_credential` signal that
+gates the password field (so a passwordless member sees no password prompt). The
+enrolment gate would normally refuse an unenrolled caller at every Lowdefy
+endpoint; the engine forwards the invoking `pageId` into request authorization, so
+a request fired from this page inherits the page's own gate exemption and is
+admitted.
+
+### `_user.two_factor_enrolled`
+
+The module reads enrolment status from exactly one field:
+`_user.two_factor_enrolled`, computed server-side by the engine as
+`two_factor_enabled || passkeyCount > 0` and exposed identically on client and
+server. **A passkey counts** — it means "holds a factor that satisfies
+`auth.twoFactor.required`," not "has TOTP configured," so a passkey-only user
+reads `two_factor_enrolled: true` and the engine's enrolment gate treats them as
+compliant. The enrolment page, however, decides its own done-state from a local
+`enrol.done` flag set by its successful enable/verify (TOTP) and passkey chains —
+not from this ambient session fact, which is refreshed only on `UpdateSession` and
+can lag the engine's per-request gate. Keying the done-state off the completion
+that just happened here avoids the fact/gate disagreement that otherwise bounces
+Continue straight back to the page.
+
+### `required` is an enrolment floor, not a per-session challenge guarantee
+
+**This caveat is stated plainly, not softened:** `auth.twoFactor.required`
+guarantees that every member has **enrolled** a qualifying factor — it does
+**not** guarantee that every session **presented** one. A user who holds both a
+passkey and a password can sign in with the password alone and is admitted
+having presented exactly one factor for that session; `required` never
+challenges them for the passkey they hold. Enrolment and per-session challenge
+are two different guarantees, and this module — and the engine underneath it
+— only makes the first one. A deployment that needs "this session presented a
+second factor," not just "this account has one on file," needs a
+session-scoped step-up guarantee that does not exist here.
+
+### Recovery composes with `required` automatically
+
+An admin's two-factor reset or passkey revoke (see
+[`user-admin` → Two-factor and passkey recovery](../../user-admin/index.md#two-factor-and-passkey-recovery))
+clears a factor, which can flip `two_factor_enrolled` back to `false`. Under
+`required`, that is enough on its own to route the person back into
+`twoFactorEnrol` on their next request — there is no separate "require
+re-enrolment" feature; it falls out of the same enrolment check running again.
+
+## Trust-device: `auth.twoFactor.trustDevice`
+
+The 2FA challenge page offers a **"Trust this device for 30 days"** switch. When a
+caller leaves it on, the engine remembers the device and skips the challenge on
+that device for the window. This is on by default.
+
+Set `auth.twoFactor.trustDevice: false` to **require a second factor on every
+login**: the switch is hidden on the challenge page and no device is trusted
+server-side. The guarantee is server-authoritative — the engine passes
+`trustDeviceMaxAge: 0` to BetterAuth, so no durable trust cookie is minted and a
+forged `trustDevice: true` from the client cannot bypass the challenge.
+
+**Migration caveat:** flipping `trustDevice` from on to off does not rewrite trust
+cookies already issued. A device that was trusted while the flag was on bypasses
+its **next** login one last time (the zero-max-age flushes the stale cookie on
+that login); every login after that is challenged. There is no immediate
+revocation of already-trusted devices — only the guarantee that no new trust is
+granted and existing trust expires on first use.

@@ -6,7 +6,7 @@ links:
       _module.pageId: view
     properties:
       title: Profile
-      icon: AiOutlineUser
+      icon: user
   - id: logout-divider
     type: MenuDivider
   - id: logout
@@ -15,5 +15,5 @@ links:
       _module.pageId: logout
     properties:
       title: Logout
-      icon: AiOutlineLogout
+      icon: logout
       danger: true

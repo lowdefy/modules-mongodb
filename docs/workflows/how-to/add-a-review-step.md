@@ -57,7 +57,7 @@ my-app:
 
 ### 2. Add per-app reviewer roles (if role-gated)
 
-Reviewer roles are strings checked against `_user.apps.{app_name}.roles`. The role names are app-local — `admin` in one app does not conflict with `admin` in another.
+Reviewer roles are strings checked against `_user.apps.{slug}.roles`. The role names are app-local — `admin` in one app does not conflict with `admin` in another.
 
 ### 3. Verify `status_map` covers the new states
 

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>user-account mocks — screens</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#222;background:#fafafa;padding:40px 24px;line-height:1.5}
+  main{max-width:720px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  p.sub{margin:0 0 24px;color:#666;font-size:14px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:28px 0 8px}
+  ul{list-style:none;margin:0;padding:0}
+  li{border-bottom:1px solid #eee}
+  a{display:flex;gap:12px;align-items:baseline;padding:10px 8px;text-decoration:none;color:#7c3aed;border-radius:6px}
+  a:hover{background:#f4ecff}
+  a .name{font-weight:600;min-width:150px}
+  a .desc{color:#666;font-size:13px;font-weight:400}
+</style>
+</head>
+<body>
+<main>
+  <h1>user-account mocks</h1>
+  <p class="sub">Pipeline-ready screen mockups. Multi-state pages carry their states as toggleable layers (pills at the top of each page).</p>
+
+  <h2>Public auth pages · auth-page component</h2>
+  <ul>
+    <li><a href="login.html"><span class="name">login</span><span class="desc">sign-in · no-access error</span></a></li>
+    <li><a href="signup.html"><span class="name">signup</span><span class="desc">form · check-email</span></a></li>
+    <li><a href="forgot-password.html"><span class="name">forgot-password</span><span class="desc">request reset link</span></a></li>
+    <li><a href="reset-password.html"><span class="name">reset-password</span><span class="desc">choose new password</span></a></li>
+    <li><a href="verify-email.html"><span class="name">verify-email</span><span class="desc">check-email · verified · expired</span></a></li>
+    <li><a href="two-factor.html"><span class="name">two-factor</span><span class="desc">authenticator code · backup code</span></a></li>
+    <li><a href="accept.html"><span class="name">accept</span><span class="desc">no-session · signed-in · already-member · expired</span></a></li>
+    <li><a href="logout.html"><span class="name">logout</span><span class="desc">signed-out confirmation</span></a></li>
+  </ul>
+
+  <h2>Protected pages</h2>
+  <ul>
+    <li><a href="onboarding.html"><span class="name">onboarding</span><span class="desc">first-login profile completion (auth-page)</span></a></li>
+    <li><a href="account.html"><span class="name">account</span><span class="desc">account view (page) · edit-profile · change-password · enrol-totp · backup-codes modals</span></a></li>
+  </ul>
+</main>
+</body>
+</html>

@@ -11,6 +11,12 @@ import GetWorkflowAction from "./GetWorkflowAction/GetWorkflowAction.js";
 
 const WorkflowAPI = {
   schema,
+  // Runtime tenant contract declaration: the engine threads the verdict from
+  // createEngineContext into every mongo/ wrapper call (reads org-scoped,
+  // writes org-stamped).
+  // Data-set journeys redirect it: it reads and writes only through
+  // databaseUri and databaseName (mongo/getMongoDb.js).
+  meta: { tenant: true, dataSet: "redirect" },
   requests: {
     StartWorkflow,
     CancelWorkflow,

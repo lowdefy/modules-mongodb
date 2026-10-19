@@ -59,6 +59,24 @@ _ref:
 
 See `apps/demo/modules/layout/vars.yaml` for a worked example.
 
+## Path placeholders
+
+Pass `path` to serve the page at a URL pattern instead of its id. Each `{name}` segment is a value the page reads with `_path_params`, and links to the page fill it with `pathParams`. A `path` that starts with a placeholder must be quoted in YAML. Leave `path` out to serve the page at its id.
+
+```yaml
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: ticket
+    path: tickets/{ticket_id}
+    title:
+      _path_params: ticket_id
+    blocks: [...]
+```
+
+`apps/demo/pages/path-params-demo/path-params-demo.yaml` is a worked example, opened from notification links.
+
 ## Per-page logo
 
 A page can show its own header logo by passing `logo` to the `page` component. It is forwarded to the page block's `logo` property, so it takes `{ src, srcMobile, alt }`, plus `breakpoint` for `header-menu` and `sider-menu` or `style` for `sidebar`. Pages that leave it unset show the public-folder logo.
@@ -80,16 +98,69 @@ _ref:
 
 The `page` component renders a shared title bar above the content. Key per-page props (passed via `_ref` vars, not module vars):
 
-| Prop               | Type    | Default | Purpose                                                                                                                                |
-| ------------------ | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `title`            | string  | `null`  | Entity name/identifier — the `<h2>` heading. Never concatenate type + name here.                                                       |
-| `type`             | string  | `null`  | Entity-type "eyebrow" rendered uppercase above the title. Convention: view → entity type; edit → `Edit {type}`; create → `New {type}`. |
-| `status`           | string  | `null`  | Status slug looked up in `status_enum`.                                                                                                |
-| `status_enum`      | object  | `null`  | Status-enum map with `{ color, borderColor, titleColor, title }` entries.                                                              |
-| `doc`              | object  | `null`  | Change-stamp doc (`{ created, updated }`) for the subtitle line.                                                                       |
-| `loading`          | boolean | `false` | Shimmer skeletons on title/subtitle/pill while data loads.                                                                             |
-| `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                               |
-| `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                  |
+| Prop               | Type    | Default | Purpose                                                                                                                                        |
+| ------------------ | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`            | string  | `null`  | Entity name/identifier — the `<h2>` heading. Never concatenate type + name here.                                                               |
+| `type`             | string  | `null`  | Entity-type "eyebrow" rendered uppercase above the title. Convention: view → entity type; edit → `Edit {type}`; create → `New {type}`.         |
+| `avatar_src`       | string  | `null`  | Image src for a 48px subject avatar left of the status pill. Wire it on pages about a person; falls back to a user icon when the src is empty. |
+| `status`           | string  | `null`  | Status slug looked up in `status_enum`.                                                                                                        |
+| `status_enum`      | object  | `null`  | Status-enum map with `{ color, borderColor, titleColor, title }` entries.                                                                      |
+| `doc`              | object  | `null`  | Change-stamp doc (`{ created, updated }`) for the subtitle line.                                                                               |
+| `loading`          | boolean | `false` | Shimmer skeletons on title/subtitle/pill while data loads.                                                                                     |
+| `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                                       |
+| `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                          |
+
+The browser-tab title is `title` when it is a string at build time. A `title` that is a runtime operator (`_request`, `_state`) is not used there, because the server writes the tab title without evaluating operators; the tab shows `type` instead when that is a string at build time, and otherwise the page id. Build `type` from `_build.*` operators (for example `_build.string.concat` over a module var) so it can serve as the tab title.
+
+## App-wide seams
+
+Five module vars splice into every page that uses the `page` component, so an app can hang app-wide behaviour in one place instead of on each page:
+
+| Var                          | Where it lands                                                                                                                                        |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `global_events.onInit`       | Appended to every page's `onInit`, after the page's own — a page's initial state is already set when these run.                                       |
+| `global_events.onMountAsync` | Appended to every page's `onMountAsync`, after the `header_extra` request fetches (their `_request:` values have resolved) and before the page's own. |
+| `global_blocks`              | Blocks appended after the consumer content on every page — for floating widgets (an assistant launcher, a help beacon, a "what's new" button).        |
+| `global_requests`            | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` they are not auto-fired on mount.                          |
+| `global_subscriptions`       | Websocket subscriptions declared on every page for `global_blocks` to use, such as a widget's live channel.                                           |
+
+`global_events.onMountAsync` is the seam for app-wide guards: an onboarding gate that redirects until the caller's organization is set up, for example, reads the header requests that have just resolved and issues a `Link` — no page opts in, and pages outside the layout (auth pages, a wizard) are exempt by construction.
+
+Lowdefy takes subscriptions only on the page root, so a page declares its own through the `page` component's `subscriptions` var. When it declares one to a websocket `global_subscriptions` also subscribes to, the page keeps its own and drops the global one, since a page may subscribe to a websocket only once.
+
+The header blocks themselves (`header_extra.blocks`) are module-wide, but a page may replace them with the `header_blocks` `_ref` var — `header_blocks: []` for a bare header, or a shorter list to keep only some of them.
+
+See `apps/demo/modules/layout/vars.yaml` for a floating "What's new" launcher wired through `global_events.onInit` + `global_blocks`, and `apps/demo/pages/user-components-demo.yaml` for a page that clears its header blocks.
+
+## Content area style
+
+The page block pads its content area `0 40px 40px 40px`. Set the `content_style` module var to change it on every page that uses the `page` component:
+
+```yaml
+- id: layout
+  source: "github:lowdefy/modules-mongodb/modules/layout@v0.36.0"
+  vars:
+    content_style:
+      padding: 0 24px 24px 24px
+```
+
+A page's own `content_style` `_ref` var is merged over the module value key by key: a page that sets `padding` replaces it, and a page that sets only `background` keeps the module padding. A `full_bleed: true` page has zero padding whatever the module value.
+
+## Auth page
+
+The `auth-page` component is the centered card shell the auth pages render on. Its
+look is set by the `auth_page` module vars, but the card width can be overridden
+per page via an `_ref` var when a page carries a wider form:
+
+```yaml
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: onboarding
+    max_width: 560 # defaults to the `auth_page.max_width` module var
+    blocks: [...]
+```
 
 ## Profile dropdown
 
@@ -116,13 +187,13 @@ Two supported shapes:
       pageId: user-account/view
       properties:
         title: Profile
-        icon: AiOutlineUser
+        icon: user
     - id: settings
       type: MenuLink
       pageId: settings/all
       properties:
         title: Settings
-        icon: AiOutlineSetting
+        icon: settings
     - id: logout-divider
       type: MenuDivider
     - id: logout
@@ -130,7 +201,7 @@ Two supported shapes:
       pageId: user-account/logout
       properties:
         title: Logout
-        icon: AiOutlineLogout
+        icon: logout
         danger: true
 ```
 

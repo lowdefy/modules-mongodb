@@ -4,16 +4,16 @@ connectionId:
   _module.connectionId: notifications-collection
 payload:
   selected_id:
-    _state: selected_id
+    _state: open_id
   app_name:
-    _module.var: app_name
+    _build.app: slug
 properties:
   disableNoMatchError: true
   filter:
     _id:
       _payload: selected_id
-    contact_id:
-      _user: id
+    $or:
+      _ref: requests/match-recipient.yaml
     created.app_name:
       _payload: app_name
   update:

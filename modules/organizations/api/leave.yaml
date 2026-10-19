@@ -1,0 +1,127 @@
+# leave: the caller leaves their ACTIVE organization, in one request. It
+# refuses the caller's only membership and the only owner, leaves through the
+# server-side LeaveOrganization step, and logs org-member-left only once the
+# leave went through, so a leave the engine refuses logs nothing. The event
+# names the organization it left explicitly, since the caller is no longer in
+# it. The page then moves the session to another organization.
+#
+# Payload: {}
+# Returns { success: true }, or { refused: { rule, message } } with rule
+# `not_a_member`, `last_organization`, `only_owner` or `leave_refused`.
+id: leave
+type: Api
+routine:
+  - id: read_self
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-members
+    properties:
+      pipeline:
+        _ref:
+          path: components/member-join.yaml
+          vars:
+            match:
+              user_id:
+                _user: id
+
+  - :if:
+      _eq:
+        - _step: read_self.0
+        - null
+    :then:
+      - :return:
+          refused:
+            rule: not_a_member
+            message:
+              _build.string.concat:
+                - 'You are not a member of this '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - .
+
+  - _ref: requests/get_leave_memberships.yaml
+
+  - :if:
+      _lte:
+        - _array.length:
+            _if_none:
+              - _step: get_leave_memberships
+              - []
+        - 1
+    :then:
+      - :return:
+          refused:
+            rule: last_organization
+            message:
+              _build.string.concat:
+                - 'This is your only '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - '. Create or join another before you leave it.'
+
+  - _ref: requests/get_owner_count.yaml
+
+  - :if:
+      _and:
+        - _eq:
+            - _ref:
+                path: components/authority_rank.yaml
+                vars:
+                  role:
+                    _step: read_self.0.org_role
+            - 3
+        - _lte:
+            - _if_none:
+                - _step: get_owner_count.0.count
+                - 0
+            - 1
+    :then:
+      - :return:
+          refused:
+            rule: only_owner
+            message:
+              _build.string.concat:
+                - 'You are the only owner. Hand ownership to someone else before you leave this '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - .
+
+  - :try:
+      - id: leave_organization
+        type: LeaveOrganization
+        properties:
+          organizationId:
+            _user: organization_id
+    :catch:
+      - :return:
+          refused:
+            rule: leave_refused
+            message:
+              _error: message
+
+  # The leave has happened: a failed log must not report it as refused.
+  - :try:
+      - _ref:
+          path: api/parts/log-event.yaml
+          vars:
+            type: org-member-left
+            organization_id:
+              _user: organization_id
+            subject:
+              user_id:
+                _user: id
+              email:
+                _step: read_self.0.email
+              name:
+                _step: read_self.0.name
+              member_id:
+                _step: read_self.0.member_id
+    :catch:
+      - :log:
+          _string.concat:
+            - 'leave: the org-member-left event was not saved for '
+            - _user: id
+        :level: warn
+
+  - :return:
+      success: true

@@ -15,9 +15,9 @@ Charts, saved reports, and CSV exports ride the same engine: their queries are p
 
 ## Requirements
 
-**A Lowdefy build whose server passes `urlQuery` into page config.** The `report` page is a `Dynamic` block: it resolves each viewer's report through `resolve-report`, which reads the report id as `_payload: urlQuery.report_id`. That only works where the server threads the URL query into `getPageConfig` — it does so on the Vite/Hono line (`6.0.0`, and the experimental builds before it), and not on the `5.5.1` line, which calls `getPageConfig(context, { pageId })` with no `urlQuery` at all.
+**Lowdefy 7.** The `report` page is a `Dynamic` block: it resolves each viewer's report through `resolve-report`, which reads the report id as `_payload: urlQuery.report_id` from the URL query the server passes into page config.
 
-On a build without it, every report page resolves as though no report id had been supplied and renders the not-found fallback. Nothing else degrades: the agent still answers questions, `generate_report` still persists specs, and the reports list still shows them — the saved report simply cannot be opened. Only this page is affected, because `chat` reads its deep-link parameter with the client-side `_url_query` operator, which every build supports.
+**The report policy in the app's `policies.dynamicBlocks`.** The `report` page renders blocks compiled from a stored, AI-authored spec, and a `Dynamic` block renders such blocks only under a [dynamic blocks policy](https://docs.lowdefy.com/dynamic-page-content). The module exports the policy as the `report-policy` component; Lowdefy reads policies only from `lowdefy.yaml`, so the app lists it (see the Quickstart). Without it the build fails, because the `report` page names a policy that does not exist.
 
 **MongoDB ≥ 5.0** for the database behind `REPORTING_MONGODB_URI` — see [minimum server version](../shared/secrets.md#minimum-server-version). The reporting-data database is unaffected.
 
@@ -40,7 +40,7 @@ Surfaces exported as pages:
 | `reports-deleted` | Recovery — [soft-deleted](../shared/soft-delete.md) reports with their delete stamp and one-click restore to private; reached from the reports-list footer                                                                                                                                                                                                                                                                                                                                                                                              |
 | `report`          | Report renderer (`Dynamic` block over `resolve-report`) — a provenance header (who made it, last edited, data-as-of, and the publisher when shared), per-section CSV export on chart and table sections, filters co-located inline above their first bound section, owner-only Continue-in-chat and broken-section recoveries (Fix in chat / Drop this section), a distinct withheld Alert for role-denied sections, and, with `ai_summary: true`, an on-demand [AI summary](concepts/ai-summary.md) drawer that reads the report as currently filtered |
 
-Reports are created from the chat surface two ways: the agent's `generate_report` tool persists a spec and returns its URL, or the user ticks result cards and confirms a sheet — see [Save as report](how-to/save-as-report.md).
+Reports are created from the chat surface two ways: the agent's `generate_report` tool persists a spec, which then shows in the panel's "Reports from this chat" list, or the user ticks result cards and confirms a sheet — see [Save as report](how-to/save-as-report.md).
 
 ## Quickstart
 
@@ -52,6 +52,12 @@ modules:
     vars:
       catalog:
         _ref: modules/ai-reporting/catalog.yaml
+
+policies:
+  dynamicBlocks:
+    - _ref:
+        module: ai-reporting
+        component: report-policy
 ```
 
 `catalog` is required — it is the data dictionary the agent reasons over, the allowlist the engine validates against, and the confidentiality/authorization boundary. See [The collections catalog](reference/catalog.md) for its shape and semantics, and [Vars](reference/vars.md) for the optional collection-name and model overrides.

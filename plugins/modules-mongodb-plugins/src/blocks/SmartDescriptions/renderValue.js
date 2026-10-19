@@ -2,7 +2,7 @@ import React from "react";
 import { getFieldTypeConfig } from "./fieldTypes/getFieldTypeConfig.js";
 import detectFieldType from "./fieldTypes/detectFieldType.js";
 
-function renderValue(item, Icon, methods, properties) {
+function renderValue(item, Icon, Link, methods, properties) {
   const { value, fieldType, isArray, options } = item;
 
   // Null/empty handling for fields mode
@@ -31,6 +31,7 @@ function renderValue(item, Icon, methods, properties) {
         options: null,
       },
       Icon,
+      Link,
       methods,
       properties,
     );
@@ -43,6 +44,7 @@ function renderValue(item, Icon, methods, properties) {
       return config.renderArray({
         value,
         Icon,
+        Link,
         methods,
         properties,
         fieldType,
@@ -57,6 +59,7 @@ function renderValue(item, Icon, methods, properties) {
         return config.render({
           value: value[0],
           Icon,
+          Link,
           methods,
           properties,
           fieldType,
@@ -72,6 +75,7 @@ function renderValue(item, Icon, methods, properties) {
               {config.render({
                 value: v,
                 Icon,
+                Link,
                 methods,
                 properties,
                 fieldType,
@@ -90,6 +94,7 @@ function renderValue(item, Icon, methods, properties) {
     return config.render({
       value,
       Icon,
+      Link,
       methods,
       properties,
       fieldType,

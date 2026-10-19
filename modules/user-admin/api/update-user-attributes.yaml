@@ -1,0 +1,85 @@
+# update-user-attributes: global/user attributes on the `user` row via
+# UpdateUserAttributes (applied across every app, design Decision 3). Role-gated
+# app-side; the step declares the permission it needs and the engine floors it
+# against the caller's member row in the organization the step names. Audit event is
+# the final step.
+#
+# `organizationId` names the organization the floor authorizes in. The write reaches
+# a deployment-wide `user` row, so the floor asks whether the caller administers
+# THAT organization and whether the target holds a member row in it; an absent one
+# falls back to the APP's pinned organization, which refuses an administrator of
+# any other.
+#
+# The audit event records the user row's `attributes` read before and after the
+# write.
+#
+# Payload: { user_id, user_attributes (object)?, target_name?, target_email? }
+id: update-user-attributes
+type: Api
+routine:
+  - _ref:
+      path: api/steps/read_user_attributes.yaml
+      vars:
+        id: attributes_before
+        user_id:
+          _payload: user_id
+  - id: set_user_attributes
+    type: UpdateUserAttributes
+    properties:
+      userId:
+        _payload: user_id
+      organizationId:
+        _module.var: org_slug
+      attributes:
+        _if_none:
+          - _payload: user_attributes
+          - {}
+  - _ref:
+      path: api/steps/read_user_attributes.yaml
+      vars:
+        id: attributes_after
+        user_id:
+          _payload: user_id
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: user-attributes-updated
+        display:
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.user-attributes-updated
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: user-attributes-updated
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        name:
+                          _payload: target_name
+                        email:
+                          _payload: target_email
+                description: null
+        references:
+          user_ids:
+            - _payload: user_id
+        metadata:
+          before:
+            _if_none:
+              - _step: attributes_before.attributes
+              - {}
+          after:
+            _if_none:
+              - _step: attributes_after.attributes
+              - {}
+  - :return:
+      success: true

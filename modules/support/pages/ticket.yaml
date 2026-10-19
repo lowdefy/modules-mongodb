@@ -1,0 +1,68 @@
+# One ticket: its header, the conversation and the reply composer. Addressed by
+# path, /{entry id}/{ticket key}, so the key is in the link a person copies, a
+# notification carries and the agent prints (api/parts/ticket-url.yaml builds
+# the same address). The key is read as a ticket id too, so a link by id works.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: ticket
+    path: "{ticket_key}"
+    title: Ticket
+    hide_title: true
+    breadcrumbs:
+      - label: My tickets
+        pageId:
+          _module.pageId: support
+      - label:
+          _path_params: ticket_key
+    # The same live thread the panel uses; the layout keeps one when the app
+    # also wires it in global_subscriptions.
+    subscriptions:
+      _ref:
+        path: components/subscriptions.yaml
+    requests:
+      - _ref:
+          path: requests/upload_policy.yaml
+          vars:
+            block_id: support_page_reply_files
+    events:
+      onInit:
+        - id: support_page_init
+          type: SetState
+          params:
+            support_page_ticket:
+              _path_params: ticket_key
+            support_page_thread: null
+            support_page_thread_error: null
+            support_page_thread_loading: false
+            support_page_posting: false
+            support_page_reply_error: null
+            support_page_reply.message: null
+            support_page_reply.files: []
+      onMount:
+        _ref:
+          path: actions/open_thread.yaml.njk
+          vars:
+            prefix: support_page
+    blocks:
+      - id: support_page_column
+        type: Box
+        style:
+          maxWidth: 880
+          width: 100%
+          margin: 0 auto
+        layout:
+          gap: 16
+        blocks:
+          - _ref: components/ticket/ticket_header.yaml
+          - id: support_page_thread_card
+            type: Card
+            blocks:
+              - _ref:
+                  path: components/tickets/thread.yaml.njk
+                  vars:
+                    prefix: support_page
+                    back: false
+                    no_header: true
+                    max_height: 60vh

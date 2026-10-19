@@ -6,7 +6,7 @@
 #
 # Vars (passed via `_ref: { module: contacts, component: role-contact-selector, vars }`):
 #   field_id    (string, default "contact") — block id / state key.
-#   roles       (array, required) — role values matched against apps.<app_name>.roles.
+#   roles       (array, required) — role values matched against apps.<slug>.roles.
 #   mode        (string, default "Selector") — "Selector" or "MultipleSelector".
 #   title       (string) — field title; defaults to the module `label` var.
 #   placeholder (string) — select placeholder; defaults to "Select <title>".

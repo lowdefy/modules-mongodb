@@ -27,7 +27,7 @@ function makeAction(overrides = {}) {
   };
 }
 
-const connection = { app_name: "demo" };
+const connection = { slug: "demo" };
 
 function dispatch(overrides = {}) {
   return planEventDispatch({
@@ -144,7 +144,7 @@ test("action-event context: display title renders action.title and the verb", ()
     plannedActionDoc: action,
     status_after: "done",
   });
-  const title = doc.display[connection.app_name].title;
+  const title = doc.display[connection.slug].title;
   expect(title).toContain("Alice");
   expect(title).toContain("Qualify");
 });
@@ -154,7 +154,7 @@ test("workflow-lifecycle context: display title renders workflow.title (no actio
     handlerType: "StartWorkflow",
     allTouchedActionDocs: [makeAction()],
   });
-  const title = doc.display[connection.app_name].title;
+  const title = doc.display[connection.slug].title;
   expect(title).toContain("Alice");
   expect(title).toContain("Onboarding");
   // action.title must NOT appear (lifecycle context has no action)
@@ -170,7 +170,7 @@ test("tracker-mirror uses action-event context (action.title visible in render)"
     status_after: "done",
     allTouchedActionDocs: [action],
   });
-  const title = doc.display[connection.app_name].title;
+  const title = doc.display[connection.slug].title;
   expect(title).toBe("My Tracker completed");
 });
 
@@ -277,21 +277,21 @@ test("tracker-mirror default titles are system-driven (no user attribution)", ()
   expect(active.display.demo.title).not.toContain("Alice");
 });
 
-// ── app_name keyed display ────────────────────────────────────────────────────
+// ── slug keyed display ────────────────────────────────────────────────────────
 
-test("display is keyed by connection.app_name", () => {
-  const { doc } = dispatch({ connection: { app_name: "my-app" } });
+test("display is keyed by connection.slug", () => {
+  const { doc } = dispatch({ connection: { slug: "my-app" } });
   expect(doc.display).toHaveProperty("my-app");
   expect(doc.display).not.toHaveProperty("demo");
 });
 
-test("throws WorkflowEngineError when app_name is missing", () => {
-  expect(() => dispatch({ connection: {} })).toThrow(/app_name is required/);
+test("throws WorkflowEngineError when slug is missing", () => {
+  expect(() => dispatch({ connection: {} })).toThrow(/slug is required/);
 });
 
-test("throws WorkflowEngineError when app_name is empty string", () => {
-  expect(() => dispatch({ connection: { app_name: "" } })).toThrow(
-    /app_name is required/,
+test("throws WorkflowEngineError when slug is empty string", () => {
+  expect(() => dispatch({ connection: { slug: "" } })).toThrow(
+    /slug is required/,
   );
 });
 
@@ -742,7 +742,7 @@ test("Submit: internal honoured when connection enabled (submitting bucket only)
     status_after: "done",
     comment: { html: "<p>note</p>", text: "note" },
     comment_visibility: "internal",
-    connection: { app_name: "demo", enable_internal_comments: true },
+    connection: { slug: "demo", enable_internal_comments: true },
     yamlEventOverrides: { display: { portal: { title: "Quote updated" } } },
   });
   expect(doc.display.demo.description).toBe("<p>note</p>");
@@ -755,7 +755,7 @@ test("Submit: internal coerced to shared when connection NOT enabled", () => {
     status_after: "done",
     comment: { html: "<p>note</p>", text: "note" },
     comment_visibility: "internal",
-    connection: { app_name: "demo" },
+    connection: { slug: "demo" },
     yamlEventOverrides: { display: { portal: { title: "Quote updated" } } },
   });
   expect(doc.display.demo.description).toBe("<p>note</p>");

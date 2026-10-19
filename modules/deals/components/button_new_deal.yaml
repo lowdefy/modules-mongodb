@@ -13,7 +13,7 @@ properties:
     _string.concat:
       - "New "
       - _module.var: label
-  icon: AiOutlinePlusCircle
+  icon: add-circle
   type: primary
   # null, not `default` — a literal size would override an ancestor SizeContext.
   size:

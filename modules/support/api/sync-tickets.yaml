@@ -1,0 +1,107 @@
+id: sync-tickets
+type: Api
+description: >-
+  Fetches the session user's tickets from Pelican, the ones the team logged for
+  them included, and fetches in full each one the copy lacks or holds at a lower
+  version. Returns the user's stored tickets newest first. Opening My tickets
+  calls it; normally every row is current, so it makes one call to Pelican.
+routine:
+  - _ref: api/parts/require-user.yaml
+  - _ref:
+      path: api/parts/call-pelican.yaml
+      vars:
+        step: list_tickets
+        endpoint: support-list-tickets
+        body:
+          user:
+            _module.var: user
+  - :set_state:
+      sync_error:
+        _state: pelican_error
+  - :if:
+      _eq:
+        - _state: pelican_error
+        - null
+    :then:
+      - :set_state:
+          listed:
+            _state: pelican_answer.data
+      - id: stored_versions
+        type: MongoDBFind
+        connectionId:
+          _module.connectionId: support-tickets
+        properties:
+          query:
+            user_id:
+              _user: id
+          options:
+            projection:
+              view.version: 1
+      - :set_state:
+          stored_versions:
+            _step: stored_versions
+      - :set_state:
+          stale_ids:
+            _js: |
+              const stored = new Map(
+                (state('stored_versions') || []).map((row) => [
+                  row._id,
+                  (row.view && row.view.version) || 0,
+                ]),
+              );
+              return (state('listed') || [])
+                .filter((view) => !stored.has(view.id) || stored.get(view.id) < view.version)
+                .map((view) => view.id);
+      - ':for': stale_id
+        ':in':
+          _state: stale_ids
+        ':do':
+          - _ref:
+              path: api/parts/call-pelican.yaml
+              vars:
+                step: get_ticket
+                endpoint: support-get-ticket
+                body:
+                  user:
+                    _module.var: user
+                  ticket:
+                    _item: stale_id
+                loop: true
+          - :if:
+              _eq:
+                - _state: pelican_error
+                - null
+            :then:
+              - _ref:
+                  path: api/parts/write-view.yaml
+                  vars:
+                    view:
+                      _state: pelican_answer.data
+                    user_id:
+                      _user: id
+                    loop: true
+            :else:
+              - :set_state:
+                  sync_error:
+                    _state: pelican_error
+  - id: tickets
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: support-tickets
+    properties:
+      pipeline:
+        - $match:
+            user_id:
+              _user: id
+        - $sort:
+            view.updated: -1
+        - _ref: api/stages/ticket_summary.yaml
+  - :return:
+      ok:
+        _eq:
+          - _state: sync_error
+          - null
+      error:
+        _state: sync_error
+      tickets:
+        _step: tickets

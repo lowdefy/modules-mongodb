@@ -1,69 +1,122 @@
+# Account workspace (design Decision 5), the signed-in self-service console that
+# replaces the old view + edit pages. Two-column layout: main (Profile, Security)
+# + side (Active sessions, Linked accounts), each tile editing through its own
+# modal and its own pathway.
+#
+# Wiring (task 18): four native reads, all filtered to the caller (`_user.id`, a
+# plain-string id), fetched onMount and re-fetched after each section edit
+# (actions/refetch_account.yaml):
+#   get_account  : users ⋈ user-contacts: profile (display + seed), email,
+#                  email_verified, two_factor_enabled
+#   get_sessions : user-sessions (token projected out)
+#   get_accounts : user-accounts: linked list + credential-presence gate (one
+#                  query, Decision 5)
+#   get_passkeys : user-passkeys: list + per-passkey delete
+# With `mcp_tokens: true` the side column adds an Access tokens tile, fed by
+# get_mcp_tokens (user-mcp-tokens, active organization, hash never selected) and
+# re-fetched by its own actions/refetch_mcp_tokens.yaml.
+# Section writes go through their own pathways: profile via the update-profile
+# API; every security/session action via a BetterAuth client action on the
+# caller's session (Decision 5).
+#
+# Open question (design.md) resolved: Security is ONE tile (sign-in rows:
+# password, 2FA, passkeys, verified badge), with Active sessions and Linked
+# accounts as their own tiles, matching the mock. Write pathways are fixed either
+# way (Decision 5).
 _ref:
   module: layout
   component: page
   vars:
     id: view
-    title: Profile
-    content_width: 600
-    breadcrumbs:
-      - home: true
-        icon: AiOutlineHome
-      - label: Profile
     requests:
-      - id: get_my_profile
-        type: MongoDBFindOne
-        connectionId:
-          _module.connectionId: user-contacts-collection
-        properties:
-          query:
-            sub:
-              _user: sub
+      _build.array.concat:
+        - - _ref: requests/get_account.yaml
+          - _ref: requests/get_sessions.yaml
+          - _ref: requests/get_accounts.yaml
+          - _ref: requests/get_passkeys.yaml
+        - _build.if:
+            test:
+              _module.var: mcp_tokens
+            then:
+              - _ref: requests/get_mcp_tokens.yaml
+            else: []
     events:
       onMount:
-        - id: get_my_profile
-          type: Request
-          params: get_my_profile
+        _build.array.concat:
+          - _ref: actions/refetch_account.yaml
+          - _build.if:
+              test:
+                _module.var: mcp_tokens
+              then:
+                _ref: actions/refetch_mcp_tokens.yaml
+              else: []
+    # Title-block: avatar + "ACCOUNT" eyebrow + the caller's own name. `title`
+    # carries the entity name only. The page's own label is the eyebrow's job
+    # (docs/layout/index.md). Edits are section-scoped (Decision 5), so the
+    # page-actions slot stays empty.
+    type: Account
+    title:
+      _request: get_account.0.name
+    avatar_src:
+      _request: get_account.0.profile.picture
+    loading:
+      _not:
+        _request: get_account
+    breadcrumbs:
+      - home: true
+        icon: home
+      - label: Account
     blocks:
       _build.array.concat:
-        - - id: card
-            type: Card
+        - - id: account_grid
+            type: Box
             layout:
               gap: 16
+              align: top
+              selfAlign: top
             blocks:
-              - _ref: components/view_profile.yaml
-        - _module.var: components.main_slots
-        - - _ref:
-              module: layout
-              component: floating-actions
-              vars:
-                actions:
-                  - id: logout_button
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    properties:
-                      title: Logout
-                      icon: AiOutlineLogout
-                      type: default
-                    events:
-                      onClick:
-                        - id: logout
-                          type: Logout
-                          params:
-                            callbackUrl:
-                              pageId:
-                                _module.pageId: logout
-                  - id: edit_profile_button
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    properties:
-                      title: Edit Profile
-                      icon: AiOutlineEdit
-                    events:
-                      onClick:
-                        - id: edit_profile_link
-                          type: Link
-                          params:
-                            pageId:
-                              _module.pageId: edit
+              - id: account_main_col
+                type: Box
+                layout:
+                  span: 14
+                  sm:
+                    span: 24
+                  gap: 16
+                blocks:
+                  _build.array.concat:
+                    - - _ref: components/view/tile_profile.yaml
+                      - _ref: components/view/tile_security.yaml
+                    # Consumer extension surface (Decision 8), extra main-column tiles.
+                    - _module.var: components.main_slots
+              - id: account_side_col
+                type: Box
+                layout:
+                  span: 10
+                  sm:
+                    span: 24
+                  gap: 16
+                blocks:
+                  _build.array.concat:
+                    - - _ref: components/view/tile_sessions.yaml
+                    - _build.if:
+                        test:
+                          _module.var: mcp_tokens
+                        then:
+                          - _ref: components/view/tile_mcp_tokens.yaml
+                        else: []
+                    - - _ref: components/view/tile_linked_accounts.yaml
+          # ── Interaction-state layers: modals (top-level siblings of the grid,
+          #    opened via CallMethod toggleOpen from their triggers) ──
+          - _ref: components/view/modal_profile.yaml
+          - _ref: components/view/modal_changepw.yaml
+          - _ref: components/view/modal_rename_passkey.yaml
+          - _ref: components/view/modal_enroltotp.yaml
+          - _ref: components/view/modal_disable2fa.yaml
+        # Access tokens (mcp_tokens): create-token form and switch-off confirm.
+        - _build.if:
+            test:
+              _module.var: mcp_tokens
+            then:
+              - _ref: components/view/modal_mcp_token.yaml
+              - _ref: components/view/modal_revoke_mcp_token.yaml
+            else: []

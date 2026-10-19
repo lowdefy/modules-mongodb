@@ -1,11 +1,6 @@
 /**
- * Server-side verb/link/button policy (Part 46 task 2).
- *
- * Consolidates the logic that was previously split across four surfaces:
- *   - `modules/shared/workflow/visible_verbs.yaml` (MongoDB $addFields stage)
- *   - `modules/shared/workflow/resolve_action_link.yaml` (MongoDB $addFields stage)
- *   - `modules/workflows/components/action_role_check.yaml` (client _js mirror)
- *   - `modules/workflows/enums/button_signal_sources.yaml` (source-stage table)
+ * Server-side verb/link/button policy — the single source of truth for action
+ * access (verbs, links, button visibility).
  *
  * Exports:
  *   - `computeAllowed`   — four-key `{ view, edit, review, error }` access bag
@@ -46,13 +41,13 @@ export const BUTTON_SIGNAL_SOURCES = {
  *
  * Ported from `visible_verbs.yaml` and `action_role_check.yaml`
  * (`computeActionAllowed`). For each verb, applies `gateAllows` against the
- * gate value in `access[app_name][verb]` and the user's role array.
+ * gate value in `access[slug][verb]` and the user's role array.
  *
- * @param {{ access?: object, app_name: string, userRoles?: string[] }}
+ * @param {{ access?: object, slug: string, userRoles?: string[] }}
  * @returns {{ view: boolean, edit: boolean, review: boolean, error: boolean }}
  */
-export function computeAllowed({ access, app_name, userRoles }) {
-  const appAccess = (access && access[app_name]) || {};
+export function computeAllowed({ access, slug, userRoles }) {
+  const appAccess = (access && access[slug]) || {};
   const roles = Array.isArray(userRoles) ? userRoles : [];
   return {
     view: gateAllows(appAccess.view, roles),

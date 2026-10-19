@@ -129,7 +129,7 @@ function makeCallApi({ failOn = null, calls = [] } = {}) {
 
 function buildContext({
   request,
-  app_name = "test-app",
+  slug = "test-app",
   user = {
     id: "U1",
     profile: { name: "Test User" },
@@ -150,7 +150,7 @@ function buildContext({
       entry_id: "workflows",
       workflowsCollection: "workflows",
       actionsCollection: "actions",
-      app_name,
+      slug,
       endpoints: {
         new_event: "events/new-event",
         send_notification: "notifications/send-notification",
@@ -378,7 +378,7 @@ describe("seeded drafts", () => {
     // Regression: status_map is stripped from workflowsConfig (Part 48) and
     // arrives per-request on params.render_config. Start must apply the same
     // merge loadWorkflowState runs, or seeded drafts land with no
-    // `<app_name>.message` and the entity/timeline surfaces render blank.
+    // `<slug>.message` and the entity/timeline surfaces render blank.
     await StartWorkflow(
       buildContext({
         request: {

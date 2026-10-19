@@ -1,0 +1,31 @@
+# resolve-report's response, shared by its two :return points (content the
+# policy passed on the first check, or the recompile after it refused some
+# sections).
+#
+# Vars:
+#   blocks — the `_step: <id>.blocks` read of the ValidateDynamic step that
+#            passed. Only a passing step's blocks may be returned as config.
+# The page renders owner-only actions from this; the resolver is the only
+# party that knows it.
+is_owner:
+  _eq:
+    - _step: load_report.owner.user_id
+    - _user: id
+# Provenance for the page: who made it, last edited (the document's
+# `updated`), and when these numbers were computed (this resolve, not the
+# document). conversation_id may be absent — passed as-is so a missing
+# chat link stays missing rather than becoming an empty one.
+created:
+  _step: load_report.created
+updated:
+  _step: load_report.updated
+owner:
+  _step: load_report.owner
+visibility:
+  _step: load_report.visibility
+conversation_id:
+  _step: load_report.conversation_id
+resolvedAt:
+  _date: now
+blocks:
+  _var: blocks

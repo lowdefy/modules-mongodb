@@ -1,0 +1,217 @@
+# LAYER: invitation-details form (state_form), serves the unknown (blank) AND
+# existing-contact (prefilled) outcomes (design Decision 7). Blank vs prefilled is
+# seeded state (task 17); the form structure is identical, so it is one layer.
+# Submit = ensure the contact → InviteMember (app roles + organization tier +
+# member attributes), via the invite routine (see invite_send_btn).
+#
+# Wrapper Box carries the frame id + the visibility condition; the shared card
+# renders the form body. Roles come from the app role catalog (auth.roles,
+# Decision 8); member attributes from the consumer `fields.member_attributes` var.
+id: state_form
+type: Box
+visible:
+  _or:
+    - _eq:
+        - _state: invite_state
+        - unknown
+    - _eq:
+        - _state: invite_state
+        - existing
+blocks:
+  - _ref:
+      module: layout
+      component: card
+      vars:
+        title: Invitation details
+        # `fields.member_attributes` resolves to an ARRAY of consumer blocks, so the
+        # built-ins concat around it (flattened), the same pattern as modal_access.
+        blocks:
+          _build.array.concat:
+            # Profile capture: canonical form_core (first/last, both required, +
+            # optional honorific) plus the consumer `fields.profile` blocks,
+            # identical to modal_profile. Fields bind state.profile.*; prefilled
+            # from the resolved contact for the existing-contact outcome
+            # (state.profile.* seeded by the check's apply_resolution), blank for
+            # unknown. Persisted on submit via the invite routine's write-profile
+            # splice; profile.name is derived (given + family), so no free-text
+            # full_name field.
+            - _ref:
+                path: ../shared/profile/form_core.yaml
+                vars:
+                  show_honorific:
+                    _module.var: fields.show_honorific
+            - _module.var: fields.profile
+              # Roles: options/labels/descriptions from the app role catalog
+              # (_build.authConfig.roles, Decision 8): the option label renders the
+              # role label (primary) + description (subtitle); the selected tag stays
+              # compact (tag.title). See the options block below.
+            - - id: roles
+                type: MultipleSelector
+                layout:
+                  span: 24
+                properties:
+                  title: Roles
+                  placeholder: Select roles…
+                  renderTags: true
+                  # Options from the app role catalog (design Decision 8): value=id,
+                  # a rich label (name + description subtitle), filterString for
+                  # search, and a compact tag for the selected chip.
+                  options:
+                    _build.array.map:
+                      on:
+                        _build.authConfig: roles
+                      callback:
+                        _build.function:
+                          value:
+                            __build.args: 0.id
+                          filterString:
+                            __build.string.concat:
+                              - __build.args: 0.label
+                              - " "
+                              - __build.if_none:
+                                  - __build.args: 0.description
+                                  - ""
+                          tag:
+                            title:
+                              __build.args: 0.label
+                            color: purple
+                          label:
+                            __build.string.concat:
+                              - "<div>"
+                              - __build.args: 0.label
+                              - "</div>"
+                              - __build.if:
+                                  test:
+                                    __build.ne:
+                                      - __build.args: 0.description
+                                      - null
+                                  then:
+                                    __build.string.concat:
+                                      - '<div style="font-size:12px; color:var(--ant-color-text-tertiary); line-height:1.4;">'
+                                      - __build.args: 0.description
+                                      - "</div>"
+                                  else: ""
+            # Organization authority: behind the `org_authority` var, and a
+            # different authority from the app roles above: an app role decides
+            # which UI the invitee is shown, this decides whether they may
+            # administer the organization. The email resolve seeds it to `member`,
+            # the no-authority value, so a form nobody touches invites app roles
+            # and no authority; the field exists for the invitation that needs the
+            # opposite: organization `admin` and no app roles at all.
+            #
+            # Under the `tenant` organizations policy an organization `admin` or
+            # `owner` can already invite with arbitrary app roles through this
+            # endpoint. That is intended: the invitation lands inside the
+            # organization the caller administers and nowhere else.
+            - _build.if:
+                test:
+                  _module.var: org_authority
+                then:
+                  - id: org_role
+                    type: Selector
+                    required: true
+                    layout:
+                      span: 24
+                    properties:
+                      title: Organisation authority
+                      # Binary: admin (may administer the organization) or member
+                      # (no authority). `owner` is not offered — it is the protected
+                      # creator tier, capability-identical to admin, never minted
+                      # from an invite. "No admin access" is plainer than
+                      # BetterAuth's "member", where the word reads as a status
+                      # rather than an absence of authority; there is no empty tier
+                      # to invite with.
+                      options:
+                        - value: admin
+                          label: Admin
+                        - value: member
+                          label: No admin access
+                else: []
+            # Member attributes: group label above the consumer fields.
+            - - id: member_attributes_label
+                type: Html
+                properties:
+                  html: >-
+                    <div style="font-size:13px; font-weight:500;
+                    color:var(--ant-color-text-secondary);">Member attributes</div>
+            # This app's authorization parameters (member row), from the consumer
+            # `fields.member_attributes` blocks (bind state.member_attributes.*).
+            - _module.var: fields.member_attributes
+            # Captured now: they must hold from the first session (Decision 7).
+            - - id: member_attributes_hint
+                type: Html
+                properties:
+                  html: >-
+                    <div style="font-size:12px; color:var(--ant-color-text-tertiary);">
+                    Applied from the user's first session.</div>
+              # Form actions: right-aligned, inside the card body (matches the mock).
+              - id: form_actions
+                type: Box
+                layout:
+                  gap: 8
+                  justify: end
+                blocks:
+                  - id: invite_cancel_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Cancel
+                      variant: outlined
+                    events:
+                      onClick:
+                        - id: cancel_invite
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: all
+                  - id: invite_send_btn
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Send invitation
+                      icon: mail
+                      color: primary
+                      variant: solid
+                    events:
+                      onClick:
+                        - id: validate_invite
+                          type: Validate
+                          params:
+                            regex:
+                              - '^profile\.'
+                              - "^roles$"
+                              - "^org_role$"
+                              - '^member_attributes\.'
+                        # invite routine: reconcile stale-expired → ensure the
+                        # contact → persist profile (write-profile) → InviteMember
+                        # (app roles + org tier + attributes) → audit. The email
+                        # is sent by BetterAuth via auth.email (no module
+                        # dispatch). `profile` is the whole state.profile bag;
+                        # profile.name is derived from given/family in
+                        # write-profile.
+                        - id: send_invite
+                          type: CallAPI
+                          messages:
+                            loading: Sending invitation…
+                            success: Invitation sent.
+                          params:
+                            endpointId:
+                              _module.endpointId: invite
+                            payload:
+                              email:
+                                _state: email
+                              roles:
+                                _state: roles
+                              org_role:
+                                _state: org_role
+                              member_attributes:
+                                _state: member_attributes
+                              profile:
+                                _state: profile
+                        - id: after_invite
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: all

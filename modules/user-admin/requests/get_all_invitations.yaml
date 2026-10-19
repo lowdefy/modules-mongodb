@@ -1,0 +1,95 @@
+# Invitations list read (design Decision 2/7). Native aggregation rooted on the
+# pinned org's pending `user-invitations`, inviter joined, Invited/Expired
+# derived on expires_at, filtered by the invitations filter, sorted server-side
+# after the derivation, then paginated with a $facet returning the post-filter
+# total. Each row carries `total_results`; the Invitations pending-count badge
+# and the Pagination block read it (never rows.length).
+#
+# Independent per-tab state (Decision 2): this tab owns `inv_filter` / `inv_sort`
+# / `inv_pagination`, distinct from the Members tab's `filter` / `sort` /
+# `pagination`, so filtering or paging one tab never disturbs the other.
+id: get_all_invitations
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-invitations
+payload:
+  pagination:
+    _state: inv_pagination
+  filter:
+    _state: inv_filter
+  sort:
+    _state: inv_sort
+properties:
+  pipeline:
+    _build.array.concat:
+      # Match pending + org, join inviter, derive Invited/Expired + roles.
+      - _ref:
+          path: ../shared/org/invitations_base.yaml
+          vars:
+            org_value:
+              _module.var: org_slug
+      # Filter: email search + derived-status segment. The clauses are ANDed as a
+      # $and array rather than merged into one object, so no two of them can
+      # collide on a top-level key. The leading `{}` keeps the array non-empty
+      # with nothing set. MongoDB rejects `$and: []` but accepts the match-all
+      # `$and: [{}]`. The search clause comes from the shared regex_clause.yaml,
+      # which owns escaping the term (an unescaped `(` makes MongoDB reject the
+      # regex, and a raw `.*` would match every invitation).
+      - - $match:
+            $and:
+              _array.concat:
+                - - {}
+                - _ref:
+                    path: ../shared/search/regex_clause.yaml
+                    vars:
+                      term:
+                        _payload: filter.search
+                      paths:
+                        - email
+                - _if:
+                    test:
+                      _eq:
+                        - _payload: filter.status
+                        - invited
+                    then:
+                      - status: Invited
+                    else: []
+                - _if:
+                    test:
+                      _eq:
+                        - _payload: filter.status
+                        - expired
+                    then:
+                      - status: Expired
+                    else: []
+      # Split total + page in one round-trip.
+      - - $facet:
+            count:
+              - $count: total
+            results:
+              - $sort:
+                  _object.assign:
+                    - _object.defineProperty:
+                        on: {}
+                        key:
+                          _payload: sort.by
+                        descriptor:
+                          value:
+                            _payload: sort.order
+                    - _id: 1
+              - $skip:
+                  _payload: pagination.skip
+              - $limit:
+                  _payload: pagination.pageSize
+              # Resolve role ids → { label, orphan } against the catalog.
+              - _ref: requests/stages/roles_from_catalog.yaml
+              # Close the row last, so the whole joined `inviter` user document
+              # stops shipping on every row (the table reads only the flattened
+              # inviter_name / inviter_id).
+              - _ref: requests/stages/close_row.yaml
+        - $unwind: "$count"
+        - $unwind: "$results"
+        - $addFields:
+            results.total_results: "$count.total"
+        - $replaceRoot:
+            newRoot: "$results"

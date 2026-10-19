@@ -1,0 +1,66 @@
+- id: default
+  links:
+    - id: crm-group
+      type: MenuGroup
+      properties:
+        title: CRM
+        icon: Contact
+      links:
+        _build.array.concat:
+          - _ref:
+              module: deals
+              menu: default
+          - _ref:
+              module: companies
+              menu: default
+          - _ref:
+              module: contacts
+              menu: default
+          - _ref:
+              module: activities
+              menu: default
+    # Per-org self-service: every member reaches it, and BetterAuth authorizes
+    # each action against their member role. There is no user-admin group here:
+    # a user-admin instance welds a build-time org id, which a tenant
+    # deployment's runtime-created organizations cannot supply.
+    - id: organization-group
+      type: MenuGroup
+      properties:
+        title: Organization
+        icon: Landmark
+      links:
+        _ref:
+          module: organizations
+          menu: default
+- id: profile
+  links:
+    - id: profile
+      type: MenuLink
+      pageId:
+        _module.pageId:
+          module: user-account
+          id: view
+      properties:
+        title: Profile
+        icon: user
+    - id: release-notes
+      type: MenuLink
+      pageId:
+        _module.pageId:
+          module: release-notes
+          id: view
+      properties:
+        title: Release Notes
+        icon: document
+    - id: logout-divider
+      type: MenuDivider
+    - id: logout
+      type: MenuLink
+      pageId:
+        _module.pageId:
+          module: user-account
+          id: logout
+      properties:
+        title: Logout
+        icon: logout
+        danger: true

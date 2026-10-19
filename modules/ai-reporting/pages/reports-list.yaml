@@ -15,7 +15,7 @@ _ref:
     content_width: 1100
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Reports
     # Reports are authored in the chat, so New report is a plain link there — not a
     # create endpoint.
@@ -27,7 +27,7 @@ _ref:
         properties:
           title: New report
           type: primary
-          icon: AiOutlinePlus
+          icon: add
         events:
           onClick:
             - id: new_report_to_chat
@@ -112,7 +112,7 @@ _ref:
                 disabled: true
               placeholder: Search reports
               allowClear: true
-              prefixIcon: AiOutlineSearch
+              prefixIcon: search
 
       # The grid shows whenever the scope has any rows. A search that matches nothing
       # keeps the grid up and lets its own no-rows overlay carry the message; only a
@@ -153,7 +153,7 @@ _ref:
                 - 0
         properties:
           icon:
-            name: AiOutlineFileAdd
+            name: FilePlus
             color: "#bfbfbf"
           title: No reports yet
           subTitle: Turn an answer into a saved report from the chat.
@@ -194,7 +194,7 @@ _ref:
                 - 0
         properties:
           icon:
-            name: AiOutlineTeam
+            name: users
             color: "#bfbfbf"
           title: Nothing shared yet
           subTitle: No reports have been published to the app.
@@ -215,7 +215,7 @@ _ref:
                 - 0
         properties:
           icon:
-            name: AiOutlineStar
+            name: star
             color: "#bfbfbf"
           title: No favourites yet
           subTitle: The ★ on a report keeps it here.
@@ -230,7 +230,7 @@ _ref:
         properties:
           title: Recently deleted
           type: link
-          icon: AiOutlineDelete
+          icon: delete
         events:
           onClick:
             - id: to_recovery

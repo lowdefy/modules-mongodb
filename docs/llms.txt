@@ -11,10 +11,13 @@
 
 ## shared
 
-- docs/shared/app-name.md: App name scoping — Multi-app deployments share user, contact, and event collections across apps. Documents are scoped by **`app_name`** so each app sees only the data it owns.
-- docs/shared/avatar-colors.md: Avatar colors — Modules that render user/contact avatars (`contacts`, `user-account`, `user-admin`) deterministically pick an avatar gradient from a shared palette so the same person always shows the same colors across the app.
+- docs/shared/app-name.md: App slug scoping — Multi-app deployments share user, contact, and event collections across apps. Documents are scoped by the app's **slug** so each app sees only the data it owns.
+- docs/shared/atlas-search-indexes.md: Atlas Search Indexes — The `$search`-led list pipelines, the Excel exports, and the ContactSelector all require **Atlas Search indexes the host app must create** — the modules create no indexes ([org-scoping](org-scoping.md)). Every requirement is **fail-closed**: a missing index, a missing `token` mapping, or a missin...
+- docs/shared/avatar-colors.md: Avatar colors — Modules that render user/contact avatars (`contacts`, `user-account`, `user-admin`) pick an avatar gradient from a shared palette and store it, so the same person always shows the same colors across the app.
 - docs/shared/change-stamps.md: Change stamps — Audit metadata stamped onto every database write so we know **when** something changed and **who** changed it. The same shape is used across `events`, `files`, `companies`, `contacts`, `user-account`, and `user-admin`.
-- docs/shared/event-display.md: Event display — Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app_name → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
+- docs/shared/event-display.md: Event display — Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app slug → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
+- docs/shared/org-scoping.md: Organization Scoping — Every module in this repo is **organization-aware, policy-conditionally**. The app's `auth.organizations.policy` sets the scoping default for every connection: under `policy: tenant`, every module-owned MongoDB connection is organization-scoped by the platform's tenant wall — nothing is declared ...
+- docs/shared/search.md: Text search and the Atlas fallback — Four modules put a free-text search box over a MongoDB collection. Atlas `$search` is the indexed, relevance-ranked way to serve it, and it only exists on Atlas — the `mongot` process is not part of a community or local `mongod`. So each of those modules takes an **`atlas_search`** var: leave it ...
 - docs/shared/secrets.md: Secrets — Master list of every secret read by modules in this repo. Bucket names, keys, and connection strings live in secrets so they stay out of version control.
 - docs/shared/slots.md: Slots — Modules that ship list / detail / edit pages expose **slots** so consumers can extend each page without forking the YAML. Three slot vars are conventional:
 - docs/shared/soft-delete.md: Soft delete — Modules that soft-delete documents never remove them from the collection — they mark them with a `deleted` field and filter them out of reads. The marker doubles as an audit record: it is a [change stamp](./change-stamps.md), so it captures **when** the document was deleted and **who** deleted it.
@@ -22,18 +25,26 @@
 ## plugins
 
 - docs/plugins/action-steps.md: ActionSteps — A vertical (or horizontal) Antd `Steps` view of grouped actions. Each `item` is an _action group_ rendered as one step; its child `actions` render in the step description as badged, optionally linked rows. The group's rolled-up status drives the step icon and styling.
+- docs/plugins/avatar-upload.md: AvatarUpload — A round avatar that is itself the upload control. It shows the current photo — the block value, an image data URI — or an initials fallback, with a hover/focus overlay to pick a new image. Click, keyboard (Enter / Space), or drag-and-drop a file onto it.
+- docs/plugins/chat-thread.md: ChatThread — A two-party conversation thread, support-ticket style. Messages from the other side sit on the left with an avatar; own messages sit on the right in a primary-tinted bubble. The block sorts and dedupes what it is given, adds day pills, groups consecutive messages from one author, turns URLs into ...
 - docs/plugins/contact-selector.md: ContactSelector — A multi-select contact picker. Search the contact pool, add a new contact inline (with a custom form rendered into the modal slot), edit or verify selected contacts, and remove them. Used by the `contacts` module to back its `contact-selector` component.
 - docs/plugins/data-descriptions.md: DataDescriptions — A read-only data view built on Antd `Descriptions`, driven by an explicit `formConfig` that lays out sections, ordering, labels, and renderer hints. Use it on detail pages where the field set is fixed and you want full control over how the data is grouped.
 - docs/plugins/events-timeline.md: EventsTimeline — A vertical timeline of audit events. Each entry shows an avatar, the event title (Nunjucks-rendered upstream by the `events` module), a relative timestamp, an optional description, optional info link with a modal, optional inline action cards with status badges, and optional attached files.
 - docs/plugins/file-manager.md: FileManager — Drag-drop file upload with S3 signed URLs, paste-to-upload, optional metadata form, file-type icons, image thumbnails, download links, and a delete-confirmation modal. Used by the `files` module to back its `file-manager`, `file-card`, and (indirectly) `file-list` components.
 - docs/plugins/floating-panel.md: FloatingPanel — An Intercom-style corner launcher and the floating panel it opens. A container block: it owns a fixed-position launcher button and the panel that springs from it, and renders whatever blocks the page nests inside its slots.
 - docs/plugins/index.md: Modules MongoDB Plugins — Custom Lowdefy blocks, actions, and connections used by the modules in this repo. The package is a regular Lowdefy plugin — modules declare it under their `plugins:` and consumers register it in their app's `lowdefy.yaml`. You only need to add it yourself if you are wiring blocks, the `FetchReque...
+- docs/plugins/message-composer.md: MessageComposer — A message box in one bordered frame: a text area that grows with the text, the files attached to the message as small removable chips, and a bottom bar with an attach button, a muted hint (`Markdown · Cmd Enter to send`) and a primary send button. It backs the reply composer and the report form o...
+- docs/plugins/notification-sound.md: NotificationSound — A short chirp for live notifications, and the viewer's switch for it. The sound is **off until the viewer turns it on**. The setting is kept in the browser's `localStorage`, per app, so it holds per device; every open tab of the app follows a change at once. The chirp is two tones synthesised wit...
 - docs/plugins/smart-descriptions.md: SmartDescriptions — A read-only data view built on Antd `Descriptions` that auto-detects how to render each field straight from the data — no schema needed. Drop in a data object and get a labelled, type-aware view: contacts and companies become links, change stamps become "by Alice on 2026-04-30", phone numbers bec...
+- docs/plugins/support-context.md: SupportContext — Gives a support form, or an app's agent, the browser's details and the tab's recent errors at the moment a ticket is sent. Three parts:
+- docs/plugins/support-screenshot.md: SupportScreenshot — A **Take screenshot** button that draws the visible part of the page to a PNG, lets the user blur or crop it, and uploads it to the app's files bucket. It draws the page's DOM with [modern-screenshot](https://github.com/qq15725/modern-screenshot), so there is no browser permission prompt and no s...
+- docs/plugins/support-webhook.md: SupportWebhook — A connection with one request, `SupportWebhookVerify`, that checks a webhook delivery from Pelican's support desk was signed with the app's webhook secret. It is the verifier the `support` module's webhook endpoint runs in its `webhook: { verify }` gate, before the routine. Lowdefy answers 401 wh...
 - docs/plugins/workflow-progress.md: WorkflowProgress — Renders an entity's workflows (the `get-entity-workflows` response) as collapsible, titled sections. Each workflow row shows a circular progress ring, title, optional workflow-overview link, a "Completed" pill, and a done-fraction; expanding it reveals its action groups as labelled sections of st...
 
 ## activities
 
 - docs/activities/index.md: Activities — CRM activities — calls, meetings, emails. Past-tense external-interaction logs linked to contacts and companies. Activities have a lifecycle (`open → done | cancelled`, with `reopen`); built-in types (`call`, `meeting`, `email`) are created `done` since they are logged after the fact. Consumer-de...
+- docs/activities/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Everything below goes on the collection backing the module's `activities-collection` connection; that connection names `activities`, and an app that keeps its activities somewhere else remaps the connection in its module e...
 - docs/activities/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## ai-assistant
@@ -59,11 +70,13 @@
 ## companies
 
 - docs/companies/index.md: Companies — Company management — list, detail, edit, and create pages plus a company selector. Companies are stored in their own collection with auto-generated consecutive IDs (`C-0001`, `C-0002`, …) and a configurable display name field.
+- docs/companies/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Everything below goes on the collection backing the module's `companies-collection` connection; that connection names `companies`, and an app that keeps its companies somewhere else remaps the connection in its module entr...
 - docs/companies/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## contacts
 
 - docs/contacts/index.md: Contacts — Contact management — list, detail, edit, and create pages over the shared `user-contacts` collection, plus a rich contact selector with inline add/edit/verify, a basic dropdown selector, and a role-scoped selector (`role-contact-selector`, single or multiple) that stores a view-renderable denorma...
+- docs/contacts/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Everything below goes on the collection backing the module's `contacts-collection` connection; that connection names `user-contacts`, and an app that keeps its people somewhere else remaps the connection in its module entr...
 - docs/contacts/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## deals
@@ -88,22 +101,45 @@
 
 ## notifications
 
-- docs/notifications/index.md: Notifications — In-app notifications — bell counter, inbox page, deep-link routing, and a configurable send routine. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
+- docs/notifications/email-transport.md: Email transport (SMTP or SendGrid) — The dispatch pipeline sends email over one of two transports, selected by the `transport` var:
+- docs/notifications/how-to/lambda-pipeline-migration.md: Migrate from an external Lambda pipeline — Some production apps predate this module and deliver notifications through their own external pipeline — typically a consume Lambda that resolves recipients and writes notification records, an SQS queue, and a send Lambda over SendGrid. Those apps do **not** have to migrate: the module and an ext...
+- docs/notifications/index.md: Notifications — Notification dispatch and in-app display — a render/store/send pipeline, bell counter, inbox page, and deep-link routing. Notification documents are scoped per app via the app's `slug` so multiple apps can share a single MongoDB collection.
 - docs/notifications/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
+
+## organizations
+
+- docs/organizations/how-to/extend-settings.md: Extending the settings pages — The organization's pages hold the app's own content through module vars. Each var below has a worked example in `apps/tenant-demo/modules/organizations/vars.yaml`. Every var is listed in [vars](../reference/vars.md).
+- docs/organizations/index.md: Organizations — The **self-serve workspace for one organization**: see which organization you're working in, switch between the ones you belong to, name it and give it a logo, manage its members, read who changed what, and create a new one. Everything here is per-organization: every read is scoped to the caller'...
+- docs/organizations/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## release-notes
 
 - docs/release-notes/index.md: Release Notes — Single-page Markdown renderer for `CHANGELOG.md`. Drops a release-notes link into your menu and renders whatever Markdown you pass in via the `content` var.
 - docs/release-notes/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
+## support
+
+- docs/support/how-to/agent-tools.md: Give the app's agent the support tools — The module ships four tools and a brief for the app's own agent, so a user can describe a problem in the chat and the agent files the ticket and follows it up for them.
+- docs/support/index.md: Support — The reporter's side of the [Pelican](https://pelican.lowdefy.app) support desk. A signed-in user reports a problem and chats with the team; the team answers in Pelican.
+- docs/support/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
+
 ## user-account
 
-- docs/user-account/index.md: User Account — Self-service account pages — passwordless login, email-verification confirmation, profile view/edit, first-time profile creation, and logout. The end-user side of the user/contact schema; the operator side lives in [`user-admin`](../user-admin/index.md).
+- docs/user-account/concepts/auth-methods.md: Auth methods — The login and signup pages are **method-driven**: they render whichever sign-in methods the deployment enables, and nothing else. This page explains where "which methods" comes from, what the module configures, and how errors and the 2FA challenge are handled.
+- docs/user-account/concepts/write-pathways.md: Write pathways — A "user" in this module is really two records: the app-owned **contact** (the person's profile / CRM data) and the auth-owned **user** (login identity, plus its `session` / `account` / `passkey` / `member` rows). Self-service writes go to different places depending on which they touch — there is ...
+- docs/user-account/how-to/migration.md: Migrating from the v0.x surface — `user-account` was **rebuilt** on the BetterAuth-based auth engine — a major breaking change, not an in-place upgrade. The old module was passwordless-email login plus profile CRUD over the fused `user_contacts` collection, glued to NextAuth semantics (`?error=` query codes, adapter-enforced invi...
+- docs/user-account/index.md: User Account — The **self-service auth surface for one app**, rebuilt on the BetterAuth-based auth engine. One package, two page families:
+- docs/user-account/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Host apps must add both `user-contacts` indexes below to the collection backing the module's contact connections before running the contact and profile flows, the `user-members` index before using the members-list role fil...
 - docs/user-account/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## user-admin
 
-- docs/user-admin/index.md: User Admin — User administration — list, search, invite, edit, and manage user access for an app. Operates on the shared `user-contacts` collection with per-app data namespaced under `apps.{app_name}`, so a single collection serves multiple apps.
+- docs/user-admin/concepts/co-location.md: Same-database co-location — `user-admin` reads are native aggregations: each one roots on an auth collection (`user-members`, `user-invitations`, `user-sessions`, …) and `$lookup`-joins the others plus the app-owned `user-contacts` record. MongoDB's `$lookup` **cannot cross databases** (let alone clusters).
+- docs/user-admin/how-to/migration.md: Migrating from the v0.x surface — `user-admin` was **rebuilt** on the BetterAuth-based auth engine — this is a major breaking change, not an in-place upgrade. The old module owned a person as raw writes against the fused `user_contacts` collection (`apps.{app}` map, `is_user`, `disabled`, `global_attributes`); the new model split...
+- docs/user-admin/index.md: User Admin — The **operator console for a person's access lifecycle in one organization**. Rebuilt on the BetterAuth-based auth engine: it composes app-owned contact data, the sanctioned admin-step write surface, and audit events into per-concern routines — it is no longer CRUD over one fused collection.
+- docs/user-admin/reference/events.md: Audit events — Each write routine ends with an event written through the [`events`](../../events/index.md) module's `new-event` endpoint, into `log-events`. The event is the routine's last step, so it is written only when every write before it succeeded. Its display title comes from the module's [`event_display...
+- docs/user-admin/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Host apps must add the following index to the collection backing the `user-members` connection, before the members list carries production traffic.
+- docs/user-admin/reference/row-contract.md: Members row contract — Every members read — the Members list, the user detail read, and the Excel export — returns rows with the same set of keys. **This is the set a [`components.table_columns`](vars.md) `field:` or a `components.download_columns` `value:` may bind.** A path outside it renders an empty column, silentl...
 - docs/user-admin/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## walkthroughs

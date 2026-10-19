@@ -2,6 +2,8 @@
 # query_data tool, report filter re-queries for kpi and table sections
 # (CallAPI — chart sections re-query chart-data instead, which returns an
 # assembled option rather than rows), and panel downloads.
+# A report names its section (`report_id` + `section_id`) instead of sending a
+# query; the stored query is loaded here (steps/load_report_section.yaml).
 # The AnalyticsPipeline request is the single security boundary: it validates
 # the AI-authored pipeline against the catalog (bound at the connection) and
 # the user's roles, prepends the filter $match, and runs it read-only.
@@ -16,9 +18,19 @@ description: >
   reconstructed and revalidated before execution. Returns result rows.
 payloadSchema:
   type: object
-  required:
-    - query
+  anyOf:
+    - required:
+        - query
+    - required:
+        - report_id
+        - section_id
   properties:
+    report_id:
+      type: string
+      description: A saved report whose section's stored query to run, instead of `query`.
+    section_id:
+      type: string
+      description: The section of `report_id` whose stored query to run.
     query:
       type: object
       description: The collection and pipeline to run.
@@ -64,13 +76,33 @@ routine:
         - null
     :then:
       - :reject: You must be signed in to query data.
+  - :if:
+      _ne:
+        - _payload: report_id
+        - null
+    :then:
+      - _ref: api/steps/load_report_section.yaml
+      - :if:
+          _eq:
+            - _step: report_section.0
+            - null
+        :then:
+          - :reject: Report section not found.
   - id: run_query
     type: AnalyticsPipeline
     connectionId:
       _module.connectionId: reporting-data
     properties:
       query:
-        _payload: query
+        _if:
+          test:
+            _ne:
+              - _payload: report_id
+              - null
+          then:
+            _step: report_section.0.query
+          else:
+            _payload: query
       filters:
         _payload: filters
       roles:

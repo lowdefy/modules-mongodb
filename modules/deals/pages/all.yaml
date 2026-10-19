@@ -7,7 +7,7 @@ _ref:
       _module.var: label_plural
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
     content_width: 1100

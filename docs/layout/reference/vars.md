@@ -19,15 +19,20 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `sider_storage_key` | string | `layout-sider` |  | localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist). |
 | `menu` | object |  |  | Menu config passed to the page block. When unset, the page falls back to the app's "default" menu (resolved client-side via `_menu`). |
 | `header` | object | `{}` |  | Page block header properties: { theme, contentStyle } |
+| `global_blocks` | array | `[]` |  | Blocks appended after the consumer content on EVERY page that uses the page component — for app-wide floating widgets (an assistant launcher, a help beacon). Pair with `global_requests` for any requests they need and `global_events.onInit` for their state contract. |
+| `global_requests` | array | `[]` |  | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` these are NOT auto-fired on mount — they are on-demand (e.g. upload/download policies a block calls itself). |
+| `global_subscriptions` | array | `[]` |  | Websocket subscriptions declared on every page for `global_blocks` to use, such as a widget's live channel. A page that declares a subscription to the same websocket through the page component's `subscriptions` var keeps its own, so the page holds one. |
 | `title_block` | object |  |  | Custom title block override (replaces default title bar) |
 | `footer` | array | `[]` |  | Footer blocks appended after page content |
+| `content_style` | object | `{}` |  | Content area style applied to every page that uses the `page` component, merged over the page block's default `padding: 0 40px 40px 40px`. A page's `full_bleed` and its own `content_style` var are applied over it, key by key. |
 | `card` | object |  |  | Custom card component override (replaces default Card layout) |
 | `dark_mode_toggle` | boolean | `true` |  | Enable dark mode toggle in the page block (rendered in the header for sider-menu, in the sider for sidebar) |
 | `profile_menu_id` | string | `profile` |  | Id of the app-level menu used for the profile dropdown. Menu links are filtered server-side by page access (auth.pages.roles). The app must register a menu with this id in its menus list.  |
 | `sider` | object | `{}` |  | Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only. Ignored for page_type 'header-menu' (PageHeaderMenu has no sider). |
 | `logo` | object |  |  | Logo config for the auth page and header logo style override. The page header logo follows the Lowdefy public-folder convention — drop `logo-light-theme.png` / `logo-dark-theme.png` (and the `logo-square-*-theme.png` variants for mobile) into the app's `public/` folder and the page block auto-swaps between light/dark variants based on dark mode. |
+| `global_events` | object | `{}` |  | Module-entry actions spliced into EVERY page that uses the page component — the module-level counterpart of the per-page `events` var. Use for app-wide guards (e.g. an onboarding gate that redirects until the caller's org is set up) so no page has to opt in. |
 | `header_extra` | object |  |  | Header customization: { blocks, requests } |
-| `auth_page` | object |  |  | Auth page overrides: { cover_background, card_style, max_width, logo_max_width, brand_panel_background } |
+| `auth_page` | object |  |  | Auth page overrides: { cover_background, card_style, max_width, logo_max_width } |
 
 ## Nested var details
 
@@ -53,6 +58,15 @@ Logo config for the auth page and header logo style override. The page header lo
 | `primary` |  | `/logo-light-theme.png` |  | Logo rendered in the auth-page brand panel and mobile auth view. |
 | `style` |  |  |  | Inline style object applied to the header logo (mapped to the `.logo` cssKey on the page block). |
 
+### `global_events`
+
+Module-entry actions spliced into EVERY page that uses the page component — the module-level counterpart of the per-page `events` var. Use for app-wide guards (e.g. an onboarding gate that redirects until the caller's org is set up) so no page has to opt in.
+
+| Name | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `onInit` |  | `[]` |  | Actions appended to every page's onInit, AFTER the page's own events.onInit — so a page's initial state is already set when these run (e.g. a global widget's state contract that reads it). |
+| `onMountAsync` |  | `[]` |  | Actions appended to every page's onMountAsync, after the header_extra request fetches (their `_request:` values have resolved) and before the page's own events.onMountAsync. |
+
 ### `header_extra`
 
 Header customization: { blocks, requests }
@@ -64,12 +78,12 @@ Header customization: { blocks, requests }
 
 ### `auth_page`
 
-Auth page overrides: { cover_background, card_style, max_width, logo_max_width, brand_panel_background }
+Auth page overrides: { cover_background, card_style, max_width, logo_max_width }
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `max_width` |  | `360` |  | Max width of the auth card container in pixels. |
+| `max_width` |  | `420` |  | Max width of the auth card container in pixels. |
 | `card_style` |  | `{}` |  | Inline style object applied to the auth card (e.g. shadows, borders, radius overrides). |
 | `cover_background` |  | _(see manifest)_ |  | CSS `background` for the auth card cover area. Defaults to a colorPrimary gradient that auto-adapts to dark mode. |
 | `logo_max_width` |  | `160` |  | Max width of the logo in the cover area in pixels. |
-| `brand_panel_background` |  | `linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)` |  | CSS `background` for the auth-page brand panel (alternate auth layout). Defaults to a colorPrimary gradient. |
+| `logo_style` | string | `band` |  | Brand treatment applied to every auth page. `band` renders the logo in the gradient cover band (default). `minimal` renders a small logo centred above a bandless card — for logos that read poorly reversed-out on the cover gradient, or a lighter look. Enum: `band`, `minimal` |

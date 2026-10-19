@@ -1,0 +1,60 @@
+# Members of the caller's ACTIVE organization, through the module's member join,
+# with a self marker so the page can offer "leave" instead of "remove", and
+# `authority`: Owner, Admin or null, from the member row's role (which may
+# carry comma-joined tiers). `sort_name` and `search_text` (name and email,
+# lowercased) are for the page's own sort and search.
+id: get_members
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    _build.array.concat:
+      - _ref:
+          path: components/member-join.yaml
+          vars:
+            project:
+              is_self:
+                $eq:
+                  - "$user_id"
+                  - _user: id
+              authority:
+                $switch:
+                  branches:
+                    - case:
+                        $in:
+                          - owner
+                          - $split:
+                              - $ifNull:
+                                  - "$role"
+                                  - ''
+                              - ','
+                      then: Owner
+                    - case:
+                        $in:
+                          - admin
+                          - $split:
+                              - $ifNull:
+                                  - "$role"
+                                  - ''
+                              - ','
+                      then: Admin
+                  default: null
+      - - $addFields:
+            sort_name:
+              $toLower:
+                $ifNull:
+                  - "$name"
+                  - "$email"
+            search_text:
+              $toLower:
+                $concat:
+                  - $ifNull:
+                      - "$name"
+                      - ''
+                  - ' '
+                  - $ifNull:
+                      - "$email"
+                      - ''
+        - $sort:
+            name: 1

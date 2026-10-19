@@ -42,7 +42,7 @@ Modules document their full set of regions in their per-module README.
 **`request_stages`** is an object whose properties are named pipeline points:
 
 - `filter_match` — `$match` stage applied during list filtering.
-- `get_all_*` — stages appended to the list-page read pipeline.
+- `get_all_*` — stages appended to the list-page read pipeline, and to the spreadsheet-export pipeline where the module ships one. In `user-admin` the export merges two row types, so the same stages run over both — see [the row contract](../user-admin/reference/row-contract.md).
 - `selector` — stages appended to the selector dropdown's read pipeline.
 - `write` — stages appended to write pipelines (create/update).
 
@@ -72,3 +72,5 @@ Add an "Industry" attribute to the company form and a matching column to the lis
 ```
 
 The `attributes.industry` block binds to `state.attributes.industry`, the form persists it under `attributes.industry` on the company doc, and the list table renders the column directly from the same path.
+
+A column only resolves if the module's read actually carries that path on its row. Where a module documents its row shape, check it before adding a column — `user-admin`'s is [Members row contract](../user-admin/reference/row-contract.md), and it also shows how to use `request_stages.get_all_*` to lift a value the row doesn't carry.

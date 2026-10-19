@@ -113,7 +113,11 @@ async function seed({
   await mongo.db.collection("workflows").insertOne({
     _id: "W1",
     workflow_type: "onboarding",
-    entity: { connection_id: "leads-collection", id: "L1", ref_key: "lead_ids" },
+    entity: {
+      connection_id: "leads-collection",
+      id: "L1",
+      ref_key: "lead_ids",
+    },
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 1 + extraActions.length },
     groups: [],
@@ -185,7 +189,7 @@ function makeCallApi({ failOn = null, calls = [] } = {}) {
 
 function buildContext({
   request,
-  app_name = "test-app",
+  slug = "test-app",
   user = {
     id: "U1",
     profile: { name: "Test User" },
@@ -194,9 +198,11 @@ function buildContext({
   callApi,
   workflowsConfig = makeWorkflowsConfig(),
   changeLog,
+  tenant = null,
 } = {}) {
   return {
     request,
+    tenant,
     blockId: "test-block",
     connectionId: "test-conn",
     pageId: "test-page",
@@ -207,7 +213,7 @@ function buildContext({
       entry_id: "workflows",
       workflowsCollection: "workflows",
       actionsCollection: "actions",
-      app_name,
+      slug,
       endpoints: {
         new_event: "events/new-event",
         send_notification: "notifications/send-notification",
@@ -325,16 +331,15 @@ describe("Part 30 worked example", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Part 48: status_map delivered via render_config, not the blob
+// status_map delivered via render_config, not the blob
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The connection blob no longer carries status_map (dropped from
-// makeWorkflowsConfig's ACTION_FIELDS, task 10). The write endpoints deliver it
-// per-request as `request.render_config` (→ context.params.render_config), which
-// loadWorkflowState splices onto the action config. These tests exercise the
-// end-to-end render with the blob slice absent.
+// The connection blob does not carry status_map — the write endpoints deliver
+// it per-request as `request.render_config` (→ context.params.render_config),
+// which loadWorkflowState splices onto the action config. These tests exercise
+// the end-to-end render with the blob slice absent.
 
-describe("Part 48: status_map from render_config (blob slice absent)", () => {
+describe("status_map from render_config (blob slice absent)", () => {
   test("blob carries no status_map but render_config delivers the cell → rendered onto the doc", async () => {
     await seed();
     await SubmitWorkflowAction(
@@ -490,7 +495,7 @@ describe("hasReview resolution is action-global", () => {
     await SubmitWorkflowAction(
       buildContext({
         request: { action_id: "A1", signal: "submit" },
-        app_name: "test-app",
+        slug: "test-app",
       }),
     );
     const doc = await mongo.db.collection("actions").findOne({ _id: "A1" });
@@ -502,7 +507,7 @@ describe("hasReview resolution is action-global", () => {
     await SubmitWorkflowAction(
       buildContext({
         request: { action_id: "A1", signal: "submit" },
-        app_name: "ops-app",
+        slug: "ops-app",
         user: { id: "U4", profile: { name: "Ops User" }, roles: ["ops"] },
       }),
     );
@@ -931,5 +936,91 @@ describe("post-commit dispatch failure", () => {
     expect(thrown.message).toMatch(/step 3/);
     expect(thrown.cause).toBeInstanceOf(Error);
     expect(thrown.cause.message).toMatch(/forced failure/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenant threading (framework tenant-wall contract)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("tenant threading through the engine", () => {
+  const tenant = { field: "organizationId", value: "org-a" };
+
+  beforeEach(async () => {
+    await mongo.db.collection("log-changes").deleteMany({});
+  });
+
+  // Stamp the org onto the seeded workflow + action (the wall stamps future
+  // writes; pre-existing docs are seeded in-org directly).
+  async function stampSeedOrg(organizationId) {
+    await mongo.db
+      .collection("workflows")
+      .updateOne({ _id: "W1" }, { $set: { organizationId } });
+    await mongo.db
+      .collection("actions")
+      .updateOne({ _id: "A1" }, { $set: { organizationId } });
+  }
+
+  test("verdict reaches reads and writes: in-org submit lands, and fresh change-log rows are org-stamped", async () => {
+    await seed();
+    await stampSeedOrg("org-a");
+    const result = await SubmitWorkflowAction(
+      buildContext({
+        request: { action_id: "A1", signal: "submit" },
+        tenant,
+        changeLog: { collection: "log-changes", meta: { app: "test-app" } },
+      }),
+    );
+    expect(result.action_ids).toContain("A1");
+
+    // The CAS-claimed workflow and bulk-written action stayed inside the org.
+    const wfDoc = await mongo.db.collection("workflows").findOne({ _id: "W1" });
+    const actionDoc = await mongo.db
+      .collection("actions")
+      .findOne({ _id: "A1" });
+    expect(actionDoc.status[0].stage).toBe("in-review");
+    expect(wfDoc.organizationId).toBe("org-a");
+
+    // Docs WRITTEN during the flow carry the org field: change-log rows are
+    // freshly inserted by insertManyDocs, which stamps the verdict.
+    const logRows = await mongo.db.collection("log-changes").find({}).toArray();
+    expect(logRows.length).toBeGreaterThan(0);
+    for (const row of logRows) {
+      expect(row.organizationId).toBe("org-a");
+    }
+  });
+
+  test("a load with a tenant cannot see another org's action (action_not_found)", async () => {
+    await seed();
+    await stampSeedOrg("org-b");
+    await expect(
+      SubmitWorkflowAction(
+        buildContext({
+          request: { action_id: "A1", signal: "submit" },
+          tenant,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "action_not_found" });
+    // Nothing was written.
+    const actionDoc = await mongo.db
+      .collection("actions")
+      .findOne({ _id: "A1" });
+    expect(actionDoc.status[0].stage).toBe("action-required");
+  });
+
+  test("null tenant behaves exactly as before (no stamping, no scoping)", async () => {
+    await seed();
+    const result = await SubmitWorkflowAction(
+      buildContext({
+        request: { action_id: "A1", signal: "submit" },
+        changeLog: { collection: "log-changes", meta: { app: "test-app" } },
+      }),
+    );
+    expect(result.action_ids).toContain("A1");
+    const logRows = await mongo.db.collection("log-changes").find({}).toArray();
+    expect(logRows.length).toBeGreaterThan(0);
+    for (const row of logRows) {
+      expect(row).not.toHaveProperty("organizationId");
+    }
   });
 });

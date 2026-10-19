@@ -1,0 +1,67 @@
+# The detail line of an org-app-roles-changed event: the app roles added and
+# removed, from the event's metadata.from and metadata.to, for example
+# "Added developer. Removed viewer."
+$let:
+  vars:
+    added:
+      $setDifference:
+        - $ifNull:
+            - "$metadata.to"
+            - []
+        - $ifNull:
+            - "$metadata.from"
+            - []
+    removed:
+      $setDifference:
+        - $ifNull:
+            - "$metadata.from"
+            - []
+        - $ifNull:
+            - "$metadata.to"
+            - []
+  in:
+    $trim:
+      input:
+        $concat:
+          - $cond:
+              - $gt:
+                  - $size: "$$added"
+                  - 0
+              - $concat:
+                  - 'Added '
+                  - $reduce:
+                      input: "$$added"
+                      initialValue: ''
+                      in:
+                        $concat:
+                          - "$$value"
+                          - $cond:
+                              - $eq:
+                                  - "$$value"
+                                  - ''
+                              - ''
+                              - ', '
+                          - "$$this"
+                  - '. '
+              - ''
+          - $cond:
+              - $gt:
+                  - $size: "$$removed"
+                  - 0
+              - $concat:
+                  - 'Removed '
+                  - $reduce:
+                      input: "$$removed"
+                      initialValue: ''
+                      in:
+                        $concat:
+                          - "$$value"
+                          - $cond:
+                              - $eq:
+                                  - "$$value"
+                                  - ''
+                              - ''
+                              - ', '
+                          - "$$this"
+                  - .
+              - ''

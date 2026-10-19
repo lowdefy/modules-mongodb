@@ -1,0 +1,11 @@
+# The auth engine's users, read for the email and name of the user a webhook
+# names, so a reply notification goes to the address the app holds and never
+# to one from the webhook body. Read-only, and read only by user id.
+id: support-users
+type: MongoDBCollection
+tenant: shared # a user is one person across organisations
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: users
+  write: false

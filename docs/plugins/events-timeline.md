@@ -22,13 +22,13 @@ Used by the `events` module to back its `events-timeline` component. The block d
       create-contact:
         color: "#1890ff"
         title: Contact Created
-        icon: AiOutlineUserAdd
+        icon: UserPlus
         card_color: "#fafcff"
         border_color: "#d6e8ff"
       update-contact:
         color: "#52c41a"
         title: Contact Updated
-        icon: AiOutlineEdit
+        icon: edit
     actionStatusConfig:
       pending:
         color: "#faad14"
@@ -87,7 +87,7 @@ The matching request resolves each event against its per-app display template â€
       id: "...",
       status: "pending",                     // â†’ actionStatusConfig key
       message: "Awaiting approval",          // optional, falls back to actionStatusConfig[status].title
-      link: { pageId: "...", urlQuery: {...}, title: "Complete" } // optional; title is the button label (default "View")
+      link: { pageId: "...", pathParams: {...}, urlQuery: {...}, title: "Complete" } // optional; pathParams fills a page path placeholder; title is the button label (default "View")
     }
   ],
   files: [                                    // optional; needs s3GetPolicyRequestId

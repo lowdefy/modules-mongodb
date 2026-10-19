@@ -1,0 +1,94 @@
+# For the layout's global_subscriptions, and the support page's own: the live
+# thread. It opens only when a thread opens (the open_thread action subscribes
+# with the thread's ticket id in support_live.ticket_id) and closes when the
+# user leaves the thread, so only people chatting hold a change stream. One
+# channel serves the panel and the support page: the thread opened last is the
+# live one.
+#
+# Each change replaces the open thread's row with the stored document. A newer
+# view also marks the ticket read, since the user is looking at it; mark-read's
+# own change carries the same version, so it marks nothing again.
+- websocketId:
+    _module.websocketId: ticket-thread
+  payload:
+    ticket_id:
+      _state: support_live.ticket_id
+  client:
+    subscribeOnMount: false
+    maxMessages: 1
+  events:
+    onMessage:
+      - id: support_live_message
+        type: SetState
+        params:
+          support_live.row:
+            _js:
+              fn: |
+                const messages = args.messages || [];
+                const last = messages[messages.length - 1];
+                return (last && last.fullDocument) || null;
+              args:
+                messages:
+                  _event: messages
+      - id: support_live_newer
+        type: SetState
+        params:
+          support_live.newer:
+            _js:
+              fn: |
+                const row = args.row;
+                if (!row || !row.view) return false;
+                const shown = [args.panel, args.page].filter(
+                  (thread) => thread && thread._id === row._id,
+                );
+                return (
+                  shown.length > 0 &&
+                  shown.some(
+                    (thread) => !thread.view || thread.view.version < row.view.version,
+                  )
+                );
+              args:
+                row:
+                  _state: support_live.row
+                panel:
+                  _state: support_thread
+                page:
+                  _state: support_page_thread
+      - id: support_live_panel
+        type: SetState
+        skip:
+          _or:
+            - _eq:
+                - _state: support_live.row
+                - null
+            - _ne:
+                - _state: support_thread._id
+                - _state: support_live.row._id
+        params:
+          support_thread:
+            _state: support_live.row
+      - id: support_live_page
+        type: SetState
+        skip:
+          _or:
+            - _eq:
+                - _state: support_live.row
+                - null
+            - _ne:
+                - _state: support_page_thread._id
+                - _state: support_live.row._id
+        params:
+          support_page_thread:
+            _state: support_live.row
+      - id: support_live_mark_read
+        type: CallAPI
+        skip:
+          _ne:
+            - _state: support_live.newer
+            - true
+        params:
+          endpointId:
+            _module.endpointId: mark-read
+          payload:
+            ticket:
+              _state: support_live.row._id

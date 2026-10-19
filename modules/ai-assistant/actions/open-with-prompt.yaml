@@ -1,0 +1,63 @@
+# open-with-prompt.yaml — open the docked panel on a NEW thread and send a
+# prompt into it, from anywhere on a page that mounts `panel`. Exported as the
+# `open-with-prompt` component: an action list for a button's onClick.
+#
+# vars:
+#   prompt — the message to send: a string, or a runtime operator resolved when
+#            the action runs (e.g. { _state: selected_question }).
+#
+# Works whether the panel is open, closed, or was never opened on this page:
+#
+# 1. `enter` first, awaited. On a page where the panel was never opened it seeds
+#    the thread list (and resumes, which the new thread then replaces); anywhere
+#    else it is a no-op. Running it here rather than leaving it to the panel's
+#    onOpen means its resume can never land on top of the thread minted below.
+# 2. Unmount the chat (ai_loading shows its skeleton) before minting the new
+#    thread, and remount it once the new thread is active. AgentChat registers
+#    its methods once per mount, bound to the conversation it mounted on, so a
+#    chat that stays mounted across the switch would send the prompt into the
+#    thread it was showing before. The Wait lets React commit the unmount;
+#    without it the two ai_loading writes batch into one render and the chat
+#    never unmounts.
+# 3. Open the panel. Its onOpen runs `enter` again, which is now a no-op.
+# 4. Wait for the remounted chat to register its methods, then send. Until the
+#    chat has mounted there is no sendMessage to call (never opened), or only the
+#    unmounted chat's (open or closed on another thread).
+#
+# A rejected fetch in step 1 ends the chain with the panel still closed. The
+# panel's own onOpen then clears ai_loading the next time the user opens it, so
+# no catch is needed here.
+_build.array.concat:
+  - _ref: actions/enter.yaml
+  - - id: ai_owp_unmount_chat
+      type: SetState
+      params:
+        ai_loading: true
+    - id: ai_owp_let_chat_unmount
+      type: Wait
+      params:
+        ms: 50
+  - _ref: actions/new-thread.yaml
+  - - id: ai_owp_open_panel
+      type: CallMethod
+      params:
+        blockId: ai_panel
+        method: setOpen
+        args:
+          - open: true
+    - id: ai_owp_mount_chat
+      type: SetState
+      params:
+        ai_loading: false
+    - id: ai_owp_wait_for_chat
+      type: Wait
+      params:
+        ms: 150
+    - id: ai_owp_send_prompt
+      type: CallMethod
+      params:
+        blockId: ai_chat
+        method: sendMessage
+        args:
+          - text:
+              _var: prompt

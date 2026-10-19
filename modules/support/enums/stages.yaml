@@ -1,0 +1,14 @@
+# The reporter's stages Pelican sends as codes, with the label the user and the
+# app's agent see and the tag colour the list and thread show it in.
+received:
+  label: Received
+  tag: default
+in_progress:
+  label: In progress
+  tag: processing
+needs_your_reply:
+  label: Needs your reply
+  tag: warning
+resolved:
+  label: Resolved
+  tag: success

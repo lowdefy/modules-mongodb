@@ -30,27 +30,51 @@ Never move design folders into `_completed/` unless the user explicitly requests
 
 **Absence of a caller is not absence of need.** The trap is concluding a need is _speculative_ just because you can't see it used — turning "I found no evidence for X" into "X isn't needed." It doesn't follow. Above all, don't read the demo as a census: `apps/demo/` exercises the modules; it does not represent production, which lives in other repos. "No caller does X" or "the demo only does Y" proves nothing about what's needed. A demo audit can confirm a pattern is _possible_ or _wired correctly_ — it can never prove a capability is _unneeded_. When you can't point to evidence either way, decide on the API's own merits (correctness, "one correct way", the cost of the surface), never on the demo's coverage.
 
+**Comments describe the current code, not the story of writing it.** A comment earns its place by telling a future reader something the code can't tell them itself: an external constraint, a non-obvious invariant, or a "why this and not the obvious alternative" where the alternative is genuinely tempting and genuinely wrong. It does _not_ earn its place by narrating history — what the code used to be, what a task/part removed or renamed, what old file this replaces, or why some now-deleted approach was abandoned. That history belongs in the design doc, commit, or PR (per **Designs** above), never in source. A "we used to X / Part N dropped Y / replaces old Z" note reads to the next agent as an unsettled question and reopens a closed decision; it also depends on context (a part number, a deleted file, an old field name) the reader doesn't have. **Test:** does the comment describe the code, or the journey to it? If it only makes sense to someone who remembers the previous version — starts with "used to", "no longer", "previously", "Part N …", "replaces", "instead of the old" — it's journey. If the whole comment is journey, delete it. If it wraps a real constraint in history framing, rewrite it to state only the constraint. Never leave commentary that exists only as a reply to a problem you just solved.
+
 ## Project Structure
 
 ```
-apps/demo/          — Demo app that imports all modules
+apps/demo/          — Demo app that imports all modules (auth.organizations.policy: pinned)
+apps/tenant-demo/   — The same modules under policy: tenant, plus the organizations module
 modules/            — Reusable Lowdefy modules
 plugins/            — Custom Lowdefy plugins
 docs/               — Repo-level docs (shared idioms, per-module references)
 ```
 
+`apps/demo` is the canonical demo — wire new module capability there.
+`apps/tenant-demo` exists because the two deployment shapes are mutually
+exclusive in config: `userAdminRole` is rejected under `tenant`, and the
+organizations module's switcher fails the build under `pinned`. Its module vars
+duplicate the demo's, so a change to a shared vars file must be made in both
+(they differ only in the auth block, the organizations entry, the org menu
+group, the `header_extra` switcher, and app-slug-keyed keys like
+`event_display` / workflow `access`).
+
 ## Building & Running the App
 
 Agents almost always want to **verify config compiles**, not run a live server. Reach for the right command:
 
-- **Build check (default):** `pnpm ldf:b` from `apps/demo` (or `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). This is the only command needed to confirm YAML/config compiles. It needs **no secrets, no Infisical, and no network beyond npm** — the script supplies a build-only `AUTH_SECRET` placeholder (and respects a real `AUTH_SECRET` if one is exported — Auth.js v5 reads `AUTH_SECRET`; the v4 `NEXTAUTH_SECRET` is not read at all). Build failures here are real config errors; act on them.
+- **Build check (default):** `pnpm ldf:b` from `apps/demo` (or `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). This is the only command needed to confirm YAML/config compiles. When a change touches the organizations module, the tenant wall, or any vars file both apps carry, build `apps/tenant-demo` too (`pnpm --filter @lowdefy/modules-tenant-demo ldf:b`) — the two policies compile different config. It needs **no secrets, no Infisical, and no network beyond npm** — the script supplies a build-only `AUTH_SECRET` placeholder (and respects a real `AUTH_SECRET` if one is exported — Auth.js v5 reads `AUTH_SECRET`; the v4 `NEXTAUTH_SECRET` is not read at all). Build failures here are real config errors; act on them.
 - **Never run servers in the foreground.** `lowdefy dev` (`pnpm ldf` / `pnpm ldf:d`), `lowdefy start` and `pnpm e2e:server` are long-running processes that **never exit** — a plain foreground call blocks until timeout and looks like a hang. If you genuinely need one, start it in the background and poll its health URL (`/api/auth/session`); otherwise don't run it for a build check.
 - **`pnpm e2e` is not one of those — it exits.** Playwright builds the app, starts its own server on port 3101, runs the suite and terminates with a real exit code. It takes a few minutes, so background it and read the log rather than blocking a foreground call on it, but it does finish and its exit code means something.
 - **The `:i` (Infisical) variants don't work in the sandbox.** `ldf:b:i` / `ldf:d:i` / `ldf:i` fetch secrets from `app.infisical.com`, which the sandbox network blocks (TLS rejected). Use plain `ldf:b` for build checks.
 - **A build check is not a smoke test.** A dev server needs real secrets (`MONGODB_URI`, etc.) and a reachable MongoDB — that's a human or `/r:dev-test` step, not part of an autonomous build gate. **The e2e suite is the exception and needs neither:** `globalSetup` starts a `MongoMemoryServer` and sets `LOWDEFY_SECRET_MONGODB_URI` itself, so `pnpm e2e` runs unattended. It is the only gate that catches what a build cannot — anything that depends on a routine actually executing (an authorization filter, a rejection path, an operator resolving against a real `_user`).
 - **`pnpm build` at the repo root does _not_ build the demo.** It's `pnpm -r --filter '!@lowdefy/modules-demo' run build` — module/plugin bundles only. To build the app, use `ldf:b`.
 
-**Always add a demo consumer when adding module functionality.** Any new consumer-facing capability — a component or export, a new var/slot, a new block behaviour — must ship with at least one real example consumer in `apps/demo/` that exercises it, in the same change. This gives every capability a build-verified reference and a worked example authors can copy, and it's how you validate the feature actually resolves end-to-end (`ldf:b`, then inspect the generated `.lowdefy/server/build/pages/**` artifacts). This does not contradict "absence of a caller is not absence of need" above: that rule forbids _deleting_ capability because the demo lacks a caller; this rule requires _adding_ a caller when you add capability. Prefer wiring the example into an existing demo page/flow over a throwaway page.
+**Always add a demo consumer when adding module functionality.** Any new consumer-facing capability — a component or export, a new var/slot, a new block behaviour — must ship with at least one real example consumer in `apps/demo/` that exercises it, in the same change — or in `apps/tenant-demo/` when the capability only resolves under `policy: tenant`. This gives every capability a build-verified reference and a worked example authors can copy, and it's how you validate the feature actually resolves end-to-end (`ldf:b`, then inspect the generated `.lowdefy/server/build/pages/**` artifacts). This does not contradict "absence of a caller is not absence of need" above: that rule forbids _deleting_ capability because the demo lacks a caller; this rule requires _adding_ a caller when you add capability. Prefer wiring the example into an existing demo page/flow over a throwaway page.
+
+## Database Access
+
+**Reading the database is fine. Never change data unless the user explicitly asked you to.**
+
+Reads are unrestricted — an ad-hoc script with the `mongodb` driver, `lowdefy_run_request`, a read-only aggregation. Diagnose freely.
+
+**Writes require an explicit request from the user.** No `deleteMany`, `updateMany`, `insertOne`, `drop`, `$merge`/`$out` — and **no running an existing script that mutates data either**, however well-guarded it looks. The prohibition is on the _act_ of changing data, not on the sloppiness of the method: a maintained reset script run without being asked is exactly as wrong as a throwaway `deleteMany`. Inferring permission from context does not count — not "the data is obviously junk", not "the finding says these rows are stale", not "a reset is the normal next step here", not having been asked to fix the code that produced the bad data. Only a direct instruction to change the data counts.
+
+**When a task seems to need a data change, stop and say so.** State what you believe needs changing and why, then let the user decide — they may have a script, a migration, a reason the rows should stay, or a different environment in mind. Finish everything that _doesn't_ depend on the mutation and report the data step as outstanding; a diagnosis with a clean write-up of the needed change is a complete deliverable. If a repeatable mutation is genuinely warranted, it belongs in a committed migration (`/r:migration-dev`), proposed for review rather than run.
+
+This holds for every environment. A local dev database is not a safe sandbox — a `MONGODB_URI` can point anywhere, and you generally cannot tell from inside the repo what a connection string actually reaches.
 
 ## Documentation
 
@@ -63,7 +87,7 @@ Consumer-facing documentation lives in `docs/`. Source-side READMEs (`modules/{n
 - `docs/{module}/concepts/` — Concept pages (added only where the module needs them).
 - `docs/{module}/how-to/` — Goal-oriented guides (added only where the module needs them).
 - `docs/{module}/reference/` — Reference pages; `vars.md` is always generated (see below).
-- `docs/shared/` — One file per consumer-facing cross-cutting idiom: `change-stamps.md`, `event-display.md`, `slots.md`, `app-name.md`, `avatar-colors.md`, `secrets.md`.
+- `docs/shared/` — One file per consumer-facing cross-cutting idiom: `change-stamps.md`, `event-display.md`, `slots.md`, `app-name.md`, `avatar-colors.md`, `secrets.md`, `soft-delete.md`, `org-scoping.md`.
 - `docs/plugins/` — Plugin package overview (`index.md`) and one reference page per block.
 
 Most small modules are just `docs/{module}/index.md` + generated `docs/{module}/reference/vars.md`. Add `concepts/` or `how-to/` subdirectories only when the module genuinely needs them.
@@ -255,6 +279,8 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 - **YAML block sequences for operators** — Use YAML block sequences (one item per line) for logical/comparison operators like `_eq`, `_ne`, `_or`, etc. Do not use inline flow sequences like `_eq: [val1, val2]`.
 - **Static branches over dynamic keys** — Prefer static per-case branches with hardcoded paths (e.g., `_if`/`_then` with `gates.s0.checklist`) over dynamically constructing MongoDB dot-notation keys at runtime via `_object.fromEntries` + `_string.concat`. Static branches are easier to read and debug.
 - **No underscore-prefixed aggregation fields** — Do not prefix temporary field names or state keys in MongoDB aggregation pipelines with underscores (e.g., use `totalCount` not `_totalCount`). Lowdefy interprets underscore-prefixed strings as operators, which causes parsing errors.
+- **Resets set explicit leaf nulls, never `{}`** — `SetState: { ns: {} }` does not clear an input that was **invisible in the previous eval cycle**: `Block.reset` deliberately restores such a block's remembered in-memory value when its state field is undefined, and `evaluate` only overrides from state when the state value is _defined_. So enumerate the leaves — `SetState: { ns.field_a: null, ns.field_b: null }` — on every reset, and reset a boolean to `false` rather than `null`. An empty-object reset only happens to work for inputs that were visible the whole time.
+- **Scope `Validate` to input ids, never a container id** — `Validate`'s `params` is an **exact-id** matcher; each block tests it against its _own_ id, so there is no cascade to descendants. `params: <modalId>` matches only the container, which has no validation of its own, and therefore validates nothing while reporting success. Match the namespace the form's inputs write to instead (`params: { regex: '^changepw\.' }`), which works because input block ids are their state paths. `regex` accepts an array of patterns and can be combined with `blockIds` in the same params object, so a form spanning several namespaces still needs one `Validate`. Read the namespace off the form's actual input ids — it is frequently not the container's id.
 - **Audit state refs when changing input blocks** — When adding, removing, or renaming an input block, audit all references to its `id` across the page (operators like `_state`, `_if`, `_eq`, requests, actions, and API payloads) since input block IDs are auto-bound state paths and any change silently breaks code that reads from or writes to that path.
 - **Gap before margins** — When adjusting spacing between sibling components, first use the parent's `layout.gap` property to set uniform spacing between all direct children. Only add individual `margin` styles when the spacing needs to be non-uniform or when extra spacing is needed beyond the gap.
 - **Modular component extraction** — Extract repeated block patterns into reusable component files and reference them via `_ref` with `vars`. Place cross-page components under `apps/shared/components/`. Use `.yaml.njk` when vars need string interpolation in IDs or inline values; use plain `.yaml` with `_var` when vars only appear in operator positions.
@@ -262,37 +288,31 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 - **Payload, not state**: requests receive state via `payload:` mapping, never inline `_state` in pipeline properties.
 - **`_build.*`** operators for build-time logic; `_if`/`_eq`/etc. for runtime.
 
-## Guides
+## Block & config knowledge — the `lowdefy-docs` MCP
 
-Read the relevant guide **before** writing code for that topic. They live under
-`apps/demo/.claude/guides/`, not at the repo root.
+Per-block schema, props, examples, and concept docs come from the **`lowdefy-docs` MCP**, served by the running dev server — release-exact for this project, including local plugins. It is the source of truth for anything block-, operator-, action-, or concept-specific; **never guess a type name or prop**. This MCP **supersedes the former per-topic guides and `r:lowdefy-*` skills** — reach for it for all Lowdefy lookups. Invoke the `/lowdefy-config` skill, or call the `lowdefy_*` tools directly:
 
-| When you are...                                              | Read                                         |
-| ------------------------------------------------------------ | -------------------------------------------- |
-| Building a list page with table and pagination               | `apps/demo/.claude/guides/list-pages.md`     |
-| Configuring an AgGrid table                                  | `apps/demo/.claude/guides/aggrid-tables.md`  |
-| Writing MongoDB aggregation pipelines                        | `apps/demo/.claude/guides/aggregations.md`   |
-| Adding search/filter controls to a page                      | `apps/demo/.claude/guides/filters.md`        |
-| Adding pagination to a list                                  | `apps/demo/.claude/guides/pagination.md`     |
-| Building a detail/view page                                  | `apps/demo/.claude/guides/detail-pages.md`   |
-| Building an edit/create form page                            | `apps/demo/.claude/guides/edit-pages.md`     |
-| Defining enums (colors, titles, options helpers)             | `apps/demo/.claude/guides/enums.md`          |
-| Working with status arrays, transitions, and history         | `apps/demo/.claude/guides/status-fields.md`  |
-| Adding created/updated audit stamps                          | `apps/demo/.claude/guides/change-stamps.md`  |
-| Wrapping content in page layout or cards                     | `apps/demo/.claude/guides/page-layouts.md`   |
-| Logging audit events and displaying timelines                | `apps/demo/.claude/guides/events.md`         |
-| Building charts, reports, and KPI dashboards                 | `apps/demo/.claude/guides/charts.md`         |
-| Writing API routines (create/update endpoints)               | `apps/demo/.claude/guides/api-routines.md`   |
-| Working with contact fields or the user_contacts schema      | `apps/demo/.claude/guides/contact-fields.md` |
-| Designing data schemas, naming fields, or adding collections | `apps/demo/.claude/guides/data-schema.md`    |
-| Adding notifications (inbox, bell, emails, Lambda pipeline)  | `apps/demo/.claude/guides/notifications.md`  |
-| Using Lowdefy operators (build-time, runtime, functions)     | `apps/demo/.claude/guides/operators.md`      |
-| Writing inline JavaScript with the `_js` operator            | `apps/demo/.claude/guides/js-operator.md`    |
-| Rendering dynamic arrays with List or ControlledList         | `apps/demo/.claude/guides/lists.md`          |
-| Styling blocks with Tailwind, inline CSS, and theme tokens   | `apps/demo/.claude/guides/styling.md`        |
-| Deciding where new files go and naming them                  | `apps/demo/.claude/guides/file-structure.md` |
-| Authoring, wiring, or extending a Lowdefy module             | `apps/demo/.claude/guides/modules.md`        |
+- `lowdefy_overview` → `lowdefy_list_types` (blocks/operators/actions/connections/requests) — discover exact names first.
+- `lowdefy_get_schema` / `lowdefy_get_examples` — the exact contract + real YAML for a type.
+- `lowdefy_get_doc` / `lowdefy_search_docs` — concept docs.
+- Feedback loop after every edit: `lowdefy_build_status` → `lowdefy_get_page_config` → `lowdefy_screenshot_page`; `lowdefy_find_config` locates an id; `lowdefy_scaffold_page` creates a canonical page.
+- Live debugging: `lowdefy_inspect_state`, `lowdefy_eval_operator`, `lowdefy_run_request`.
 
-This branch ships **no repo-level skills** — there is no `.claude/skills/`. Module
-and operator questions are answered by the guides above; anything else comes from
-skills the plugin layer provides, which are listed at runtime rather than here.
+The MCP's `concepts/modules` and `concepts/module-authoring` docs are the authoritative reference for the **module system** (manifest, `_module.*`, scoping, exports, cross-module deps, dynamic defaults, publishing). The "Lowdefy Module System" section above is this repo's specific layer on top of them.
+
+> The `lowdefy-docs` MCP ships with the dev server. If it isn't reachable, ask the developer to start it (`pnpm ldf:d`). A build check (`pnpm ldf:b`) does not require it.
+>
+> **If the MCP server is down, STOP and ask the user to reconnect it — do not guess or work around it.** The server runs on localhost, so it may simply be off or disconnected. Don't proceed with Lowdefy lookups until it's back up.
+
+## Repo-specific conventions
+
+Repo conventions the MCP does not cover — naming (snake/kebab case), change stamps, enum files, status arrays, contact/`user_contacts` fields, file structure, domain-driven page layout — live in the **"Lowdefy Project Rules"** section above and in **`docs/`** (the source of truth for consumer-observable module behavior). Consult those, not per-topic skills.
+
+## Repo skills
+
+Skills authored in this repo (`.claude/skills/`), for the mockup → Lowdefy pipeline:
+
+- `/lowdefy-config` — Look up type names, schemas, and examples from the running dev server (wraps the `lowdefy-docs` MCP).
+- `/lowdefy-mock` — Author a pipeline-ready HTML mockup in the app's Ant Design look.
+- `/mock-to-lowdefy` — Convert a mockup into Lowdefy page config (frame → layout → content).
+- `/design-tasks-ui` — Break a mockup-driven design into an ordered implementation task set.

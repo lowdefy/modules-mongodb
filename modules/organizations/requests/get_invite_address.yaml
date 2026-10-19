@@ -1,0 +1,136 @@
+# The invite form's address check: what the caller's ACTIVE organization
+# already has for the address in `invite.email`. One row, or none for a new
+# address:
+#   a member      { kind: member, email, user_id, name }
+#   an invitation { kind: invitation, email, invitation_id, status (Invited or
+#                   Expired), expiry, inviter_name, org_role, app_roles,
+#                   member_attributes }
+# A member wins over an invitation. Owners and admins only, like the
+# invitations list: anyone else gets nothing.
+id: get_invite_address
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-invitations
+payload:
+  email:
+    _string.toLowerCase:
+      _string.trim:
+        _if_none:
+          - _state: invite.email
+          - ''
+properties:
+  pipeline:
+    _build.array.concat:
+      - - $match:
+            _if:
+              test:
+                _and:
+                  - _ref: components/caller_is_org_admin.yaml
+                  - _ne:
+                      - _payload: email
+                      - ''
+              then: {}
+              else:
+                $expr: false
+      - _ref:
+          path: ../shared/org/invitations_base.yaml
+          vars:
+            org_value:
+              _user: organization_id
+      - - $match:
+            $expr:
+              $eq:
+                - $toLower: "$email"
+                - _payload: email
+        - $sort:
+            expires_at: -1
+        - $limit: 1
+        - $project:
+            _id: 0
+            kind: invitation
+            rank:
+              $literal: 2
+            email:
+              $toLower: "$email"
+            invitation_id: "$_id"
+            status: 1
+            expiry:
+              $switch:
+                branches:
+                  - case:
+                      $eq:
+                        - "$status"
+                        - Expired
+                    then: Expired
+                  - case:
+                      $lte:
+                        - "$expires_at"
+                        - _date: now
+                    then: Expired
+                  - case:
+                      $lte:
+                        - $subtract:
+                            - "$expires_at"
+                            - _date: now
+                        - 86400000
+                    then: Expires within a day
+                default:
+                  $concat:
+                    - 'Expires in '
+                    - $toString:
+                        $ceil:
+                          $divide:
+                            - $subtract:
+                                - "$expires_at"
+                                - _date: now
+                            - 86400000
+                    - ' days'
+            inviter_name: 1
+            org_role:
+              $ifNull:
+                - "$role"
+                - member
+            app_roles:
+              $ifNull:
+                - "$app_roles"
+                - []
+            member_attributes:
+              $ifNull:
+                - "$attributes"
+                - {}
+        - $unionWith:
+            coll: user-members
+            pipeline:
+              _build.array.concat:
+                - - $match:
+                      _if:
+                        test:
+                          _and:
+                            - _ref: components/caller_is_org_admin.yaml
+                            - _ne:
+                                - _payload: email
+                                - ''
+                        then: {}
+                        else:
+                          $expr: false
+                - _ref: components/member-join.yaml
+                - - $match:
+                      $expr:
+                        $eq:
+                          - $toLower:
+                              $ifNull:
+                                - "$email"
+                                - ''
+                          - _payload: email
+                  - $project:
+                      kind: member
+                      rank:
+                        $literal: 1
+                      email:
+                        $toLower: "$email"
+                      user_id: 1
+                      name: 1
+        - $sort:
+            rank: 1
+        - $limit: 1
+        - $unset: rank

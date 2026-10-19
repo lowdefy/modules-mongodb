@@ -1,0 +1,96 @@
+id: send-message
+type: InternalApi
+description: >-
+  Posts the session user's message on one of their tickets in Pelican and
+  writes the returned view into the copy. The trusted core of post-message and
+  the agent's post-message tool: its callers have already checked the input,
+  and every file key is one the user may send.
+payloadSchema:
+  type: object
+  required:
+    - ticket
+    - message
+    - files
+  properties:
+    ticket:
+      type: string
+    message:
+      type: string
+    files:
+      type: array
+      items:
+        type: object
+        required:
+          - key
+          - name
+        properties:
+          key:
+            type: string
+          name:
+            type: string
+routine:
+  - _ref: api/parts/require-user.yaml
+  - id: own_ticket
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: support-tickets
+    properties:
+      query:
+        user_id:
+          _user: id
+        $or:
+          - _id:
+              _payload: ticket
+          - view.key:
+              _payload: ticket
+      options:
+        projection:
+          _id: 1
+  - :if:
+      _eq:
+        - _step: own_ticket
+        - null
+    :then:
+      - :return:
+          ok: false
+          error:
+            kind: fix
+            status: null
+            code: not_found
+            message: That ticket was not found.
+            retry_after: null
+  - :set_state:
+      send_files:
+        _payload: files
+  - _ref: api/parts/link-files.yaml
+  - _ref:
+      path: api/parts/call-pelican.yaml
+      vars:
+        step: post_message
+        endpoint: support-post-message
+        body:
+          user:
+            _module.var: user
+          ticket:
+            _step: own_ticket._id
+          message:
+            _payload: message
+          files:
+            _state: pelican_files
+  - :if:
+      _ne:
+        - _state: pelican_error
+        - null
+    :then:
+      - :return:
+          ok: false
+          error:
+            _state: pelican_error
+  - _ref:
+      path: api/parts/write-view.yaml
+      vars:
+        view:
+          _state: pelican_answer.data
+        user_id:
+          _user: id
+  - _ref: api/parts/read-and-return.yaml

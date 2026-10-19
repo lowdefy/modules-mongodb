@@ -9,6 +9,7 @@ Workstream B1 (activities half), completing the widget split. Task 4 gave workfl
 Add an exported **`open-tasks`** component to the **activities** module — a compact card listing an entity's open tasks from activities' `actions` collection, parameterised by `entity_type` + `entity_id`. It queries tasks by `kind: task` + `entity_type`/`entity_id` — **the shape task 3 now writes** (task 3 replaced the old `deal_ids` linkage with the generic `entity_type`/`entity_id`), so this card supersedes deals' old `get_selected_deal_open_actions` reader (which still queries `deal_ids`). Style it to match the workflows `open-actions` card so the two read as one "what's open" row.
 
 Then in **deals**:
+
 - compose the workflows `open-actions` card + the activities `open-tasks` card side by side where `section_actions` rendered;
 - delete `components/detail/section_actions.yaml` and `components/detail/action_card.yaml.njk`;
 - **verify** `get_selected_deal_open_actions` is now unused; if so, delete it and drop deals' `actions-collection` connection (its remaining reader) + its manifest export. If anything still reads it, leave a note and keep it.

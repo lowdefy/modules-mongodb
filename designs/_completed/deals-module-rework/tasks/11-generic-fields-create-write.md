@@ -3,6 +3,7 @@
 ## Context
 
 Workstream D generalizes the deals module so it ships only the **universal** deal fields (company, name, description + the value/close/people/stage/outcome/pipeline it already handles) and lets hosts inject domain fields via config — exactly the suite-standard pattern every other entity module already uses: a single `fields` object var whose blocks render as **inputs** in the create form and **read-only** on the view via `SmartDescriptions`. See `companies` for the reference implementation:
+
 - Manifest var: `modules/companies/module.lowdefy.yaml:92-121` (`fields` object; block ids prefixed `attributes.` so they bind to `state.attributes.*`).
 - Form rendering: `modules/companies/components/form_company.yaml` (`_build.array.concat` + `_build.if` on `_build.array.length` of each `fields.*` slot, divider + blocks).
 - Write passthrough: `modules/companies/api/create-company.yaml` writes `attributes` straight from `_payload: attributes`.
@@ -14,16 +15,19 @@ This task does the **create + write** half of the round trip. The **display** ha
 ## Task
 
 **1. Manifest (`modules/deals/module.lowdefy.yaml`):**
+
 - Add a `fields` object var (type object, default `[]`), documented like `companies.fields.attributes`: host-supplied field blocks appended after the core company/name/description on the create form and rendered read-only on the view; block ids must be prefixed `attributes.` so they bind to `state.attributes.*`.
 - Remove the create-form-only taxonomy vars: `product_hierarchy`, `sectors`, `sub_sectors`, `customer_types`. **Keep `products`** for now (view header still references it — removed in Task 12).
 - Remove the exported `fields` from nowhere else — it's a new var, not an export.
 
 **2. Create form (`modules/deals/pages/new.yaml`):**
+
 - Remove the seven domain field blocks: `form.material_code` (+ its `product_hierarchy` hierarchy-hint `extra`), `form.product`, `form.customer_type`, `form.project_type`, `form.sector`, `form.sub_sector`, `form.package`.
 - After the core company/name/description blocks, render `_module.var: fields` as inputs using the `form_company.yaml` pattern (`_build.if` on array length, optional divider, then the blocks).
 - Prefill: drop the material/product `prefill_deal_name` coupling. Module default — **no auto-prefill** (the shared company-selector has no `onChange` hook); `form.name` stays a plain **required**, user-editable field. Any prefill is host-owned via a `fields` block `onChange`.
 
 **3. Write (`modules/deals/api/create-deal.yaml`):**
+
 - Remove the `material` `:set_state` derivation (the `_get` against `product_hierarchy`).
 - Replace the fixed `attributes.{...}` block with a generic passthrough from `form.attributes.*` (mirror `create-company.yaml`'s `attributes: _payload: attributes` shape; use `_if_none` to default to `{}`).
 - Remove the top-level `product: _payload: form.product` write (product now flows through `attributes.product` from the host `fields` block).

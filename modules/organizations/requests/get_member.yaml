@@ -1,0 +1,117 @@
+# The person the member page is about (`?user_id=`), in the caller's ACTIVE
+# organization: one row { user_id, name, email, picture, org_role, authority,
+# app_roles, joined, member_id, is_member, is_self }.
+#
+# A current member comes from the member join (is_member true). Someone with no
+# member row here but events about them or by them in this organization is a
+# former member: their name and email from the latest such event, is_member
+# false. Anyone else gives no row, so the page cannot be used to look up a
+# person the organization has never had.
+id: get_member
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+payload:
+  user_id:
+    _if_none:
+      - _url_query: user_id
+      - null
+properties:
+  pipeline:
+    _build.array.concat:
+      - _ref:
+          path: components/member-join.yaml
+          vars:
+            match:
+              user_id:
+                _payload: user_id
+            project:
+              is_member:
+                $literal: true
+              authority:
+                $switch:
+                  branches:
+                    - case:
+                        $in:
+                          - owner
+                          - $split:
+                              - $ifNull:
+                                  - "$role"
+                                  - ''
+                              - ','
+                      then: Owner
+                    - case:
+                        $in:
+                          - admin
+                          - $split:
+                              - $ifNull:
+                                  - "$role"
+                                  - ''
+                              - ','
+                      then: Admin
+                  default: null
+      - - $unionWith:
+            coll: log-events
+            pipeline:
+              # Without a user id, a null would match every event with no
+              # subject or actor.
+              - $match:
+                  _if:
+                    test:
+                      _eq:
+                        - _payload: user_id
+                        - null
+                    then:
+                      $expr: false
+                    else:
+                      organization_id:
+                        _user: organization_id
+                      $or:
+                        - metadata.subject_user_id:
+                            _payload: user_id
+                        - metadata.actor_user_id:
+                            _payload: user_id
+              - $sort:
+                  date: -1
+              - $limit: 1
+              - $project:
+                  _id: 0
+                  user_id:
+                    $literal:
+                      _payload: user_id
+                  name:
+                    $cond:
+                      - $eq:
+                          - "$metadata.subject_user_id"
+                          - _payload: user_id
+                      - "$metadata.subject_name"
+                      - "$created.user.name"
+                  email:
+                    $cond:
+                      - $eq:
+                          - "$metadata.subject_user_id"
+                          - _payload: user_id
+                      - "$metadata.subject_email"
+                      - null
+                  picture:
+                    $literal: null
+                  org_role:
+                    $literal: null
+                  authority:
+                    $literal: null
+                  app_roles:
+                    $literal: []
+                  joined:
+                    $literal: null
+                  member_id:
+                    $literal: null
+                  is_member:
+                    $literal: false
+        - $sort:
+            is_member: -1
+        - $limit: 1
+        - $addFields:
+            is_self:
+              $eq:
+                - "$user_id"
+                - _user: id

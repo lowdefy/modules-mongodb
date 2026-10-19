@@ -14,7 +14,7 @@ blocks:
       flex: 0 0 auto
     properties:
       title: Log site visit
-      icon: AiOutlineEnvironment
+      icon: location
     events:
       onClick:
         _ref:

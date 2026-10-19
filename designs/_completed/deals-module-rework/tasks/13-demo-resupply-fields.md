@@ -38,4 +38,4 @@ Rewrite `apps/demo/modules/deals/vars.yaml` so the seven domain fields come thro
 ## Notes
 
 - The field-block definitions are lifted from the pre-Task-11 `modules/deals/pages/new.yaml` (git history) — same blocks, now ids `attributes.*` and living in demo config.
-- This is the host-reconstitution proof for Workstream D: everything the module dropped is rebuildable from config with no UX loss. Any field that *can't* be reconstituted here is a design defect to surface, not a demo workaround.
+- This is the host-reconstitution proof for Workstream D: everything the module dropped is rebuildable from config with no UX loss. Any field that _can't_ be reconstituted here is a design defect to surface, not a demo workaround.

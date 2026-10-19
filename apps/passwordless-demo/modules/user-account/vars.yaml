@@ -1,0 +1,7 @@
+# No `providers` var — this deployment enables no OAuth, so the login page
+# renders only the email → magic-link affordance.
+fields:
+  profile:
+    _ref: modules/shared/profile/fields.yaml
+request_stages:
+  write: []

@@ -79,12 +79,18 @@ To override the label, set a `title:` on the `link:` (or `view_link:`) cell — 
 
 ### Sentinels
 
-In `urlQuery`, two reserved keys are **sentinels** that the engine substitutes per action at render time:
+In `urlQuery` and `pathParams`, two reserved keys are **sentinels** that the engine substitutes per action at render time:
 
 - `action_id: true` → the concrete action `_id`
 - `entity_id: true` → the action's entity id
 
-Every other `urlQuery` key must carry a static string, passed through verbatim. The `link.pageId` is a free-form app page id — it is **not** build-validated against your app's page tree, so a typo surfaces as a click-time 404.
+Every other `urlQuery` or `pathParams` key must carry a static string, passed through verbatim. When your page has a [path](https://docs.lowdefy.com/page-paths) like `reviews/{action_id}`, put the sentinel in `pathParams`:
+
+```yaml
+link: { pageId: contract-review, pathParams: { action_id: true } }
+```
+
+The page then reads the id with `_path_params: action_id` instead of `_url_query`. The `link.pageId` is a free-form app page id — it is **not** build-validated against your app's page tree, so a typo surfaces as a click-time 404.
 
 ## 2. Build the app page
 

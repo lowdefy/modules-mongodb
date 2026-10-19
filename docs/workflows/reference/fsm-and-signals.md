@@ -102,7 +102,7 @@ Tracker actions are never submitted by a user. The FSM is driven entirely by eng
 Button visibility is resolved server-side. On mount, each action detail page calls `GetWorkflowAction`, which collapses the policy into a per-signal boolean map: `action.buttons: { submit, progress, not_required, approve, request_changes, resolve_error }`. A button is `true` only when **all** of the following hold:
 
 1. **FSM source-stage** — the action's current stage is in the signal's source-stage list.
-2. **Per-verb role gate** — the caller's roles satisfy `access.{app_name}.{verb}` for the signal's required verb.
+2. **Per-verb role gate** — the caller's roles satisfy `access.{slug}.{verb}` for the signal's required verb.
 3. **`allow_not_required`** (the `not_required` signal only) — the action-root boolean must be `true`.
 
 In addition to the server booleans, form pages support a client-side author opt-out: `pages.{verb}.buttons.{name}.visible` (default `true` for edit-page buttons except `request_changes` on `view`). It accepts a boolean or any operator expression, and AND-combines with the server boolean — an author can only further restrict visibility.

@@ -1,12 +1,58 @@
-invite-user:
+# Event display metadata (color / title / icon) for the module's audit events,
+# consumed by the events-timeline on the user detail page (Activity tile).
+profile-updated:
+  color: "#52c41a"
+  title: Profile Updated
+  icon: edit
+access-updated:
+  color: "#1890ff"
+  title: Access Updated
+  icon: Shield
+org-role-updated:
+  color: "#722ed1"
+  title: Organisation Role Changed
+  icon: Key
+user-attributes-updated:
+  color: "#1890ff"
+  title: Global Attributes Updated
+  icon: globe
+user-suspended:
+  color: "#f5222d"
+  title: Suspended
+  icon: Ban
+user-reinstated:
+  color: "#52c41a"
+  title: Reinstated
+  icon: check-circle
+sessions-revoked:
+  color: "#faad14"
+  title: Sessions Revoked
+  icon: logout
+member-removed:
+  color: "#fa8c16"
+  title: Removed From App
+  icon: UserMinus
+user-deleted:
+  color: "#a8071a"
+  title: Login Identity Deleted
+  icon: delete
+member-invited:
   color: "#1890ff"
   title: User Invited
-  icon: AiOutlineUserAdd
-update-user:
-  color: "#52c41a"
-  title: User Updated
-  icon: AiOutlineEdit
-resend-user-invite:
+  icon: UserPlus
+invitation-cancelled:
+  color: "#8c8c8c"
+  title: Invitation Cancelled
+  icon: close-circle
+invitation-resent:
   color: "#faad14"
-  title: Invite Resent
-  icon: AiOutlineSend
+  title: Invitation Resent
+  icon: send
+two-factor-reset:
+  color: "#722ed1"
+  title: Two-Factor Reset
+  icon: Shield
+passkeys-revoked:
+  color: "#faad14"
+  title: Passkeys Revoked
+  icon: Key

@@ -7,7 +7,7 @@ Source: the host app tracker, issue #1781 ("Deals Rework"), items 2–8. Item 1 
 ## Proposed change
 
 1. **Open actions and tasks merge into one list** — `open_items_row`'s two span-12 columns become a single ordered list, interleaved overdue tasks → open actions → upcoming tasks, under one `ACTIONS` heading, 2×2 and paginated at four per page. Deals renders it from state both modules already seed; ownership of neither moves.
-2. **Host tiles move to the front of the info grid** — `components.info_grid_slots` injects *before* the People and Files tiles instead of after them. One moved line, no new var, nothing breaking; the resulting 2×2 pairing differs from the pre-module layout and that deviation is flagged, not hidden.
+2. **Host tiles move to the front of the info grid** — `components.info_grid_slots` injects _before_ the People and Files tiles instead of after them. One moved line, no new var, nothing breaking; the resulting 2×2 pairing differs from the pre-module layout and that deviation is flagged, not hidden.
 3. **Bounded related deals** — drop the lookup from 20 to 10 and page the strip 2×2 at four per page, instead of letting wrapping cards push the timeline off screen.
 4. **Left panel gains a new-deal button and collapses** — a compact `button_new_deal` in the deal-list card's `extra` slot, plus a state-driven collapse that hides the card body and narrows the column: a rail above 768px, a header-only strip below it.
 5. **50/50 workspace and 2-decimal numbers** — `pipeline_col`/`detail_col` go from span 10/14 to 12/12, and numbers render at 2dp via `toFixed(2)` method calls (Lowdefy ships no number filter), with thousands separators needed at the single currency site (display only; stored values untouched).
@@ -17,23 +17,23 @@ Source: the host app tracker, issue #1781 ("Deals Rework"), items 2–8. Item 1 
 
 All paths under `modules/`, all line references at the v0.17.0 shape.
 
-| Issue item | Where it lives now | What it does today |
-|---|---|---|
-| 2 — combine tasks and actions | `deals/components/detail/open_items_row.yaml` | Two span-12 columns: workflows' `open-actions` left, activities' `open-tasks` right. Split deliberately in the previous rework ("each module renders only its own domain and fetches only its own data"), but styled to match. |
-| 3 — related deals row limit | `deals/components/detail/section_related_deals.yaml` | A `List` with `direction: row` of `deal_list_item_compact` cards at `flex: 0 1 auto`. The lookup in `get_selected_deal.yaml` is `$limit: 20`, so the strip wraps to five-plus rows and pushes the timeline tabs off screen. |
-| 4 — company/people/product/files layout | `deals/components/detail/section_info_grid.yaml` | `_build.array.concat` of `section_fields` (full width), then `section_people` + `section_files` (span 12 each), then `components.info_grid_slots` **appended last**. A host's tiles can only land at the end. |
-| 5 — new deal button | `deals/components/button_new_deal.yaml` | Exists, but only used on `pages/all.yaml`. `view.yaml`'s `deal_list_card` holds search + `ListSelector` + pagination only. |
-| 6 — collapsible left panel | `deals/pages/view.yaml` `deal_list_col` | Fixed `span: 5` (`sm: 24`). No collapse. |
-| 7 — 2-decimal rounding | `deals/pages/view.yaml` card template | `{% elif f.round %}{{ v \| round }}` — Nunjucks `round` defaults to 0 dp, so 12.6 renders `13`. |
-| 8 — middle section width | `deals/pages/view.yaml` `workspace_row` | `pipeline_col: span 10`, `detail_col: span 14` — the pipeline is the narrower of the two. |
-| (item 1 dependency) | `activities/components/capture_activity.yaml` | `prefill` **already** carries `attributes` and `references` (`:165-177`, `_object.assign` over the module defaults, consumer values winning). Only the docblock at `:13` is stale — it lists `{ type, title, description, contacts, company_ids }`. No change needed beyond that comment. |
-| (item 1 dependency) | `deals/requests/get_selected_deal.yaml:106-127` | The workflow `$lookup` matches `$eq: [$workflow_type, <module var>]` with `$limit: 1`, then aliases `$first: $workflow.form_data` onto `workflows`. Only ever one workflow's form data. |
+| Issue item                              | Where it lives now                                   | What it does today                                                                                                                                                                                                                                                                        |
+| --------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2 — combine tasks and actions           | `deals/components/detail/open_items_row.yaml`        | Two span-12 columns: workflows' `open-actions` left, activities' `open-tasks` right. Split deliberately in the previous rework ("each module renders only its own domain and fetches only its own data"), but styled to match.                                                            |
+| 3 — related deals row limit             | `deals/components/detail/section_related_deals.yaml` | A `List` with `direction: row` of `deal_list_item_compact` cards at `flex: 0 1 auto`. The lookup in `get_selected_deal.yaml` is `$limit: 20`, so the strip wraps to five-plus rows and pushes the timeline tabs off screen.                                                               |
+| 4 — company/people/product/files layout | `deals/components/detail/section_info_grid.yaml`     | `_build.array.concat` of `section_fields` (full width), then `section_people` + `section_files` (span 12 each), then `components.info_grid_slots` **appended last**. A host's tiles can only land at the end.                                                                             |
+| 5 — new deal button                     | `deals/components/button_new_deal.yaml`              | Exists, but only used on `pages/all.yaml`. `view.yaml`'s `deal_list_card` holds search + `ListSelector` + pagination only.                                                                                                                                                                |
+| 6 — collapsible left panel              | `deals/pages/view.yaml` `deal_list_col`              | Fixed `span: 5` (`sm: 24`). No collapse.                                                                                                                                                                                                                                                  |
+| 7 — 2-decimal rounding                  | `deals/pages/view.yaml` card template                | `{% elif f.round %}{{ v \| round }}` — Nunjucks `round` defaults to 0 dp, so 12.6 renders `13`.                                                                                                                                                                                           |
+| 8 — middle section width                | `deals/pages/view.yaml` `workspace_row`              | `pipeline_col: span 10`, `detail_col: span 14` — the pipeline is the narrower of the two.                                                                                                                                                                                                 |
+| (item 1 dependency)                     | `activities/components/capture_activity.yaml`        | `prefill` **already** carries `attributes` and `references` (`:165-177`, `_object.assign` over the module defaults, consumer values winning). Only the docblock at `:13` is stale — it lists `{ type, title, description, contacts, company_ids }`. No change needed beyond that comment. |
+| (item 1 dependency)                     | `deals/requests/get_selected_deal.yaml:106-127`      | The workflow `$lookup` matches `$eq: [$workflow_type, <module var>]` with `$limit: 1`, then aliases `$first: $workflow.form_data` onto `workflows`. Only ever one workflow's form data.                                                                                                   |
 
 ## Key decisions and rationale
 
 ### Combining actions and tasks is a real data merge, rendered by deals
 
-Item 2 means what it says. Before the previous rework, `section_actions.yaml` rendered a *single paginated list* whose request comment reads "the final ordered card list (overdue tasks → open workflow actions → upcoming tasks)" — genuinely merged and interleaved by urgency. Commit `8923ca15` split it into `workflows/open-actions` plus `activities/open-tasks`, two lists with a heading each. Since issue item 4 likewise asks for a pre-cutover layout back, item 2's "combine" means that merged list, and **this design restores it**.
+Item 2 means what it says. Before the previous rework, `section_actions.yaml` rendered a _single paginated list_ whose request comment reads "the final ordered card list (overdue tasks → open workflow actions → upcoming tasks)" — genuinely merged and interleaved by urgency. Commit `8923ca15` split it into `workflows/open-actions` plus `activities/open-tasks`, two lists with a heading each. Since issue item 4 likewise asks for a pre-cutover layout back, item 2's "combine" means that merged list, and **this design restores it**.
 
 An earlier draft argued a merge "needs a component that owns data from both modules". **That objection was wrong.** Both halves are already in page state on this view — `entity_workflows` is seeded by the page itself (`pages/view.yaml`, at mount, on deal switch, on related-deal click and after a check action), independent of `open-actions`; `open_tasks` is likewise requested and seeded by deals in four places. A merge needed no new data ownership at all.
 
@@ -45,7 +45,7 @@ An earlier draft argued a merge "needs a component that owns data from both modu
 
 **Why deals renders it rather than either module.** An action is a plain anchor built from the engine's resolved `link`, which is why `open-actions` can be one `_nunjucks` Html block. A task must fire Lowdefy events — set `selected_task`, open the host's modal — which a Nunjucks string cannot do. A merged row therefore needs a `List` of real blocks with per-row branching, and only the host sees both the resolved actions and the task modal. This is also why the old `action_card.yaml.njk` ran to 252 lines.
 
-**The one new module var: `render` on `activities/open-tasks`.** Deals needs the task rows without activities' cards. The component couples fetch to render, so it gains `render` (default true) alongside `on_loaded`. It is gated at build time with `_build.if`, not `visible`, because that card `List` *is* `open_tasks` — hiding it would delete the state it seeds. `on_loaded` exists because the component's own mount is the one seeding deals cannot hook.
+**The one new module var: `render` on `activities/open-tasks`.** Deals needs the task rows without activities' cards. The component couples fetch to render, so it gains `render` (default true) alongside `on_loaded`. It is gated at build time with `_build.if`, not `visible`, because that card `List` _is_ `open_tasks` — hiding it would delete the state it seeds. `on_loaded` exists because the component's own mount is the one seeding deals cannot hook.
 
 A **server-side merge** like the old request was rejected: it would re-query raw action docs and bypass the engine's resolution of links, messages and statuses, which did not exist pre-cutover.
 
@@ -62,8 +62,8 @@ The host wants its Company and Product tiles ahead of the module's People and Fi
 ```yaml
 blocks:
   _build.array.concat:
-    - - _ref: components/detail/section_fields.yaml   # Details, full width, self-hiding
-    - _module.var: components.info_grid_slots         # ← moved up from last
+    - - _ref: components/detail/section_fields.yaml # Details, full width, self-hiding
+    - _module.var: components.info_grid_slots # ← moved up from last
     - - _ref: components/detail/section_people.yaml
       - _ref: components/detail/section_files.yaml
 ```
@@ -74,12 +74,12 @@ blocks:
 
 The resulting pairing therefore depends on **how many tiles the host injects**, and is not a fixed property of the change:
 
-| Host tiles | Rows |
-|---|---|
-| 0 (the demo) | `People \| Files` — unchanged from today |
-| 1 | `HostTile \| People`, then `Files` alone |
-| **2 (the host app today)** | **`Company \| Product`, then `People \| Files`** |
-| 3 | `Host \| Host`, then `Host \| People`, then `Files` alone |
+| Host tiles                 | Rows                                                      |
+| -------------------------- | --------------------------------------------------------- |
+| 0 (the demo)               | `People \| Files` — unchanged from today                  |
+| 1                          | `HostTile \| People`, then `Files` alone                  |
+| **2 (the host app today)** | **`Company \| Product`, then `People \| Files`**          |
+| 3                          | `Host \| Host`, then `Host \| People`, then `Files` alone |
 
 So the tidy "host tiles above module tiles" split is a property of the number two, not of the mechanism — worth stating plainly because the pairing is what the issue author is being asked to accept.
 
@@ -107,15 +107,15 @@ Today the strip is a `List direction: row` of `deal_list_item_compact` cards at 
 
 Capping by pixel height would clip a row mid-card, and capping by count alone doesn't bound anything while widths vary. **Pagination bounds it directly:** a 2×2 grid of four per page, with the lookup dropped from 20 to 10 so at most three pages exist. Same mechanism as the merged open-items list above, for the same reason — the two sections sit one above the other, so they should page alike.
 
-**This replaced an earlier fixed-width scrolling strip, and it is worth recording what that cost.** That approach pinned each card to 200px and kept the row to `nowrap` with `overflow-x: auto`. It needed *two* mechanisms to hold the width, because `deriveLayout` puts `layout.flex` on the `BlockLayout` wrapper, whose `min-width: auto` floors it at min-content — and `List` renders one `Area` per item, so under `nowrap` those per-item wrappers shrank below the cards inside them and adjacent cards overlapped. It also forced `overflow-y: hidden` (a `visible` y-axis computes to `auto` beside `overflow-x: auto`, adding an unwanted scrollbar), which clipped the hoverable card's shadow. Pagination removes all of it: the cards need no width at all, `deal_list_item_compact` carries no `layout`, and with no overflow the shadow renders intact.
+**This replaced an earlier fixed-width scrolling strip, and it is worth recording what that cost.** That approach pinned each card to 200px and kept the row to `nowrap` with `overflow-x: auto`. It needed _two_ mechanisms to hold the width, because `deriveLayout` puts `layout.flex` on the `BlockLayout` wrapper, whose `min-width: auto` floors it at min-content — and `List` renders one `Area` per item, so under `nowrap` those per-item wrappers shrank below the cards inside them and adjacent cards overlapped. It also forced `overflow-y: hidden` (a `visible` y-axis computes to `auto` beside `overflow-x: auto`, adding an unwanted scrollbar), which clipped the hoverable card's shadow. Pagination removes all of it: the cards need no width at all, `deal_list_item_compact` carries no `layout`, and with no overflow the shadow renders intact.
 
-**A grid, not a flex row.** Because `List` gives every item its own content-sized `Area`, a span on the card sizes the card *within* its Area rather than halving the Area — the same mechanism that made the fixed pixel width necessary before. `gridTemplateColumns: minmax(0, 1fr) minmax(0, 1fr)` makes each Area a cell, and `gap` is the gutter in both axes. The `minmax(0, …)` is load-bearing: a bare `1fr` is `minmax(auto, 1fr)`, and that `auto` floors the column at its content's min-content width.
+**A grid, not a flex row.** Because `List` gives every item its own content-sized `Area`, a span on the card sizes the card _within_ its Area rather than halving the Area — the same mechanism that made the fixed pixel width necessary before. `gridTemplateColumns: minmax(0, 1fr) minmax(0, 1fr)` makes each Area a cell, and `gap` is the gutter in both axes. The `minmax(0, …)` is load-bearing: a bare `1fr` is `minmax(auto, 1fr)`, and that `auto` floors the column at its content's min-content width.
 
 **The deal name clamps to two lines**, as it did before the module cutover. An interim version ellipsised it on one line, which was a requirement of the fixed-width scrolling strip — uniform card height was what let a count limit bound the strip. Pagination bounds it instead, so the constraint went away and the single line stopped buying anything. Equal heights now come from `gridAutoRows: 1fr` plus `height: 100%` on the card, so a one-line name does not sit shorter than a two-line neighbour. Matches the open-items card beside it, and `deal_list_item_compact` has no other consumer.
 
-**Three bugs on this feature shared one root cause**, worth naming so the fourth is recognised faster: an intrinsic minimum silently overriding explicit sizing. `workspace_col` wrapped below the collapsed rail because flex line-breaking measures the `min-width: auto` min-content floor, not the `0` basis. The fixed-width strip needed both a flex basis *and* a width, because flex-basis is only a floor against that same minimum. And a `nowrap` deal name widened its grid column, because `1fr` carries an `auto` minimum. In this stack a width you set is a suggestion until the intrinsic floor is removed too.
+**Three bugs on this feature shared one root cause**, worth naming so the fourth is recognised faster: an intrinsic minimum silently overriding explicit sizing. `workspace_col` wrapped below the collapsed rail because flex line-breaking measures the `min-width: auto` min-content floor, not the `0` basis. The fixed-width strip needed both a flex basis _and_ a width, because flex-basis is only a floor against that same minimum. And a `nowrap` deal name widened its grid column, because `1fr` carries an `auto` minimum. In this stack a width you set is a suggestion until the intrinsic floor is removed too.
 
-Worth noting but explicitly *not* in scope: this strip and the left-hand Active Deals panel render the same concept through two different card templates — the panel builds its card inline in `pages/view.yaml`'s Nunjucks, this one uses `deal_list_item_compact.yaml`. Real duplication, no issue item asks for it.
+Worth noting but explicitly _not_ in scope: this strip and the left-hand Active Deals panel render the same concept through two different card templates — the panel builds its card inline in `pages/view.yaml`'s Nunjucks, this one uses `deal_list_item_compact.yaml`. Real duplication, no issue item asks for it.
 
 ### Items 2, 3, 4 and 8 are one layout change, not four
 
@@ -127,27 +127,27 @@ Nothing is recomputed and nothing is migrated. The complaint is float noise and 
 
 The narrow list card keeps its abbreviated form (`R1.2m`), because a full 2dp figure competes with salesperson, product, volume and close date on one meta line in a span-5 column. That is a deliberate exception to "2 decimals everywhere", and it belongs in the module (the card template's `round` filter) while the currency abbreviation stays host-derived.
 
-**There is no number filter to reach for.** Lowdefy's Nunjucks environment registers exactly three custom filters — `date`, `unique`, `urlQuery` (`packages/utils/nunjucks/src/index.js:26-28`) — so everything else is stock Nunjucks, whose `round(precision)` rounds without padding trailing zeros and cannot insert separators at all. `{{ 12.6 | round(2) }}` renders `12.6`, not `12.60`. Templates *can* call JS methods on values, which is how the host app's `companies` tiles already format quantities (`tiles/company_orders.yaml:95` uses `.toFixed(2)`).
+**There is no number filter to reach for.** Lowdefy's Nunjucks environment registers exactly three custom filters — `date`, `unique`, `urlQuery` (`packages/utils/nunjucks/src/index.js:26-28`) — so everything else is stock Nunjucks, whose `round(precision)` rounds without padding trailing zeros and cannot insert separators at all. `{{ 12.6 | round(2) }}` renders `12.6`, not `12.60`. Templates _can_ call JS methods on values, which is how the host app's `companies` tiles already format quantities (`tiles/company_orders.yaml:95` uses `.toFixed(2)`).
 
 Because the card keeps its abbreviation, **separators are needed at exactly one site** — the host's meta-strip Value. That splits the mechanism small:
 
-| Site | Needs | Mechanism |
-|---|---|---|
-| Module card template (volume) | 2dp padding | `.toFixed(2)` method call, replacing `\| round` |
+| Site                             | Needs            | Mechanism                                                                                           |
+| -------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
+| Module card template (volume)    | 2dp padding      | `.toFixed(2)` method call, replacing `\| round`                                                     |
 | Host meta-strip Value (currency) | 2dp + separators | `.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })` → `1,234,567.89` |
-| Host product tile (volumes) | 2dp padding | `.toFixed(2)` |
+| Host product tile (volumes)      | 2dp padding      | `.toFixed(2)`                                                                                       |
 
 **Locale resolved — do not use `en-ZA`.** Checked against Node 26:
 
-| Locale | `1234567.891` | `12.6` |
-|---|---|---|
+| Locale  | `1234567.891`  | `12.6`  |
+| ------- | -------------- | ------- |
 | `en-ZA` | `1 234 567,89` | `12,60` |
 | `en-GB` | `1,234,567.89` | `12.60` |
 | `en-US` | `1,234,567.89` | `12.60` |
 
 `en-ZA` pairs a space thousands separator with a **comma decimal**, which would render deal value as
 `R1 234 567,89` and a volume as `12,60`. So the illustrative `R1 234 567.89` used earlier in this
-document — space thousands *with* a period decimal — is not produced by any standard locale; it is a
+document — space thousands _with_ a period decimal — is not produced by any standard locale; it is a
 mixed convention.
 
 **Use `en-GB`**, giving `R1,234,567.89`. Comma thousands with a period decimal is unambiguous and
@@ -170,29 +170,29 @@ A grid share tracks the viewport; a rail should track its contents. So the colla
 - **`deriveFlex` returns `false` for a null flex**, so the expanded state falls through to the existing `span: 5` / `sm.span: 24` path untouched. One conditional, no duplicated layout.
 - **The basis must be `0`, not `auto`.** Grid rows default to `flex-wrap: wrap`, and an `auto` basis makes `workspace_col`'s hypothetical size its full content width, which overflows what the rail leaves and wraps it onto its own line instead of shrinking it to fit.
 
-**Consequence at the breakpoint, and it is a change of behaviour.** `deriveLayout` returns early when `flex` is set, skipping all span and breakpoint handling — so 36px applies at *every* width. The earlier span-based draft was inert below 768px (`sm: { span: 24 }` kept the panel full width there, so collapsing only hid the body and left a full-width header strip above the workspace). Now the collapsed rail is a 36px strip beside the workspace on a phone too.
+**Consequence at the breakpoint, and it is a change of behaviour.** `deriveLayout` returns early when `flex` is set, skipping all span and breakpoint handling — so 36px applies at _every_ width. The earlier span-based draft was inert below 768px (`sm: { span: 24 }` kept the panel full width there, so collapsing only hid the body and left a full-width header strip above the workspace). Now the collapsed rail is a 36px strip beside the workspace on a phone too.
 
-| Width | Collapsed renders as |
-|---|---|
+| Width  | Collapsed renders as                                            |
+| ------ | --------------------------------------------------------------- |
 | ≥768px | A 36px rail beside the workspace — body hidden, chevron remains |
-| <768px | The same 36px rail, now beside a much narrower workspace |
+| <768px | The same 36px rail, now beside a much narrower workspace        |
 
 **Settled: keep the rail at every width.** What the two states give on a phone is coherent rather than accidental, and measuring it settled the question:
 
 - **Expanded is unchanged.** `flex` is null, so the `span: 5` / `sm.span: 24` path runs exactly as before — the panel is full width below 768px and the workspace sits under it. Stacking, which is what a phone wants.
-- **Collapsed puts one piece of content beside the rail** — but only with `min-width: 0` on `workspace_col`. A `0` flex basis is **not** enough. `min-width: auto` floors a flex item at its min-content width, and flex line-breaking uses that floor rather than the basis, so any descendant wider than the space the rail leaves both blows the column out to its own min-content *and* pushes it onto a new line below the rail. Measured at a 948px available width: a 1129px descendant wraps, 1580px wraps, 2934px wraps; with `min-width: 0` the column holds 948px and stays beside the rail in every case.
+- **Collapsed puts one piece of content beside the rail** — but only with `min-width: 0` on `workspace_col`. A `0` flex basis is **not** enough. `min-width: auto` floors a flex item at its min-content width, and flex line-breaking uses that floor rather than the basis, so any descendant wider than the space the rail leaves both blows the column out to its own min-content _and_ pushes it onto a new line below the rail. Measured at a 948px available width: a 1129px descendant wraps, 1580px wraps, 2934px wraps; with `min-width: 0` the column holds 948px and stays beside the rail in every case.
 
   The override goes on the block's non-dot `style` key, which the build maps to `style.block` — the object `BlockLayout` puts on the wrapper div, which is the actual flex item (`Container.js:48`). The inner Box div is not the flex item, so `.element` would not work. Same mechanism as `deal_list_item_compact`'s `style.width`.
 
-  It is conditional on the collapsed state so the expanded path stays byte-identical. Scroll containers are already immune — `overflow` other than `visible` zeroes the automatic minimum — which is why the related-deals strip and both card bodies never caused this, and why the culprit is whatever sits *outside* a scroll container.
+  It is conditional on the collapsed state so the expanded path stays byte-identical. Scroll containers are already immune — `overflow` other than `visible` zeroes the automatic minimum — which is why the related-deals strip and both card bodies never caused this, and why the culprit is whatever sits _outside_ a scroll container.
 
 So collapsing on a phone trades 36px for reaching the workspace without scrolling past a full-width bar. That is worth it, and the expanded state still stacks for anyone who wants the panel.
 
 **One narrow-screen defect this surfaces, and it is fixed here.** `components/detail/action_bar.yaml` was `flex: 0 0 auto` — shrink 0 — so the three-button bar could not give up width. Collapsed at 375px the workspace leaves it about 299px of content box against roughly 316–334px of buttons, so the topbar spilled and the page gained a horizontal scrollbar. Expanded there is ~349px and it fits, which is why the collapse is what exposed it.
 
-`flex: 0 1 auto` lets the bar shrink, and because it is itself a wrapping row its buttons drop to a second line rather than squashing. Measured at 375px: spill 0px at every button width from 90px to 140px, where shrink 0 spilled 0/6/24/66/126px. Nothing changes above about 430px, where the bar has never needed to shrink — shrink only engages once the line would overflow. The bar's *children* keep `flex: 0 0 auto`, so individual buttons never compress; only the container yields.
+`flex: 0 1 auto` lets the bar shrink, and because it is itself a wrapping row its buttons drop to a second line rather than squashing. Measured at 375px: spill 0px at every button width from 90px to 140px, where shrink 0 spilled 0/6/24/66/126px. Nothing changes above about 430px, where the bar has never needed to shrink — shrink only engages once the line would overflow. The bar's _children_ keep `flex: 0 0 auto`, so individual buttons never compress; only the container yields.
 
-Either way it avoids breakpoint-aware *visibility*, which Lowdefy makes awkward — `visible` evaluates from state, not media queries, so hiding the toggle below a breakpoint would mean a media-query style override or tracking viewport width in state.
+Either way it avoids breakpoint-aware _visibility_, which Lowdefy makes awkward — `visible` evaluates from state, not media queries, so hiding the toggle below a breakpoint would mean a media-query style override or tracking viewport width in state.
 
 **Height: two constants that must stay in step.** The rail card is `calc(100vh - 98px)` and the `ListSelector` inside it `calc(100vh - 220px)`, the 122px difference being the card header, search box and pagination. The 98 exists because this column has no topbar: to end level with the workspace column it must cover that column's whole stack — the topbar (62px), the 12px gutter below it, and the pipeline/detail cards at `100vh - 172px`. An earlier value of 110 covered the topbar but not the gutter, leaving the rail 12px short. `height: 100%` is not a substitute: the Box renders a plain auto-height div, so a percentage has nothing definite to resolve against and the card drops to content height. The arithmetic is fragile — change any chrome height and the numbers drift — and the structural fix is to lift the topbar out of `workspace_col` so both columns start level and share one constant. Not done here.
 
@@ -200,11 +200,11 @@ Either way it avoids breakpoint-aware *visibility*, which Lowdefy makes awkward 
 
 Not an issue item — it surfaced from looking at the rendered page.
 
-The card is a fixed-height flex column. `.ant-card-head` is a flex item with the default `flex-shrink: 1`, and the body below is `flex: 1 1 auto`, so its basis is its *content* height. Expanding the workflows pushes header-basis + body-basis past the card's height, and flex then shrinks both: the body absorbs it happily (`min-height: 0`, it scrolls), but the header is squeezed toward its `min-height`, losing the room its two-line title and description need. Measured at 50.2px collapsed and 39.0px expanded. `flex-shrink: 0` on the header holds it at its natural height; the body was always able to absorb the difference alone.
+The card is a fixed-height flex column. `.ant-card-head` is a flex item with the default `flex-shrink: 1`, and the body below is `flex: 1 1 auto`, so its basis is its _content_ height. Expanding the workflows pushes header-basis + body-basis past the card's height, and flex then shrinks both: the body absorbs it happily (`min-height: 0`, it scrolls), but the header is squeezed toward its `min-height`, losing the room its two-line title and description need. Measured at 50.2px collapsed and 39.0px expanded. `flex-shrink: 0` on the header holds it at its natural height; the body was always able to absorb the difference alone.
 
 `detail_card` cannot have the same fault — it declares no header. `deal_list_card`'s header is single-line, so it has almost nothing to lose and is left alone rather than guarded speculatively.
 
-**Worth recording, because it cost three attempts:** "the header shrinks" was read as a *width* problem, and two horizontal fixes were built and then removed — a `minWidth` pinning the expand/collapse toggle (whose label is genuinely 7px wider when expanded, 73.8px vs 80.9px, and antd does take that off the `flex: 1` title), and `scrollbar-gutter: stable` on the card bodies (which genuinely prevents a ~15px reflow where scrollbars take layout space, verified in Chromium at 504px → 489px). Both describe real mechanisms. Neither was the reported fault, neither had anyone asking for it, and the scrollbar one is a no-op under macOS overlay scrollbars — so both were dropped as unrequested scope rather than kept as incidental polish. The diagnostic lesson is cheaper than the code: establish the axis before fixing anything.
+**Worth recording, because it cost three attempts:** "the header shrinks" was read as a _width_ problem, and two horizontal fixes were built and then removed — a `minWidth` pinning the expand/collapse toggle (whose label is genuinely 7px wider when expanded, 73.8px vs 80.9px, and antd does take that off the `flex: 1` title), and `scrollbar-gutter: stable` on the card bodies (which genuinely prevents a ~15px reflow where scrollbars take layout space, verified in Chromium at 504px → 489px). Both describe real mechanisms. Neither was the reported fault, neither had anyone asking for it, and the scrollbar one is a no-op under macOS overlay scrollbars — so both were dropped as unrequested scope rather than kept as incidental polish. The diagnostic lesson is cheaper than the code: establish the axis before fixing anything.
 
 ### Attribute prefill already works — only the docs were wrong
 
@@ -224,7 +224,7 @@ Note the scope: only `get_selected_deal` aliases form data this way. The two lis
 
 **Fix: drop the `workflow_type` match and the `$limit: 1`, and key the result by workflow type** — `workflows.{workflow_type}.{action}.{field}`.
 
-An earlier draft proposed a *flat* merge keyed by action type alone, on the grounds that action types are unique across a lifecycle. **They are not, and the engine is built to allow reuse.** `makeWorkflowsConfig.js:930` hard-errors on a duplicate action type *within* a workflow; across workflows it namespaces everything by workflow type — endpoint ids are `{workflow_type}-{action_type}-{signal}-{phase}`, and the render-config bundle is keyed workflow-type-then-action-type. A lifecycle with a `review` step in both halves is a legal config that a flat merge would silently truncate, reintroducing the exact failure mode this change exists to remove.
+An earlier draft proposed a _flat_ merge keyed by action type alone, on the grounds that action types are unique across a lifecycle. **They are not, and the engine is built to allow reuse.** `makeWorkflowsConfig.js:930` hard-errors on a duplicate action type _within_ a workflow; across workflows it namespaces everything by workflow type — endpoint ids are `{workflow_type}-{action_type}-{signal}-{phase}`, and the render-config bundle is keyed workflow-type-then-action-type. A lifecycle with a `review` step in both halves is a legal config that a flat merge would silently truncate, reintroducing the exact failure mode this change exists to remove.
 
 A build-time guard was considered and rejected: the deals module is pure YAML with no resolvers to host such a check, and pushing a deals-specific constraint into the workflows engine would forbid something the engine deliberately supports.
 
@@ -232,7 +232,7 @@ Keying by workflow type therefore matches the engine's own convention and remove
 
 **One residual collision remains, narrower than the one being fixed.** An earlier draft of this section claimed workflow-type keying makes collisions "structurally impossible". It does not, quite: the workflows engine permits **two workflows of the same type on one entity** — `get-entity-workflows` ships a `display_order` / `created.timestamp` tie-breaker precisely for that case — and `$arrayToObject` on duplicate keys is last-wins with no error. So a deal carrying two workflows of the same type exposes only one of them, silently.
 
-That is the same *shape* of failure this change exists to remove, so it is recorded rather than glossed: the fix narrows the collision from "any two workflows reusing an action type" to "two workflows of the same type on one deal", which no consuming lifecycle does today. Closing it entirely would mean keying by workflow `_id` or instance index, which no host could then write a stable read against — the reason the type is the key at all. Revisit if a lifecycle ever runs two instances of one workflow type on a single deal.
+That is the same _shape_ of failure this change exists to remove, so it is recorded rather than glossed: the fix narrows the collision from "any two workflows reusing an action type" to "two workflows of the same type on one deal", which no consuming lifecycle does today. Closing it entirely would mean keying by workflow `_id` or instance index, which no host could then write a stable read against — the reason the type is the key at all. Revisit if a lifecycle ever runs two instances of one workflow type on a single deal.
 
 ## Host follow-through (the host app)
 
@@ -247,13 +247,14 @@ None of this is complete until the host bumps. Work that lands in the host app's
 
 **Reads to re-key for the namespaced form data** (proposed change 6) — three sites, all in the host app's repo:
 
-| Site | Today | After |
-|---|---|---|
-| `modules/deals/vars.yaml` `request_stages.get_selected_deal` — `value` | `$workflows.pricing-qualification.pricing_r_ton` × `$workflows.volumes.annual_volume_ton` | prefix both with `prospecting` |
-| same — `close_date` | `$workflows.order-confirmation.commercialisation_date` | `$workflows.onboarding.order-confirmation.commercialisation_date` |
-| `modules/deals/tiles/product_volumes.yaml` | `workflows.volumes.{annual,monthly}_volume_ton` | prefix with `prospecting` |
+| Site                                                                   | Today                                                                                     | After                                                             |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `modules/deals/vars.yaml` `request_stages.get_selected_deal` — `value` | `$workflows.pricing-qualification.pricing_r_ton` × `$workflows.volumes.annual_volume_ton` | prefix both with `prospecting`                                    |
+| same — `close_date`                                                    | `$workflows.order-confirmation.commercialisation_date`                                    | `$workflows.onboarding.order-confirmation.commercialisation_date` |
+| `modules/deals/tiles/product_volumes.yaml`                             | `workflows.volumes.{annual,monthly}_volume_ton`                                           | prefix with `prospecting`                                         |
 
 The first two are being rewritten anyway — `close_date` because `order-confirmation` moves workflows, and both because of the `sales-pipeline` → `prospecting` rename. Only the product tile is touched purely for the re-key.
+
 - `shared/enums/deal/action_groups.yaml` is dead for deals — only the legacy `items` module still reads it. Deals group headings come from the workflow config's own `action_groups`.
 
 **Release ordering:** module release (`deals`) → host bump → the host's lifecycle work. The lifecycle split depends on exactly one thing here — the form-data merge (proposed change 6). Its retention button needs no module change at all, since attribute prefill already works.
@@ -261,6 +262,7 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 ## Files changed
 
 **`modules/deals`**
+
 - `components/detail/open_items_row.yaml` — rewritten: one paginated 2×2 `List` of merged rows under a single `ACTIONS` heading, replacing the two span-12 column Boxes. Stays a `Box`; no Card, no border. Mounts `activities/open-tasks` with `render: false` inside a `display: none` wrapper, for its request and state seeding only.
 - `actions/open_items_merge.yaml` — new. The merge and row presentation as an operator fragment, so `compute_open_items` can take the full list and the first page from one definition.
 - `actions/compute_open_items.yaml` — new. Sets the merged list, its first page, and resets the pagination block's own state. Referenced from all five sites that seed `entity_workflows` or `open_tasks`.
@@ -273,22 +275,23 @@ The first two are being rewritten anyway — `close_date` because `order-confirm
 - `pages/view.yaml` — new-deal button in `deal_list_card` `extra`; collapse toggle + 36px flex rail with its paired height constants; `pipeline_col`/`detail_col` to 12/12; card template 2dp formatting; `flex-shrink: 0` on the pipeline card's header.
 - `components/button_new_deal.yaml` — gains `size` and `visible` vars, both defaulted to preserve the list page's rendering (`size` defaults to `null` rather than `default`, so it inherits an ancestor size context instead of overriding it).
 - `components/detail/action_bar.yaml` — `flex: 0 0 auto` → `0 1 auto`, so the button bar wraps instead of spilling the topbar when the panel is collapsed on a phone.
-- `components/deal_list_card.yaml` — **the same 2dp formatting.** This is the deals *list* page's browse card (`_ref`'d from `components/results_list.yaml`), and it reads the same `card_fields` var with the same `round` flag as the workspace panel card. Missed in an earlier draft of this inventory; leaving it would render one host setting two ways (`13` on the list page, `12.60` in the workspace).
+- `components/deal_list_card.yaml` — **the same 2dp formatting.** This is the deals _list_ page's browse card (`_ref`'d from `components/results_list.yaml`), and it reads the same `card_fields` var with the same `round` flag as the workspace panel card. Missed in an earlier draft of this inventory; leaving it would render one host setting two ways (`13` on the list page, `12.60` in the workspace).
 - `requests/get_selected_deal.yaml` — form-data merge across workflows.
 - `module.lowdefy.yaml` — `info_grid_slots`' description updated to say it injects before the built-in tiles; `workflow_type`'s description corrected, since it no longer drives the form-data alias. Both feed the generated `docs/deals/reference/vars.md`, so `pnpm docs:gen` must run in the same change. No var added or renamed.
 
 **Formatting expression, both card templates:** `{{ (v | float(0)).toFixed(2) }}`. `float` is a stock Nunjucks filter that never throws and gives identical output for real numbers; a bare `.toFixed()` throws on a non-numeric field, and the blast radius of a thrown template error is not establishable from this repo (the `ListSelector` block's source lives elsewhere). The trade recorded knowingly: a host that flags a non-numeric path `round: true` now sees a plausible `0.00` rather than a visibly broken `NaN`.
 
 **`modules/activities`**
+
 - `components/capture_activity.yaml` — docblock fix only: `prefill` documents `attributes` and `references`, and notes both are modal-mode only. No behaviour change.
-- `components/open-tasks.yaml` — gains two vars. `render` (default true) fetches and seeds `open_tasks` without drawing cards, gated with `_build.if` rather than `visible` because the card `List` *is* `open_tasks` and hiding it would delete the state it seeds. `on_loaded` (default `[]`) runs after that seeding, which is the one moment a host cannot hook itself. Also a comment fix: it described itself as composing with `open-actions` into one row, which stopped being true.
+- `components/open-tasks.yaml` — gains two vars. `render` (default true) fetches and seeds `open_tasks` without drawing cards, gated with `_build.if` rather than `visible` because the card `List` _is_ `open_tasks` and hiding it would delete the state it seeds. `on_loaded` (default `[]`) runs after that seeding, which is the one moment a host cannot hook itself. Also a comment fix: it described itself as composing with `open-actions` into one row, which stopped being true.
 
-**`apps/demo`** — a reference consumer, added after this design was first written. An earlier draft said "no change needed", which was true of *correctness* — nothing in the demo breaks — but wrong about demonstrability: with no `info_grid_slots` set and no read of the workflow form-data alias, neither the tile reordering nor the re-keyed read shape was exercised anywhere in this repo, and this repo expects a build-verified consumer for consumer-facing capability.
+**`apps/demo`** — a reference consumer, added after this design was first written. An earlier draft said "no change needed", which was true of _correctness_ — nothing in the demo breaks — but wrong about demonstrability: with no `info_grid_slots` set and no read of the workflow form-data alias, neither the tile reordering nor the re-keyed read shape was exercised anywhere in this repo, and this repo expects a build-verified consumer for consumer-facing capability.
 
-- `modules/deals/tiles/qualification.yaml` — a span-12 host tile reading `workflows.sales-pipeline.{qualify,upload-po}.*` through the new shape. Its *position* is what demonstrates the reorder; the built page artifact confirms `Details → Qualification → People → Files`.
+- `modules/deals/tiles/qualification.yaml` — a span-12 host tile reading `workflows.sales-pipeline.{qualify,upload-po}.*` through the new shape. Its _position_ is what demonstrates the reorder; the built page artifact confirms `Details → Qualification → People → Files`.
 - `modules/deals/vars.yaml` — wires that tile into `info_grid_slots`, plus a `request_stages.get_selected_deal` stage deriving a field from the same alias (exercising it server-side, which is how a host actually consumes it) surfaced through `meta_fields`.
 
-The demo cannot demonstrate reading across two workflow *types*: its second workflow (`onboarding`) has only `kind: check` actions, which carry no form data. Giving it a form action purely to exercise this would be inventing demo content, so the limitation is recorded in the tile instead.
+The demo cannot demonstrate reading across two workflow _types_: its second workflow (`onboarding`) has only `kind: check` actions, which carry no form data. Giving it a form action purely to exercise this would be inventing demo content, so the limitation is recorded in the tile instead.
 
 ## Non-goals
 

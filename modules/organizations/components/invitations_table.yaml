@@ -1,0 +1,67 @@
+# Pending invitations for the active organization. A row opens the invite
+# form on its address: Resend, Cancel or change a live one, re-issue an
+# expired one. Expired rows stay listed: an admin needs to see that the link
+# they sent has lapsed.
+id: invitations_table
+type: Table
+properties:
+  size: compact
+  headerMenu: false
+  reorderable: false
+  emptyText: No pending invitations
+  loading:
+    _not:
+      _request: get_invitations
+  defaultColumn:
+    sortable: false
+    filterable: false
+  rowRules:
+    - style:
+        cursor: pointer
+  columns:
+    - key: email
+      title: Email
+      flex: 2
+      minWidth: 220
+    - key: app_roles
+      title: Roles
+      type: tags
+      flex: 1
+      minWidth: 160
+      options:
+        _ref: components/role_options.yaml
+    - key: inviter_name
+      title: Invited by
+      flex: 1
+      minWidth: 160
+    - key: expiry
+      title: Expires
+      width: 170
+      rules:
+        - color: var(--ant-color-text-secondary)
+        - when:
+            key: status
+            op: eq
+            value: Expired
+          color: warning
+  data:
+    _if_none:
+      - _request: get_invitations
+      - []
+events:
+  onRowClick:
+    - id: set_invite_from_row
+      type: SetState
+      params:
+        invite.email:
+          _event: row.email
+        invite_change: false
+    - id: check_row_address
+      type: Request
+      params: get_invite_address
+    - _ref: actions/fill_invite_from_invitation.yaml
+    - id: open_invite_from_row
+      type: CallMethod
+      params:
+        blockId: invite_modal
+        method: toggleOpen

@@ -1,0 +1,2 @@
+workflows_config:
+  _ref: modules/workflows/workflow_config/workflows.yaml

@@ -8,23 +8,40 @@ payload:
   pagination:
     _state: pagination
   app_name:
-    _module.var: app_name
+    _build.app: slug
 properties:
   pipeline:
     - $match:
-        contact_id:
-          _user: id
+        $or:
+          _ref: requests/match-recipient.yaml
         created.app_name:
           _payload: app_name
-    - _ref: requests/stages/match-filter.yaml
-    - _ref: requests/stages/match-filter-read-status.yaml
+    - $match:
+        _ref: requests/stages/filter-conditions.yaml
     - $facet:
         notifications:
+          - _ref: requests/stages/match-filter-read-status.yaml
           - $sort:
               created.timestamp: -1
           - $skip:
               _payload: pagination.skip
           - $limit:
               _payload: pagination.pageSize
+          # List fields only; the pane fetches the whole record by id.
+          - $project:
+              title: 1
+              preview: 1
+              description: 1
+              type: 1
+              event_type: 1
+              read: 1
+              created.timestamp: 1
         total_count:
+          - _ref: requests/stages/match-filter-read-status.yaml
+          - $count: total
+        # What Mark all as read would mark: unread under the same filter,
+        # whatever the status shown.
+        unread_count:
+          - $match:
+              read: false
           - $count: total

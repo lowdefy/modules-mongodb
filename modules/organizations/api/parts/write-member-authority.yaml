@@ -1,0 +1,47 @@
+# update-member-access: write the member's authority when it changed, then log
+# org-authority-changed. A refusal returns `authority_refused` with the engine's
+# message and what was already saved.
+- :if:
+    _state: authority_changed
+  :then:
+    - :try:
+        - id: set_org_role
+          type: UpdateMemberOrgRole
+          properties:
+            memberId:
+              _payload: member_id
+            orgRole:
+              _payload: org_role
+            organizationId:
+              _user: organization_id
+      :catch:
+        - :return:
+            refused:
+              rule: authority_refused
+              message:
+                _error: message
+            saved:
+              _state: saved
+    - _ref:
+        path: api/parts/log-event.yaml
+        vars:
+          type: org-authority-changed
+          step_id: log_authority_event
+          subject:
+            user_id:
+              _step: read_member.0.user_id
+            email:
+              _step: read_member.0.email
+            name:
+              _step: read_member.0.name
+            member_id:
+              _payload: member_id
+          from:
+            _step: read_member.0.org_role
+          to:
+            _payload: org_role
+    - :set_state:
+        saved:
+          _array.concat:
+            - _state: saved
+            - - authority

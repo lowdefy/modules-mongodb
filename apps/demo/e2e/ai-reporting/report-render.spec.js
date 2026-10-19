@@ -798,6 +798,68 @@ test.describe("the seeded example report", () => {
   });
 });
 
+test.describe("report policy refusals", () => {
+  test("a row value the report policy refuses costs only its section", async ({
+    ldf,
+    page,
+    mdb,
+  }) => {
+    // The policy refuses HTML tag syntax in any string the compiled blocks
+    // carry, inlined rows included. resolve-report maps the refusal back to the
+    // table that inlined it, so the table renders as an Alert and the KPI beside
+    // it still renders.
+    await mdb.seed("demo_activities", [
+      ...ACTIVITIES,
+      {
+        _id: "a4",
+        type: "Jane <jane@example.com>",
+        source: { channel: "manual" },
+        status: [{ stage: "open" }],
+      },
+    ]);
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-policy-refusal",
+        title: "Policy refusal",
+        owner: HOLDER,
+        sections: [
+          {
+            id: "s0",
+            type: "kpi",
+            label: "Activities",
+            query: activityCount,
+            valueKey: "activities",
+            format: { style: "decimal", decimals: 0 },
+            filterBy: [],
+          },
+          {
+            id: "s1",
+            type: "table",
+            label: "Activities by type",
+            query: activitiesByType,
+            columns: [
+              { key: "type", label: "Type" },
+              { key: "activities", label: "Activities" },
+            ],
+            filterBy: [],
+          },
+        ],
+      }),
+    ]);
+
+    await ldf.user(HOLDER);
+    await ldf.goto("/ai-reporting/report?report_id=e2e-policy-refusal");
+    await expect(page.getByText("Report not found")).toBeHidden();
+    await expect(
+      page.getByText("contains values the report page cannot display", {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await expect(page.locator(".ant-statistic-content-value")).toHaveText("4");
+    await expect(page.getByText("jane@example.com")).toBeHidden();
+  });
+});
+
 // ── Authorization layer (real — the gates the render layer displays) ─────────
 
 test.describe("report failure gates (endpoint-level)", () => {
@@ -889,5 +951,80 @@ test.describe("report failure gates (endpoint-level)", () => {
     });
     expect(body?.success).not.toBe(true);
     expect(errored).toBe(true);
+  });
+});
+
+test.describe("section re-queries by reference (endpoint-level)", () => {
+  const SECTION_REF_SECTIONS = [
+    {
+      id: "s0",
+      type: "kpi",
+      label: "Activities",
+      query: activityCount,
+      valueKey: "activities",
+      filterBy: [],
+    },
+    {
+      id: "s1",
+      type: "chart",
+      chart: "bar",
+      label: "Activities by type",
+      query: activitiesByType,
+      x: "type",
+      y: ["activities"],
+      filterBy: [],
+    },
+  ];
+
+  test.beforeEach(async ({ mdb }) => {
+    await mdb.seed("demo_activities", ACTIVITIES);
+    await mdb.seed(REPORTS, [
+      reportDoc({
+        id: "e2e-section-ref",
+        title: "Section reference",
+        owner: HOLDER,
+        visibility: "private",
+        sections: SECTION_REF_SECTIONS,
+      }),
+    ]);
+  });
+
+  test("the owner re-runs a section's stored query by report and section id", async ({
+    ldf,
+    page,
+  }) => {
+    await ldf.user(HOLDER);
+    const rows = await callEndpoint(page, "query-data", {
+      report_id: "e2e-section-ref",
+      section_id: "s0",
+    });
+    expect(rows.response).toEqual([{ _id: null, activities: 3 }]);
+
+    const chart = await callEndpoint(page, "chart-data", {
+      report_id: "e2e-section-ref",
+      section_id: "s1",
+      filters: [{ field: "type", op: "eq", value: "call" }],
+    });
+    expect(chart.response.option.series[0].data).toEqual([2]);
+  });
+
+  test("a section of a report the caller cannot read, or one that does not exist, is refused", async ({
+    ldf,
+    page,
+  }) => {
+    // The report is private to HOLDER, so PLAIN cannot name its sections.
+    await ldf.user(PLAIN);
+    const unreadable = await callEndpoint(page, "query-data", {
+      report_id: "e2e-section-ref",
+      section_id: "s0",
+    });
+    expect(unreadable.rejected).toBe(true);
+
+    await ldf.user(HOLDER);
+    const missing = await callEndpoint(page, "chart-data", {
+      report_id: "e2e-section-ref",
+      section_id: "s9",
+    });
+    expect(missing.rejected).toBe(true);
   });
 });

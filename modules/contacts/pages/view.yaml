@@ -11,12 +11,14 @@ _ref:
           {% if profile %}{{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
           _request: get_contact.0
+    avatar_src:
+      _request: get_contact.0.profile.picture
     loading:
       _not:
         _request: get_contact
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label:
           _module.var: label_plural
         pageId:
@@ -34,7 +36,7 @@ _ref:
               key:
                 _string.concat:
                   - "apps."
-                  - _module.var: app_name
+                  - _build.app: slug
                   - ".is_user"
               from:
                 _request: get_contact.0
@@ -42,7 +44,7 @@ _ref:
           flex: 0 1 auto
         properties:
           title: Edit
-          icon: AiOutlineEdit
+          icon: edit
           type: default
         events:
           onClick:
@@ -103,6 +105,7 @@ _ref:
                       module: layout
                       component: card
                       vars:
+                        id: contact_detail_card
                         title:
                           _string.concat:
                             - _module.var: label

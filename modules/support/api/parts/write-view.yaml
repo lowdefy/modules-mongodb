@@ -1,0 +1,102 @@
+# Writes a reporter view Pelican returned into the user's copy and leaves the
+# stored row in state.copy. Every write of a view goes through here.
+#
+# One upsert whose update pipeline keeps the stored view when its version is
+# equal or higher, so two deliveries in flight, or a sync racing a webhook,
+# never roll a thread back. user_id comes from the filter on insert;
+# organization is kept once set.
+#
+# Vars:
+#   view          the reporter view
+#   user_id       the user the ticket belongs to
+#   organization  { id, name } or null, recorded on insert
+#   loop          true inside a :for, where each pass's result is stored under
+#                 its index
+- :set_state:
+    write_view:
+      view:
+        _var: view
+      user_id:
+        _var: user_id
+      organization:
+        _var:
+          key: organization
+          default: null
+- id: upsert_view
+  type: MongoDBUpdateOne
+  connectionId:
+    _module.connectionId: support-tickets
+  properties:
+    filter:
+      _id:
+        _state: write_view.view.id
+      user_id:
+        _state: write_view.user_id
+    update:
+      - $set:
+          view:
+            $cond:
+              if:
+                $lt:
+                  - $ifNull:
+                      - $view.version
+                      - 0
+                  - $literal:
+                      _state: write_view.view.version
+              then:
+                $literal:
+                  _state: write_view.view
+              else: $view
+          updated:
+            $cond:
+              if:
+                $lt:
+                  - $ifNull:
+                      - $view.version
+                      - 0
+                  - $literal:
+                      _state: write_view.view.version
+              then:
+                $literal:
+                  _ref:
+                    module: events
+                    component: change_stamp
+              else: $updated
+          created:
+            $ifNull:
+              - $created
+              - $literal:
+                  _ref:
+                    module: events
+                    component: change_stamp
+          organization:
+            $ifNull:
+              - $organization
+              - $literal:
+                  _state: write_view.organization
+          read_at:
+            $ifNull:
+              - $read_at
+              - null
+    options:
+      upsert: true
+- id: read_view
+  type: MongoDBFindOne
+  connectionId:
+    _module.connectionId: support-tickets
+  properties:
+    query:
+      _id:
+        _state: write_view.view.id
+      user_id:
+        _state: write_view.user_id
+- :set_state:
+    copy:
+      _step:
+        _build.if:
+          test:
+            _var:
+              key: loop
+              default: false
+          then: read_view.$
+          else: read_view

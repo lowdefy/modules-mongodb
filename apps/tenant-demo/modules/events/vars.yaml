@@ -1,0 +1,34 @@
+contact_page_id: contacts/view
+actions_collection: actions
+contacts_collection: user-contacts
+event_types:
+  _build.object.assign:
+    - _ref: modules/events/event_types.yaml
+    - _ref:
+        module: organizations
+        component: event_types
+change_stamp:
+  timestamp:
+    _date: now
+  user:
+    name:
+      _if_none:
+        - _user: name
+        - _if_none:
+            - _user: profile.name
+            - _var: default_name
+    id:
+      _if_none:
+        - _user: id
+        - _var: default_id
+  app_name:
+    _build.app: slug
+  version:
+    app:
+      _ref:
+        path: package.json
+        key: version
+    lowdefy:
+      _ref:
+        path: package.json
+        key: dependencies.lowdefy

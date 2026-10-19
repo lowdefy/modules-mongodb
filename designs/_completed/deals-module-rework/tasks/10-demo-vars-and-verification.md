@@ -7,6 +7,7 @@ Final integration for Workstream C. Tasks 1–9 generalized the module, extracte
 ## Task
 
 Update `apps/demo/modules/deals/vars.yaml`:
+
 - `workflow_type: sales-pipeline → onboarding`;
 - extend `stages` / `action_groups` / `outcomes` vars to cover onboarding's slugs (so stage chips + action-group headers + outcome badge render);
 - confirm `company_fields` / `info_grid_slots` still resolve (the volumes tile, now host-supplied per task 2, either stays via `info_grid_slots` or is dropped for the generic demo);

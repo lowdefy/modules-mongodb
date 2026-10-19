@@ -37,7 +37,7 @@ test("the ⋯ opens as a dropdown, and the owner sees every item they may use", 
   // is why this is asserted on the icon's own accessible name and not on the
   // click below succeeding.
   await expect(
-    page.locator("#report_menu_trigger").getByRole("img", { name: "ellipsis" }),
+    page.locator("#report_menu_trigger").getByRole("img", { name: "More" }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "My report" })).toBeVisible();
 
@@ -165,10 +165,7 @@ test("Publish makes the report shared, from the compiled item", async ({
 
 // Duplicate is the item whose NAVIGATION can only be checked in a browser. It fires
 // a Link after an async CallAPI, into a new tab, on the report_id the endpoint
-// returns — and a config that looks right can still land nowhere: passing the
-// endpoint's `url` instead sends Link down its external-address branch, which
-// prefixes https:// and resolves the root-relative path to a host named after the
-// module entry. Following the popup is what catches that.
+// returns. Following the popup is what checks it lands on the copy.
 test("Duplicate opens the copy in a new tab, owned by the copier", async ({
   ldf,
   page,

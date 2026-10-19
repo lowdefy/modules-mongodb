@@ -1,0 +1,100 @@
+# Calls one of Pelican's support endpoints and leaves its answer in
+# state.pelican_answer ({ status, data, ... }, or null when Pelican did not
+# answer) and the outcome in state.pelican_error: null for a 2xx, else
+# { kind, status, code, message, retry_after }.
+#
+# kind is what the caller can do about it:
+#   fix          400, 404, 413, 415: the reporter's to fix or see; Pelican's
+#                message is passed on.
+#   retry        429, 500, any other status, a body without a code, or no
+#                answer: try again, after retry_after seconds when given.
+#   unavailable  401: the support key is wrong or revoked. Logged as an error.
+#
+# Vars:
+#   step      id of the call's step
+#   endpoint  Pelican endpoint id, e.g. support-get-ticket
+#   body      the JSON body
+#   loop      true inside a :for, where each pass's result is stored under its
+#             index
+- :set_state:
+    pelican_answer: null
+- :try:
+    - id:
+        _var: step
+      type: AxiosHttp
+      connectionId:
+        _module.connectionId: support_pelican
+      properties:
+        url:
+          _string.concat:
+            - /api/endpoints/
+            - _var: endpoint
+        data:
+          _var: body
+    - :set_state:
+        pelican_answer:
+          _step:
+            _build.if:
+              test:
+                _var:
+                  key: loop
+                  default: false
+              then:
+                _build.string.concat:
+                  - _var: step
+                  - .$
+              else:
+                _var: step
+  :catch:
+    - :set_state:
+        pelican_answer: null
+- :set_state:
+    pelican_error:
+      _js: |
+        const answer = state('pelican_answer');
+        if (!answer) {
+          return {
+            kind: 'retry',
+            status: null,
+            code: null,
+            message: 'Support did not answer. Try again in a moment.',
+            retry_after: null,
+          };
+        }
+        const status = answer.status;
+        if (status >= 200 && status < 300) return null;
+        const error = (answer.data && answer.data.error) || {};
+        const code = typeof error.code === 'string' ? error.code : null;
+        const message = typeof error.message === 'string' ? error.message : null;
+        if (status === 401) {
+          return {
+            kind: 'unavailable',
+            status,
+            code,
+            message: 'Support is unavailable.',
+            retry_after: null,
+          };
+        }
+        if ([400, 404, 413, 415].includes(status) && code !== null) {
+          return { kind: 'fix', status, code, message, retry_after: null };
+        }
+        return {
+          kind: 'retry',
+          status,
+          code,
+          message: message || 'Support could not take this right now. Try again in a moment.',
+          retry_after: typeof error.retry_after === 'number' ? error.retry_after : null,
+        };
+- :if:
+    _eq:
+      - _state: pelican_error.kind
+      - unavailable
+  :then:
+    - :log:
+        event: support_pelican_unauthorized
+        endpoint:
+          _var: endpoint
+        message: >-
+          Pelican refused the support app's key (401). Check SUPPORT_PELICAN_KEY
+          against the support app in Pelican.
+      :level: error

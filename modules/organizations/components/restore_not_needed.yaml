@@ -1,0 +1,11 @@
+# True when restore-last-organization has nothing to do: its read was skipped
+# or found no organisation, or the store holds the session's organisation.
+_or:
+  - _not:
+      _type:
+        type: string
+        on:
+          _actions: read_last_organization.response
+  - _eq:
+      - _actions: read_last_organization.response
+      - _user: organization_id

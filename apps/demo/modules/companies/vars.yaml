@@ -1,9 +1,9 @@
-app_name:
-  _ref:
-    path: app_config.yaml
-    key: app_name
 label: Company
 label_plural: Companies
+atlas_search:
+  _ref:
+    path: app_config.yaml
+    key: atlas_search
 hierarchy:
   enabled: true
 fields:

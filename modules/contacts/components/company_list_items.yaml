@@ -38,7 +38,7 @@ properties:
         <div>
           {% for company in companies %}
           <div style="padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}">
-            <a href="/{{ company_detail_page }}?_id={{ company._id }}" style="color:inherit; text-decoration:none">
+            <a data-page-id="{{ company_detail_page }}" data-url-query="_id={{ company._id | urlencode }}" style="color:inherit; text-decoration:none">
               <div><b>{{ company.display_name }}</b></div>
               {% for field in extra_fields %}
                 {% if company[field.value] != null %}

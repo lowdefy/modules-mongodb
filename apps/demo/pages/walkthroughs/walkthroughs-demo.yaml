@@ -6,7 +6,7 @@ _ref:
     title: Walkthroughs
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Walkthroughs
     requests:
       - _ref: pages/walkthroughs/requests/list_walkthroughs.yaml
@@ -40,7 +40,7 @@ _ref:
                       flex: 0 1 auto
                     properties:
                       title: Play
-                      icon: AiOutlinePlayCircle
+                      icon: CirclePlay
                       # The player reads published content, so a walkthrough that has never been
                       # published has nothing to show — New walkthrough makes one of those.
                       disabled:
@@ -72,7 +72,7 @@ _ref:
                       flex: 0 1 auto
                     properties:
                       title: Edit
-                      icon: AiOutlineEdit
+                      icon: edit
                       type: default
                       disabled:
                         _eq:
@@ -93,7 +93,7 @@ _ref:
                       flex: 0 1 auto
                     properties:
                       title: New walkthrough
-                      icon: AiOutlinePlus
+                      icon: add
                       type: default
                     events:
                       onClick:

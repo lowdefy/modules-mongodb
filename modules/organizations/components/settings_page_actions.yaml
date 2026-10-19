@@ -1,0 +1,22 @@
+# A settings page's event actions (var `actions`). With
+# `owners_and_admins_only`, each action is skipped unless the caller is an
+# owner or admin of the active organization, on top of its own `skip`, so the
+# page's requests never fire for anyone else.
+_build.if:
+  test:
+    _var: owners_and_admins_only
+  then:
+    _build.array.map:
+      on:
+        _var: actions
+      callback:
+        _build.function:
+          __build.object.assign:
+            - __build.args: 0
+            - skip:
+                _or:
+                  - _not:
+                      _ref: components/caller_is_org_admin.yaml
+                  - __build.args: 0.skip
+  else:
+    _var: actions

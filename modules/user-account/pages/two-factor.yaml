@@ -1,0 +1,226 @@
+# Two-factor sign-in challenge. Registered as authPages.twoFactor: the engine
+# deletes the sign-in session and sets a signed two_factor cookie, then routes
+# here; Login/PhoneNumberVerify navigate here carrying ?callbackUrl=. There is no
+# session. Protection lives in the cookie, which BetterAuth validates when
+# TwoFactorVerify fires. Two renders via the `tf_view` state key (auth | backup):
+# the authenticator-code state at rest and the backup-code alternate; the
+# auth<->backup toggle is a pure UI affordance (SetState). Verify dispatches
+# through TwoFactorVerify (code or backupCode, both with trustDevice); on success
+# the page navigates to callbackUrl to complete sign-in. No QR here (that is the
+# enrolment flow).
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: two-factor
+    title: ""
+    events:
+      onInit:
+        # authenticator state at rest; trust-device seed follows the auth config
+        # (twoFactor.trustDevice) — pre-checked when on, false when disabled.
+        - id: seed_tf_view
+          type: SetState
+          params:
+            tf_view: auth
+            trust_device:
+              _build.authConfig: twoFactor.trustDevice
+    blocks:
+      # ---- Authenticator-code state ----
+      - id: tf_title
+        type: Title
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          content: Enter your code
+          level: 3
+      - id: tf_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          html: Open your authenticator app and enter the 6-digit code.
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      # 6-digit TOTP code, data path `code`. No dedicated OTP block exists, so a
+      # large centered TextInput carries the code.
+      - id: code
+        type: TextInput
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        required: true
+        properties:
+          size: large
+          maxLength: 6
+          placeholder: "000000"
+          label:
+            disabled: true
+        style:
+          .element:
+            textAlign: center
+            letterSpacing: 8
+            fontFamily: var(--mono)
+        events:
+          # Enter runs the same chain as the Verify button below.
+          onPressEnter:
+            _ref: actions/verify_totp.yaml
+      - id: trust_device
+        type: CheckboxSwitch
+        # Hidden when the deployment disables trust-device (twoFactor.trustDevice:
+        # false) — the server ignores trustDevice then, so the switch would do
+        # nothing; a second factor is required on every login.
+        visible:
+          _and:
+            - _build.authConfig: twoFactor.trustDevice
+            - _eq:
+                - _state: tf_view
+                - auth
+        properties:
+          # `label.disabled` suppresses the form-item label, which would
+          # otherwise fall back to rendering the block id.
+          description: Trust this device for 30 days
+          label:
+            disabled: true
+      - id: tf_verify
+        type: Button
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        properties:
+          title: Verify
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            _ref: actions/verify_totp.yaml
+      # "Lost your device? Use a backup code", UI toggle to the backup state.
+      - id: tf_use_backup_row
+        type: Box
+        visible:
+          _eq:
+            - _state: tf_view
+            - auth
+        layout:
+          justify: center
+          align: middle
+        blocks:
+          - id: tf_use_backup_text
+            type: Html
+            layout:
+              flex: 0 1 auto
+            properties:
+              html: Lost your device?
+            style:
+              fontSize: 13
+              color: "var(--ant-color-text-secondary)"
+          - id: tf_use_backup
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Use a backup code
+              variant: link
+              color: primary
+              size: small
+            events:
+              onClick:
+                - id: show_backup
+                  type: SetState
+                  params:
+                    tf_view: backup
+
+      # ---- Backup-code state ----
+      - id: tf_backup_title
+        type: Title
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          content: Use a backup code
+          level: 3
+      - id: tf_backup_lead
+        type: Html
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          html: Enter one of the backup codes you saved when you set up two-factor authentication.
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+      # Backup code, data path `backup_code`.
+      - id: backup_code
+        type: TextInput
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        required: true
+        properties:
+          size: large
+          placeholder: xxxxx-xxxxx
+          label:
+            title: Backup code
+            colon: false
+            span: 24
+        style:
+          .element:
+            fontFamily: var(--mono)
+        events:
+          # Enter runs the same chain as the Verify button below.
+          onPressEnter:
+            _ref: actions/verify_backup.yaml
+      - id: tf_backup_verify
+        type: Button
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        properties:
+          title: Verify
+          block: true
+          size: large
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            _ref: actions/verify_backup.yaml
+      # Back to the authenticator state, UI toggle.
+      - id: tf_back_to_auth_row
+        type: Box
+        visible:
+          _eq:
+            - _state: tf_view
+            - backup
+        layout:
+          justify: center
+          align: middle
+        blocks:
+          - id: tf_back_to_auth
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: "← Back to authenticator code"
+              variant: link
+              color: primary
+              size: small
+            events:
+              onClick:
+                - id: show_auth
+                  type: SetState
+                  params:
+                    tf_view: auth

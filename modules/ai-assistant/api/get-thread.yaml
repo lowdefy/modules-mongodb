@@ -61,6 +61,7 @@ routine:
           - _step: load_thread.messages
           - []
   - _ref: api/routines/sanitize_messages.yaml
+  - _ref: api/routines/refresh_file_links.yaml
   - :return:
       messages:
         _state: replayable_messages

@@ -1,0 +1,9 @@
+# The app's home as a root-relative address, for a Link `href`. Lowdefy follows
+# an href with a full page load, which rebuilds the role-filtered menus and home
+# from the caller's current membership; `home: true` routes client-side and keeps
+# the menus the app loaded with, before the caller was a member.
+_string.concat:
+  - _if_none:
+      - _location: basePath
+      - ""
+  - /

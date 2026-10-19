@@ -39,7 +39,11 @@ function makeWorkflow(overrides = {}) {
   return {
     _id: "W1",
     workflow_type: "onboarding",
-    entity: { connection_id: "leads-collection", id: "L1", ref_key: "lead_ids" },
+    entity: {
+      connection_id: "leads-collection",
+      id: "L1",
+      ref_key: "lead_ids",
+    },
     status: [{ stage: "active", event_id: "e0", created: now }],
     summary: { done: 0, not_required: 0, total: 1 },
     groups: [],
@@ -74,7 +78,7 @@ function makeContext(overrides = {}) {
     event_id,
     now,
     newId,
-    connection: { entry_id: "workflows", app_name: "test-app" },
+    connection: { entry_id: "workflows", slug: "test-app" },
     params: { action_id: "A1", signal: "submit" },
     user: {
       id: "U1",

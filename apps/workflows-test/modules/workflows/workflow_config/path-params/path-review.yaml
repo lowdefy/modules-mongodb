@@ -1,0 +1,17 @@
+# A kind:custom action whose working link carries the action id in the target
+# page's path.
+type: path-review
+kind: custom
+sort_order: 20
+description: Review the thing on a page addressed by action id.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Review the thing at its path.
+      link:
+        pageId: path-link-target
+        pathParams: { source: review, action_id: true }

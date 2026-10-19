@@ -1,0 +1,8 @@
+# The page-wide notification sound player: draws nothing, and chirps when the
+# live feed brings a popup notification and the viewer has turned sound on
+# (the Sound switch in the inbox header).
+id: notifications_sound
+type: NotificationSound
+properties:
+  app:
+    _build.app: slug

@@ -100,8 +100,8 @@ blocks:
             _module.var: toolbar.icon_only
           icon:
             # A blank title: Lowdefy titles an icon's SVG from its name, and the browser
-            # shows that ("Outline Plus") as a second tooltip over the button's own.
-            name: AiOutlinePlus
+            # shows that as a second tooltip over the button's own.
+            name: add
             title: ''
           type: text
           size:
@@ -131,7 +131,7 @@ blocks:
           hideTitle:
             _module.var: toolbar.icon_only
           icon:
-            name: AiOutlineUnorderedList
+            name: list
             title: ''
           type: text
           size:
@@ -157,7 +157,7 @@ blocks:
           hideTitle:
             _module.var: toolbar.icon_only
           icon:
-            name: AiOutlineArrowLeft
+            name: arrow-left
             title: ''
           type: text
           size:
@@ -187,7 +187,7 @@ blocks:
           hideTitle:
             _module.var: toolbar.icon_only
           icon:
-            name: AiOutlineDelete
+            name: delete
             title: ''
           type: text
           danger: true

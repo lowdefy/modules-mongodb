@@ -11,8 +11,28 @@ _ref:
     title: Files
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Files
+    requests:
+      - id: support_screenshot_policy
+        type: AwsS3PresignedPostPolicy
+        connectionId: files/files-bucket
+        payload:
+          name:
+            _event: file.name
+        properties:
+          key:
+            _string.concat:
+              - files-demo/support-screenshot/
+              - _uuid: true
+              - /
+              - _payload: name
+          fields:
+            Content-Type: image/png
+          conditions:
+            - - content-length-range
+              - 1
+              - 10485760
     blocks:
       - id: intro
         type: Paragraph
@@ -216,6 +236,257 @@ _ref:
                     label:
                       title: Avatar (single image)
                     hint: Click or drag one image
+
+      # ── upload policy from an endpoint ──────────────────────────────────
+      - id: policy_event_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: Upload policy from an endpoint
+      - id: policy_event_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            The raw block with `onUploadPolicy`: instead of a page request, the
+            page's actions get the upload policy from an API endpoint
+            (`files-demo-upload-policy`) and hand it to the block with
+            `setUploadPolicy`. The endpoint gives no policy for files over 1 MB,
+            so the block holds the upload and the page asks whether to send it
+            anyway: yes asks the endpoint again with `large: true` (up to 10 MB)
+            and resumes the held upload with `setUploadPolicy` and its `uid`, no
+            calls `cancelUpload`. A pasted screenshot arrives marked `pasted`,
+            and the endpoint names it `pasted-YYYYMMDD-HHmmss.png`.
+      - id: demo_policy_event_manager
+        type: FileManager
+        properties:
+          hint: Click, drag or paste a file (up to 1 MB, or 10 MB if you confirm)
+        events:
+          onUploadPolicy:
+            - id: get_policy
+              type: CallAPI
+              params:
+                endpointId: files-demo-upload-policy
+                payload:
+                  name:
+                    _event: file.name
+                  content_type:
+                    _event: file.type
+                  size:
+                    _event: file.size
+                  pasted:
+                    _event: pasted
+            - id: hold_large
+              type: SetState
+              skip:
+                _ne:
+                  - _actions: get_policy.response.response.upload
+                  - null
+              params:
+                held_upload:
+                  uid:
+                    _event: file.uid
+                  name:
+                    _event: file.name
+                  content_type:
+                    _event: file.type
+                  size:
+                    _event: file.size
+                  pasted:
+                    _event: pasted
+            - id: ask_large
+              type: CallMethod
+              skip:
+                _ne:
+                  - _actions: get_policy.response.response.upload
+                  - null
+              params:
+                blockId: large_upload_modal
+                method: toggleOpen
+            - id: set_policy
+              type: CallMethod
+              skip:
+                _eq:
+                  - _actions: get_policy.response.response.upload
+                  - null
+              params:
+                blockId: demo_policy_event_manager
+                method: setUploadPolicy
+                args:
+                  - _actions: get_policy.response.response.upload
+          onSave:
+            - id: uploaded
+              type: DisplayMessage
+              params:
+                status: success
+                content:
+                  _nunjucks:
+                    template: "Uploaded {{ file.key }}{% if file.pasted %} (pasted){% endif %}"
+                    on:
+                      file:
+                        _event: file
+      - id: large_upload_modal
+        type: Modal
+        properties:
+          title: Upload a large file?
+          okText: Upload
+          cancelText: Don't upload
+        events:
+          onOk:
+            - id: get_large_policy
+              type: CallAPI
+              params:
+                endpointId: files-demo-upload-policy
+                payload:
+                  name:
+                    _state: held_upload.name
+                  content_type:
+                    _state: held_upload.content_type
+                  size:
+                    _state: held_upload.size
+                  pasted:
+                    _state: held_upload.pasted
+                  large: true
+            - id: too_large
+              type: DisplayMessage
+              skip:
+                _ne:
+                  - _actions: get_large_policy.response.response.upload
+                  - null
+              params:
+                status: warning
+                content: That file is over 10 MB, so it was not uploaded.
+            - id: cancel_too_large
+              type: CallMethod
+              skip:
+                _ne:
+                  - _actions: get_large_policy.response.response.upload
+                  - null
+              params:
+                blockId: demo_policy_event_manager
+                method: cancelUpload
+                args:
+                  - _state: held_upload.uid
+            - id: resume_upload
+              type: CallMethod
+              skip:
+                _eq:
+                  - _actions: get_large_policy.response.response.upload
+                  - null
+              params:
+                blockId: demo_policy_event_manager
+                method: setUploadPolicy
+                args:
+                  - _actions: get_large_policy.response.response.upload
+                  - _state: held_upload.uid
+          onCancel:
+            - id: cancel_upload
+              type: CallMethod
+              params:
+                blockId: demo_policy_event_manager
+                method: cancelUpload
+                args:
+                  - _state: held_upload.uid
+        blocks:
+          - id: large_upload_message
+            type: Paragraph
+            properties:
+              content:
+                _nunjucks:
+                  template: "{{ name }} is over 1 MB. Upload it anyway (up to 10 MB)?"
+                  on:
+                    name:
+                      _state: held_upload.name
+
+      # ── support screenshot ──────────────────────────────────────────────
+      - id: support_screenshot_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: SupportScreenshot
+      - id: support_screenshot_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            Takes a screenshot of this page and uploads it to the files bucket.
+            The password below, the box and the canvas marked `data-support-mask`
+            show as solid grey boxes in the screenshot, and the badge passed in
+            `hideSelectors` is left out of it. In the editor, Blur blurs each box
+            you drag and Crop keeps only the box you drag.
+      - id: support_screenshot_row
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: support_demo_password
+            type: PasswordInput
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Password
+          - id: support_demo_masked
+            type: Html
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              html: >-
+                <div data-support-mask style="padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 6px">
+                Account number: 4000 1234 5678 9010</div>
+          - id: support_demo_hidden
+            type: Html
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              html: >-
+                <div class="support-demo-hidden" style="display: inline-block; padding: 8px 12px; background: #ff00ff; color: #fff; border-radius: 6px">
+                Not in the screenshot</div>
+          - id: support_demo_canvas
+            type: Html
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              html: >-
+                <canvas class="support-demo-canvas" data-support-mask width="240" height="40"
+                style="display: block; border: 1px solid #d9d9d9; border-radius: 6px"></canvas>
+      - id: support_screenshot
+        type: SupportScreenshot
+        properties:
+          s3PostPolicyRequestId: support_screenshot_policy
+          hideSelectors:
+            - .support-demo-hidden
+        events:
+          onUse:
+            - id: set_last_screenshot
+              type: SetState
+              params:
+                support_last_screenshot:
+                  _event: file
+            - id: screenshot_uploaded
+              type: DisplayMessage
+              params:
+                status: success
+                content:
+                  _nunjucks:
+                    template: "Uploaded {{ file.key }}"
+                    on:
+                      file:
+                        _event: file
+          onError:
+            - id: screenshot_failed
+              type: DisplayMessage
+              params:
+                status: error
+                content:
+                  _event: message
 
       # ── file-list ───────────────────────────────────────────────────────
       - id: file_list_divider

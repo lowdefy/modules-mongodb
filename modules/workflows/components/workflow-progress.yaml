@@ -84,7 +84,7 @@ blocks:
             - 0
     properties:
       icon:
-        name: AiOutlineDeploymentUnit
+        name: Workflow
         color: '#bfbfbf'
       subTitle: No workflows found
   - id: workflow_progress_block

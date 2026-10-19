@@ -1,0 +1,12 @@
+# How many members the caller's ACTIVE organization has: [{ count }], or []
+# when it has none.
+id: get_member_count
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    - $match:
+        organization_id:
+          _user: organization_id
+    - $count: count

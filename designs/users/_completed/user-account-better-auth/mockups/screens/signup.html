@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Signup — user-account</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  .auth-page{width:400px}
+  #ss_form:checked  ~ .stage .layer[data-layer=form]{display:block}
+  #ss_check:checked ~ .stage .layer[data-layer=check]{display:block}
+  #ss_form:checked  ~ .statebar label[for=ss_form],
+  #ss_check:checked ~ .statebar label[for=ss_check]{background:var(--violet);color:#fff}
+</style>
+</head>
+<body>
+<div class="mock">
+  <input type="radio" name="signup_state" id="ss_form" checked />
+  <input type="radio" name="signup_state" id="ss_check" />
+  <div class="statebar">
+    <span class="lbl">Signup states</span>
+    <label for="ss_form">Form (resting)</label>
+    <label for="ss_check">Check email — requireEmailVerification</label>
+  </div>
+  <div class="stage">
+
+    <!-- ============ Layer: signup form (resting) ============ -->
+    <div class="layer" data-layer="form">
+      <div class="auth-page" id="signup_page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3 id="signup_title">Create your account</h3>
+            <div class="frow" id="signup_first_name"><label>First name <span class="req">*</span></label><div class="inp"><input value="Sam"/></div></div>
+            <div class="frow" id="signup_last_name"><label>Last name <span class="req">*</span></label><div class="inp"><input value="Taylor"/></div></div>
+            <div class="frow" id="signup_email"><label>Email <span class="req">*</span></label><div class="inp"><input value="sam.taylor@example.com"/><span class="aff">&#9993;</span></div></div>
+            <div class="frow" id="signup_password"><label>Password <span class="req">*</span></label><div class="inp"><input type="password" value="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/><span class="aff">&#128065;</span></div><div class="hint">At least 8 characters.</div></div>
+            <button class="btn pri lg block" id="signup_submit">Create account</button>
+            <div class="div-or" id="signup_oauth_divider">or</div>
+            <button class="provider" id="signup_oauth_google"><span class="glyph g-google">G</span> Continue with Google</button>
+          </div>
+        </div>
+        <div class="auth-footer" id="signup_footer">Already have an account? <a href="login.html">Sign in</a></div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: check your email ============ -->
+    <div class="layer" data-layer="check">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <div class="result" id="signup_check_email"><div class="ric" style="background:var(--violet-bg);color:var(--violet)">&#9993;</div><div class="rt">Check your email</div><div class="rs">We sent a verification link to <b>sam.taylor@example.com</b>. Open it to finish setting up your account.</div></div>
+            <button class="btn block" id="signup_resend">Resend link</button>
+            <div class="hint" style="text-align:center">Wrong address? <a class="btn link" href="signup.html">Start over</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -10,4 +10,4 @@ links:
           _build.string.concat:
             - _module.var: app_title
             - " User Admin"
-      icon: AiOutlineTeam
+      icon: users

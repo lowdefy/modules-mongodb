@@ -1,0 +1,114 @@
+# `audit-log` settings page: who changed what in the active organization,
+# newest first and grouped by day, with filters by person and by kind. Owners
+# and admins only; the read checks the caller's authority itself as well.
+_ref:
+  path: components/settings-page.yaml
+  vars:
+    id: audit-log
+    title: Audit log
+    group:
+      _module.var: label
+    description:
+      _build.string.concat:
+        - 'Every change to the '
+        - _build.string.toLowerCase:
+            _module.var: label
+        - ' and its members, newest first.'
+    owners_and_admins_only: true
+    requests:
+      - _ref: requests/get_members.yaml
+      - _ref:
+          path: requests/get_audit_log.yaml
+          vars:
+            user_id:
+              _if_none:
+                - _state: audit_log_filter.user_id
+                - null
+            types:
+              _get:
+                from:
+                  _build.object.fromEntries:
+                    _build.array.map:
+                      on:
+                        _ref: components/audit_log_kinds.yaml
+                      callback:
+                        _build.function:
+                          - __build.args: 0.value
+                          - __build.args: 0.types
+                key:
+                  _if_none:
+                    - _state: audit_log_filter.kind
+                    - none
+    events:
+      onMountAsync:
+        - id: fetch_audit_log
+          type: Request
+          params:
+            - get_members
+            - get_audit_log
+    blocks:
+      - id: audit_log_card
+        type: Card
+        blocks:
+          - id: audit_log_filters
+            type: Box
+            layout:
+              gap: 12
+              align: middle
+            style:
+              marginBottom: 8
+            blocks:
+              - id: audit_log_filter.user_id
+                type: Selector
+                layout:
+                  flex: 0 1 260px
+                properties:
+                  label:
+                    disabled: true
+                  placeholder: 'Person: anyone'
+                  allowClear: true
+                  showSearch: true
+                  options:
+                    _array.map:
+                      on:
+                        _if_none:
+                          - _request: get_members
+                          - []
+                      callback:
+                        _function:
+                          value:
+                            __args: 0.user_id
+                          label:
+                            __if_none:
+                              - __args: 0.name
+                              - __args: 0.email
+                events:
+                  onChange:
+                    - id: refetch_audit_log_person
+                      type: Request
+                      params: get_audit_log
+              - id: audit_log_filter.kind
+                type: Selector
+                layout:
+                  flex: 0 1 220px
+                properties:
+                  label:
+                    disabled: true
+                  placeholder: 'Kind: all'
+                  allowClear: true
+                  options:
+                    _build.array.map:
+                      on:
+                        _ref: components/audit_log_kinds.yaml
+                      callback:
+                        _build.function:
+                          value:
+                            __build.args: 0.value
+                          label:
+                            __build.args: 0.label
+                events:
+                  onChange:
+                    - id: refetch_audit_log_kind
+                      type: Request
+                      params: get_audit_log
+          - _ref: components/audit_log_list.yaml

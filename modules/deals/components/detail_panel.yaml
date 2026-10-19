@@ -68,8 +68,6 @@ blocks:
                     reference_field: deal_ids
                     reference_value:
                       _state: selected_deal_id
-                    display_key:
-                      _module.var: app_name
                     reverse: false
                     compact: true
     # App-injected blocks appended to the main detail column (default []).
@@ -87,11 +85,9 @@ blocks:
             reference_field: deal_ids
             company_id:
               _request: get_selected_deal.0.company_id
-            display_key:
-              _module.var: app_name
             type: deal-note
             title_template: |
-              <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> added a note.
+              {{ user.profile.name }} added a note.
             on_saved:
               - id: refetch_after_note
                 type: Request
@@ -127,15 +123,15 @@ blocks:
               created:
                 type: deal-task-created
                 title_template: |
-                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> created task — {{ title }}.
+                  {{ user.profile.name }} created task — {{ title }}.
               completed:
                 type: deal-task-completed
                 title_template: |
-                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> completed task — {{ title }}.
+                  {{ user.profile.name }} completed task — {{ title }}.
               reopened:
                 type: deal-task-reopened
                 title_template: |
-                  <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> reopened task — {{ title }}.
+                  {{ user.profile.name }} reopened task — {{ title }}.
             event_references:
               deal_ids:
                 - _state: selected_deal_id

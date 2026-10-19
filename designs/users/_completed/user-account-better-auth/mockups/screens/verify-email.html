@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Verify email — user-account</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  .auth-page{width:400px}
+  #ve_check:checked   ~ .stage .layer[data-layer=check]{display:block}
+  #ve_success:checked ~ .stage .layer[data-layer=success]{display:block}
+  #ve_expired:checked ~ .stage .layer[data-layer=expired]{display:block}
+  #ve_check:checked   ~ .statebar label[for=ve_check],
+  #ve_success:checked ~ .statebar label[for=ve_success],
+  #ve_expired:checked ~ .statebar label[for=ve_expired]{background:var(--violet);color:#fff}
+</style>
+</head>
+<body>
+<div class="mock">
+  <input type="radio" name="verify_state" id="ve_check" checked />
+  <input type="radio" name="verify_state" id="ve_success" />
+  <input type="radio" name="verify_state" id="ve_expired" />
+  <div class="statebar">
+    <span class="lbl">Verify-email states</span>
+    <label for="ve_check">Check email (resting)</label>
+    <label for="ve_success">Verified (link landing)</label>
+    <label for="ve_expired">Expired (link landing)</label>
+  </div>
+  <div class="stage">
+
+    <!-- ============ Layer: check your email (post-signup prompt) ============ -->
+    <div class="layer" data-layer="check">
+      <div class="auth-page" id="verify_email_page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <div class="result" id="verify_prompt"><div class="ric" style="background:var(--violet-bg);color:var(--violet)">&#9993;</div><div class="rt">Check your email</div><div class="rs">Verify your email to finish signing in. We sent a link to <b>jane.mokoena@example.com</b>.</div></div>
+            <button class="btn block" id="verify_resend">Resend verification email</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: verified (callback success) ============ -->
+    <div class="layer" data-layer="success">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <div class="result" id="verify_success"><div class="ric" style="background:var(--ok-bg);color:var(--ok-fg)">&#10003;</div><div class="rt">Email verified</div><div class="rs">You're all set. Your email address has been confirmed.</div></div>
+            <button class="btn pri lg block" id="verify_continue">Continue to app</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: expired (callback error) ============ -->
+    <div class="layer" data-layer="expired">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <div class="result" id="verify_expired"><div class="ric" style="background:var(--warn-bg);color:var(--warn-fg)">&#9888;</div><div class="rt">This link has expired</div><div class="rs">Verification links are valid for a short time. Request a fresh one to continue.</div></div>
+            <button class="btn pri lg block" id="verify_resend_expired">Send a new link</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

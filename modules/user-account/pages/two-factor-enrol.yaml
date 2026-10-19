@@ -1,0 +1,463 @@
+# Forced two-factor enrolment. The engine's `required` enforcement redirects an
+# unenrolled-but-signed-in caller here; the engine marks this page public: false
+# and exempts it from its own enrolment gate, so, unlike every other auth page,
+# the caller arrives holding a complete valid session, missing a factor, not an
+# identity. The module contributes it under the twoFactorEnrol role and adds NO
+# auth.public entry.
+#
+# The page runs ONE self-scoped Lowdefy request, get_accounts, for the
+# has_credential signal that gates the password field. The engine forwards the
+# invoking pageId into request authorization, so a request fired from this page
+# inherits the page's own gate exemption (pageId === enrolPageId → allow) and is
+# not refused by the enrolment floor. Enrolment itself runs on the BetterAuth
+# /api/auth/* client actions (TwoFactorEnable → TwoFactorVerify, PasskeyRegister),
+# the same actions the self-service enrolment modal uses.
+#
+# Completion is driven by a LOCAL enrol.done flag, seeded false onInit and set
+# true only by this page's own successful enable/verify (TOTP) and PasskeyRegister
+# chains — never off the ambient _user.two_factor_enrolled session fact. That fact
+# is refreshed only on UpdateSession, so it can disagree with the engine's
+# per-request `required` gate and bounce Continue straight back (the redirect loop
+# this replaces). A flag set by completion here cannot disagree with a gate that
+# has, by then, been satisfied.
+#
+# The two UpdateSession calls (refresh_enrol_session in confirm_enrol_totp,
+# enrol_passkey_session here) STAY load-bearing even though the page no longer
+# reads the session fact: they refresh session.user.twoFactorEnabled, which the
+# `required` gate on Continue's home destination reads, so a just-enrolled caller
+# is admitted. Not dead code.
+#
+# `enrol.phase` (password | scan) drives the TOTP flow; the done state is gated on
+# enrol.done, not a phase, so passkey enrolment (which shows no backup codes) and
+# verified TOTP enrolment reach the same "Continue" state.
+#
+# The password field is shown/required/validated iff the caller holds a password
+# credential (get_accounts.0.has_credential), exactly as the Decision 1 modals do.
+# The TwoFactorEnable password param always sends a string — '' when the caller
+# holds none — which upstream's allowPasswordless waiver accepts per-user for a
+# passwordless member and BetterAuth rejects for a password member who blanked it.
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: two-factor-enrol
+    title: ""
+    requests:
+      - _ref: requests/get_accounts.yaml
+    events:
+      onInit:
+        - id: seed_enrol
+          type: SetState
+          params:
+            enrol.phase: password
+            enrol.codes_saved: false
+            enrol.done: false
+    blocks:
+      # ── Header (shown until enrolled) ──
+      - id: enrol_title
+        type: Title
+        visible:
+          _not:
+            _state: enrol.done
+        properties:
+          content: Add a second factor
+          level: 3
+      - id: enrol_lead
+        type: Html
+        visible:
+          _not:
+            _state: enrol.done
+        properties:
+          # Honest copy: `required` is an enrolment floor, not a per-session
+          # challenge guarantee, so this says "add a second factor to continue",
+          # never "every sign-in will ask for it".
+          html: Your account needs a second step at sign-in before you can continue. Set up an authenticator app or add a passkey below.
+        style:
+          marginTop: -8
+          fontSize: 13
+          color: "var(--ant-color-text-secondary)"
+
+      # ── TOTP · phase password (also the "choose a route" state) ──
+      - id: enrol_totp_intro
+        type: Html
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - password
+            - _request: get_accounts.0.has_credential
+        layout:
+          span: 24
+        properties:
+          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Confirm your account password to generate an authenticator secret.</div>'
+      - id: enrol.password
+        type: PasswordInput
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - password
+            - _request: get_accounts.0.has_credential
+        layout:
+          span: 24
+        properties:
+          label:
+            title: Account password
+            span: 24
+            colon: false
+        events:
+          onPressEnter:
+            _ref: actions/start_enrol_totp.yaml
+      - id: enrol_generate
+        type: Button
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - password
+        layout:
+          span: 24
+        properties:
+          title: Generate QR code
+          block: true
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            _ref: actions/start_enrol_totp.yaml
+
+      # Passkey. Offered alongside TOTP as an alternative any caller may prefer,
+      # not a passwordless-only fallback.
+      - id: enrol_passkey_divider
+        type: Html
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - password
+        layout:
+          span: 24
+        properties:
+          html: '<div style="text-align:center; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ant-color-text-tertiary);">or</div>'
+      - id: enrol_passkey_btn
+        type: Button
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - password
+        layout:
+          span: 24
+        properties:
+          title: Add a passkey
+          block: true
+          icon: Key
+          variant: outlined
+        events:
+          onClick:
+            try:
+              # PasskeyRegister enrols a factor in one step (no backup codes), so
+              # a refreshed session is all the done state needs. The registered
+              # flag tells the catch whether the passkey itself failed (toast) or
+              # only the trailing session refresh after a successful registration
+              # (skip — a failure toast would be false, and the success
+              # toast already fired; the per-request gate reads the DB, so a
+              # reload still routes the enrolled caller home). Reset first so a
+              # cancelled retry after an earlier success still toasts (F58).
+              - id: reset_enrol_passkey_registered
+                type: SetState
+                params:
+                  enrol.passkey_registered: false
+              - id: enrol_passkey
+                type: PasskeyRegister
+                messages:
+                  loading: Waiting for your authenticator…
+                  success: Passkey added.
+                  error: false
+              - id: mark_enrol_passkey_registered
+                type: SetState
+                params:
+                  enrol.passkey_registered: true
+              - id: enrol_passkey_session
+                type: UpdateSession
+                messages:
+                  error: false
+              - id: mark_passkey_done
+                type: SetState
+                params:
+                  enrol.done: true
+            catch:
+              - id: enrol_passkey_error
+                type: DisplayMessage
+                skip:
+                  _state: enrol.passkey_registered
+                params:
+                  status: error
+                  content: >-
+                    The passkey wasn't created. This usually happens if the
+                    prompt was cancelled, the device or browser doesn't
+                    support passkeys, or it timed out — try Add a passkey
+                    again.
+
+      # ── TOTP · phase scan ──
+      - id: enrol_scan_intro
+        type: Html
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - scan
+        layout:
+          span: 24
+        properties:
+          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Scan this with your authenticator app, then enter the 6-digit code to confirm.</div>'
+      # Single column at the standard 420 card width: QR primary on top, the
+      # 6-digit code directly below, the long manual key tucked behind a
+      # default-collapsed disclosure.
+      - id: enrol_qr_wrap
+        type: Box
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - scan
+        layout:
+          span: 24
+          justify: center
+        blocks:
+          - id: enrol_qr
+            type: QRCode
+            properties:
+              value:
+                _state: enrol.uri
+              size: 160
+              errorLevel: M
+      - id: enrol.confirmation_code
+        type: TextInput
+        required: true
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - scan
+        layout:
+          span: 24
+        properties:
+          placeholder: 6-digit code
+          label:
+            title: Confirmation code
+            span: 24
+        events:
+          # Enter runs the same chain as the Confirm button below.
+          onPressEnter:
+            _ref: actions/confirm_enrol_totp.yaml
+      - id: enrol_confirm
+        type: Button
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - scan
+        layout:
+          span: 24
+        properties:
+          title: Confirm and enable
+          block: true
+          color: primary
+          variant: solid
+        events:
+          onClick:
+            _ref: actions/confirm_enrol_totp.yaml
+      - id: enrol_manual_disclosure
+        type: Collapse
+        visible:
+          _and:
+            - _not:
+                _state: enrol.done
+            - _eq:
+                - _state: enrol.phase
+                - scan
+        layout:
+          span: 24
+        properties:
+          bordered: false
+          # Collapse defaults an unset defaultActiveKey to the first panel's key,
+          # which opens this disclosure; [] keeps it collapsed by default.
+          defaultActiveKey: []
+          panels:
+            - key: manual
+              title: Can't scan? Enter this key instead
+        slots:
+          manual:
+            blocks:
+              - id: enrol_manual_key_label
+                type: Label
+                layout:
+                  span: 24
+                properties:
+                  title: Type this into your authenticator app's "enter key manually" option.
+                  span: 24
+                  colon: false
+                blocks:
+                  # A copyable Paragraph, not a disabled TextInput: browsers do
+                  # not allow selecting text inside a disabled input. Shown as
+                  # 4-char pills so the 52-char base32 secret wraps and stays
+                  # readable; `copyable.text` copies the raw unspaced secret,
+                  # which is what an authenticator's manual field wants (the full
+                  # otpauth:// URI generally fails there).
+                  - id: enrol_manual_key
+                    type: Paragraph
+                    properties:
+                      content:
+                        _js: |
+                          const uri = state('enrol.uri');
+                          if (!uri) return null;
+                          const secret = new URLSearchParams(uri.split('?')[1] || '').get('secret');
+                          if (!secret) return null;
+                          const style = 'display:inline-block; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:14px; letter-spacing:0.08em; padding:4px 9px; margin:0 6px 6px 0; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border-secondary); border-radius:6px;';
+                          return secret.match(/.{1,4}/g).map((c) => `<span style="${style}">${c}</span>`).join('');
+                      copyable:
+                        text:
+                          _js: |
+                            const uri = state('enrol.uri');
+                            if (!uri) return null;
+                            return new URLSearchParams(uri.split('?')[1] || '').get('secret');
+
+      # ── Done (gated on enrol.done, reached by either route) ──
+      - id: enrol_done_msg
+        type: Html
+        visible:
+          _state: enrol.done
+        properties:
+          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Two-factor is set up on your account.</div>'
+      # Backup codes appear only for the TOTP route (passkey leaves them null).
+      - id: enrol_codes_msg
+        type: Html
+        visible:
+          _and:
+            - _state: enrol.done
+            - _boolean:
+                _state: enrol.backup_codes
+        layout:
+          span: 24
+        properties:
+          html: '<div style="font-size:13.5px; color:var(--ant-color-text-secondary);">Store these backup codes somewhere safe. Each works once if you lose your authenticator.</div>'
+      - id: enrol_codes_grid
+        type: Html
+        visible:
+          _and:
+            - _state: enrol.done
+            - _boolean:
+                _state: enrol.backup_codes
+        layout:
+          span: 24
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 4px;">
+                {% for code in codes %}
+                  <span style="font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--ant-color-fill-quaternary); border:1px solid var(--ant-color-border-secondary); border-radius:6px; padding:7px 10px; text-align:center; letter-spacing:0.04em;">{{ code }}</span>
+                {% endfor %}
+                </div>
+              on:
+                codes:
+                  _state: enrol.backup_codes
+      - id: enrol_codes_alert
+        type: Alert
+        visible:
+          _and:
+            - _state: enrol.done
+            - _boolean:
+                _state: enrol.backup_codes
+        layout:
+          span: 24
+        properties:
+          type: warning
+          showIcon: true
+          message: You won't see these again. Copy them before continuing.
+      - id: enrol_codes_copy
+        type: Button
+        visible:
+          _and:
+            - _state: enrol.done
+            - _boolean:
+                _state: enrol.backup_codes
+        layout:
+          span: 24
+        properties:
+          title: Copy codes
+          block: true
+          icon: copy
+          variant: outlined
+        events:
+          onClick:
+            - id: copy_enrol_codes
+              type: CopyToClipboard
+              messages:
+                success: Copied
+              params:
+                copy:
+                  _array.join:
+                    - _state: enrol.backup_codes
+                    - "\n"
+      # An attention device, not a lock: it makes a caller in dismiss-mode read
+      # one line before continuing. Not gating on a clipboard write. People
+      # legitimately save these by screenshot, password manager, or on paper.
+      - id: enrol.codes_saved
+        type: CheckboxSwitch
+        visible:
+          _and:
+            - _state: enrol.done
+            - _boolean:
+                _state: enrol.backup_codes
+        layout:
+          span: 24
+        properties:
+          description: I've saved my backup codes
+          label:
+            disabled: true
+      - id: enrol_continue
+        type: Button
+        visible:
+          _state: enrol.done
+        layout:
+          span: 24
+        properties:
+          title: Continue
+          block: true
+          size: large
+          color: primary
+          variant: solid
+          # Only the TOTP route has codes to save; a passkey caller continues
+          # straight away.
+          disabled:
+            _and:
+              - _boolean:
+                  _state: enrol.backup_codes
+              - _not:
+                  _state: enrol.codes_saved
+        events:
+          onClick:
+            - id: enter_app
+              type: Link
+              params:
+                home: true

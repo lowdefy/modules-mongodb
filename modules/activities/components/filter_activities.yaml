@@ -121,7 +121,7 @@ blocks:
       flex: 0 0 auto
     properties:
       title: Clear
-      icon: AiOutlineClear
+      icon: Eraser
     events:
       onClick:
         _build.array.concat:

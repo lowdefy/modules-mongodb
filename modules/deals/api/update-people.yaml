@@ -45,11 +45,11 @@ routine:
         type: update-deal-people
         display:
           _build.object.fromEntries:
-            - - _module.var: app_name
+            - - _build.app: slug
               - title:
                   _nunjucks:
                     template: |
-                      <a href="/contacts/view?_id={{ user.id }}">{{ user.profile.name }}</a> updated deal people.
+                      {{ user.profile.name }} updated deal people.
                     on:
                       user:
                         _user: true

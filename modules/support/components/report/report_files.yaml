@@ -1,0 +1,39 @@
+# The report's screenshot: a picture of the page behind the panel, uploaded
+# through the module's upload policy and added to support_report.files, which
+# the report's message box lists with the images and PDFs dropped or pasted
+# into it. Five files in all.
+id: support_report_files_box
+type: Box
+blocks:
+  - id: support_report_screenshot
+    type: SupportScreenshot
+    properties:
+      s3PostPolicyRequestId: upload_policy_support_report_files
+      hideSelectors:
+        - "#support_panel"
+      maskSelectors:
+        _module.var: mask_selectors
+      disabled:
+        _gte:
+          - _array.length:
+              _if_none:
+                - _state: support_report.files
+                - []
+          - 5
+    events:
+      onUse:
+        - id: support_add_screenshot
+          type: SetState
+          params:
+            support_report.files:
+              _array.concat:
+                - _if_none:
+                    - _state: support_report.files
+                    - []
+                - - _event: file
+      onError:
+        - id: support_screenshot_failed
+          type: SetState
+          params:
+            support_report_error:
+              _event: message

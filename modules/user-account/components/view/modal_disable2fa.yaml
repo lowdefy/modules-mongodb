@@ -1,0 +1,67 @@
+# Turn off 2FA modal (design Decision 5): TwoFactorDisable is password-gated for a
+# caller who holds a credential, so the tile's "Turn off" opens this confirm rather
+# than disabling inline. The password field is shown/validated iff
+# get_accounts.0.has_credential; a passwordless member sees the warning alone and
+# the param sends '' (waived per-user under allowPasswordless). On success the 2FA
+# state flips to Off and the tile re-fetches. A wrong password or a validation miss
+# throws, keeping the modal open with the friendly error.
+id: modal_disable2fa
+type: Modal
+properties:
+  title: Turn off two-factor authentication
+  width: 480
+  okText: Turn off
+  cancelText: Cancel
+events:
+  onOpen:
+    - id: reset_disable2fa
+      type: SetState
+      params:
+        disable2fa.password: null
+  onClose:
+    - id: clear_disable2fa
+      type: SetState
+      params:
+        disable2fa.password: null
+  onOk:
+    _build.array.concat:
+      - - id: validate_disable2fa
+          type: Validate
+          skip:
+            _not:
+              _request: get_accounts.0.has_credential
+          params:
+            regex: '^disable2fa\.'
+        - id: disable_totp
+          type: TwoFactorDisable
+          messages:
+            loading: Turning off…
+            success: Two-factor authentication is off.
+            error: Couldn't turn off two-factor. Check your password and try again.
+          params:
+            password:
+              _if_none:
+                - _state: disable2fa.password
+                - ""
+      - _ref: actions/refetch_account.yaml
+blocks:
+  - id: disable2fa_warning
+    type: Alert
+    layout:
+      span: 24
+    properties:
+      type: warning
+      showIcon: true
+      message: This removes the second step at sign-in. You can set it up again at any time.
+  - id: disable2fa.password
+    type: PasswordInput
+    required: true
+    visible:
+      _request: get_accounts.0.has_credential
+    layout:
+      span: 24
+    properties:
+      label:
+        title: Account password
+        span: 24
+        colon: false

@@ -1,0 +1,99 @@
+# Every organization the caller belongs to, for the my-organizations page:
+# { organization_id, name, logo, authority (owner, admin or member), is_active,
+# member_count, owner_count }, the active one first, then by name. Scoped by
+# `user_id: { _user: id }`, the caller's own member rows, which is what makes
+# this read safe on the shared connection; the counts join each of those
+# organizations' member rows and return only the numbers.
+id: get_my_organizations
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-members
+properties:
+  pipeline:
+    - $match:
+        user_id:
+          _user: id
+    - $lookup:
+        from: user-organizations
+        localField: organization_id
+        foreignField: _id
+        as: organization
+        pipeline:
+          - $project:
+              name: 1
+              logo: 1
+    - $unwind: "$organization"
+    - $lookup:
+        from: user-members
+        localField: organization_id
+        foreignField: organization_id
+        as: counts
+        pipeline:
+          - $group:
+              _id: null
+              members:
+                $sum: 1
+              owners:
+                $sum:
+                  $cond:
+                    - $in:
+                        - owner
+                        - $split:
+                            - $ifNull:
+                                - "$role"
+                                - ''
+                            - ','
+                    - 1
+                    - 0
+    - $project:
+        _id: 0
+        organization_id: 1
+        name: "$organization.name"
+        # A cleared logo is stored as an empty string.
+        logo:
+          $cond:
+            - $eq:
+                - $ifNull:
+                    - "$organization.logo"
+                    - ''
+                - ''
+            - null
+            - "$organization.logo"
+        authority:
+          $let:
+            vars:
+              tiers:
+                $split:
+                  - $ifNull:
+                      - "$role"
+                      - ''
+                  - ','
+            in:
+              $switch:
+                branches:
+                  - case:
+                      $in:
+                        - owner
+                        - "$$tiers"
+                    then: owner
+                  - case:
+                      $in:
+                        - admin
+                        - "$$tiers"
+                    then: admin
+                default: member
+        is_active:
+          $eq:
+            - "$organization_id"
+            - _user: organization_id
+        member_count:
+          $ifNull:
+            - $first: "$counts.members"
+            - 0
+        owner_count:
+          $ifNull:
+            - $first: "$counts.owners"
+            - 0
+    - $sort:
+        is_active: -1
+        name: 1

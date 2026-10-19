@@ -29,10 +29,9 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "show_comment",
 ];
 
-// Part 24 / Part 64: the default for the UI presence list. Normalized onto the
-// emitted action_config so templates/components always see a (possibly empty)
-// array — `false` → [], omitted → both fields, array → as-is. (Part 64 dropped
-// `description` from the universal set; it is now author-authored config.)
+// The default for the UI presence list. Normalized onto the emitted
+// action_config so templates/components always see a (possibly empty) array —
+// `false` → [], omitted → both fields, array → as-is.
 const UNIVERSAL_FIELDS_DEFAULT = ["assignees", "due_date"];
 
 function normalizeUniversalFields(value) {
@@ -66,9 +65,8 @@ function resolveWorkflowTitle(workflow, titleAcronyms) {
 // workflow declares none), and the optional entity-list breadcrumb link
 // (list_page_id + list_title, both empty strings when absent so the templates'
 // `{% if list_page_id %}` gate is falsy and the breadcrumb drops the list crumb).
-// Part 26: the instance name no longer comes from a baked name_field — the
-// templates source the breadcrumb name from `entity_link.name` on the action
-// response (resolved server-side from the entity.data routine).
+// The templates source the breadcrumb instance name from `entity_link.name` on
+// the action response (resolved server-side from the entity.data routine).
 function workspaceVars(workflow, workflowTitle) {
   // The optional `page_layout` enum selects the action-page layout; absent →
   // standard. It is not consumed by templates directly — it is translated here
@@ -89,19 +87,13 @@ function workspaceVars(workflow, workflowTitle) {
   };
 }
 
-function emitForAction(
-  workflow,
-  action,
-  appName,
-  titleAcronyms,
-  workflowTitle,
-) {
+function emitForAction(workflow, action, slug, titleAcronyms, workflowTitle) {
   if (action.kind !== "form") return [];
 
   // Part 34 D5: emit a verb page iff the verb key is present in the app's
   // verb→gate map. Role gates don't matter at build time — presence of the key
   // alone gates page generation. Reads the map keys, not the old verb array.
-  const accessMap = action.access?.[appName] ?? {};
+  const accessMap = action.access?.[slug] ?? {};
   const emittedVerbs = VERBS.filter((v) => v in accessMap);
   if (emittedVerbs.length === 0) return [];
 
@@ -183,11 +175,15 @@ function emitActionPage(workflow, workflowTitle) {
 }
 
 function makeActionPages(_, vars) {
-  const { workflows, app_name: appName, title_acronyms = [] } = vars;
+  const { workflows, slug, title_acronyms = [] } = vars;
 
-  if (!appName) {
+  // The type check is load-bearing, not defensive: the manifest must pass the
+  // slug as `_build.app`, and an `_app` operator would arrive here as an
+  // unevaluated object. That object is truthy, and `access?.[{…}]` is
+  // undefined, so a falsy-only guard would emit zero action pages in silence.
+  if (typeof slug !== "string" || !slug) {
     fail(
-      `vars.app_name is required and must be non-empty (got: ${JSON.stringify(appName)}).`,
+      `vars.slug is required and must be a non-empty string (got: ${JSON.stringify(slug)}).`,
     );
   }
 
@@ -196,13 +192,7 @@ function makeActionPages(_, vars) {
     const workflowTitle = resolveWorkflowTitle(workflow, title_acronyms);
     for (const action of workflow.actions ?? []) {
       pages.push(
-        ...emitForAction(
-          workflow,
-          action,
-          appName,
-          title_acronyms,
-          workflowTitle,
-        ),
+        ...emitForAction(workflow, action, slug, title_acronyms, workflowTitle),
       );
     }
     pages.push(...emitActionPage(workflow, workflowTitle));

@@ -1,0 +1,156 @@
+# The member page's danger zone: transfer ownership to someone else (owners,
+# on a member who is not an owner), remove someone else from the organization
+# (owners and admins; disabled for an admin on an owner's page), or leave it
+# from your own row (disabled for the only owner and on your only
+# membership). Each asks first in its confirmation modal. The engine's
+# last-owner guard has the final word; a refusal is shown as written.
+id: member_danger_zone
+type: Card
+visible:
+  _and:
+    - _request: get_member.0.is_member
+    - _or:
+        - _request: get_member.0.is_self
+        - _ref: components/caller_is_org_admin.yaml
+properties:
+  title: Danger zone
+blocks:
+  - id: member_danger_rows
+    type: Box
+    layout:
+      direction: column
+      gap: 16
+    blocks:
+      - _ref:
+          path: components/danger_zone_row.yaml
+          vars:
+            id: transfer_ownership
+            visible:
+              _and:
+                - _ref: components/caller_is_org_owner.yaml
+                - _not:
+                    _request: get_member.0.is_self
+                - _ne:
+                    - _request: get_member.0.authority
+                    - Owner
+            title: Transfer ownership
+            line:
+              _string.concat:
+                - _if_none:
+                    - _request: get_member.0.name
+                    - _if_none:
+                        - _request: get_member.0.email
+                        - They
+                - ' becomes an owner and you become an admin.'
+            button: Transfer
+            icon: Crown
+            onClick:
+              - id: open_transfer_modal
+                type: CallMethod
+                params:
+                  blockId: member_transfer_modal
+                  method: toggleOpen
+      - _ref:
+          path: components/danger_zone_row.yaml
+          vars:
+            id: remove_member
+            visible:
+              _not:
+                _request: get_member.0.is_self
+            title:
+              _build.string.concat:
+                - 'Remove from '
+                - _build.string.toLowerCase:
+                    _module.var: label
+            line:
+              _if:
+                test:
+                  _ref: components/member_access_disabled.yaml
+                then: Only owners can change or remove an owner.
+                else:
+                  _string.concat:
+                    - _if_none:
+                        - _request: get_member.0.name
+                        - _if_none:
+                            - _request: get_member.0.email
+                            - They
+                    - ' loses access to '
+                    - _if_none:
+                        - _request: get_settings_organization.name
+                        - _build.string.concat:
+                            - 'this '
+                            - _build.string.toLowerCase:
+                                _module.var: label
+                    - ' and everything in it.'
+            button: Remove
+            icon: UserMinus
+            disabled:
+              _ref: components/member_access_disabled.yaml
+            onClick:
+              - id: open_remove_member_modal
+                type: CallMethod
+                params:
+                  blockId: member_remove_modal
+                  method: toggleOpen
+      - _ref:
+          path: components/danger_zone_row.yaml
+          vars:
+            id: leave_organization
+            visible:
+              _request: get_member.0.is_self
+            title:
+              _build.string.concat:
+                - 'Leave this '
+                - _build.string.toLowerCase:
+                    _module.var: label
+            line:
+              _if:
+                test:
+                  _lte:
+                    - _array.length:
+                        _if_none:
+                          - _request: get_leave_memberships
+                          - []
+                    - 1
+                then:
+                  _build.string.concat:
+                    - 'This is your only '
+                    - _build.string.toLowerCase:
+                        _module.var: label
+                    - '. Create or join another before you leave it.'
+                else:
+                  _if:
+                    test:
+                      _ref: components/member_authority_locked.yaml
+                    then: You are the only owner. Hand ownership to someone else before you leave.
+                    else:
+                      _string.concat:
+                        - 'You lose access to '
+                        - _if_none:
+                            - _request: get_settings_organization.name
+                            - _build.string.concat:
+                                - 'this '
+                                - _build.string.toLowerCase:
+                                    _module.var: label
+                        - ' and everything in it.'
+            button: Leave
+            icon: logout
+            disabled:
+              _or:
+                - _ref: components/member_authority_locked.yaml
+                - _lte:
+                    - _array.length:
+                        _if_none:
+                          - _request: get_leave_memberships
+                          - []
+                    - 1
+            onClick:
+              - id: open_leave_modal
+                type: CallMethod
+                params:
+                  blockId: member_leave_modal
+                  method: toggleOpen
+  # Outside the rows' box, so their closed wrappers take none of its gaps.
+  - _ref: components/member_transfer_modal.yaml
+  - _ref: components/member_remove_modal.yaml
+  - _ref: components/member_leave_modal.yaml

@@ -1,0 +1,97 @@
+# create-organization — the caller creates an organisation and becomes its
+# owner. It does only what needs no membership in the new organisation: the
+# page then hands off to the switch page, and setup runs inside it.
+#
+# 1. Refuses an empty name, one over the length limit, and one the caller
+#    already has an organisation by (case-insensitive, among their own
+#    memberships), as data.
+# 2. CreateOrganization as the system with the caller as `userId`: BetterAuth
+#    writes the organisation and makes the caller its owner. The slug is
+#    `org-` plus a new id; slugs are never shown or edited.
+# 3. Grants the owner the module var `creator_app_roles` with UpdateMemberRoles
+#    as the system in the new organisation, when there are any.
+#
+# Present only when the module var `allow_create_organization` is true.
+#
+# Payload: { name }. Returns { organization_id }, or { refused: { rule,
+# message } } with rule `name_required` or `name_taken`.
+id: create-organization
+type: Api
+routine:
+  - _ref: api/parts/check-organization-name.yaml
+
+  - id: own_organization_names
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: user-members
+    properties:
+      pipeline:
+        - $match:
+            user_id:
+              _user: id
+        - $lookup:
+            from: user-organizations
+            localField: organization_id
+            foreignField: _id
+            as: organization
+        - $unwind: "$organization"
+        - $match:
+            $expr:
+              $eq:
+                - $toLower: "$organization.name"
+                - $toLower:
+                    _state: name
+        - $limit: 1
+        - $project:
+            _id: 0
+            name: "$organization.name"
+
+  - :if:
+      _gt:
+        - _array.length:
+            _step: own_organization_names
+        - 0
+    :then:
+      - :return:
+          refused:
+            rule: name_taken
+            message:
+              _string.concat:
+                - You already have one called
+                - ' '
+                - _step: own_organization_names.0.name
+                - .
+
+  - id: create_organization
+    type: CreateOrganization
+    system: true
+    properties:
+      name:
+        _state: name
+      slug:
+        _string.concat:
+          - org-
+          - _uuid: true
+      userId:
+        _user: id
+
+  - :if:
+      _gt:
+        - _array.length:
+            _module.var: creator_app_roles
+        - 0
+    :then:
+      - id: grant_creator_app_roles
+        type: UpdateMemberRoles
+        system: true
+        properties:
+          memberId:
+            _step: create_organization.members.0.id
+          organizationId:
+            _step: create_organization.id
+          appRoles:
+            _module.var: creator_app_roles
+
+  - :return:
+      organization_id:
+        _step: create_organization.id

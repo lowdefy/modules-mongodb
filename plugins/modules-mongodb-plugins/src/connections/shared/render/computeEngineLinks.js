@@ -26,7 +26,7 @@
  *                 urlQuery workflow_id
  *               • `action-required` + null child + declared `tracker.start_link`
  *                 → `edit` to start_link.pageId (verbatim, NOT entry-scoped),
- *                   urlQuery sentinels: `action_id: true` → action._id,
+ *                   urlQuery / pathParams sentinels: `action_id: true` → action._id,
  *                   `entity_id: true` → action.entity.id, statics verbatim
  *   - custom  -> author-routed (Part 28): the working `link` cell
  *               (action[slug].link) lands in the stage's active working verb
@@ -58,15 +58,15 @@ const STAGE_WORKING_VERB = {
   done: "view",
 };
 
-// Substitute the engine-link sentinels over a flat urlQuery: `action_id: true`
-// → action._id, `entity_id: true` → action.entity.id, every other key/value
-// verbatim. Returns undefined when there is no urlQuery (so the caller emits a
-// pageId-only link, matching tracker start_link). Shared by the tracker arm and
-// the custom branch so every engine-routed link resolves sentinels identically.
-function substituteSentinels(urlQuery, action) {
-  if (urlQuery == null) return undefined;
+// Substitute the engine-link sentinels over a flat urlQuery or pathParams:
+// `action_id: true` → action._id, `entity_id: true` → action.entity.id, every
+// other key/value verbatim. Returns undefined when there are no params (so the
+// caller omits that key). Shared by the tracker arm and the custom branch so
+// every engine-routed link resolves sentinels identically.
+function substituteSentinels(params, action) {
+  if (params == null) return undefined;
   const out = {};
-  for (const [key, val] of Object.entries(urlQuery)) {
+  for (const [key, val] of Object.entries(params)) {
     if (key === "action_id" && val === true) {
       out[key] = action._id;
     } else if (key === "entity_id" && val === true) {
@@ -78,8 +78,9 @@ function substituteSentinels(urlQuery, action) {
   return out;
 }
 
-// Build a link object from an engine-link cell `{ pageId, urlQuery?, title? }`,
-// substituting sentinels. Omits urlQuery entirely when the cell has none.
+// Build a link object from an engine-link cell
+// `{ pageId, urlQuery?, pathParams?, title? }`, substituting sentinels. Omits
+// urlQuery / pathParams entirely when the cell has none.
 // A cell may carry an author `title` (custom action link/view_link, tracker
 // start_link) — passed through so it overrides the verb-default button label in
 // collapseLink. Engine-built check/form links (below) carry no title and take
@@ -88,6 +89,8 @@ function resolveCellLink(cell, action) {
   const link = { pageId: cell.pageId };
   const urlQuery = substituteSentinels(cell.urlQuery, action);
   if (urlQuery !== undefined) link.urlQuery = urlQuery;
+  const pathParams = substituteSentinels(cell.pathParams, action);
+  if (pathParams !== undefined) link.pathParams = pathParams;
   if (cell.title != null) link.title = cell.title;
   return link;
 }

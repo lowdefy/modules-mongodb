@@ -1,0 +1,549 @@
+# Signup page, task 10. Serves authPages.signUp. Ships unconditionally;
+# admission is engine policy (this page renders the outcome, it does not
+# re-implement it). Two renders driven by `signup_view` (form | check).
+#
+# Dispatch: email/password via `SignUp`; social "signup" via `Login` (the only
+# real signup endpoint is email/password). With requireEmailVerification the
+# SignUp response carries no session token, so the page shows the check-email
+# state instead of navigating; otherwise `SignUp` navigates to callbackUrl.
+#
+# Method enablement is read from the app auth config via `_build.authConfig`
+# (Decision 2): the email/password form renders only when emailAndPassword is
+# enabled, an OAuth button per configured provider (label/icon from the
+# `providers` var). When password AND at least one alternative (magic-link /
+# OAuth) are enabled, the form view is a method chooser: heading + email, then a
+# "Use a password" button and the alternative-method buttons. Choosing "Use a
+# password" reveals the registration password field (the `signup_show_password`
+# sub-state) and hides the other methods; "Other options" returns to the chooser.
+# With password as the only method the form shows directly (no chooser). The
+# `email` input is hoisted out of the password branch so the chooser's magic-link
+# send reads the same canonical `id: email`.
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: signup
+    title: ""
+    events:
+      onInit:
+        - id: seed_signup_view
+          type: SetState
+          params:
+            signup_view: form
+            # Reveal sub-state for the form method chooser. Seeded open only when
+            # password is the sole method (no chooser); otherwise the chooser leads
+            # and "Use a password" opens the field. Baked at build time.
+            signup_show_password:
+              _build.if:
+                test:
+                  _build.and:
+                    - _build.authConfig: emailAndPassword.enabled
+                    - _build.not:
+                        _build.or:
+                          - _build.authConfig: magicLink.enabled
+                          - _build.gt:
+                              - _build.array.length:
+                                  _build.authConfig: providers
+                              - 0
+                then: true
+                else: false
+            # `?email=` marks an address-bound entry (the accept page sends the
+            # invited address). Seeding it prefills the auto-bound email input,
+            # which then renders locked. See the input below.
+            email:
+              _url_query: email
+    blocks:
+      _build.array.concat:
+        # ---- Heading + shared email input. Hoisted out of the password branch so
+        # the chooser's magic-link send reads the same canonical `id: email`. -----
+        - _build.if:
+            test:
+              _build.or:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.authConfig: magicLink.enabled
+            then:
+              - id: signup_title
+                type: Title
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                properties:
+                  content: Create your account
+                  level: 3
+              # Locked on an address-bound entry: the account has to be created
+              # on the address the invitation was sent to, so the field states
+              # it rather than inviting a value that cannot work.
+              - id: email
+                type: TextInput
+                visible:
+                  _eq:
+                    - _state: signup_view
+                    - form
+                required: true
+                properties:
+                  type: email
+                  size: large
+                  suffixIcon: mail
+                  disabled:
+                    _ne:
+                      - _url_query: email
+                      - null
+                  label:
+                    title: Email
+                    colon: false
+                    span: 24
+                    extra:
+                      _if:
+                        test:
+                          _ne:
+                            - _url_query: email
+                            - null
+                        then: Your invitation was sent to this address.
+                        else: null
+                events:
+                  # Enter runs the email's primary action: registration when
+                  # password is enabled (which first opens the password field
+                  # from the chooser), else the magic-link send.
+                  onPressEnter:
+                    _build.if:
+                      test:
+                        _build.authConfig: emailAndPassword.enabled
+                      then:
+                        _ref: actions/sign_up_password.yaml
+                      else:
+                        _ref:
+                          path: actions/send_magic_link.yaml
+                          vars:
+                            on_sent:
+                              signup_view: link-sent
+                              otp: null
+            else: []
+
+        # ---- "Use a password" chooser button. Only when password AND at least one
+        # alternative (magic-link / OAuth) are enabled; reveals the registration
+        # password field. Hidden once the field is open. -------------------------
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.or:
+                    - _build.authConfig: magicLink.enabled
+                    - _build.gt:
+                        - _build.array.length:
+                            _build.authConfig: providers
+                        - 0
+            then:
+              - id: signup_use_password
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _not:
+                        _state: signup_show_password
+                properties:
+                  title: Use a password
+                  block: true
+                  size: large
+                  color: primary
+                  variant: solid
+                events:
+                  onClick:
+                    - id: show_signup_password
+                      type: SetState
+                      params:
+                        signup_show_password: true
+            else: []
+
+        # ---- Registration password + submit. Shown when signup_show_password is
+        # set (always, when password is the only method; on demand via "Use a
+        # password" in the chooser). ---------------------------------------------
+        - _build.if:
+            test:
+              _build.authConfig: emailAndPassword.enabled
+            then:
+              - id: password
+                type: PasswordInput
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _state: signup_show_password
+                required: true
+                properties:
+                  size: large
+                  label:
+                    title: Password
+                    colon: false
+                    span: 24
+                    extra: At least 8 characters.
+                events:
+                  onPressEnter:
+                    _ref: actions/sign_up_password.yaml
+              # Create the email/password account; the chain is shared with
+              # the inputs' Enter key.
+              - id: signup_submit
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _state: signup_show_password
+                properties:
+                  title: Create account
+                  block: true
+                  size: large
+                  color: primary
+                  variant: solid
+                events:
+                  onClick:
+                    _ref: actions/sign_up_password.yaml
+            else: []
+
+        # ---- "Other options" back link. Returns from the revealed password field
+        # to the method chooser. Built alongside the "Use a password" button. -----
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.or:
+                    - _build.authConfig: magicLink.enabled
+                    - _build.gt:
+                        - _build.array.length:
+                            _build.authConfig: providers
+                        - 0
+            then:
+              - id: signup_back_to_methods
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _state: signup_show_password
+                properties:
+                  title: Other options
+                  icon: arrow-left
+                  block: true
+                  variant: link
+                  color: primary
+                events:
+                  onClick:
+                    - id: hide_signup_password
+                      type: SetState
+                      params:
+                        signup_show_password: false
+            else: []
+
+        # ---- Magic-link method button (chooser). One email → link action, same
+        # shared component on both pages. A peer of the OAuth buttons in the method
+        # chooser; hidden while the password field is open. The component's
+        # on-success flip is supplied via `on_sent` so it drives signup's own
+        # `signup_view: link-sent` render. ---------------------------------------
+        - _build.if:
+            test:
+              _build.authConfig: magicLink.enabled
+            then:
+              - _ref:
+                  path: components/magic-link-send.yaml
+                  vars:
+                    id: signup_magic_send
+                    label: Email me a sign-in link
+                    variant: outlined
+                    color: default
+                    icon: mail
+                    on_sent:
+                      signup_view: link-sent
+                      otp: null
+                    visible:
+                      _and:
+                        - _eq:
+                            - _state: signup_view
+                            - form
+                        - _not:
+                            _state: signup_show_password
+            else: []
+
+        # ---- Single "or" divider. Separates the email-credential group (Use a
+        # password / magic-link) from the OAuth group; renders only when OAuth
+        # providers exist. Hidden while the password field is open. --------------
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _build.authConfig: providers
+                - 0
+            then:
+              - id: signup_method_divider
+                type: Divider
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _not:
+                        _state: signup_show_password
+                properties:
+                  title: or
+                  plain: true
+            else: []
+
+        # ---- OAuth "signup". Social sign-in creates the account on first use,
+        # so these dispatch through `Login`. One button per configured provider;
+        # label/icon from the `providers` var. Hidden while the password field is
+        # open. ----
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _build.authConfig: providers
+                - 0
+            then:
+              - id: signup_oauth_buttons
+                type: Box
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: signup_view
+                        - form
+                    - _not:
+                        _state: signup_show_password
+                layout:
+                  gap: 12
+                blocks:
+                  _build.array.map:
+                    on:
+                      _build.array.filter:
+                        on:
+                          _module.var: providers
+                        callback:
+                          _build.function:
+                            __build.array.includes:
+                              on:
+                                __build.array.map:
+                                  on:
+                                    __build.authConfig: providers
+                                  callback:
+                                    __build.function:
+                                      ___build.args: "0.id"
+                              value:
+                                __build.args: "0.id"
+                    callback:
+                      _build.function:
+                        id:
+                          __build.string.concat:
+                            - signup_oauth_
+                            - __build.args: "0.id"
+                        type: Button
+                        properties:
+                          title:
+                            __build.string.concat:
+                              - "Continue with "
+                              - __build.args: "0.label"
+                          icon:
+                            __build.args: "0.icon"
+                          block: true
+                          size: large
+                          variant: outlined
+                        events:
+                          onClick:
+                            - id: oauth_signup
+                              type: Login
+                              params:
+                                providerId:
+                                  __build.args: "0.id"
+            else: []
+
+        # ---- Check-your-email state (requireEmailVerification) ----
+        - - id: signup_check_email
+            type: Result
+            visible:
+              _eq:
+                - _state: signup_view
+                - check
+            properties:
+              icon:
+                name: mail
+                color: "var(--ant-color-primary)"
+              status: info
+              title: Check your email
+              subTitle:
+                _nunjucks:
+                  template: We sent a verification link to <b>{{ email }}</b>. Open it to finish setting up your account.
+                  on:
+                    email:
+                      _state: signup_email
+          # Resend the verification email to the address just signed up with.
+          - id: signup_resend
+            type: Button
+            visible:
+              _eq:
+                - _state: signup_view
+                - check
+            properties:
+              title: Resend link
+              block: true
+              size: large
+              variant: outlined
+            events:
+              onClick:
+                - id: resend_verification
+                  type: SendVerificationEmail
+                  params:
+                    email:
+                      _state: signup_email
+                    callbackUrl:
+                      _ref:
+                        path: components/verify_email_callback.yaml
+                        vars:
+                          email:
+                            _state: signup_email
+          # Only where the address is the user's to change, on an address-bound
+          # entry (`?email=`) starting over would mean registering a second
+          # account on an address the invitation cannot be accepted for.
+          - id: signup_check_hint
+            type: Html
+            visible:
+              _and:
+                - _eq:
+                    - _state: signup_view
+                    - check
+                - _eq:
+                    - _url_query: email
+                    - null
+            properties:
+              html: Wrong email? <a href="signup">Use a different email</a>
+            style:
+              textAlign: center
+              fontSize: 12
+              color: "var(--ant-color-text-secondary)"
+
+        # ---- Link-sent result (magic-link). The send returns { status: true }
+        # with no session, so it flips signup_view to link-sent and shows this
+        # "check your email" render. Resend re-fires the same shared send
+        # (cooldown-guarded, re-supplying signup's on_sent); the link button
+        # returns to the form. ----
+        - _build.if:
+            test:
+              _build.authConfig: magicLink.enabled
+            then:
+              _build.array.concat:
+                - - id: signup_link_sent
+                    type: Result
+                    visible:
+                      _eq:
+                        - _state: signup_view
+                        - link-sent
+                    properties:
+                      icon:
+                        name: mail
+                        color: "var(--ant-color-primary)"
+                      status: info
+                      title: Check your email
+                      subTitle:
+                        _ref:
+                          path: components/link_sent_subtitle.yaml
+                          vars:
+                            email:
+                              _state: magic_link_sent_email
+
+                # ---- Code entry. The send emits one email carrying both the
+                # link and the code when emailOTP is enabled, so this render only
+                # needs somewhere to type the code — no second send.
+                - _build.if:
+                    test:
+                      _build.authConfig: emailOTP.enabled
+                    then:
+                      - id: otp
+                        type: TextInput
+                        visible:
+                          _eq:
+                            - _state: signup_view
+                            - link-sent
+                        required: true
+                        properties:
+                          size: large
+                          maxLength: 6
+                          placeholder: "000000"
+                          label:
+                            disabled: true
+                        style:
+                          .element:
+                            textAlign: center
+                            letterSpacing: 8
+                            fontFamily: var(--mono)
+                        events:
+                          # Enter runs the same chain as the button below.
+                          onPressEnter:
+                            _ref: actions/verify_email_code.yaml
+                      - id: signup_code_verify
+                        type: Button
+                        visible:
+                          _eq:
+                            - _state: signup_view
+                            - link-sent
+                        properties:
+                          title: Sign in with code
+                          block: true
+                          size: large
+                          color: primary
+                          variant: solid
+                        events:
+                          onClick:
+                            _ref: actions/verify_email_code.yaml
+                    else: []
+
+                - - _ref:
+                      path: components/magic-link-send.yaml
+                      vars:
+                        id: signup_magic_resend
+                        label: Resend link
+                        variant: outlined
+                        color: default
+                        on_sent:
+                          signup_view: link-sent
+                          otp: null
+                        visible:
+                          _eq:
+                            - _state: signup_view
+                            - link-sent
+                  - id: signup_back_to_form
+                    type: Button
+                    visible:
+                      _and:
+                        - _eq:
+                            - _state: signup_view
+                            - link-sent
+                        - _eq:
+                            - _url_query: email
+                            - null
+                    properties:
+                      title: Use a different email
+                      block: true
+                      variant: link
+                      color: primary
+                    events:
+                      onClick:
+                        - id: back_to_form
+                          type: SetState
+                          params:
+                            signup_view: form
+                            otp: null
+            else: []
+    nav:
+      - id: signup_footer
+        type: Html
+        visible:
+          _eq:
+            - _state: signup_view
+            - form
+        properties:
+          html:
+            _string.concat:
+              - 'Already have an account? <a data-page-id="'
+              - _module.pageId: login
+              - '">Sign in</a>'

@@ -12,7 +12,7 @@ blocks:
       flex: 0 0 auto
     properties:
       title: Add Note
-      icon: AiOutlinePlus
+      icon: add
     events:
       onClick:
         - id: reset_note_text
@@ -30,7 +30,7 @@ blocks:
       flex: 0 0 auto
     properties:
       title: Log Task
-      icon: AiOutlinePlus
+      icon: add
     events:
       onClick:
         - id: clear_selected_task
@@ -48,7 +48,7 @@ blocks:
       vars:
         id: deal_action_capture
         label: Log activity
-        icon: AiOutlinePlus
+        icon: add
         button_type: default
         mode: modal
         prefill:

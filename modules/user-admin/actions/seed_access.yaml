@@ -1,0 +1,27 @@
+# Copy the member's stored roles, member attributes and org tier into the state
+# keys modal_access edits. Consumer fields.member_attributes is rendered twice on
+# the view page, as the modal's inputs and as the Attributes tile's rows, and its
+# `visible` conditions read these keys (`_state: member_attributes.*`,
+# `_state: roles`). The tile's rows are only shown correctly while state matches
+# the stored member, so this runs on load, on every modal open and on every modal
+# close (an abandoned edit must not change which rows the tile shows).
+id: seed_access
+type: SetState
+params:
+  # Held role ids, mapped from the resolved roles (catalog + held orphans).
+  roles:
+    _array.map:
+      on:
+        _if_none:
+          - _request: get_user_detail.0.roles
+          - []
+      callback:
+        _function:
+          __args: 0.id
+  member_attributes:
+    _request: get_user_detail.0.member_attributes
+  # Reopening the modal shows the stored tier rather than an abandoned edit.
+  # Seeded whether or not the control renders: one unread state key costs less
+  # than a conditional SetState.
+  org_role:
+    _request: get_user_detail.0.org_role

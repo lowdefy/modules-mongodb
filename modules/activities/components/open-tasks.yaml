@@ -140,24 +140,24 @@ blocks:
               style:
                 border:
                   _string.concat:
-                    - '1px dashed '
+                    - "1px dashed "
                     - _if:
                         test:
                           _eq:
                             - _state: open_tasks.$.overdue
                             - true
-                        then: 'var(--ant-color-error-border)'
-                        else: 'var(--ant-color-warning-border)'
+                        then: "var(--ant-color-error-border)"
+                        else: "var(--ant-color-warning-border)"
                 borderLeft:
                   _string.concat:
-                    - '4px solid '
+                    - "4px solid "
                     - _if:
                         test:
                           _eq:
                             - _state: open_tasks.$.overdue
                             - true
-                        then: 'var(--ant-color-error-border)'
-                        else: 'var(--ant-color-warning-border)'
+                        then: "var(--ant-color-error-border)"
+                        else: "var(--ant-color-warning-border)"
                 background: var(--ant-color-bg-container)
             events:
               onClick:
@@ -186,8 +186,8 @@ blocks:
                               _eq:
                                 - _state: open_tasks.$.overdue
                                 - true
-                            then: 'var(--ant-color-error)'
-                            else: 'var(--ant-color-warning)'
+                            then: "var(--ant-color-error)"
+                            else: "var(--ant-color-warning)"
                         label:
                           _if:
                             test:
@@ -199,7 +199,7 @@ blocks:
                         title:
                           _if_none:
                             - _state: open_tasks.$.title
-                            - ''
+                            - ""
               - id: open_tasks.$.due
                 type: Html
                 visible:
@@ -213,6 +213,6 @@ blocks:
                       - _dayjs.format:
                           on:
                             _state: open_tasks.$.due_date
-                          format: 'D MMM YYYY'
-                      - '</div>'
+                          format: "D MMM YYYY"
+                      - "</div>"
     else: []

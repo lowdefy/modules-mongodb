@@ -4,7 +4,7 @@
 
 Workstream B1 (workflows half). Deals renders a compact card of an entity's open items — open workflow actions **plus** tasks — via bespoke `components/detail/section_actions.yaml` + `components/detail/action_card.yaml.njk`, colour-keyed off the workflows `action_statuses` enum. The design splits this unified card by ownership to avoid a workflows→activities dependency inversion: workflows owns the **actions-only** card; activities owns the tasks card (task 5); the host composes both.
 
-Workflows already exports `actions-on-entity` (the full stepper). This task adds a lighter sibling that shows just the *open* actions as a compact card.
+Workflows already exports `actions-on-entity` (the full stepper). This task adds a lighter sibling that shows just the _open_ actions as a compact card.
 
 ## Task
 

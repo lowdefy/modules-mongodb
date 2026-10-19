@@ -8,7 +8,7 @@ _ref:
     title: Walkthrough Editor
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Walkthroughs
         pageId: walkthroughs-demo
       - label: Editor

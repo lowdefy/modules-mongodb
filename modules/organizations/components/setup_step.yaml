@@ -1,0 +1,246 @@
+# One step of the setup page (exported as `setup-step`, for the app's
+# `setup_steps` too): its number (a tick once done), title and status, then,
+# while it is open, its description and its blocks with Skip beside them. A
+# step's outcome is `setup_status.<id>` in state: null while open, `skipped`,
+# or the line to show once done (for example "Logo added").
+#
+# Vars:
+#   id           the step id
+#   number       its place in the list
+#   title        the step's title
+#   description  a line under the title, or null
+#   blocks       the step's own blocks
+#   skip_title   the skip button's text (default Skip)
+id:
+  _build.string.concat:
+    - setup_step_
+    - _var: id
+type: Box
+layout:
+  gap: 12
+  wrap: nowrap
+  align: top
+style:
+  padding: 16px 0
+blocks:
+  - id:
+      _build.string.concat:
+        - setup_step_
+        - _var: id
+        - _number
+    type: Avatar
+    layout:
+      flex: 0 0 auto
+    properties:
+      size: 28
+      content:
+        _if:
+          test:
+            _or:
+              - _eq:
+                  - _state:
+                      _build.string.concat:
+                        - setup_status.
+                        - _var: id
+                  - null
+              - _eq:
+                  - _state:
+                      _build.string.concat:
+                        - setup_status.
+                        - _var: id
+                  - skipped
+          then:
+            _build.json.stringify:
+              - _var: number
+          else: ✓
+      color:
+        _if:
+          test:
+            _or:
+              - _eq:
+                  - _state:
+                      _build.string.concat:
+                        - setup_status.
+                        - _var: id
+                  - null
+              - _eq:
+                  - _state:
+                      _build.string.concat:
+                        - setup_status.
+                        - _var: id
+                  - skipped
+          then: var(--ant-color-fill-secondary)
+          else: var(--ant-color-success)
+      style:
+        color:
+          _if:
+            test:
+              _eq:
+                - _state:
+                    _build.string.concat:
+                      - setup_status.
+                      - _var: id
+                - null
+            then: var(--ant-color-text)
+            else: var(--ant-color-text-tertiary)
+  - id:
+      _build.string.concat:
+        - setup_step_
+        - _var: id
+        - _body
+    type: Box
+    class: min-w-0
+    layout:
+      flex: 1 1 0
+      direction: column
+      gap: 12
+    blocks:
+      - id:
+          _build.string.concat:
+            - setup_step_
+            - _var: id
+            - _head
+        type: Box
+        layout:
+          gap: 8
+          align: middle
+        style:
+          minHeight: 28
+        blocks:
+          - id:
+              _build.string.concat:
+                - setup_step_
+                - _var: id
+                - _title
+            type: Span
+            layout:
+              flex: 0 1 auto
+            class: font-semibold text-[15px]
+            properties:
+              content:
+                _var: title
+          - id:
+              _build.string.concat:
+                - setup_step_
+                - _var: id
+                - _status
+            type: Span
+            visible:
+              _ne:
+                - _state:
+                    _build.string.concat:
+                      - setup_status.
+                      - _var: id
+                - null
+            layout:
+              flex: 0 1 auto
+            class:
+              _if:
+                test:
+                  _eq:
+                    - _state:
+                        _build.string.concat:
+                          - setup_status.
+                          - _var: id
+                    - skipped
+                then: text-[13px] text-[var(--ant-color-text-tertiary)]
+                else: text-[13px] text-[var(--ant-color-success-text)]
+            properties:
+              content:
+                _if:
+                  test:
+                    _eq:
+                      - _state:
+                          _build.string.concat:
+                            - setup_status.
+                            - _var: id
+                      - skipped
+                  then: Skipped
+                  else:
+                    _state:
+                      _build.string.concat:
+                        - setup_status.
+                        - _var: id
+      - id:
+          _build.string.concat:
+            - setup_step_
+            - _var: id
+            - _open
+        type: Box
+        visible:
+          _eq:
+            - _state:
+                _build.string.concat:
+                  - setup_status.
+                  - _var: id
+            - null
+        layout:
+          direction: column
+          gap: 12
+        blocks:
+          _build.array.concat:
+            - _build.if:
+                test:
+                  _build.eq:
+                    - _var:
+                        key: description
+                        default: null
+                    - null
+                then: []
+                else:
+                  - id:
+                      _build.string.concat:
+                        - setup_step_
+                        - _var: id
+                        - _description
+                    type: Span
+                    class: text-[13px] text-[var(--ant-color-text-secondary)]
+                    properties:
+                      content:
+                        _var: description
+            # The step's blocks and Skip share a wrapping row, so Skip sits
+            # beside the step's last button.
+            - - id:
+                  _build.string.concat:
+                    - setup_step_
+                    - _var: id
+                    - _actions
+                type: Box
+                layout:
+                  gap: 8
+                  align: middle
+                  wrap: wrap
+                blocks:
+                  _build.array.concat:
+                    - _var:
+                        key: blocks
+                        default: []
+                    - - id:
+                          _build.string.concat:
+                            - setup_step_
+                            - _var: id
+                            - _skip
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title:
+                            _var:
+                              key: skip_title
+                              default: Skip
+                          color: default
+                          variant: link
+                          size: small
+                        events:
+                          onClick:
+                            - id:
+                                _build.string.concat:
+                                  - skip_setup_step_
+                                  - _var: id
+                              type: SetState
+                              params:
+                                _build.object.fromEntries:
+                                  - - _build.string.concat:
+                                        - setup_status.
+                                        - _var: id
+                                    - skipped

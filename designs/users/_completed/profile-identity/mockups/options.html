@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Profile identity — options</title>
+<style>
+  :root{
+    --violet:#7c3aed;--violet-hover:#6d28d9;--violet-active:#5b21b6;--violet-bg:#f4ecff;--violet-border:#d6bbfb;
+    --bg-layout:#f5f5f5;--bg-container:#ffffff;
+    --text:rgba(0,0,0,.88);--text-2:rgba(0,0,0,.62);--text-3:rgba(0,0,0,.42);
+    --border:#f0f0f0;--border-strong:#d9d9d9;
+    --shadow-card:0 1px 2px 0 rgba(0,0,0,.03),0 1px 6px -1px rgba(0,0,0,.03),0 2px 4px 0 rgba(0,0,0,.02);
+    --ok-bg:#f6ffed;--ok-bd:#b7eb8f;--ok-fg:#389e0d;--info-bg:#e6f7ff;--info-bd:#91d5ff;--info-fg:#096dd9;
+    --err-bg:#fff1f0;--err-bd:#ffa39e;--err-fg:#cf1322;--warn-bg:#fffbe6;--warn-bd:#ffe58f;--warn-fg:#d48806;
+    --neutral-bg:#fafafa;--neutral-bd:#d9d9d9;--neutral-fg:#595959;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font);color:var(--text);background:#e9e9ec;font-size:14px;line-height:1.5714;-webkit-font-smoothing:antialiased}
+  [hidden]{display:none!important}
+  code{font-size:12px;background:#efeaf9;color:var(--violet-active);padding:1px 5px;border-radius:4px}
+
+  /* ── page shell (layout `page` component) ───────────────────── */
+  .app{width:1440px;margin:0 auto;background:var(--bg-layout);min-height:100vh}
+  .appbar{display:flex;align-items:center;gap:16px;background:var(--bg-container);padding:0 24px;height:56px;border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+  .brand .mark{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--violet),#4527a0);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800}
+  .appbar .right{margin-left:auto;display:flex;align-items:center;gap:16px;color:var(--text-2)}
+  .bell{width:16px;height:16px;border:2px solid currentColor;border-bottom:none;border-radius:8px 8px 0 0;position:relative;display:inline-block}
+  .bell::after{content:"";position:absolute;left:-3px;bottom:-2px;width:20px;height:2px;background:currentColor;border-radius:2px}
+
+  .canvas{padding:24px 32px 40px;max-width:1200px;margin:0 auto}
+  .crumbs{font-size:12px;color:var(--text-3);margin-bottom:12px;display:flex;gap:8px;align-items:center}
+  .crumbs a{color:var(--text-3);text-decoration:none}.crumbs .cur{color:var(--text-2)}.crumbs .sep{opacity:.5}
+
+  /* ── page header = shared `title-block` component ─────────────── */
+  .pagehead{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .pagehead .tcol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .pagehead h1{font-size:24px;font-weight:600;margin:0;letter-spacing:-.01em}
+  .pagehead .sub{font-size:13px;color:var(--text-2)}
+  .pagehead .pill{padding:15px 14px;font-size:15px;margin-right:12px}
+  /* entity-type eyebrow — title-block's existing `type` var */
+  .pagehead .eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:11px;line-height:1.2;color:var(--text-2)}
+
+  .pill{display:inline-block;padding:8px 12px;border-radius:6px;font-size:13px;font-weight:500;line-height:1;white-space:nowrap}
+  .pill.ok{background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok-fg)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;font-family:inherit;font-size:14px;line-height:1;border-radius:6px;padding:0 16px;border:1px solid var(--border-strong);background:#fff;color:var(--text);cursor:pointer;white-space:nowrap}
+  .btn:hover{color:var(--violet);border-color:var(--violet)}
+  .btn .ic{width:14px;height:14px;fill:currentColor;flex:0 0 auto}
+  .btn.sm{height:24px;padding:0 8px;font-size:12px}
+  .btn.sm .ic{width:12px;height:12px}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--text-2);padding:0 8px}
+  .btn.ghost:hover{background:var(--violet-bg);color:var(--violet)}
+
+  .av{border-radius:50%;color:#fff;display:inline-grid;place-items:center;font-weight:600;flex:0 0 auto;overflow:hidden}
+  .av.s28{width:28px;height:28px;font-size:11px}
+  .av.s40{width:40px;height:40px;font-size:15px}
+  .av.s48{width:48px;height:48px;font-size:18px}
+  .av.s64{width:64px;height:64px;font-size:24px}
+  .av.s80{width:80px;height:80px;font-size:30px}
+  .g-jm{background:linear-gradient(135deg,#6a1b9a,#c62828)}
+
+  .tag{display:inline-flex;align-items:center;gap:4px;padding:0 8px;border-radius:4px;font-size:12px;line-height:20px;border:1px solid var(--neutral-bd);background:var(--neutral-bg);color:var(--neutral-fg)}
+  .tag.ok{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok-fg)}
+  .tag.violet{background:var(--violet-bg);border-color:var(--violet-border);color:var(--violet-active)}
+  .muted{color:var(--text-3)}
+
+  /* ── two-column layout ──────────────────────────────────────── */
+  .grid{display:flex;gap:16px;align-items:flex-start}
+  .col{min-width:0}.col.main{flex:1.4 1 0}.col.side{flex:1 1 0}
+  .stack{display:flex;flex-direction:column;gap:16px}
+
+  /* ── card (layout `card` component) ─────────────────────────── */
+  .card{background:var(--bg-container);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-card)}
+  .card .chead{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+  .card .chead h3{font-size:16px;font-weight:600;margin:0}
+  .card .chead .ch-ic{color:var(--violet);display:inline-flex;align-items:center;flex:0 0 auto}
+  .card .chead .ch-ic svg{width:16px;height:16px;fill:currentColor}
+  .card .chead .spacer{margin-left:auto}
+  .card .cbody{padding:16px}
+
+  /* ── SmartDescriptions (antd Descriptions, bordered, column 1, small) ─ */
+  .sdesc{display:grid;grid-template-columns:max-content 1fr;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .sdesc>*{padding:8px 16px;font-size:13px}
+  .sdesc>dt{background:var(--neutral-bg);color:var(--text);border-right:1px solid var(--border);white-space:nowrap}
+  .sdesc>dd{margin:0}
+  .sdesc>*:nth-child(n+3){border-top:1px solid var(--border)}
+
+  .subeyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:8px}
+  .rowitem{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .rowitem:last-child{border-bottom:none}
+  .rowitem .ri-ic{width:28px;height:28px;border-radius:6px;background:var(--violet-bg);color:var(--violet);display:grid;place-items:center;flex:0 0 auto}
+  .rowitem .ri-ic svg{width:15px;height:15px;fill:currentColor}
+  .rowitem .ri-main{flex:1 1 auto;min-width:0}
+  .rowitem .ri-t{display:flex;align-items:center;gap:8px}
+  .rowitem .ri-sub{color:var(--text-3);font-size:12px;margin-top:1px}
+  .rowitem .ri-act{flex:0 0 auto;display:flex;gap:8px;align-items:center}
+  .listcaps{display:flex;flex-direction:column}
+  .empty{font-size:13px;color:var(--text-3)}
+
+  /* ═══ OPTION-SPECIFIC identity surfaces ═══ */
+
+  /* B — tinted identity banner, full width above the grid */
+  .identity_banner{display:flex;align-items:center;gap:16px;background:var(--violet-bg);border:1px solid var(--violet-border);border-radius:8px;padding:16px;margin-bottom:16px}
+  .identity_banner .ib-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .identity_banner .ib-name{font-size:18px;font-weight:600;line-height:1.3}
+  .identity_banner .ib-email{font-size:13px;color:var(--text-2)}
+  .identity_banner .ib-tags{display:flex;gap:6px;margin-top:6px}
+  .identity_banner .ib-act{flex:0 0 auto}
+
+  /* C — identity IS the Profile card header */
+  .card .chead.identity{padding:14px 16px;gap:12px}
+  .card .chead.identity .ih-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:0}
+  .card .chead.identity .ih-name{font-size:16px;font-weight:600;line-height:1.4}
+  .card .chead.identity .ih-email{font-size:12px;color:var(--text-2);line-height:1.4}
+
+  /* D — identity tile in the side column */
+  .identity_tile .cbody{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:20px 16px}
+  .identity_tile .it-name{font-size:16px;font-weight:600;margin-top:10px}
+  .identity_tile .it-email{font-size:13px;color:var(--text-2)}
+  .identity_tile .it-act{margin-top:12px;display:flex;gap:8px}
+
+  /* E — centred hero at the top of the main column */
+  .identity_hero{background:var(--bg-container);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-card);padding:24px 16px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
+  .identity_hero .ihe-avwrap{position:relative}
+  .identity_hero .ihe-cam{position:absolute;right:-2px;bottom:-2px;width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid var(--border-strong);display:grid;place-items:center;color:var(--text-2);cursor:pointer}
+  .identity_hero .ihe-cam svg{width:13px;height:13px;fill:currentColor}
+  .identity_hero .ihe-name{font-size:20px;font-weight:600;margin-top:12px;letter-spacing:-.01em}
+  .identity_hero .ihe-email{font-size:13px;color:var(--text-2)}
+  .identity_hero .ihe-tags{display:flex;gap:6px;margin-top:10px}
+
+  /* ═══ mock chrome ═══ */
+  .optnote{max-width:1200px;margin:0 auto 16px;padding:12px 16px;background:#1f1f28;color:#fff;border-radius:8px;font-size:13px;line-height:1.6}
+  .optnote h2{margin:0 0 6px;font-size:15px;font-weight:600}
+  .optnote .k{display:inline-block;min-width:74px;opacity:.55}
+  .optnote code{background:rgba(255,255,255,.14);color:#e9d9ff}
+  .optnote .warn{color:#ffd479}
+  .optnote .good{color:#95de64}
+
+  .cmp{max-width:1200px;margin:0 auto;padding:0 0 64px}
+  .cmp h2{font-size:15px;font-weight:600;margin:32px 0 4px}
+  .cmp .cmpsub{font-size:13px;color:var(--text-2);margin-bottom:12px}
+  .cmpitem{background:var(--bg-layout);border:1px solid var(--border-strong);border-radius:8px;padding:16px;margin-bottom:12px}
+  .cmpitem .cmplbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:10px}
+  .cmpitem .verdict{font-size:12px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-strong);color:var(--text-2)}
+  .cmpitem .verdict b{color:var(--text)}
+
+  .mockbar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:200;display:flex;gap:6px;align-items:center;background:#1f1f28;color:#fff;padding:8px 12px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:12px;flex-wrap:wrap}
+  .mockbar .lbl{opacity:.55;margin-right:4px}
+  .mockbar .sep{width:1px;height:18px;background:rgba(255,255,255,.2);margin:0 4px}
+  .mockbar button{font:inherit;background:rgba(255,255,255,.1);color:#fff;border:1px solid transparent;border-radius:6px;padding:4px 10px;cursor:pointer}
+  .mockbar button.on{background:var(--violet);border-color:var(--violet)}
+
+  @media (max-width:1180px){.grid{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="app" data-ldf-component="page" id="account_page">
+  <div class="appbar">
+    <div class="brand"><span class="mark">M</span> Module Demo App</div>
+    <div class="right"><span class="bell"></span><span class="av s28 g-jm">JM</span></div>
+  </div>
+
+  <main class="canvas">
+
+    <!-- ═══════════════ OPTION NOTES (mock chrome) ═══════════════ -->
+    <div class="optnote" data-mock-chrome data-opt-note="A">
+      <h2>A · Name is the page title, avatar beside it</h2>
+      <div><span class="k">Name once</span> the <code>h1</code></div>
+      <div><span class="k">Needs</span> new <code>avatar</code> slot on <code>title-block</code></div>
+      <div><span class="k good">Uniform</span> identical on all three pages — the person pages already title with the name</div>
+    </div>
+    <div class="optnote" data-opt-note="B" hidden>
+      <h2>B · Tinted identity banner above the grid</h2>
+      <div><span class="k">Name once</span> the banner</div>
+      <div><span class="k">Needs</span> full-width variant of <code>identity-header.yaml</code></div>
+      <div><span class="k warn">Cost</span> person pages must retitle their <code>h1</code> away from the name, or it renders twice</div>
+    </div>
+    <div class="optnote" data-opt-note="C" hidden>
+      <h2>C · Identity is the Profile card's header</h2>
+      <div><span class="k">Name once</span> the card header (replaces the word "Profile")</div>
+      <div><span class="k good">Needs</span> nothing new — no extra surface, no <code>title-block</code> change</div>
+      <div><span class="k warn">Cost</span> person pages must retitle their <code>h1</code>, or it renders twice</div>
+    </div>
+    <div class="optnote" data-opt-note="D" hidden>
+      <h2>D · Identity tile at the top of the side column</h2>
+      <div><span class="k">Name once</span> the side tile</div>
+      <div><span class="k">Needs</span> a new small tile component</div>
+      <div><span class="k warn">Cost</span> identity reads as secondary; person pages must retitle their <code>h1</code></div>
+    </div>
+    <div class="optnote" data-opt-note="E" hidden>
+      <h2>E · Centred identity hero, avatar is the picker</h2>
+      <div><span class="k">Name once</span> the hero</div>
+      <div><span class="k">Needs</span> a new hero component; hosts the in-flight avatar picker naturally</div>
+      <div><span class="k warn">Cost</span> most vertical space; person pages must retitle their <code>h1</code></div>
+    </div>
+
+    <div class="crumbs">
+      <a href="#">Home</a><span class="sep">/</span><span class="cur">Account</span>
+    </div>
+
+    <!-- ═══════════════ HEADER — varies by option ═══════════════ -->
+
+    <!-- A (chosen): avatar + "ACCOUNT" eyebrow + name as the title, no subtitle -->
+    <header class="pagehead" data-ldf-component="title-block" id="account_titlebar" data-opt="A">
+      <span class="av s48 g-jm">JM</span>
+      <div class="tcol">
+        <div class="eyebrow">Account</div>
+        <h1>Jane Mokoena</h1>
+      </div>
+    </header>
+
+    <!-- B/C/D/E: generic title, identity lives in the content -->
+    <header class="pagehead" data-ldf-component="title-block" id="account_titlebar_generic" data-opt="B C D E" hidden>
+      <div class="tcol">
+        <h1>Account</h1>
+        <div class="sub">Manage your profile, sign-in, and sessions</div>
+      </div>
+    </header>
+
+    <!-- B: tinted identity banner, spans both columns -->
+    <section class="identity_banner" data-ldf-component="identity-header" id="identity_banner" data-opt="B" hidden>
+      <span class="av s64 g-jm">JM</span>
+      <div class="ib-main">
+        <div class="ib-name">Jane Mokoena</div>
+        <div class="ib-email">jane.mokoena@example.com</div>
+        <div class="ib-tags"><span class="tag ok">✓ Email verified</span><span class="tag violet">Admin</span></div>
+      </div>
+      <div class="ib-act"><button class="btn">Edit profile</button></div>
+    </section>
+
+    <div class="grid">
+      <div class="col main"><div class="stack">
+
+        <!-- E: centred hero, avatar doubles as the picker affordance -->
+        <section class="identity_hero" id="identity_hero" data-opt="E" hidden>
+          <div class="ihe-avwrap">
+            <span class="av s80 g-jm">JM</span>
+            <span class="ihe-cam" title="Change avatar"><svg viewBox="0 0 1024 1024"><path d="M864 260H728l-32.4-90.8a32 32 0 0 0-30.2-21.2H358.6a32 32 0 0 0-30.2 21.2L296 260H160c-44.2 0-80 35.8-80 80v456c0 44.2 35.8 80 80 80h704c44.2 0 80-35.8 80-80V340c0-44.2-35.8-80-80-80zM512 716c-88.4 0-160-71.6-160-160s71.6-160 160-160 160 71.6 160 160-71.6 160-160 160z"/></svg></span>
+          </div>
+          <div class="ihe-name">Jane Mokoena</div>
+          <div class="ihe-email">jane.mokoena@example.com</div>
+          <div class="ihe-tags"><span class="tag ok">✓ Email verified</span></div>
+        </section>
+
+        <!-- Profile tile -->
+        <div class="card" data-ldf-component="card" id="profile_tile">
+
+          <!-- default card header (A, B, D, E) -->
+          <div class="chead" data-opt="A B D E">
+            <span class="ch-ic"><svg viewBox="64 64 896 896"><path d="M858.5 763.6a374 374 0 00-80.6-119.5 375.63 375.63 0 00-119.5-80.6c-.4-.2-.8-.3-1.2-.5C719.5 518 760 444.7 760 362c0-137-111-248-248-248S264 225 264 362c0 82.7 40.5 156 102.8 201.1-.4.2-.8.3-1.2.5-44.8 18.9-85 46-119.5 80.6a375.63 375.63 0 00-80.6 119.5A371.7 371.7 0 00136 901.8a8 8 0 008 8.2h60c4.4 0 7.9-3.5 8-7.8 2-77.2 33-149.5 87.8-204.3 56.7-56.7 132-87.9 212.2-87.9s155.5 31.2 212.2 87.9C779 752.7 810 825 812 902.2c.1 4.4 3.6 7.8 8 7.8h60a8 8 0 008-8.2c-1-47.8-10.9-94.3-29.5-138.2zM512 534c-45.9 0-89.1-17.9-121.6-50.4S340 407.9 340 362c0-45.9 17.9-89.1 50.4-121.6S466.1 190 512 190s89.1 17.9 121.6 50.4S684 316.1 684 362c0 45.9-17.9 89.1-50.4 121.6S557.9 534 512 534z"/></svg></span>
+            <h3>Profile</h3>
+            <span class="spacer"></span>
+            <button class="btn sm"><svg class="ic" viewBox="0 0 1024 1024"><path d="M257.7 752c2 0 4-.2 6-.5L431.9 722c2-.4 3.9-1.3 5.3-2.8l423.9-423.9a9.96 9.96 0 0 0 0-14.1L694.9 114.9c-1.9-1.9-4.4-2.9-7.1-2.9s-5.2 1-7.1 2.9L256.8 538.8c-1.5 1.5-2.4 3.3-2.8 5.3l-29.5 168.2a33.5 33.5 0 0 0 9.4 29.8c6.6 6.4 14.9 9.9 23.8 9.9zm67.4-174.4L687.8 215l73.3 73.3-362.7 362.6-88.9 15.7 15.6-89zM880 836H144c-17.7 0-32 14.3-32 32v36c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-36c0-17.7-14.3-32-32-32z"/></svg> Edit</button>
+          </div>
+
+          <!-- C: the header IS the identity -->
+          <div class="chead identity" data-opt="C" hidden>
+            <span class="av s40 g-jm">JM</span>
+            <div class="ih-main">
+              <div class="ih-name">Jane Mokoena</div>
+              <div class="ih-email">jane.mokoena@example.com</div>
+            </div>
+            <span class="spacer"></span>
+            <button class="btn sm"><svg class="ic" viewBox="0 0 1024 1024"><path d="M257.7 752c2 0 4-.2 6-.5L431.9 722c2-.4 3.9-1.3 5.3-2.8l423.9-423.9a9.96 9.96 0 0 0 0-14.1L694.9 114.9c-1.9-1.9-4.4-2.9-7.1-2.9s-5.2 1-7.1 2.9L256.8 538.8c-1.5 1.5-2.4 3.3-2.8 5.3l-29.5 168.2a33.5 33.5 0 0 0 9.4 29.8c6.6 6.4 14.9 9.9 23.8 9.9zm67.4-174.4L687.8 215l73.3 73.3-362.7 362.6-88.9 15.7 15.6-89zM880 836H144c-17.7 0-32 14.3-32 32v36c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-36c0-17.7-14.3-32-32-32z"/></svg> Edit</button>
+          </div>
+
+          <div class="cbody">
+            <!-- A: name is the h1, so email stays as the first data row -->
+            <dl class="sdesc" id="profile_view" data-opt="A">
+              <dt>Email</dt><dd>jane.mokoena@example.com</dd>
+              <dt>Phone</dt><dd>+27 82 555 0142</dd>
+              <dt>Job title</dt><dd>Operations Lead</dd>
+              <dt>Department</dt><dd class="muted">—</dd>
+            </dl>
+            <!-- B/C/D/E: name AND email are in the identity surface -->
+            <dl class="sdesc" id="profile_view_min" data-opt="B C D E" hidden>
+              <dt>Phone</dt><dd>+27 82 555 0142</dd>
+              <dt>Job title</dt><dd>Operations Lead</dd>
+              <dt>Department</dt><dd class="muted">—</dd>
+            </dl>
+          </div>
+        </div>
+
+        <!-- Security tile (unchanged by the options — context only) -->
+        <div class="card" data-ldf-component="card" id="security_tile">
+          <div class="chead">
+            <span class="ch-ic"><svg viewBox="0 0 1024 1024"><path d="M512 64L128 192v384c0 212.1 171.9 384 384 384s384-171.9 384-384V192L512 64zm312 512c0 172.3-139.7 312-312 312S200 748.3 200 576V246l312-110 312 110v330z"/></svg></span>
+            <h3>Security</h3><span class="spacer"></span><span class="tag ok">✓ Email verified</span>
+          </div>
+          <div class="cbody">
+            <div class="subeyebrow">Sign-in</div>
+            <div class="listcaps">
+              <div class="rowitem">
+                <span class="ri-ic"><svg viewBox="64 64 896 896"><path d="M608 112c-167.9 0-304 136.1-304 304 0 70.3 23.9 135 63.9 186.5l-41.1 41.1-62.3-62.3a8.15 8.15 0 00-11.4 0l-39.8 39.8a8.15 8.15 0 000 11.4l62.3 62.3-44.9 44.9-62.3-62.3a8.15 8.15 0 00-11.4 0l-39.8 39.8a8.15 8.15 0 000 11.4l62.3 62.3-65.3 65.3a8.03 8.03 0 000 11.3l42.3 42.3c3.1 3.1 8.2 3.1 11.3 0l253.6-253.6A304.06 304.06 0 00608 720c167.9 0 304-136.1 304-304S775.9 112 608 112z"/></svg></span>
+                <div class="ri-main"><div class="ri-t">Password</div><div class="ri-sub">Last changed 3 months ago</div></div>
+                <div class="ri-act"><button class="btn sm">Change</button></div>
+              </div>
+              <div class="rowitem">
+                <span class="ri-ic"><svg viewBox="64 64 896 896"><path d="M744 62H280c-35.3 0-64 28.7-64 64v768c0 35.3 28.7 64 64 64h464c35.3 0 64-28.7 64-64V126c0-35.3-28.7-64-64-64zm-8 824H288V134h448v752zM472 784a40 40 0 1080 0 40 40 0 10-80 0z"/></svg></span>
+                <div class="ri-main"><div class="ri-t">Two-factor authentication <span class="tag">Off</span></div><div class="ri-sub">Add a second step at sign-in</div></div>
+                <div class="ri-act"><button class="btn sm">Set up</button></div>
+              </div>
+              <div class="rowitem">
+                <span class="ri-ic"><svg viewBox="0 0 1024 1024"><path d="M512 64L128 192v384c0 212.1 171.9 384 384 384s384-171.9 384-384V192L512 64zm312 512c0 172.3-139.7 312-312 312S200 748.3 200 576V246l312-110 312 110v330z"/></svg></span>
+                <div class="ri-main"><div class="ri-t">Passkeys</div><div class="ri-sub">No passkeys registered yet.</div></div>
+                <div class="ri-act"><button class="btn sm">Add passkey</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div></div>
+
+      <div class="col side"><div class="stack">
+
+        <!-- D: identity tile, first card in the side column -->
+        <div class="card identity_tile" data-ldf-component="card" id="identity_tile" data-opt="D" hidden>
+          <div class="cbody">
+            <span class="av s64 g-jm">JM</span>
+            <div class="it-name">Jane Mokoena</div>
+            <div class="it-email">jane.mokoena@example.com</div>
+            <div class="it-act"><button class="btn sm">Change avatar</button></div>
+          </div>
+        </div>
+
+        <div class="card" data-ldf-component="card" id="sessions_tile">
+          <div class="chead"><h3>Active sessions</h3></div>
+          <div class="cbody">
+            <div class="empty">Devices currently signed in to your account. “Sign out others” ends every session except this one.</div>
+          </div>
+        </div>
+
+        <div class="card" data-ldf-component="card" id="linked_accounts_tile">
+          <div class="chead"><h3>Linked accounts</h3></div>
+          <div class="cbody">
+            <div class="empty">No linked accounts.</div>
+          </div>
+        </div>
+
+      </div></div>
+    </div>
+
+    <!-- ═══════════════ PERSON-PAGE COMPARISON (mock chrome) ═══════════════ -->
+    <section class="cmp" data-mock-chrome>
+      <h2>The same option on a person page (<code>user-admin/view</code>, <code>contacts/view</code>)</h2>
+      <div class="cmpsub">
+        These pages already title with the person's name, so each option's header is
+        where the “name once” rule is won or lost. Header strips only — the tiles below
+        are identical to the account page.
+      </div>
+
+      <div class="cmpitem">
+        <div class="cmplbl">Option A (chosen) — avatar slot on title-block</div>
+        <header class="pagehead" data-ldf-component="title-block">
+          <span class="av s48 g-jm">JM</span>
+          <span class="pill ok">Active</span>
+          <div class="tcol"><div class="eyebrow">User</div><h1>Jane Mokoena</h1></div>
+        </header>
+        <header class="pagehead" data-ldf-component="title-block" style="margin-top:20px">
+          <span class="av s48 g-jm">JM</span>
+          <div class="tcol"><div class="eyebrow">Contact</div><h1>Dr. Jane Mokoena</h1></div>
+        </header>
+        <div class="verdict"><b>Name once, and nothing to retitle.</b> The name was already the <code>h1</code> on both person pages; the account page adopts the same shape. The entity word moves to the existing <code>type</code> eyebrow, so each page still announces what it is — and <code>title</code> stops carrying a type, which <code>docs/layout/index.md</code> already forbids. One shared change: the <code>avatar_src</code> slot.</div>
+      </div>
+
+      <div class="cmpitem">
+        <div class="cmplbl">Option B — tinted banner</div>
+        <header class="pagehead" data-ldf-component="title-block">
+          <span class="pill ok">Active</span>
+          <div class="tcol"><h1>User</h1><div class="sub">Last modified by Sam on Jul 28, 2026</div></div>
+        </header>
+        <section class="identity_banner">
+          <span class="av s64 g-jm">JM</span>
+          <div class="ib-main">
+            <div class="ib-name">Jane Mokoena</div>
+            <div class="ib-email">jane.mokoena@example.com</div>
+            <div class="ib-tags"><span class="tag violet">Admin</span><span class="tag">Editor</span></div>
+          </div>
+          <div class="ib-act"><button class="btn">Edit profile</button></div>
+        </section>
+        <div class="verdict"><b>Name once, but the <code>h1</code> had to become “User”.</b> Browser tab titles and the breadcrumb tail lose the person's name — you can no longer tell two open tabs apart. Same cost for C, D and E.</div>
+      </div>
+
+      <div class="cmpitem">
+        <div class="cmplbl">Option C — identity as the Profile card header</div>
+        <header class="pagehead" data-ldf-component="title-block">
+          <span class="pill ok">Active</span>
+          <div class="tcol"><h1>User</h1><div class="sub">Last modified by Sam on Jul 28, 2026</div></div>
+        </header>
+        <div class="card" data-ldf-component="card" style="max-width:640px">
+          <div class="chead identity">
+            <span class="av s40 g-jm">JM</span>
+            <div class="ih-main">
+              <div class="ih-name">Jane Mokoena</div>
+              <div class="ih-email">jane.mokoena@example.com</div>
+            </div>
+            <span class="spacer"></span><button class="btn sm">Edit</button>
+          </div>
+          <div class="cbody"><dl class="sdesc"><dt>Phone</dt><dd>+27 82 555 0142</dd><dt>Job title</dt><dd>Operations Lead</dd></dl></div>
+        </div>
+        <div class="verdict"><b>Cheapest to build</b> — no new component, no <code>title-block</code> change. But it buries identity inside a card, and still forces the <code>h1</code> retitle.</div>
+      </div>
+
+      <div class="cmpitem">
+        <div class="cmplbl">Options D / E — side tile · centred hero</div>
+        <div style="display:flex;gap:16px;align-items:flex-start">
+          <div class="card identity_tile" style="width:280px">
+            <div class="cbody">
+              <span class="av s64 g-jm">JM</span>
+              <div class="it-name">Jane Mokoena</div>
+              <div class="it-email">jane.mokoena@example.com</div>
+              <div class="it-act"><button class="btn sm">Change avatar</button></div>
+            </div>
+          </div>
+          <div class="identity_hero" style="width:380px">
+            <div class="ihe-avwrap">
+              <span class="av s80 g-jm">JM</span>
+              <span class="ihe-cam"><svg viewBox="0 0 1024 1024"><path d="M864 260H728l-32.4-90.8a32 32 0 0 0-30.2-21.2H358.6a32 32 0 0 0-30.2 21.2L296 260H160c-44.2 0-80 35.8-80 80v456c0 44.2 35.8 80 80 80h704c44.2 0 80-35.8 80-80V340c0-44.2-35.8-80-80-80zM512 716c-88.4 0-160-71.6-160-160s71.6-160 160-160 160 71.6 160 160-71.6 160-160 160z"/></svg></span>
+            </div>
+            <div class="ihe-name">Jane Mokoena</div>
+            <div class="ihe-email">jane.mokoena@example.com</div>
+          </div>
+        </div>
+        <div class="verdict"><b>D</b> makes identity secondary on a page whose entire subject is the person. <b>E</b> gives the in-flight avatar picker an obvious home, but costs the most vertical space above the data — and on an admin page, a big centred portrait of someone else reads oddly.</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="mockbar" data-mock-chrome>
+  <span class="lbl">Option:</span>
+  <button data-opt-btn="A" class="on">A · title</button>
+  <button data-opt-btn="B">B · banner</button>
+  <button data-opt-btn="C">C · card head</button>
+  <button data-opt-btn="D">D · side tile</button>
+  <button data-opt-btn="E">E · hero</button>
+</div>
+
+<script>
+  // Mock chrome only — swaps which option's layers are visible.
+  function showOpt(opt){
+    document.querySelectorAll('[data-opt]').forEach(function(el){
+      el.hidden = el.getAttribute('data-opt').split(' ').indexOf(opt) === -1;
+    });
+    document.querySelectorAll('[data-opt-note]').forEach(function(el){
+      el.hidden = el.getAttribute('data-opt-note') !== opt;
+    });
+    document.querySelectorAll('.mockbar [data-opt-btn]').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-opt-btn') === opt);
+    });
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('.mockbar [data-opt-btn]');
+    if (b) showOpt(b.getAttribute('data-opt-btn'));
+  });
+  showOpt('A');
+</script>
+</body>
+</html>

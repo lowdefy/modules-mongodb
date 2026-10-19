@@ -25,6 +25,9 @@
           type: action-submit
           metadata.workflow_type: error-recovery
           metadata.action_type: trigger
+      # Canonical pipeline-record field names: preview (not the legacy
+      # description); no event_type/priority/popup — the inbox coalesces
+      # legacy fields, new writers use the pipeline convention.
       - $project:
           _id:
             $function:
@@ -37,17 +40,14 @@
               - $_id
               - ":"
               - $created.user.id
-          popup:
-            $literal: false
           contact_id: $created.user.id
           title: Workflow error
-          description:
+          preview:
             $concat:
               - $created.user.name
               - " pushed a workflow into error recovery."
           body: "<p>An action needs error recovery.</p>"
           type: workflow-error
-          event_type: $type
           event_id: $_id
           workflow_ids: $workflow_ids
           action_ids: $action_ids
@@ -57,8 +57,6 @@
               component: change_stamp
           read:
             $literal: false
-          priority:
-            $literal: 50
       - $merge:
           into: notifications
           on: _id

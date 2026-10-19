@@ -28,7 +28,7 @@ starting_actions:
 action_groups:
   - id: recovery
     title: Recovery
-    icon: AiOutlineWarning
+    icon: warning
 
 actions:
   - _ref: modules/workflows/workflow_config/error-recovery/trigger.yaml

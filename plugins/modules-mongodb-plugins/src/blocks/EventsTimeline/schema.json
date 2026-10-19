@@ -20,9 +20,17 @@
       "type": "string",
       "description": "Request ID for S3 file download policy. When provided, events with a files array render an attachment list."
     },
-    "contactPageUrl": {
+    "contactPageId": {
       "type": "string",
-      "description": "URL template for linking the avatar and timestamp of each event to the actor's contact page. Use {id} as a placeholder for the user id; if omitted, the id is appended as ?_id=<id>. Example: '/contacts/view?_id={id}'."
+      "description": "Page id of the contact page that the avatar and timestamp of each event, and each @mention in an event description, link to. Without it they render unlinked."
+    },
+    "contactIdQueryKey": {
+      "type": "string",
+      "description": "URL query key that carries the contact id to the contact page, such as '_id'."
+    },
+    "contactIdPathKey": {
+      "type": "string",
+      "description": "Path parameter that carries the contact id, when the contact page has a path like 'contacts/{contact_id}' (here 'contact_id'). Set contactIdQueryKey as well to also pass the id in the query string."
     },
     "disableContactLink": {
       "type": "boolean",

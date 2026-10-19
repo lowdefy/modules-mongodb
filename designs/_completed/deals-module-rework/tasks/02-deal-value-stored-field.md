@@ -2,7 +2,7 @@
 
 ## Context
 
-The core generalization (Workstream A2). Today the deals module *computes* deal value inside its read aggregations from host-specific action fields — `pricing-qualification.unit_price × volumes.annual_volume` for value, `order-confirmation.completion_date` for close date, plus a `volumes`/`annual_volume` tile. That hardcoded math is exactly what over-fits the module to the host. It mirrors how `deal.outcome.{type,reason}` is *already* handled: stamped on write by the workflow's outcome action, read back as a plain field. Value/close should work the same way — the module reads plain stored fields; hosts stamp them from their own workflow hooks (that math belongs in host config, not the shared module).
+The core generalization (Workstream A2). Today the deals module _computes_ deal value inside its read aggregations from host-specific action fields — `pricing-qualification.unit_price × volumes.annual_volume` for value, `order-confirmation.completion_date` for close date, plus a `volumes`/`annual_volume` tile. That hardcoded math is exactly what over-fits the module to the host. It mirrors how `deal.outcome.{type,reason}` is _already_ handled: stamped on write by the workflow's outcome action, read back as a plain field. Value/close should work the same way — the module reads plain stored fields; hosts stamp them from their own workflow hooks (that math belongs in host config, not the shared module).
 
 ## Task
 

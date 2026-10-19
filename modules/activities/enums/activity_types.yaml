@@ -1,4 +1,4 @@
-# `icon` — AiOutline* name, rendered as a React Icon in the form selector.
+# `icon`: a semantic or Lucide icon name, shown in the form selector.
 #
 # Behavior flags — read at runtime by `form_activity.yaml` /
 # `activity_meta_fields.yaml` via the merged enum (built-ins +
@@ -19,7 +19,7 @@
 call:
   title: Call
   color: "#1890ff"
-  icon: AiOutlinePhone
+  icon: phone
   default_stage: done
   type: basic
   duration: true
@@ -27,7 +27,7 @@ call:
 email:
   title: Email
   color: "#13c2c2"
-  icon: AiOutlineMail
+  icon: mail
   default_stage: done
   type: basic
   direction: true
@@ -35,7 +35,7 @@ email:
 meeting:
   title: Meeting
   color: "#722ed1"
-  icon: AiOutlineCalendar
+  icon: calendar
   default_stage: done
   type: complex
   agenda: true

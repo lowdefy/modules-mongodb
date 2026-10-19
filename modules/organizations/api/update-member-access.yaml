@@ -1,0 +1,116 @@
+# update-member-access: a member's organization authority (`member.role`:
+# owner, admin or member) and app roles (`member.app_roles`) in the caller's
+# ACTIVE organization, saved together from the member page.
+#
+# Two engine writes, each followed by its event and each skipped when its value
+# did not change: UpdateMemberOrgRole (where the engine's owner, creator and
+# last-owner guards run) and UpdateMemberRoles. Authority goes first, except
+# when callers lower their own authority: then roles go first, while the caller
+# still holds the power to write them.
+#
+# Only owners may change an owner's access. A refused first write returns with
+# nothing changed. A refused second write
+# returns what the first saved plus the refusal, since the first write stands.
+# Refusals carry the engine's own message.
+#
+# `organizationId` is explicit: under the `tenant` policy there is no pinned
+# organization for the steps to default to.
+#
+# Payload: { member_id, org_role, roles }
+# Returns { success: true, saved: [authority?, roles?] }, or
+# { refused: { rule, message }, saved: [...] } with rule `not_a_member`,
+# `owner_only`, `authority_refused` or `roles_refused`.
+id: update-member-access
+type: Api
+routine:
+  - _ref:
+      path: api/parts/read-member.yaml
+      vars:
+        id: read_member
+        member_id:
+          _payload: member_id
+
+  - :if:
+      _eq:
+        - _step: read_member.0
+        - null
+    :then:
+      - :return:
+          refused:
+            rule: not_a_member
+            message:
+              _build.string.concat:
+                - 'That person is no longer in this '
+                - _build.string.toLowerCase:
+                    _module.var: label
+                - .
+          saved: []
+
+  # The engine guards an owner's authority but not their app roles, so the
+  # owner-only rule is checked here for both.
+  - :if:
+      _and:
+        - _eq:
+            - _ref:
+                path: components/authority_rank.yaml
+                vars:
+                  role:
+                    _step: read_member.0.org_role
+            - 3
+        - _not:
+            _ref: components/caller_is_org_owner.yaml
+    :then:
+      - :return:
+          refused:
+            rule: owner_only
+            message: Only owners can change or remove an owner.
+          saved: []
+
+  - :set_state:
+      authority_changed:
+        _ne:
+          - _step: read_member.0.org_role
+          - _payload: org_role
+      roles_changed:
+        _ne:
+          - _json.stringify:
+              - _array.sort:
+                  - _if_none:
+                      - _step: read_member.0.app_roles
+                      - []
+          - _json.stringify:
+              - _array.sort:
+                  - _if_none:
+                      - _payload: roles
+                      - []
+      roles_first:
+        _and:
+          - _eq:
+              - _step: read_member.0.user_id
+              - _user: id
+          - _lt:
+              - _ref:
+                  path: components/authority_rank.yaml
+                  vars:
+                    role:
+                      _payload: org_role
+              - _ref:
+                  path: components/authority_rank.yaml
+                  vars:
+                    role:
+                      _step: read_member.0.org_role
+      saved: []
+
+  - :if:
+      _state: roles_first
+    :then:
+      - _ref: api/parts/write-member-roles.yaml
+      - _ref: api/parts/write-member-authority.yaml
+    :else:
+      - _ref: api/parts/write-member-authority.yaml
+      - _ref: api/parts/write-member-roles.yaml
+
+  - :return:
+      success: true
+      saved:
+        _state: saved

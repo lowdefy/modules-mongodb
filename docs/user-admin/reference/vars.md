@@ -13,49 +13,51 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `app_name` |  |  | Yes | App name for MongoDB field paths (e.g., example-app) |
-| `app_title` |  | `` |  | Optional display prefix (e.g., Team). When set: Team User Admin, Invite Team User. When not set: User Admin, Invite User. |
-| `roles` |  |  | Yes | List of available user roles [{label, value}] |
-| `event_display` |  |  |  | Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge. |
-| `app_domain` |  |  |  | App domain URL for invite links (falls back to current origin) |
-| `filter_requests` |  | `[]` |  | Additional requests for the custom filters section |
+| `org_slug` | string |  | Yes | Slug of the organization this instance administers. Under the `pinned` organizations policy the organization's id IS its slug, so this value feeds every read $match on `organization_id` and every write step's `organizationId` param. Two admin surfaces in one app are two module instances with different `org_slug` values. Deployment ordering: this module does not create the organization. The app whose `auth.organizations.org` names this slug creates it at startup, so an instance administering ANOTHER app's organization requires that app to have booted against the same database first. Until it has, reads render EMPTY with no error and `InviteMember` throws ORGANIZATION_NOT_FOUND. The alternative is inserting the organization row alongside the bootstrap invitation. Renaming the organization's slug strands every member row, because the engine's startup ensure is by slug. A rename mints a fresh organization rather than renaming one. |
+| `app_title` | string | `` |  | Optional display prefix (e.g., Team). When set: "Team User Admin", "Invite Team User". When not set: "User Admin", "Invite User". |
+| `org_authority` | boolean | `true` |  | Gates the organization-authority control on the access modal, promoting a member to `admin` in the administered organization, or revoking them back to `member` (the no-authority value; there is no empty tier and the write refuses one), and the matching `orgRole` field on the invite form. `owner` is the protected creator tier, capability-identical to `admin`, and is not settable from either control — an owner member is shown read-only. Holding `admin` in an organization is what lets a person administer it, so this control is how a deployment grants that. Set false in a deployment where org authority is granted out of band. When false the control does not render AND `update-org-role` rejects, so a deployment granting org authority out of band cannot have the tier written through this module by a caller who reaches the endpoint directly. The endpoint stays registered either way. The rejection is the routine's first step, not an absence. When true the write is floored by the engine against the caller's member row in the administered organization. When false `invite` also mints every invitation with `member` and `resend-invitation` keeps the invitation's stored tier, whatever the payload carries. |
+| `suspension` | boolean | `true` |  | Gates the suspend/reinstate surface (design Decision 4). Suspend issues a permanent, user-level (suite-wide) ban via BanUser. Default true rests on the deployment premise that the pinned suite is administered by one trusted operator group; set false to limit app-admins to app-scoped RemoveMember, which `remove_member: false` switches off in turn. |
+| `remove_member` | boolean | `true` |  | Gates Remove from app on the view page. RemoveMember deletes this app's member row, and with it the person's roles and member attributes, so a re-invite starts them with none. When false the button and its confirm modal do not render AND `remove-member` rejects. The endpoint stays registered; the rejection is the routine's first step. |
+| `delete_user` | boolean | `true` |  | Gates Delete login on the view page. DeleteUser hard-deletes the user row and its member, invitation, session and account rows; the contact survives. Records keyed on the user id lose their link to the person, and a re-invite creates a new id. When false the button and its confirm modal do not render AND `delete-user` rejects. The endpoint stays registered; the rejection is the routine's first step. |
+| `download` | boolean | `false` |  | Gates the Excel export on the `all` page (design Decision 2). When false, the download button and its merged export pipeline are excluded. |
+| `event_display` | object |  |  | Event display templates mapping event type -> Nunjucks title template. Templates receive `user` (acting admin) and `target` (edited/invited user). When unset the module defaults render (defaults/event_display.yaml); when set, the override fully replaces the defaults, no merge. |
+| `filter_requests` | array | `[]` |  | Additional requests backing the custom filters section. |
 | `avatar_colors` |  | `{"_ref":"../shared/profile/avatar_colors.yaml"}` |  | Gradient pairs for avatar backgrounds. Each entry: { from, to }. |
-| `fields` | object |  |  | Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr). |
-| `components` | object |  |  | Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots |
-| `request_stages` | object |  |  | MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows. |
+| `fields` | object |  |  | Field block arrays reused for tile display and edit modals. `profile` binds contact fields to `state.profile.*`; `user_attributes` (global attributes on the `user` row) binds `state.user_attributes.*`; `member_attributes` (this app's attributes on the `member` row) binds `state.member_attributes.*`. `show_honorific` toggles the honorific/title selector (Mr/Ms/Dr) in the profile form. |
+| `components` | object |  |  | Component overrides appended to the built-in surfaces: table_columns, download_columns, filters, main_slots, sidebar_slots. Tile-body overrides for the user detail page are added by the view pipeline tasks once the tiles exist. |
+| `request_stages` | object |  |  | MongoDB pipeline stage overrides for reads (list pipeline, filter match, export) and for the contact write. The auth-side write seam is routine steps, not pipeline stages. No slot re-creates one. |
 
 ## Nested var details
 
 ### `fields`
 
-Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr).
+Field block arrays reused for tile display and edit modals. `profile` binds contact fields to `state.profile.*`; `user_attributes` (global attributes on the `user` row) binds `state.user_attributes.*`; `member_attributes` (this app's attributes on the `member` row) binds `state.member_attributes.*`. `show_honorific` toggles the honorific/title selector (Mr/Ms/Dr) in the profile form.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
 | `show_honorific` | boolean | `false` |  | Show the honorific/title selector (Mr/Ms/Dr) in the profile form. |
-| `profile` |  | `[]` |  | Profile field blocks rendered in the user edit/invite form and view. Block ids must be prefixed with `profile.` so they bind to `state.profile.*`. |
-| `global_attributes` |  | `[]` |  | Cross-app attribute field blocks rendered in the user form and view. Block ids must be prefixed with `global_attributes.` so they bind to `state.global_attributes.*`. |
-| `app_attributes` |  | `[]` |  | Per-app attribute field blocks scoped to `app_name`. Block ids must be prefixed with `app_attributes.` so they bind to `state.app_attributes.*` and write to `app_attributes.{app_name}` on save. |
+| `profile` | array | `[]` |  | Profile field blocks (contact data). Block ids must be prefixed with `profile.` so they bind to `state.profile.*`. |
+| `user_attributes` | array | `[]` |  | Global (cross-app) attribute field blocks written to the `user` row via UpdateUserAttributes. Block ids must be prefixed with `user_attributes.` so they bind to `state.user_attributes.*`. |
+| `member_attributes` | array | `[]` |  | This app's attribute field blocks written to the `member` row via UpdateMemberAttributes. Block ids must be prefixed with `member_attributes.` so they bind to `state.member_attributes.*`. |
 
 ### `components`
 
-Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots
+Component overrides appended to the built-in surfaces: table_columns, download_columns, filters, main_slots, sidebar_slots. Tile-body overrides for the user detail page are added by the view pipeline tasks once the tiles exist.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `download_columns` |  | `[]` |  | Extra columns appended to the Excel export. |
-| `table_columns` |  | `[]` |  | Extra column definitions appended to the users list table. |
-| `filters` |  | `[]` |  | Extra filter blocks rendered below the built-in search bar on the users list page. Pair with `filter_requests` for custom data sources. |
-| `main_slots` |  | `[]` |  | Extra blocks appended to the main column on the users-view page. |
-| `sidebar_slots` |  | `[]` |  | Extra blocks appended to the sidebar column on the users-view page. |
-| `view_access_tile` |  | `{"_ref":"components/view_access.yaml"}` |  | Override for the access tile rendered on the users-view page. Defaults to the built-in roles/access summary; replace with custom blocks to show app-specific access information. |
+| `table_columns` | array | `[]` |  | Extra AgGrid column definitions appended to the Members list table. A column's `field:` binds a key on the shared members row. The three configurable bags ride under the same names as the `fields.*` vars, so `field: profile.department` is the same path as the form block id that collects it. See the row contract reference for the full bindable key set; a `field:` outside it renders an empty column. |
+| `download_columns` | array | `[]` |  | Extra columns appended to the Excel export (merged members + invitations). A column's `value:` binds the same row paths as `table_columns` `field:`, the export closes its row the same way, with three divergences: `roles` is a joined string, `expires` is added, and `picture` is dropped. Invitation rows carry `member_attributes` but no `profile` or `user_attributes`, so a profile-bound column is blank for them. See the row contract reference. |
+| `filters` | array | `[]` |  | Extra filter blocks rendered alongside the built-in search on the `all` page. Pair with `filter_requests` for custom data sources. |
+| `main_slots` | array | `[]` |  | Extra blocks appended to the main column on the `view` page. |
+| `sidebar_slots` | array | `[]` |  | Extra blocks appended to the sidebar column on the `view` page. |
 
 ### `request_stages`
 
-MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows.
+MongoDB pipeline stage overrides for reads (list pipeline, filter match, export) and for the contact write. The auth-side write seam is routine steps, not pipeline stages. No slot re-creates one.
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `filter_match` |  | `[]` |  | Atlas Search compound clauses appended to the list-page `$search` query. Used to add custom filter conditions to the users list. |
-| `get_all_users` |  | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the users list and Excel export aggregations. |
-| `write` |  | `[]` |  | Pipeline update stages appended to both update-user and invite-user flows. Used for derived fields or extra transforms beyond the built-in profile/attribute writes. |
+| `filter_match` | array | `[]` |  | Plain $match clauses appended to the Members list filter (Decision 2: Atlas $search is gone from this module; this extends the post-$lookup regex filter, it is NOT a path to reintroduce $search). Runs before the row is closed, so it can still match raw `user.*` / `contact.*` paths. |
+| `get_all_users` | array | `[{"$addFields":{}}]` |  | Pipeline stages appended after filtering on the `all` list read and after the union on the Excel export. In both it runs before the row is closed, so it sees the raw `user` / `contact` / `inviter` join payloads and anything it adds survives onto the row, the escape hatch for a column the three field bags don't cover. On the export it runs over member AND invitation rows. |
+| `write` | array | `[]` |  | Pipeline update stages appended to the contact write on the profile routine (passed to the shared write-profile fragment's `write_stages` _var). Used for derived fields beyond the built-in profile write. |

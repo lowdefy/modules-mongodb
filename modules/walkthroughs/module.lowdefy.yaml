@@ -114,10 +114,5 @@ secrets:
     description: Secret access key for the screenshot bucket, used to sign upload policies.
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
-    version: '^3'
   - name: '@lowdefy/modules-mongodb-plugins'
     version: "^0.48.0"
-  # Both majors: the plugin tracks Lowdefy's own, and this module is mounted by apps on 5 and on 6.
-  - name: '@lowdefy/plugin-aws'
-    version: '^5 || ^6'

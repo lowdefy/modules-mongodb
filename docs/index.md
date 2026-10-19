@@ -10,7 +10,7 @@ A set of reusable [Lowdefy](https://lowdefy.com) modules backed by MongoDB. Drop
 
 The repo is for app builders who already use Lowdefy and want a curated set of modules that work together — shared change stamps, shared event collection, shared layout — instead of assembling them piece by piece.
 
-> **Prerelease.** This repo is in a prerelease state (0.x). Breaking changes can land in any minor release. Pin to an exact version or commit SHA in production and review the changelog before upgrading.
+> **Requires Lowdefy 7.** Pin module sources to a release tag and review the changelog before upgrading.
 
 ## Modules
 
@@ -30,6 +30,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                               |
 | [ai-reporting](../modules/ai-reporting/README.md)   | AI chat over your data — open query engine, charts, CSV exports, saved reports                              |
 | [walkthroughs](../modules/walkthroughs/README.md) | Step-by-step walkthroughs stored and played in-app — native player, draft/publish editor, screen capture |
+| [support](../modules/support/README.md) | The reporter's side of the Pelican support desk: report a problem, chat with the team |
 
 ## Dependency graph
 
@@ -41,7 +42,9 @@ graph TD
   user-account --> events
   user-admin --> layout
   user-admin --> events
-  user-admin --> notifications
+  organizations --> layout
+  organizations --> user-account
+  organizations --> events
   notifications --> layout
   contacts --> layout
   contacts --> events
@@ -64,6 +67,10 @@ graph TD
   release-notes --> layout
   events
   ai-reporting --> layout
+  support --> layout
+  support --> events
+  support --> notifications
+  support --> files
 ```
 
 A few notes on the shape:
@@ -79,7 +86,8 @@ A few notes on the shape:
 | You need…                                                                   | Add…                                        |
 | --------------------------------------------------------------------------- | ------------------------------------------- |
 | A login page and a profile page                                             | `layout`, `events`, `user-account`          |
-| To invite and manage users                                                  | + `user-admin`, `notifications`             |
+| To invite and manage users                                                  | + `user-admin`                              |
+| Tenants managing their own members, roles, settings, and organizations      | + `organizations` (needs `policy: tenant`)  |
 | A bell and inbox for in-app messages                                        | + `notifications`                           |
 | Contact management with company links                                       | + `contacts`, `companies`, `files`          |
 | File attachments on any entity                                              | + `files`                                   |
@@ -94,14 +102,17 @@ The minimum set for an authenticated app is `layout` + `events` + `user-account`
 
 ## Using modules in an app
 
-Modules are added to the `modules` array in `lowdefy.yaml`:
+Modules are added to the `modules` array in `lowdefy.yaml`, under the app's own `name` and `slug`:
 
 ```yaml
+name: My App
+slug: my-app # kebab-case; the scope every app-scoped module reads via `_build.app: slug`
+
 modules:
   - id: events
     source: "github:lowdefy/modules-mongodb/modules/events@v0.48.0"
-    vars:
-      display_key: my-app
+    # display_key defaults to the app's slug — set it only to render
+    # another app's event display strings.
 
   - id: layout
     source: "github:lowdefy/modules-mongodb/modules/layout@v0.48.0"
@@ -110,22 +121,22 @@ modules:
 
   - id: user-account
     source: "github:lowdefy/modules-mongodb/modules/user-account@v0.48.0"
-    vars:
-      app_name: my-app
+    # Method enablement is read from the app's auth: config via _build.authConfig
+    # — no method mirror vars. See docs/user-account/.
 
   - id: notifications
     source: "github:lowdefy/modules-mongodb/modules/notifications@v0.48.0"
-    vars:
-      app_name: my-app
 ```
 
 Each entry pins a `source` (GitHub ref or local `file:` path), passes `vars`, and optionally remaps `dependencies` and `connections` when entry IDs don't match the names declared in the module manifest. See <https://docs.lowdefy.com/modules> for the full module-system reference.
 
-Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, `app_name`, avatar colors, secrets) that most modules use.
+Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. The [`docs/shared/`](shared/) folder covers the shared patterns (`change_stamp`, soft delete, `event_display`, slot vars, [app slug scoping](shared/app-name.md), avatar colors, secrets, [organization scoping](shared/org-scoping.md)) that most modules use.
 
 ## See it in action
 
-`apps/demo/` wires every module together against MongoDB. It's the canonical worked example — match its `vars.yaml` files in `apps/demo/modules/{module}/vars.yaml` for each module's input.
+`apps/demo/` wires the modules together against MongoDB under `auth.organizations.policy: pinned`. It's the canonical worked example — match its `vars.yaml` files in `apps/demo/modules/{module}/vars.yaml` for each module's input.
+
+`apps/tenant-demo/` is the same module set under `policy: tenant`, and additionally wires the [`organizations`](organizations/) module (switcher, members, settings pages, organization create and setup) — the surface that only exists in a multi-organization deployment. See [organization scoping](shared/org-scoping.md) for what changes between the two.
 
 ## Plugins
 

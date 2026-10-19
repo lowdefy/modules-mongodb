@@ -1,0 +1,49 @@
+# One row of My tickets from a stored copy. unread: the newest team message,
+# deleted ones aside, is later than read_at.
+$project:
+  _id: 0
+  id: $_id
+  key: $view.key
+  title: $view.title
+  type: $view.type
+  stage: $view.stage
+  updated: $view.updated
+  organization: $organization
+  unread:
+    $let:
+      vars:
+        newest_team:
+          $max:
+            $map:
+              input:
+                $filter:
+                  input:
+                    $ifNull:
+                      - $view.messages
+                      - []
+                  as: message
+                  cond:
+                    $and:
+                      - $eq:
+                          - $$message.from
+                          - team
+                      - $ne:
+                          - $$message.deleted
+                          - true
+              as: message
+              in:
+                $toDate: $$message.at
+      in:
+        $and:
+          - $ne:
+              - $$newest_team
+              - null
+          - $or:
+              - $eq:
+                  - $ifNull:
+                      - $read_at
+                      - null
+                  - null
+              - $gt:
+                  - $$newest_team
+                  - $read_at

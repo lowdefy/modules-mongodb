@@ -34,14 +34,13 @@ modules:
   - id: activities
     source: "github:lowdefy/modules-mongodb/modules/activities@v0.48.0"
     vars:
-      app_name: my-app
       label: Activity
       label_plural: Activities
       activity_types:
         quote:
           title: Quote
           color: "#fa8c16"
-          icon: AiOutlineFileText
+          icon: document
           default_stage: open
           type: complex
 ```
@@ -66,7 +65,7 @@ activity_types:
   site_visit:
     title: Site Visit
     color: "#fa8c16"
-    icon: AiOutlineEnvironment
+    icon: location
     default_stage: done
     type: complex
     agenda: true
@@ -160,7 +159,7 @@ Reserve `form_requests` for fields that are genuinely page-only by intent: an ex
 
 **A field writing into `references` must not be `visible`-gated in the modal.** Hiding a block deletes its state, and a host page's `prefill.references` is exactly that state — so the gate would discard the link and the activity would be created unattached. Give such a field self-contained options and render it `disabled` outside the full form instead, so the reference stays intact and stays visible.
 
-A host page cannot embed a *second* `capture_activity`: `form_activity` hardcodes the contacts selector's request id, so two instances on one page fail the build on a duplicate request id. Where a page already carries one — or wants its own entry point with different prefill — send the user to the full form instead. `open_capture`, or `capture_activity` in `mode: page`, deep-links into the new page carrying `prefill` with `attributes` and `references` included; a button on a deal passes `references: { deal_ids: [...] }`.
+A host page cannot embed a _second_ `capture_activity`: `form_activity` hardcodes the contacts selector's request id, so two instances on one page fail the build on a duplicate request id. Where a page already carries one — or wants its own entry point with different prefill — send the user to the full form instead. `open_capture`, or `capture_activity` in `mode: page`, deep-links into the new page carrying `prefill` with `attributes` and `references` included; a button on a deal passes `references: { deal_ids: [...] }`.
 
 ## Agenda topics
 
@@ -198,11 +197,13 @@ The paired `task-modal` component builds both API payloads from its vars — see
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Indexes](reference/indexes.md) — the `default` Atlas Search index (and why it needs no stored source) plus the regular `mongod` indexes the list needs
 
 ## Shared idioms
 
-- [App name scoping](../shared/app-name.md) — how `app_name` keys event display data
+- [App slug scoping](../shared/app-name.md) — how the app's `slug` keys event display data
 - [Event display](../shared/event-display.md) — per-app Nunjucks title templates
 - [Slots](../shared/slots.md) — `fields`, `components`, `request_stages` extension points
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on writes
+- [Text search and the Atlas fallback](../shared/search.md) — the `atlas_search` flag, index requirements, and what the fallback trades away
 - [Secrets](../shared/secrets.md) — `MONGODB_URI` and other connection secrets

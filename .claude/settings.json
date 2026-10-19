@@ -26,5 +26,8 @@
       "pnpm --filter @lowdefy/modules-demo e2e*"
     ]
   },
-  "enabledMcpjsonServers": ["lowdefy-docs"]
+  "enabledMcpjsonServers": ["lowdefy-docs"],
+  "permissions": {
+    "allow": ["mcp__lowdefy-docs"]
+  }
 }

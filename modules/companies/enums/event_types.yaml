@@ -1,8 +1,8 @@
 create-company:
   color: "#1890ff"
   title: Company Created
-  icon: AiOutlinePlusCircle
+  icon: add-circle
 update-company:
   color: "#52c41a"
   title: Company Updated
-  icon: AiOutlineEdit
+  icon: edit

@@ -60,11 +60,11 @@ vars:
     description: Small line under the title — an identity or status line, not a sentence.
   panel_avatar_icon:
     type: string
-    default: AiOutlineRobot
+    default: bot
     description: Icon in the round mark left of the title.
   panel_launcher_icon:
     type: string
-    default: AiOutlineRobot
+    default: bot
     description: Icon on the closed launcher.
   panel_launcher_label:
     default: null
@@ -123,6 +123,50 @@ vars:
       Overrides merged over the chat's composer (AgentChat `sender`), e.g.
       `styles` and `classNames` to recolour it. Takes precedence over
       `sender_placeholder`.
+  sender_attachments:
+    type: object
+    default: null
+    description: >-
+      File attachments on the composer, passed through as the chat block's
+      `sender.attachments`: { enabled, accept, maxSize, uploadPolicyRequestId,
+      downloadPolicyRequestId }. The two request ids name the app's own requests
+      on the page that mounts the chat (for example the layout's global
+      requests); the module adds none. Null (the default) leaves attachments
+      off. Pair it with `file_links_endpoint` so a reopened thread does not send
+      the model links that have expired.
+  screenshot:
+    type: boolean
+    default: false
+    description: >-
+      Adds a Take screenshot button to the panel. It captures the page behind
+      the panel, with password inputs, `[data-support-mask]` elements and
+      `screenshot_mask_selectors` drawn as solid boxes, lets the user blur or
+      crop it, and attaches it to the composer. The chat uploads it on send
+      through `sender_attachments`, so that var must be enabled and the
+      app's upload policy request must accept an image; a support module's
+      agent tools send it with the ticket like any chat file. Not shown in the
+      embedded shell.
+  screenshot_mask_selectors:
+    type: array
+    default: []
+    items:
+      type: string
+    description: >-
+      CSS selectors drawn as solid boxes in a screenshot, beside the built-in
+      password inputs and `[data-support-mask]`.
+  file_links_endpoint:
+    type: string
+    default: null
+    description: >-
+      Id of an app endpoint that signs new links for the files in a stored
+      thread. When set, get-thread and get-active-thread collect the file parts
+      that carry a storage key and call it once with
+      { files: [{ key, filename, mediaType }] }. It returns
+      { files: [{ key, url }] }; each part's url is replaced by its key's new
+      link, and a key answered with no url keeps the stored link. Not called
+      when no part carries a key. The keys come from what the browser saved, so
+      the endpoint must check each key is one the caller may read before
+      signing it. Null (the default) leaves stored links as they are.
   composer_note:
     type: string
     default: null
@@ -385,6 +429,14 @@ exports:
         AFTER `state`, inside a try/catch whose catch clears ai_loading — a
         rejected fetch aborts the chain before its own clear, and without the
         catch the chat spins forever.
+    - id: open-with-prompt
+      description: >-
+        An action list that opens the docked panel on a new thread and sends a
+        prompt into it, for a button anywhere on a page that mounts `panel`.
+        Takes a `prompt` var: a string, or a runtime operator resolved when the
+        action runs. Works whether the panel is open, closed or was never
+        opened. Like the welcome prompts, the send does not pass through
+        `on_before_send`.
   connections:
     - id: ai_assistant_threads
       description: MongoDB connection for the threads collection
@@ -432,6 +484,9 @@ components:
   - id: enter
     component:
       _ref: actions/enter.yaml
+  - id: open-with-prompt
+    component:
+      _ref: actions/open-with-prompt.yaml
 
 secrets:
   - name: MONGODB_URI
@@ -442,8 +497,6 @@ secrets:
       exercised while generate_titles is on.
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
-    version: '^3'
   # FloatingPanel (the launcher + panel block) and the AiText connection
   # (the titling call) both ship here.
   - name: '@lowdefy/modules-mongodb-plugins'

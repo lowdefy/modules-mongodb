@@ -72,6 +72,7 @@ const ActionCard = ({
         className={className}
         style={style}
         pageId={action?.link?.pageId}
+        pathParams={action?.link?.pathParams}
         urlQuery={action?.link?.urlQuery}
         input={action?.link?.input}
         newTab={action?.link?.newTab ?? false}

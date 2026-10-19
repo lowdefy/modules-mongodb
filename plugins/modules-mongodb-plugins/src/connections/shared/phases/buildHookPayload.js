@@ -14,10 +14,6 @@
  *   context: { workflow, action }
  *   [result] — post-hook only: { action_ids, completed_groups, event_id, tracker_fired }
  *
- * Changes from the old buildHookPayload (SubmitWorkflowAction/utils/):
- *   - `interaction` renamed to `signal` (populated from `params.signal`)
- *   - `current_status` removed (state-machine.md supersedes the simple-selector path)
- *
  * @param {object} params - caller-supplied request params
  * @param {object} workflow - the workflow doc (pre-commit for pre-hook; planned for post-hook)
  * @param {object} action - the action doc (pre-commit for pre-hook; planned for post-hook)

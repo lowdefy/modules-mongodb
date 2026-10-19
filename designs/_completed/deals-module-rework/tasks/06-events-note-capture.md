@@ -5,12 +5,14 @@
 Workstream B3. Deals' `components/detail/add_note_modal.yaml` is a `TiptapMentionInput` that writes a note as an **events** event (`new-event`) shown via `events-timeline`. Both the write (`new-event`) and read (`events-timeline`) sides already live in events; only the capture UI is deals-local — so the modal belongs in events.
 
 It is **not** a UI-only lift: the modal pulls in app-coupled dependencies that must become seams (host-compatibility obligation):
+
 - `get_mentionable_users` (`add_note_modal.yaml:9-11,106`) — an app-coupled request whose `$match` is built from `_module.var: app_name` (`get_mentionable_users.yaml:14-25`).
 - deals context — `get_selected_deal.0.company_id` (`:51`) and an `app_name`-keyed event display (`:37`).
 
 ## Task
 
 Add an exported **`note-capture`** (aka `add-note-modal`) component to the **events** module, with:
+
 - a **mention-source seam** — accept the mentionable-users source as a request-id var (or injected options list), so the host supplies its own `get_mentionable_users`;
 - **entity/context inputs** — `entity_id`, `company_id`, and the display key, passed by the host;
 - the write wired to the module's `new-event`.

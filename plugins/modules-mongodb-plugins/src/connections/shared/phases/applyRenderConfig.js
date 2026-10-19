@@ -1,10 +1,10 @@
 /**
- * Part 48 render-config seam (shared). Splices the endpoint-delivered render
+ * Render-config seam (shared). Splices the endpoint-delivered render
  * slice (`status_map` + `event_overrides`) onto every action config of one
  * workflow, in place.
  *
- * Since Part 48 task 10 the build blob (`makeWorkflowsConfig`) no longer
- * carries `status_map`/`event_overrides` — they ride each write endpoint's
+ * The build blob (`makeWorkflowsConfig`) does not carry
+ * `status_map`/`event_overrides` — they ride each write endpoint's
  * `render_config` property and arrive per-request on `context.params`. Every
  * handler that resolves a `workflowConfig` and then renders status_map /
  * event-display MUST apply this merge first, or seeded/planned docs are

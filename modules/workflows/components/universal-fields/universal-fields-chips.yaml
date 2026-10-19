@@ -318,7 +318,7 @@ blocks:
                 - _var: action_data.due_date
                 - null
             properties:
-              icon: AiOutlineCalendar
+              icon: calendar
               title:
                 _dayjs.format:
                   on:
@@ -388,7 +388,7 @@ blocks:
           flex: 0 0 auto
         properties:
           type: text
-          icon: AiOutlineEdit
+          icon: edit
           hideTitle: true
         events:
           onClick:

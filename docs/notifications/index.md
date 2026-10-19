@@ -6,9 +6,9 @@ type: index
 
 # Notifications
 
-In-app notifications — bell counter, inbox page, deep-link routing, and a configurable send routine. Notification documents are scoped per app via `app_name` so multiple apps can share a single MongoDB collection.
+Notification dispatch and in-app display — a render/store/send pipeline, bell counter, inbox page, and deep-link routing. Notification documents are scoped per app via the app's `slug` so multiple apps can share a single MongoDB collection.
 
-The send routine itself is provided by the consuming app — this module ships the schema, the read paths (bell, inbox), and the `send-notification` API stub. Wire whatever transport you need (email, SMS, push) inside `send_routine`.
+The Lowdefy framework renders notification emails (the `notifications:` config section and the `RenderNotification` step); this module owns everything around the render: the dispatch pipeline (insert with dedup, send, retry bookkeeping), the record convention, and the read paths (bell, inbox, deep links). Apps shape their events into notification items inside `send_routine` and hand them to the pipeline. Auth emails (verify, magic-link, invitation) are engine-owned via `auth.email` and do not pass through this pipeline.
 
 ## Dependencies
 
@@ -18,46 +18,227 @@ The send routine itself is provided by the consuming app — this module ships t
 
 ## When to use
 
-Add `notifications` when an app needs an in-app notification bell and inbox. The bell is rendered automatically by the `layout` page component, which wires `notification-config` and `unread-count-request` exports from this module. Also required by `user-admin` for invite dispatch and by `workflows` for engine-emitted notifications.
+Add `notifications` when an app needs an in-app notification bell and inbox, or email notifications rendered from the app's `notifications:` template configs. The bell is rendered automatically by the `layout` page component, which wires `notification-config` and `unread-count-request` exports from this module. Also required by `user-admin` for its recovery notices and by `workflows` for engine-emitted notifications.
 
 ## Quickstart
 
 ```yaml
 # lowdefy.yaml
+notifications: # framework template configs — the pipeline renders these
+  - id: quote-approved
+    type: NotificationEmail
+    properties:
+      subject: Your quote was approved
+      message: "{{ approver_name }} approved your quote."
+      button:
+        label: View lead
+
 modules:
   - id: notifications
     source: "github:lowdefy/modules-mongodb/modules/notifications@v0.48.0"
     vars:
-      app_name: my-app
+      server_url: https://my-app.example.com
+      email:
+        host: smtp.example.com
+        user: my-user
+        from: "My App <notify@my-app.example.com>"
+        # pass defaults to the NOTIFICATIONS_SMTP_PASS secret
+      # Or send over SendGrid's HTTP API instead of SMTP:
+      # transport: sendgrid
+      # sendgrid:
+      #   from: "My App <notify@my-app.example.com>"
+      #   # api_key defaults to the SENDGRID_API_KEY secret
       send_routine:
         _ref: modules/notifications/send-routine.yaml
 ```
 
-`app_name` is required. `send_routine` is an array of API routine steps that receives `{ event_ids }` in the payload — leave it empty to skip dispatch (notifications still write but nothing is sent).
+Scoping reads the app's own `slug` — nothing to pass. `server_url` is the origin used to compose email link URLs. It defaults to the `url` of the current Lowdefy environment (`config.environments`), so an app that declares its environments leaves it unset; otherwise it is required when notification items carry page links. On the dev server, with neither set, links use the request origin. `send_routine` is an array of API routine steps that receives `{ event_ids }` in the payload — leave it empty to skip dispatch (notifications still write but nothing is sent).
+
+Apps with an existing email connection can remap `notifications-email` instead of setting the `email` vars (or `notifications-email-sendgrid` instead of the `sendgrid` vars when `transport: sendgrid`):
+
+```yaml
+modules:
+  - id: notifications
+    source: ...
+    connections:
+      notifications-email: my-app-smtp
+```
+
+## The dispatch pipeline
+
+`dispatch-notifications` (exported InternalApi) is the generic pipeline. Payload:
+
+```yaml
+notification_id: quote-approved # id from the app's notifications: section
+items: # one notification per item (or `item`, a single object)
+  - key: "evt-1:UC-1" # optional dedup key
+    contact: {
+        _id: UC-1,
+        user_id: U-1,
+        email: jane@example.com,
+        profile: { name: Jane },
+      } # user_id: the recipient's auth user, when _id is not it
+    send_email: true # optional, default true; false = inbox only
+    cc: [] # optional
+    bcc: [] # optional
+    approver_name: Sam # everything else is template data
+    links:
+      button: { pageId: lead-view, urlQuery: { _id: L-1 } }
+```
+
+Per item the pipeline: mints the record id → `RenderNotification` (interpolates and renders the app's template; `{ pageId, pathParams?, urlQuery?, input? }` links resolve to landing URLs `{server_url}{basePath}/{link page path}?_id=<record>&option=<dataPath>`) → inserts the record — **before** sending, so the dedup key is claimed and concurrent dispatches cannot double-send (duplicate key → skip) → sends over `notifications-email` (or `notifications-email-sendgrid` when `transport: sendgrid`) → marks `sent` + `email_result`. A send failure never fails the dispatch: the record stays `sent: false` with `send_attempts` bumped and `last_attempt` set, ready for a drain retry.
+
+The typical `send_routine` is one aggregation per event type that shapes items (recipient contact embed, template data, links) followed by a `CallApi` to `dispatch-notifications`. (The demo app's `apps/demo/modules/notifications/send-routine.yaml` shows the shaping half with an inbox-only `MongoDBInsertMany`; a dispatch-pipeline routine replaces the insert with the `CallApi`.)
+
+## Drain retry
+
+`drain-notifications` (exported InternalApi) re-sends records left at `sent: false` by a failed send. Records store their render outputs, so a retry sends the stored email without re-rendering. Payload (all optional): `max_attempts` (default 5) — records at or past this many failed attempts are left alone; `limit` (default 50) — max records per run, oldest attempt first.
+
+Each record is claimed with an optimistic lock (an update conditional on the `last_attempt` value the drain read) before sending, so overlapping drain runs cannot double-send. Only records with at least one failed attempt (`send_attempts >= 1`) drain — a record whose first send is still in flight is never raced, and legacy (Lambda-era) records, which lack the field, are never picked up.
+
+Under `policy: tenant` the drain reads unsent records across organizations and retries each one bound to the record's `organization_id` (a `CallApi` with `organization`), so the claim and the send bookkeeping keep the tenant wall and their change-log rows carry the record's organization. Lowdefy accepts that binding only in a trusted system run, so call the drain from a schedule; called from a signed-in caller's routine, the retry of a record that carries an `organization_id` is refused.
+
+The module ships no schedule of its own — apps choose the cadence with a small cron-only endpoint:
+
+```yaml
+# api/notifications-drain.yaml — registered in the app's `api:` section
+id: notifications-drain
+type: InternalApi
+schedules:
+  - cron: "0 * * * *"
+routine:
+  - id: drain
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: drain-notifications
+          module: notifications
+      payload: {}
+```
+
+## Record convention
+
+The pipeline writes this shape; the inbox, bell, and link pages read it. Everything except lifecycle fields is yours to extend via `data`.
+
+| Field                                                   | Purpose                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_id`                                                   | Record id (uuid, minted before render — landing links embed it)                                                                                                                                                                                                                                                                                                                                    |
+| `key`                                                   | Dedup key (`null` when the item has none)                                                                                                                                                                                                                                                                                                                                                          |
+| `type`                                                  | The notification config id — drives inbox badges via `enums.event_types`                                                                                                                                                                                                                                                                                                                           |
+| `contact_id`, `contact`                                 | Recipient (flat id for queries; embedded `{ _id, email, profile }`)                                                                                                                                                                                                                                                                                                                                |
+| `user_id`                                               | The auth user behind the recipient, from `item.contact.user_id` — `null` for a recipient with no login, and for an item that does not supply it. The inbox, bell, popups, mark-read and landing link match a signed-in caller against this OR `contact_id`: where an app models people as per-organization contact rows, `contact._id` is not a user id, so supply `user_id` on the item's contact |
+| `email`, `is_valid_email`                               | Normalized recipient address and validity (invalid → inbox only)                                                                                                                                                                                                                                                                                                                                   |
+| `subject`, `title`, `preview`, `body`, `text`           | Render outputs (`body` = HTML) — retries and drains never re-render                                                                                                                                                                                                                                                                                                                                |
+| `data`                                                  | The ORIGINAL item — link targets stay as `{ pageId, pathParams?, urlQuery?, input? }` objects                                                                                                                                                                                                                                                                                                      |
+| `send_email`, `cc`, `bcc`                               | Delivery inputs                                                                                                                                                                                                                                                                                                                                                                                    |
+| `sent`, `send_attempts`, `last_attempt`, `email_result` | Delivery lifecycle — `email_result.to` records the post-filter address mail actually went to (differs from `email` under a `replaceAddress` redirect); `filtered: true` = dropped by the filter                                                                                                                                                                                                    |
+| `popup`                                                 | Also toast it (`item.popup`, default `false`) — see Popup notifications                                                                                                                                                                                                                                                                                                                            |
+| `read`                                                  | Inbox state (mark-as-read)                                                                                                                                                                                                                                                                                                                                                                         |
+| `created.timestamp`, `created.app_name`                 | Ordering and app scoping                                                                                                                                                                                                                                                                                                                                                                           |
+
+**`data` stores the original item, never the render result's resolved copy** — the link page reads `{ pageId, pathParams?, urlQuery?, input? }` targets back out of `data` at the `?option` dot-path; a resolved copy would redirect the landing page to itself.
+
+Legacy (Lambda-era) records coalesce on read: the inbox falls back `description ?? preview`, and the link page falls back to the top-level `links.button` target.
+
+**A record's type** is `type ?? event_type` everywhere the inbox reads one: filters, views, rail counts, icons and labels. Pipeline records store the notification id in `type`; legacy records store only `event_type`. A record an app inserts itself with both (for example `type: quote-approved`, `event_type: action-approve`) is filed under its `type`.
+
+**Appearance.** Icon and colour resolve per type: the type's `enums.event_types` entry (`icon`, `color`, and the `title` shown as a chip), else a bell in a palette colour picked deterministically from the type — so types nobody configured still look different from each other, and follow the app theme. Give each notification type an entry in the app's event types to choose its icon and colour. The toast uses the same resolution.
+
+The inbox list shows one row per record — the resolved icon in a circle tinted with the colour, title, a two-line ellipsised `preview` (or legacy `description`), time received, an unread dot — styled from the app's Ant Design tokens. The detail panel renders `body` with the email chrome removed — the framework's canvas, card, logo header, signature and footer are hidden and the remaining content (message, metadata, quote, actions, button) takes the app's typography — so a stored email reads as an in-app message under the title and date the panel already shows. The email itself is unchanged.
+
+## Inbox
+
+The `all` page lists the signed-in user's notifications in this app, up to 1000 a page, newest first.
+
+- **Filters.** Unread / All / Read, a date range with presets, a search over title and preview (matched on the server so it covers every page; case-insensitive for ASCII letters, since MongoDB's `$toLower` leaves accented letters as they are), and a view or a single type from the rail.
+- **Mark all as read** marks every unread notification the filters match, across all pages, not only the loaded ones. With a view, type, search or date set, the button names the count it will mark. **Mark as unread** on an open notification sets it back.
+- **Views** group notification types at the top of the rail, such as Mentions. Set them in the `views` var; each lists the type ids it shows, and its count is the sum of their unread counts. With no views the rail shows Inbox and the types the user has.
+
+```yaml
+vars:
+  views:
+    - id: mentions
+      title: Mentions
+      icon: AtSign
+      types: [deal-note-mention, comment-mention]
+```
+
+## Required indexes
+
+The pipeline's no-double-send guarantee depends on a unique partial index on `key` — **without it duplicate inserts succeed and the dedup does not exist**. The module cannot create indexes; create it with the app's index tooling (e.g. splice-actions):
+
+```js
+db.notifications.createIndex(
+  { key: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { key: { $type: "string" } },
+    name: "notification_key_unique",
+  },
+);
+```
+
+Partial rather than sparse because records store explicit `key: null`, and a sparse unique index still collides on explicit nulls.
+
+The inbox, bell and toasts read a user's records newest first through two recipient fields. Two indexes keep those reads fast as the collection grows:
+
+```js
+db.notifications.createIndex({
+  user_id: 1,
+  "created.app_name": 1,
+  "created.timestamp": -1,
+});
+db.notifications.createIndex({
+  contact_id: 1,
+  "created.app_name": 1,
+  "created.timestamp": -1,
+});
+```
 
 ## Popup notifications (toasts)
 
-Any notification flagged `popup: true` is also surfaced as a dismissible toast card in a fixed-position stack, top-right of the viewport, over every page. The stack is mounted automatically by the `layout` page component (the `popup-notifications` and `popup-notifications-requests` exports), the same way the bell is wired.
+Any notification flagged `popup: true` also shows as a compact toast in a stack at the top right, under the app header, over every page. The stack is mounted automatically by the `layout` page component (the `popup-notifications` and `popup-notifications-requests` exports), the same way the bell is wired.
 
-- **Opt in per notification.** Set `popup: true` on the document in your `send_routine`. Notifications left `popup: false` still appear in the bell and inbox but never toast. No migration is needed — apps that never set it see no toasts.
-- **Refresh.** Toasts are fetched on page mount/navigation (no sockets or polling), showing up to `popup_limit` (default 3) most-recent unread popups scoped to the current user and `app_name`.
-- **Acknowledge marks read.** Clicking **Acknowledge** sets `read: true`, so the toast, the inbox unread entry, and the bell count clear together.
-- **Optional deep-link button.** If the notification has a `links.button` (`{ pageId, urlQuery }`), the toast also shows a **View** button that navigates there via a `Link` action. Toasts without `links.button` show only Acknowledge.
+- **Opt in per notification.** Set `popup: true` on the item in your `send_routine` (the dispatch pipeline stores it), or on the document an app inserts itself. Notifications left `popup: false` still reach the bell and inbox but never toast. Apps that never set it see no toasts.
+- **On arrival and on page load.** A popup notification toasts the moment it arrives (see Live notifications) and, while unread, on every page load. The stack shows up to `popup_limit` (default 3), newest first.
+- **Dismiss, close or Open marks it read**, so the toast, the inbox entry and the bell count clear together, in every open tab.
+- **Open** shows when the notification has a page link at `links.button` or `data.links.button` (`{ pageId, pathParams?, urlQuery?, input? }`), and navigates there.
 - **Disable per page.** Pass `hide_popup_notifications: true` to the `layout` page component to suppress the stack (independent of the bell's `hide_notifications`). The stack is also hidden on the notifications inbox (`all`) page.
 
-Toast icon and color come from the `enums.event_types.<event_type>` global (falling back to a bell icon), the same lookup the inbox uses.
+Toast icon and colour come from the same appearance lookup the inbox uses.
+
+## Live notifications
+
+The bell, the toast stack and the inbox update the moment a notification arrives or is read elsewhere, without a reload. The module ships a websocket, `notifications-live`: a MongoDB change stream on the notifications collection that carries new records and changes to `read` for the signed-in user in this app. The `layout` page component subscribes to it on every page with a signed-in user (the `live-subscription` export), unless the page passes `hide_notifications: true`. On each batch it refetches the bell count, takes down toasts whose notification is now read, adds new unread popup notifications to the stack and plays the sound. The inbox page also shows a "N new" button above the list; new rows never move the list under the cursor.
+
+- **One stream per signed-in user.** Each signed-in user with a page open holds one change stream, and one pooled MongoDB connection while it waits. Size `maxPoolSize` in the connection string for your concurrent users plus your request load (the driver's default is 100).
+- **Replica set required.** Change streams run only on a replica set (Atlas clusters are one). Where they cannot run, set `live: false`: the bell and toasts then update on page load, as before.
+- **Mark all as read sends one change per record.** Each record it marks reaches the user's open tabs as its own change, batched every 250 ms; marking thousands at once means a few seconds of batches and count refetches in those tabs.
+- **Failure is quiet.** If the feed fails, the page shows nothing; the bell and toasts update on the next navigation.
+- **Tenant wall.** Under `policy: tenant` the stream is scoped to the active organization, like a read.
+
+### Sound
+
+A short chirp can play when a popup notification arrives. It is **off until the person turns it on** with the **Sound** switch in the inbox header. The setting is kept in the browser, per app, so it holds per device; other open tabs follow a change at once. It plays once per batch across all open tabs, and nothing plays before the person has clicked or typed on the page (browsers block it). The layout mounts the player on every page (the `notification-sound` export, the plugins package's [NotificationSound](../plugins/notification-sound.md) block), so the module declares `@lowdefy/modules-mongodb-plugins`.
 
 ## Deep-link and file-download pages
 
-The `link` page resolves a notification id to its target page and forwards the user. Auth-less event types (`invite-user`, `resend-user-invite`) can be resolved without a session, for flows where the recipient is not yet logged in.
+The `link` page resolves a notification id to its target page, marks the record read, and forwards the user. Pre-auth notification types (the `public_link_types` var, default `invite-user` / `resend-user-invite` / `user-invite`) can be resolved without a session, for flows where the recipient is not yet logged in.
+
+Email links composed by the pipeline arrive as `?_id=<record>&option=<dataPath>`, where `option` is a dot-path into the record's `data` (e.g. `links.button`, `actions.0.link`). Absolute URL targets in `data` are followed as-is; legacy records resolve from their top-level `links.button`.
 
 The `file-download` page is a redirector for notification attachments: params `_id` and `index` are required; it generates a presigned GET against `notifications-files-bucket-public` and forwards the browser.
+
+`link`, `invalid`, and `file-download` are contributed to `auth.pages.public` by the module manifest, so they resolve without a session in any app that embeds the module — no need to list them in the app's own `auth.pages.public`. The inbox (`all`) stays protected.
 
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Email transport](email-transport.md) — SMTP (default) or the SendGrid HTTP API, selected by the `transport` var
+- [Migrate from an external Lambda pipeline](how-to/lambda-pipeline-migration.md) — coexistence model, hybrid wiring, and the per-type migration recipe
 
 ## Shared idioms
 
-- [App name scoping](../shared/app-name.md) — how `app_name` scopes notifications
-- [Secrets](../shared/secrets.md) — `MONGODB_URI`, `FILES_S3_*` connection secrets
+- [App slug scoping](../shared/app-name.md) — how the app's `slug` scopes notifications
+- [Secrets](../shared/secrets.md) — `MONGODB_URI`, `NOTIFICATIONS_SMTP_PASS`, `SENDGRID_API_KEY`, `FILES_S3_*` connection secrets

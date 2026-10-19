@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import entityPageLink from "../../shared/render/entityPageLink.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
 import {
   computeAllowed,
@@ -33,9 +34,9 @@ import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js
  */
 async function GetWorkflowOverview(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection, workflowsConfig } = context;
+  const { params, mongoDb, connection, workflowsConfig, tenant } = context;
   const { workflow_id } = params;
-  const app_name = connection.app_name;
+  const slug = connection.slug;
   const entry_id = connection.entry_id;
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? "workflows";
@@ -46,6 +47,7 @@ async function GetWorkflowOverview(lowdefyContext) {
     mongoDb,
     collection: workflowsCollection,
     query: { _id: workflow_id },
+    tenant,
   });
 
   if (!wfDoc) {
@@ -61,6 +63,7 @@ async function GetWorkflowOverview(lowdefyContext) {
     mongoDb,
     collection: actionsCollection,
     query: { workflow_id },
+    tenant,
   });
 
   // ── Access filter + link collapse ──
@@ -68,14 +71,14 @@ async function GetWorkflowOverview(lowdefyContext) {
   for (const action of rawActions) {
     const allowed = computeAllowed({
       access: action.access,
-      app_name,
+      slug,
       userRoles,
     });
     if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
       continue; // drop: no verb accessible
     }
-    const link = collapseLink({ links: action[app_name]?.links, allowed });
-    const message = action[app_name]?.message ?? null;
+    const link = collapseLink({ links: action[slug]?.links, allowed });
+    const message = action[slug]?.message ?? null;
     const status = action.status?.[0]?.stage ?? null;
     visibleActions.push({ action, allowed, link, message, status });
   }
@@ -224,8 +227,7 @@ async function GetWorkflowOverview(lowdefyContext) {
   );
   const entity_link = entityConfig
     ? {
-        pageId: entityConfig.page_id,
-        urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
+        ...entityPageLink(entityConfig, wfDoc.entity.id),
         title: entityConfig.title ?? null,
         name: entityData?.name ?? null,
         // Part 63: the optional entity-list breadcrumb crumb. Runtime-driven

@@ -1,0 +1,237 @@
+# `general` settings page: the active organization's name, logo and slug, and a
+# row of facts about it (members, pending invitations, the app's own facts from
+# the `general_facts` var, and the caller's own authority).
+#
+# Owners and admins get an Edit modal for the name and logo; everyone else
+# reads. Renaming and the logo are owner/admin-gated by BetterAuth, so the gate
+# here only decides what renders.
+_ref:
+  path: components/settings-page.yaml
+  vars:
+    id: general
+    title: General
+    group:
+      _module.var: label
+    description:
+      _build.string.concat:
+        - 'The '
+        - _build.string.toLowerCase:
+            _module.var: label
+        - '''s name and logo, as everyone in it sees them.'
+    requests:
+      _build.array.concat:
+        - - _ref: requests/get_active_organization.yaml
+          - _ref: requests/get_member_count.yaml
+          - _ref: requests/get_pending_invitation_count.yaml
+        - _build.array.map:
+            on:
+              _module.var: general_facts
+            callback:
+              _build.function:
+                __build.args: 0.request
+    events:
+      onMountAsync:
+        - id: fetch_general
+          type: Request
+          params:
+            _build.array.concat:
+              - - get_active_organization
+                - get_member_count
+                - get_pending_invitation_count
+              - _build.array.map:
+                  on:
+                    _module.var: general_facts
+                  callback:
+                    _build.function:
+                      __build.args: 0.request.id
+    blocks:
+      - id: identity_card
+        type: Card
+        blocks:
+          - id: identity_row
+            type: Box
+            layout:
+              gap: 16
+              align: middle
+              wrap: nowrap
+            blocks:
+              - id: identity_logo
+                type: Avatar
+                layout:
+                  flex: 0 0 auto
+                properties:
+                  shape: square
+                  size: 56
+                  src:
+                    _if:
+                      test:
+                        _eq:
+                          - _if_none:
+                              - _request: get_settings_organization.logo
+                              - ''
+                          - ''
+                      then: null
+                      else:
+                        _request: get_settings_organization.logo
+                  content:
+                    _string.charAt:
+                      - _if_none:
+                          - _request: get_active_organization.name
+                          - ' '
+                      - 0
+                  color:
+                    _if:
+                      test:
+                        _media: darkMode
+                      then: '#3A4654'
+                      else: '#17212C'
+                  alt:
+                    _if_none:
+                      - _request: get_active_organization.name
+                      - ''
+              - id: identity_text
+                type: Box
+                class: min-w-0
+                layout:
+                  flex: 1 1 0
+                  direction: column
+                  gap: 2
+                blocks:
+                  - id: identity_name
+                    type: Title
+                    properties:
+                      level: 4
+                      content:
+                        _if_none:
+                          - _request: get_active_organization.name
+                          - ''
+                    style:
+                      margin: 0
+                  - id: identity_meta
+                    type: Html
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: >-
+                            <span data-tone="secondary">Slug
+                            <code>{{ slug }}</code>{% if created %} ·
+                            created {{ created }}{% endif %}</span>
+                          on:
+                            slug:
+                              _if_none:
+                                - _request: get_active_organization.slug
+                                - ''
+                            created:
+                              _if:
+                                test:
+                                  _eq:
+                                    - _request: get_active_organization.created_at
+                                    - null
+                                then: null
+                                else:
+                                  _dayjs.format:
+                                    on:
+                                      _request: get_active_organization.created_at
+                                    format: D MMMM YYYY
+              - id: edit_identity_btn
+                type: Button
+                layout:
+                  flex: 0 0 auto
+                visible:
+                  _ref: components/caller_is_org_admin.yaml
+                properties:
+                  title: Edit
+                  icon: edit
+                events:
+                  onClick:
+                    - id: seed_identity_form
+                      type: SetState
+                      params:
+                        organization:
+                          name:
+                            _request: get_active_organization.name
+                          logo:
+                            _if:
+                              test:
+                                _eq:
+                                  - _if_none:
+                                      - _request: get_settings_organization.logo
+                                      - ''
+                                  - ''
+                              then: null
+                              else:
+                                _request: get_settings_organization.logo
+                    - id: open_edit_identity_modal
+                      type: CallMethod
+                      params:
+                        blockId: edit_identity_modal
+                        method: setOpen
+                        args:
+                          - open: true
+      - id: facts_row
+        type: Box
+        layout:
+          gap: 12
+        blocks:
+          _build.array.concat:
+            - - _ref:
+                  path: components/general_fact.yaml
+                  vars:
+                    id: members
+                    title: Members
+                    value:
+                      _if_none:
+                        - _request: get_member_count.0.count
+                        - 0
+              - _ref:
+                  path: components/general_fact.yaml
+                  vars:
+                    id: pending_invitations
+                    title: Pending invitations
+                    visible:
+                      _ref: components/caller_is_org_admin.yaml
+                    value:
+                      _if_none:
+                        - _request: get_pending_invitation_count.0.count
+                        - 0
+            - _build.array.map:
+                on:
+                  _module.var: general_facts
+                callback:
+                  _build.function:
+                    _ref:
+                      path: components/general_fact.yaml
+                      vars:
+                        id:
+                          __build.args: 0.id
+                        title:
+                          __build.args: 0.title
+                        value:
+                          __build.args: 0.value
+            - - _ref:
+                  path: components/general_fact.yaml
+                  vars:
+                    id: authority
+                    title: Your authority
+                    value:
+                      _if:
+                        test:
+                          _array.includes:
+                            on:
+                              _if_none:
+                                - _user: org_roles
+                                - []
+                            value: owner
+                        then: Owner
+                        else:
+                          _if:
+                            test:
+                              _array.includes:
+                                on:
+                                  _if_none:
+                                    - _user: org_roles
+                                    - []
+                                value: admin
+                            then: Admin
+                            else: Member
+      - _ref: components/edit_identity_modal.yaml

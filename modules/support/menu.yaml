@@ -1,0 +1,9 @@
+id: default
+links:
+  - id: support
+    type: MenuLink
+    pageId:
+      _module.pageId: support
+    properties:
+      title: Support
+      icon: LifeBuoy

@@ -1,0 +1,205 @@
+# Onboarding page, task 17. Chrome-less first-login profile completion
+# (Decision 5, the old `new` page). Protected; renders on the auth-page shell.
+# The contact already exists by first login (Decision 7) but may be bare (no
+# name), so onboarding COLLECTS the required name (given_name / family_name, the
+# mock's First/Last name) plus the deployment-configured `fields.profile`, and
+# saves through the update-profile API. On a successful save it sets
+# profile.profile_created: true (the onboarding-complete marker the app router
+# reads), fires UpdateSession so the caller's _user reflects the new bag + marker
+# without a reload, then navigates into the app.
+#
+# All inputs are `profile.`-prefixed so they bind state.profile.*; onInit seeds
+# state.profile from the caller's contact (get_account) laid over their
+# denormalized _user.profile bag, so a name an admin entered at invite or an
+# OAuth user's name prefills (a bare contact simply starts blank). The contact
+# is read because an invitation writes the captured profile onto the contact
+# only: the invitee has no user row at invite time, and nothing copies the
+# profile onto the user before this page saves.
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: onboarding
+    title: ""
+    requests:
+      - _ref: requests/get_account.yaml
+    events:
+      onInit:
+        - id: fetch_onboarding_account
+          type: Request
+          params: get_account
+        - id: seed_onboarding
+          type: SetState
+          params:
+            profile:
+              _object.assign:
+                - {}
+                - _if_none:
+                    - _user: profile
+                    - {}
+                - _if_none:
+                    - _request: get_account.0.profile
+                    - {}
+            # Seeded false, not left undefined: `visible` hides a block only
+            # when it evaluates to exactly false, so an unseeded flag would
+            # show BOTH the Add button and the "Passkey added" tag on load.
+            passkey_registered: false
+        - _ref: ../shared/profile/avatar-picker-seed.yaml
+    blocks:
+      _build.array.concat:
+        - # ---- Header + avatar ----
+          - id: onboarding_title
+            type: Title
+            properties:
+              content: Set up your profile
+              level: 3
+          - id: onboarding_lead
+            type: Html
+            properties:
+              html: This is how teammates will see you across the app.
+            style:
+              marginTop: -8
+              fontSize: 13
+              color: "var(--ant-color-text-secondary)"
+          - _ref: ../shared/profile/avatar-picker.yaml
+        # ---- Core profile fields (shared form_core, same capture as the
+        # profile edit modal): honorific + first + last inline on one row. ----
+        - _ref:
+            path: ../shared/profile/form_core.yaml
+            vars:
+              show_honorific:
+                _module.var: fields.show_honorific
+        # ---- Deployment-configured profile field blocks ----
+        - _module.var: fields.profile
+        # ---- Optional passkey (deployment-gated on auth.passkey.enabled) ----
+        # Offered, never required: a first-login nudge to register a passkey
+        # while the user is already setting things up. Same PasskeyRegister
+        # chain as the Security tile / two-factor-enrol (registered flag tells
+        # the catch whether the passkey itself failed or only the trailing
+        # state write). Declining is just "Save and continue" below; passkeys
+        # stay manageable later from the account Security tile.
+        - _build.if:
+            test:
+              _build.authConfig: passkey.enabled
+            then:
+              - id: onboarding_passkey
+                type: Box
+                style:
+                  marginTop: 8
+                  padding: 12px 14px
+                  border: 1px solid var(--ant-color-border-secondary)
+                  borderRadius: 8
+                  background: var(--ant-color-fill-quaternary)
+                layout:
+                  direction: row
+                  align: middle
+                  justify: space-between
+                  gap: 12
+                blocks:
+                  - id: onboarding_passkey_copy
+                    type: Html
+                    layout:
+                      flex: 1 1 auto
+                    properties:
+                      html: |
+                        <div style="font-size:13px; color:var(--ant-color-text);">Would you like to add a passkey?</div>
+                        <div style="font-size:12px; color:var(--ant-color-text-tertiary);">Sign in next time with your fingerprint, face or device PIN instead of waiting for an email link. Optional — you can add one later under your account's Security settings.</div>
+                  - id: onboarding_passkey_add_btn
+                    type: Button
+                    visible:
+                      _not:
+                        _state: passkey_registered
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Add passkey
+                      icon: Key
+                      variant: outlined
+                    events:
+                      onClick:
+                        try:
+                          - id: reset_onboarding_passkey_registered
+                            type: SetState
+                            params:
+                              passkey_registered: false
+                          - id: onboarding_passkey_register
+                            type: PasskeyRegister
+                            messages:
+                              loading: Waiting for your authenticator…
+                              success: Passkey added.
+                              error: false
+                          - id: mark_onboarding_passkey_registered
+                            type: SetState
+                            params:
+                              passkey_registered: true
+                        catch:
+                          - id: onboarding_passkey_error
+                            type: DisplayMessage
+                            skip:
+                              _state: passkey_registered
+                            params:
+                              status: error
+                              content: >-
+                                The passkey wasn't created. This usually
+                                happens if the prompt was cancelled, the device
+                                or browser doesn't support passkeys, or it timed
+                                out — try Add passkey again.
+                  - id: onboarding_passkey_done
+                    type: Tag
+                    visible:
+                      _state: passkey_registered
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      color: green
+                      icon: check
+                      title: Passkey added
+            else: []
+        # ---- Submit ----
+        - # Validate the required fields, save the profile subtree with the
+          # onboarding-complete marker, refresh the caller's session so the
+          # router sees profile_created, then enter the app.
+          - id: onboarding_submit
+            type: Button
+            properties:
+              title: Save and continue
+              block: true
+              size: large
+              color: primary
+              variant: solid
+            events:
+              onClick:
+                try:
+                  - id: validate_onboarding
+                    type: Validate
+                  - id: save_profile
+                    type: CallAPI
+                    # error toast phrased by the catch; suppress the engine default
+                    # so the failure toasts once, not twice.
+                    messages:
+                      error: false
+                    params:
+                      endpointId:
+                        _module.endpointId: update-profile
+                      payload:
+                        profile:
+                          _state: profile
+                        set_profile_created: true
+                  - id: refresh_session
+                    type: UpdateSession
+                    messages:
+                      error: false
+                  - id: enter_app
+                    type: Link
+                    params:
+                      home: true
+                catch:
+                  - id: onboarding_error
+                    type: DisplayMessage
+                    skip:
+                      _ne:
+                        - _actions: validate_onboarding.error
+                        - null
+                    params:
+                      status: error
+                      content: We couldn't save your profile. Check your details and try again.

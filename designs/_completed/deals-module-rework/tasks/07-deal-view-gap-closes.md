@@ -12,6 +12,7 @@ Both are consume-the-existing-export fixes, no new module code.
 ## Task
 
 On the deals **deal view**:
+
 - `_ref` the workflows `check-action-modal` component, supplying an `on_complete` refetch list — mirror `apps/demo/modules/companies/vars.yaml:86-100`.
 - Replace the hand-rolled refetch sequence (`view.yaml:304-320`) with the exported `entity-workflows-refetch` component.
 

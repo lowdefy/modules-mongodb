@@ -1,24 +1,24 @@
 create-activity:
   title: Created activity
   color: "#52c41a"
-  icon: AiOutlinePlusCircle
+  icon: add-circle
 update-activity:
   title: Updated activity
   color: "#1890ff"
-  icon: AiOutlineEdit
+  icon: edit
 complete-activity:
   title: Completed activity
   color: "#52c41a"
-  icon: AiOutlineCheckCircle
+  icon: check-circle
 cancel-activity:
   title: Cancelled activity
   color: "#8c8c8c"
-  icon: AiOutlineCloseCircle
+  icon: close-circle
 reopen-activity:
   title: Reopened activity
   color: "#faad14"
-  icon: AiOutlineRedo
+  icon: Redo
 delete-activity:
   title: Deleted activity
   color: "#ff4d4f"
-  icon: AiOutlineDelete
+  icon: delete

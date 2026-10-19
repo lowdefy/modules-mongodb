@@ -72,7 +72,7 @@ const schema = {
       type: "string",
       default: "log-events",
       description:
-        "Events collection name. Defaults to \"log-events\" (matching the " +
+        'Events collection name. Defaults to "log-events" (matching the ' +
         "events module's collection). Read by GetEventsTimeline and by " +
         "GetWorkflowAction (the changes-requested callout's request-changes " +
         "comment lookup). Host apps need only set this when overriding the " +
@@ -90,9 +90,9 @@ const schema = {
         "Each entry is one workflow with its actions and action_groups. " +
         "Consumed by the engine at runtime. " +
         "Workflow shape: { type, entity, display_order?, starting_actions, actions, action_groups? }. " +
-        "entity is a nested block { connection_id, ref_key, page_id, id_query_key, title } carrying the workflow's entity routing wholesale: " +
+        "entity is a nested block { connection_id, ref_key, page_id, id_query_key?, id_path_key?, title } carrying the workflow's entity routing wholesale: " +
         'connection_id is the entity\'s Lowdefy connection id; ref_key is the event-references key (e.g. "lead_ids") — written into event docs so events surface on the entity; ' +
-        'page_id is the host-app page id rendering the entity; id_query_key is the URL query-string key for the entity\'s primary id (default "_id"); title is the singular entity-kind label. ' +
+        "page_id is the host-app page id rendering the entity; id_query_key is the URL query-string key for the entity's primary id (default \"_id\" unless id_path_key is set); id_path_key is the entity page's path placeholder for that id; title is the singular entity-kind label. " +
         "starting_actions entries: { type: string, status: string } where type matches an actions[].type and status is a key in actionsEnum.",
       items: {
         type: "object",
@@ -115,13 +115,16 @@ const schema = {
       description:
         "Resolves to the events module change_stamp at app build time (typically via _ref: { module: events, component: change_stamp }). The engine reads it at handler entry and stamps every workflow + action doc write with it via `created` and `updated`. One stamp per handler invocation; all writes in the same call share the timestamp.",
     },
-    app_name: {
+    slug: {
       type: "string",
       description:
-        "Host app deployment name. Consumed by the engine at submit time to " +
-        "key the default log event's display block (matching the events " +
-        "module's display_key projection). Apps wire this from _module.var: app_name " +
-        "on connections/workflow-api.yaml.",
+        "The host app's slug. Every per-app position the engine reads or " +
+        "writes is keyed by it: the access gates it enforces " +
+        "(`access.{slug}.{verb}`), the per-app `message` and `links` it renders " +
+        "onto action cards (`action.{slug}`), and the display block it writes on " +
+        "the default log event (matching the events module's display_key " +
+        "projection). Apps wire this from `_build.app: slug` on " +
+        "connections/workflow-api.yaml.",
     },
     enable_internal_comments: {
       type: "boolean",
@@ -173,10 +176,12 @@ const schema = {
       type: "string",
       default: "user-contacts",
       description:
-        "Contacts collection name joined by GetWorkflowAction to resolve each " +
-        "contact's avatar (created.user.id → _id, projecting profile.picture). " +
-        'Defaults to "user-contacts" (the shared collection where a user IS a ' +
-        "contact — same _id space). Host apps need only set this when overriding " +
+        "Contacts collection name read by the contact lookups. " +
+        "GetWorkflowAction reads each action assignee's contact by _id " +
+        "(assignees → _id, projecting profile.name and profile.picture); " +
+        "GetEventsTimeline joins each event author's contact " +
+        "(created.user.id → user_id, projecting profile.picture). " +
+        'Defaults to "user-contacts". Host apps need only set this when overriding ' +
         "the collection name.",
     },
   },

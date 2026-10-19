@@ -1,0 +1,21 @@
+# How many invitations to the caller's ACTIVE organization are waiting to be
+# accepted, expired ones included, as the Members page lists them: [{ count }],
+# or [] when there are none. Owners and admins only: anyone else gets [].
+id: get_pending_invitation_count
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-invitations
+properties:
+  pipeline:
+    - $match:
+        _if:
+          test:
+            _ref: components/caller_is_org_admin.yaml
+          then: {}
+          else:
+            $expr: false
+    - $match:
+        organization_id:
+          _user: organization_id
+        status: pending
+    - $count: count

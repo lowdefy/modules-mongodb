@@ -1,0 +1,19 @@
+# Assignable app roles, resolved at build time.
+#
+# The app's authored `auth.roles` catalog is the single source of truth for role
+# ids and their labels (role-catalog Decision 1), so the options come straight
+# from `_build.authConfig.roles`. These are APP roles only — the
+# organization-authority tier (`member.role`: owner/admin/member) is a separate
+# authority with its own control and its own write in the member modal.
+#
+# `owner` is deliberately absent — ownership transfer is out of scope for v1, and
+# the engine's last-owner guard is authoritative either way.
+_build.array.map:
+  on:
+    _build.authConfig: roles
+  callback:
+    _build.function:
+      label:
+        __build.args: 0.label
+      value:
+        __build.args: 0.id

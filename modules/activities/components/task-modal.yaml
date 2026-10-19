@@ -160,7 +160,7 @@ events:
                   _var: events.created.type
                 display:
                   _build.object.fromEntries:
-                    - - _module.var: app_name
+                    - - _build.app: slug
                       - title:
                           _nunjucks:
                             template:
@@ -215,7 +215,7 @@ events:
                       _var: events.reopened.type
                 display:
                   _build.object.fromEntries:
-                    - - _module.var: app_name
+                    - - _build.app: slug
                       - title:
                           _nunjucks:
                             template:

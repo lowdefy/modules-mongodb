@@ -189,8 +189,8 @@ On read-only surfaces an `enum`-driven selector shows the entry's title, colour 
   key: status
   title: Status
   enum:
-    open: { title: Open, color: "#1890ff", icon: AiOutlineFolderOpen }
-    closed: { title: Closed, color: "#52c41a", icon: AiOutlineCheck }
+    open: { title: Open, color: "#1890ff", icon: FolderOpen }
+    closed: { title: Closed, color: "#52c41a", icon: check }
 ```
 
 `tree_multiple_selector` takes `options` only. Its whole point is a hierarchy built from `primaryKey` / `parentKey` on each row, which a flat enum map cannot express — and for flat choices `multiple_selector` is the better component anyway, since it renders each option's colour and icon on the tag while the tree renders plain text.
@@ -431,7 +431,7 @@ Multiple contacts. Same as `contact` but uncapped; set `max` to limit selections
 
 ### `role_contact`
 
-Single contact scoped to one or more roles. Wraps the contacts module's `role-contact-selector` export — a plain `Selector` of contacts holding any of `roles` (matched against `apps.<app_name>.roles`), not the rich search/add/edit picker. Stores a denormalized `{ contact_id, name, email }` object (view-renderable). Use when a form only needs to pick an existing contact in a role (e.g. an internal agent).
+Single contact scoped to one or more roles. Wraps the contacts module's `role-contact-selector` export — a plain `Selector` of contacts holding any of `roles` (matched against `apps.{slug}.roles`), not the rich search/add/edit picker. Stores a denormalized `{ contact_id, name, email }` object (view-renderable). Use when a form only needs to pick an existing contact in a role (e.g. an internal agent).
 
 | Var            | Type    | Required / Default |
 | -------------- | ------- | ------------------ |

@@ -1,0 +1,16 @@
+id: default
+links:
+  - id: organization-members
+    type: MenuLink
+    pageId:
+      _module.pageId: members
+    properties:
+      title: Members
+      icon: users
+  - id: organization-settings
+    type: MenuLink
+    pageId:
+      _module.pageId: general
+    properties:
+      title: Organization
+      icon: Landmark

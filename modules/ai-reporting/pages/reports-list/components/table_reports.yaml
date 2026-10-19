@@ -48,7 +48,7 @@ properties:
         const shared = report.visibility === 'shared';
         return {
           ...report,
-          fav_icon: report.is_favourite ? 'AiFillStar' : 'AiOutlineStar',
+          fav_icon: report.is_favourite ? 'star' : 'star',
           // hide_* rather than can_*, because the menu cell's hiddenField takes
           // the value it hides on. Publish needs a share_roles holder and a report
           // that is still private; Unpublish is the one item whose test has two
@@ -168,25 +168,25 @@ properties:
         items:
           - eventName: onMenuOpen
             title: Open
-            icon: AiOutlineFileText
+            icon: document
           - eventName: onMenuRename
             title: Rename
-            icon: AiOutlineEdit
+            icon: edit
             hiddenField: hide_rename
           - eventName: onMenuPublish
             title: Publish to the app
-            icon: AiOutlineGlobal
+            icon: globe
             hiddenField: hide_publish
           - eventName: onMenuUnpublish
             title: Unpublish
-            icon: AiOutlineEyeInvisible
+            icon: hide
             hiddenField: hide_unpublish
           - eventName: onMenuDuplicate
             title: Duplicate
-            icon: AiOutlineCopy
+            icon: copy
           - eventName: onMenuDelete
             title: Delete
-            icon: AiOutlineDelete
+            icon: delete
             danger: true
             hiddenField: hide_delete
 events:

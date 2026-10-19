@@ -7,8 +7,19 @@ const blockTypes = extractBlockTypes(metas);
 export default {
   ...blockTypes,
   actions: Object.keys(actions),
-  operators: { client: [], server: ["_analytics"] },
+  operators: { client: ["_support_context"], server: ["_analytics"] },
   connections: Object.keys(connections),
+  // Build-side tenant capability declaration. `tenant: true` types implement
+  // the scoping contract, so under auth.organizations.policy: tenant their
+  // connections are scoped by default and may declare `tenant: shared`;
+  // `tenant: false` types hold no organization data and are never scoped. The
+  // runtime half is the `meta.tenant` on each connection's export.
+  connectionMetas: {
+    AiText: { tenant: false },
+    EventsTimeline: { tenant: true },
+    SupportWebhook: { tenant: false },
+    WorkflowAPI: { tenant: true },
+  },
   requests: Object.keys(connections).flatMap((c) =>
     Object.keys(connections[c].requests),
   ),

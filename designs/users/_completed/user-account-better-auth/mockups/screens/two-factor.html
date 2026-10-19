@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Two-factor — user-account</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  .auth-page{width:400px}
+  #tf_auth:checked   ~ .stage .layer[data-layer=auth]{display:block}
+  #tf_backup:checked ~ .stage .layer[data-layer=backup]{display:block}
+  #tf_auth:checked   ~ .statebar label[for=tf_auth],
+  #tf_backup:checked ~ .statebar label[for=tf_backup]{background:var(--violet);color:#fff}
+</style>
+</head>
+<body>
+<div class="mock">
+  <input type="radio" name="twofactor_state" id="tf_auth" checked />
+  <input type="radio" name="twofactor_state" id="tf_backup" />
+  <div class="statebar">
+    <span class="lbl">Two-factor states</span>
+    <label for="tf_auth">Authenticator code (resting)</label>
+    <label for="tf_backup">Backup code</label>
+  </div>
+  <div class="stage">
+
+    <!-- ============ Layer: authenticator code (resting) ============ -->
+    <div class="layer" data-layer="auth">
+      <div class="auth-page" id="two_factor_page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3 id="two_factor_title">Enter your code</h3>
+            <p class="lead">Open your authenticator app and enter the 6-digit code for Module Demo App.</p>
+            <div class="otp" id="two_factor_code"><span class="cell">4</span><span class="cell">1</span><span class="cell">9</span><span class="cell on">2</span><span class="cell empty">&middot;</span><span class="cell empty">&middot;</span></div>
+            <label class="chk" id="two_factor_trust"><input type="checkbox" checked/> Trust this device for 30 days</label>
+            <button class="btn pri lg block" id="two_factor_verify">Verify</button>
+            <div class="hint" style="text-align:center">Lost your device? <label class="btn link" for="tf_backup" id="two_factor_use_backup">Use a backup code</label></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: backup code ============ -->
+    <div class="layer" data-layer="backup">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3>Use a backup code</h3>
+            <p class="lead">Enter one of the single-use codes you saved when you set up two-factor authentication.</p>
+            <div class="frow" id="two_factor_backup_code"><label>Backup code</label><div class="inp"><input class="placeholder" placeholder="xxxx-xxxx" style="font-family:var(--mono)"/></div></div>
+            <button class="btn pri lg block" id="two_factor_backup_verify">Verify</button>
+            <div class="hint" style="text-align:center"><label class="btn link" for="tf_auth">&larr; Back to authenticator code</label></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

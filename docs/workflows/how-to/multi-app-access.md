@@ -13,7 +13,7 @@ concepts: [access, verbs, roles, per-app, multi-app]
 
 ## How multi-app access works
 
-One action YAML can declare access for any number of apps. Each key under `access:` is an app name. The `app_name` var on each module entry determines which key the engine reads for build-time page emission and runtime gate evaluation.
+One action YAML can declare access for any number of apps. Each key under `access:` is an app slug. The `slug:` declared on each app's `lowdefy.yaml` determines which key that app's engine reads for build-time page emission and runtime gate evaluation.
 
 Role names are fully scoped to each app: `admin` in `team-app` is completely independent of `admin` in `customer-app`. See [Access](../concepts/access.md) for the full three-checkpoint enforcement model.
 
@@ -69,7 +69,7 @@ If you need two different submission paths, model them as two separate actions. 
 
 ### 3. Control page emission per app
 
-Pages are emitted **per app at build time**. The `app_name` var on the module entry determines which access keys apply. A page is emitted only when its verb is present in `access.{host_app_name}`:
+Pages are emitted **per app at build time**. The app's own `slug` determines which access keys apply. A page is emitted only when its verb is present in `access.{slug}`:
 
 - `team-app` with `edit: true, view: true, review: [admin]` → emits `-edit`, `-view`, `-review` pages.
 - `customer-portal` with `view: true, edit: [customer-admin]` → emits `-view`, `-edit` pages; no `-review`.
@@ -113,7 +113,7 @@ Role names in `notification_roles` are resolved by the notifications module's `s
 
 ### 6. Check-action multi-app access
 
-Multi-app access works identically for `kind: check` actions. Check actions are served by the per-workflow `{workflow_type}-action` page (addressed by `?action_id=`). The engine evaluates the caller's app against `access.{app_name}` at submit time:
+Multi-app access works identically for `kind: check` actions. Check actions are served by the per-workflow `{workflow_type}-action` page (addressed by `?action_id=`). The engine evaluates the caller's app against `access.{slug}` at submit time:
 
 ```yaml
 type: assign-account-manager

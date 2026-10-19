@@ -1,0 +1,7 @@
+# Checks a webhook delivery was signed with the support app's webhook secret.
+# The webhook endpoint's verify gate runs it before the routine.
+id: support_webhook
+type: SupportWebhook
+properties:
+  secret:
+    _secret: SUPPORT_WEBHOOK_SECRET

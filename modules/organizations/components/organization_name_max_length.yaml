@@ -1,0 +1,3 @@
+# The most characters an organisation name may have, after trimming. The create
+# and rename endpoints refuse longer names, and the name inputs stop at it.
+80

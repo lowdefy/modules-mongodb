@@ -27,7 +27,6 @@ modules:
   - id: events
     source: "github:lowdefy/modules-mongodb/modules/events@v0.48.0"
     vars:
-      display_key: my-app
       change_stamp:
         timestamp:
           _date: now
@@ -36,15 +35,16 @@ modules:
             _user: profile.name
           id:
             _user: id
-        app_name: my-app
+        app_name:
+          _build.app: slug
       event_types:
         sync-job:
           title: Sync job
           color: blue
-          icon: AiOutlineSync
+          icon: RefreshCw
 ```
 
-`display_key` is required — it selects which per-app title to render from each event's `display.{display_key}` field.
+`display_key` selects which per-app title to render — the events timeline reads it from each event's top-level `{display_key}.title` field. It defaults to the app's own `slug`, so set it only when this app should render another app's event display strings. See [App slug scoping](../shared/app-name.md).
 
 ## Components
 
@@ -69,7 +69,9 @@ The timeline joins each event's referenced actions and renders their cards inlin
 Two vars point the engine at the app's collections. Both default to `null` on the module entry, and the engine falls back to its built-in collection names — so enrichment works out of the box and you override these only when your collections are named differently:
 
 - **`actions_collection`** (default `null` → engine falls back to `actions`) — the actions collection the timeline joins to enrich events with action cards. Enrichment shows up wherever events carry `action_ids`; the join is inert when they don't.
-- **`contacts_collection`** (default `null` → engine falls back to `user-contacts`) — the contacts collection joined to resolve each event author's avatar (`created.user.id` → `_id`). It falls back to author initials when an author has no matching contact, so it only ever adds an avatar and never breaks rendering.
+- **`contacts_collection`** (default `null` → engine falls back to `user-contacts`) — the contacts collection joined to resolve each event author's avatar (`created.user.id` → `user_id`). It falls back to author initials when an author has no matching contact, so it only ever adds an avatar and never breaks rendering.
+
+- **`contact_page_id`** (default empty) — the page id of the contact page that an event's avatar, its timestamp and an `@mention` in a note link to, such as `contacts/view`. **Breaking:** it replaces the `contact_page_url` URL template. The contact id travels in the URL query as `contact_id_query_key` (default `_id`), in a path parameter named by `contact_id_path_key` when the page has a `path` like `contacts/{contact_id}`, or both. Leave `contact_page_id` empty to render them without a link.
 
 ### Worked example — turn on enrichment for the whole app
 
@@ -78,8 +80,7 @@ Two vars point the engine at the app's collections. Both default to `null` on th
 - id: events
   source: "github:lowdefy/modules-mongodb/modules/events@v0.48.0"
   vars:
-    display_key: demo
-    actions_collection: actions       # collection-name override; matches the engine default
+    actions_collection: actions # collection-name override; matches the engine default
     contacts_collection: user-contacts
 ```
 
@@ -93,5 +94,5 @@ Every entity timeline in the app now renders action cards for actions referenced
 
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on every engine write
 - [Event display](../shared/event-display.md) — per-app pre-rendered display titles
-- [App name scoping](../shared/app-name.md) — how `display_key` selects the right title
+- [App slug scoping](../shared/app-name.md) — how `display_key` defaults to the app slug and selects the right title
 - [Secrets](../shared/secrets.md) — `MONGODB_URI` and other connection secrets

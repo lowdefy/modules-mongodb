@@ -126,8 +126,8 @@ blocks:
                     _eq:
                       - _state: walkthrough_preview
                       - true
-                  then: AiOutlineEdit
-                  else: AiOutlineEye
+                  then: edit
+                  else: view
               title:
                 _if:
                   test:
@@ -198,7 +198,7 @@ blocks:
             properties:
               type: default
               danger: true
-              icon: AiOutlineDelete
+              icon: delete
               title: Delete
             events:
               onClick:
@@ -215,7 +215,7 @@ blocks:
             properties:
               type: default
               danger: true
-              icon: AiOutlineUndo
+              icon: Undo
               title: Discard draft
               # Never published, there is nothing to go back to: Delete covers that case.
               disabled:
@@ -244,7 +244,7 @@ blocks:
             properties:
               type: default
               danger: true
-              icon: AiOutlineCloudDownload
+              icon: CloudDownload
               title: Unpublish
               # It saves first, like Publish, and Preview drops the steps from state.
               disabled:
@@ -265,7 +265,7 @@ blocks:
               flex: 0 1 auto
             properties:
               type: default
-              icon: AiOutlineCloudUpload
+              icon: CloudUpload
               title: Publish
               # Why a consumer is holding Publish back; null otherwise, so no tooltip shows.
               tooltip:
@@ -322,7 +322,7 @@ blocks:
               flex: 0 1 auto
             properties:
               type: primary
-              icon: AiOutlineSave
+              icon: save
               title: Save
               # Preview hides the step strip, and hiding it drops the steps from state.
               disabled:
@@ -389,8 +389,8 @@ blocks:
                               test:
                                 _boolean:
                                   _state: walkthrough_draft.steps.$.image
-                              then: AiOutlinePicture
-                              else: AiOutlineExclamationCircle
+                              then: image
+                              else: CircleAlert
                           title:
                             _js:
                               fn: |
@@ -430,7 +430,7 @@ blocks:
                     properties:
                       type: default
                       size: small
-                      icon: AiOutlinePlus
+                      icon: add
                       title: Add step
                     events:
                       onClick:
@@ -453,7 +453,7 @@ blocks:
                     properties:
                       type: default
                       size: small
-                      icon: AiOutlinePlusCircle
+                      icon: add-circle
                       title: Insert after
                     events:
                       onClick:
@@ -472,7 +472,7 @@ blocks:
                     properties:
                       type: default
                       size: small
-                      icon: AiOutlineUp
+                      icon: chevron-up
                       title: Up
                       disabled:
                         _eq:
@@ -492,7 +492,7 @@ blocks:
                     properties:
                       type: default
                       size: small
-                      icon: AiOutlineDown
+                      icon: chevron-down
                       title: Down
                       disabled:
                         _gte:
@@ -521,7 +521,7 @@ blocks:
                       type: default
                       size: small
                       danger: true
-                      icon: AiOutlineDelete
+                      icon: delete
                       title: Remove
                     events:
                       onClick:
@@ -667,7 +667,7 @@ blocks:
                             _state: walkthrough_edit_step
                       button:
                         type: default
-                        icon: AiOutlineUpload
+                        icon: upload
                         title:
                           _if:
                             test:
@@ -714,7 +714,7 @@ blocks:
                         _state: walkthrough_edit_step.focus
                     properties:
                       type: default
-                      icon: AiOutlineClear
+                      icon: Eraser
                       title: Clear highlight
                     events:
                       onClick:
@@ -765,7 +765,7 @@ blocks:
                                   - true
                         properties:
                           type: default
-                          icon: AiOutlineDesktop
+                          icon: Monitor
                           title: Share a screen
                         events:
                           onClick:
@@ -785,7 +785,7 @@ blocks:
                             - true
                         properties:
                           type: primary
-                          icon: AiOutlineCamera
+                          icon: camera
                           title: Capture as new step
                         events:
                           # Uploaded before the step exists, so a failure leaves the walkthrough
@@ -849,7 +849,7 @@ blocks:
                                 _state: walkthrough_edit_step
                         properties:
                           type: default
-                          icon: AiOutlineRetweet
+                          icon: Repeat2
                           title: Capture over this step
                         events:
                           onClick:
@@ -883,7 +883,7 @@ blocks:
                             - true
                         properties:
                           type: default
-                          icon: AiOutlineStop
+                          icon: Ban
                           title: Stop sharing
                         events:
                           onClick:

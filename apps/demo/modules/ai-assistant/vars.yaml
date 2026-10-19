@@ -13,7 +13,25 @@ welcome:
     - label: How do threads work?
       description: How this assistant stores and titles conversations
 sender_placeholder: Ask about the demo app…
+# Sent with every message. support_context is the support module's agent-context: the
+# browser's details and the tab's recent errors, which a ticket the agent files carries.
+shared_state:
+  support_context:
+    _ref:
+      module: support
+      component: agent-context
 title_domain: a Lowdefy module demo app
+
+# Attachments on the composer: the requests are the page's own (attachment_requests.yaml, on
+# every page that mounts the chat), and assistant-file-links signs stored files again when a
+# thread is reopened. Uploads need the files bucket's secrets, which the demo does not have.
+sender_attachments:
+  enabled: true
+  accept: image/*,.pdf,.txt
+  maxSize: 5242880
+  uploadPolicyRequestId: ai_assistant_upload_policy
+  downloadPolicyRequestId: ai_assistant_download_policy
+file_links_endpoint: assistant-file-links
 
 # Demonstrates the consumer-owned event seams. A real app would send the rating to an
 # endpoint here; the toast is enough to show the wiring reaches the app.
@@ -28,9 +46,9 @@ on_feedback:
     params:
       content:
         _string.concat:
-          - 'Thanks — recorded a '
+          - "Thanks — recorded a "
           - _event: rating
-          - ' (demo only).'
+          - " (demo only)."
 
 # Demonstrates the notice seam: an app that has stopped the assistant says so in place of the
 # conversation instead of leaving a composer that cannot send. Driven from page state here so the
@@ -54,10 +72,14 @@ notice:
 # hooks in without reaching into the module's blocks from a stylesheet.
 toolbar:
   size: middle
-  accent: '#7c3aed'
-  accent_text: '#ffffff'
-  secondary: '#f4f4f5'
+  accent: "#7c3aed"
+  accent_text: "#ffffff"
+  secondary: "#f4f4f5"
   icon_only: true
 thread_selection:
-  border: '#7c3aed'
-  background: '#f5f3ff'
+  border: "#7c3aed"
+  background: "#f5f3ff"
+
+# Take screenshot in the panel: the page behind it, masked and editable, attaches to the composer
+# and uploads through sender_attachments on send.
+screenshot: true

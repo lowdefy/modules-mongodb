@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import entityPageLink from "../../shared/render/entityPageLink.js";
 import parseNunjucks from "../../shared/render/parseNunjucks.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
 import resolveUniversalFields from "../../shared/render/resolveUniversalFields.js";
@@ -25,7 +26,7 @@ import {
  *     _id, type, workflow_type, workflow_id, kind, key, status, action_group, description, due_date,
  *     assignees, assignee_docs, universal_fields, show_comment, created, updated,
  *     entity,               // { ...entity.data routine result, id } — host fields + the always-present instance id
- *     entity_link,          // { pageId, urlQuery, title, name } from the workflow config's `entity` block (name from the routine), or null
+ *     entity_link,          // { pageId, urlQuery?, pathParams?, title, name } from the workflow config's `entity` block (name from the routine), or null
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
  *     allowed,              // { view, edit, review, error }
@@ -122,9 +123,9 @@ function projectFormSlice(slice, allowedKeys) {
 
 async function GetWorkflowAction(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection, workflowsConfig } = context;
+  const { params, mongoDb, connection, workflowsConfig, tenant } = context;
   const { action_id } = params;
-  const app_name = connection.app_name;
+  const slug = connection.slug;
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? "workflows";
   const actionsCollection = connection.actionsCollection ?? "actions";
@@ -136,6 +137,7 @@ async function GetWorkflowAction(lowdefyContext) {
     mongoDb,
     collection: actionsCollection,
     query: { _id: action_id },
+    tenant,
   });
 
   // ── Step 3: Task guard ──
@@ -147,7 +149,7 @@ async function GetWorkflowAction(lowdefyContext) {
   // ── Step 4: Access gate ──
   const allowed = computeAllowed({
     access: action.access,
-    app_name,
+    slug,
     userRoles,
   });
   if (!allowed.view) {
@@ -174,6 +176,7 @@ async function GetWorkflowAction(lowdefyContext) {
     mongoDb,
     collection: workflowsCollection,
     query: { _id: action.workflow_id },
+    tenant,
   });
 
   // ── Workflow closed flag ──
@@ -192,6 +195,7 @@ async function GetWorkflowAction(lowdefyContext) {
             mongoDb,
             collection: contactsCollection,
             query: { _id: { $in: assigneeIds } },
+            tenant,
           })
         ).map((d) => ({
           _id: d._id,
@@ -247,8 +251,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const entityConfig = wfConfig?.entity;
   const entity_link = entityConfig
     ? {
-        pageId: entityConfig.page_id,
-        urlQuery: { [entityConfig.id_query_key]: action.entity.id },
+        ...entityPageLink(entityConfig, action.entity.id),
         title: entityConfig.title ?? null,
         name: entityData?.name ?? null,
       }
@@ -274,7 +277,7 @@ async function GetWorkflowAction(lowdefyContext) {
   // the reworker sees "what to fix" without hunting the History timeline. The
   // comment lives once on the request_changes event (Part 33), so this reads the
   // event — never the action doc — and inherits Part 61's app-scoping for free:
-  // the projection keys off the CALLING connection's app_name, so an `internal`
+  // the projection keys off the CALLING connection's slug, so an `internal`
   // note resolves to null for an app that can't see it.
   //
   // Read contract: the latest `action-request_changes` event for this action
@@ -288,13 +291,14 @@ async function GetWorkflowAction(lowdefyContext) {
       mongoDb,
       collection: eventsCollection,
       query: { type: "action-request_changes", action_ids: action._id },
+      tenant,
       options: {
         sort: { date: -1 },
         limit: 1,
-        projection: { [`${app_name}.description`]: 1 },
+        projection: { [`${slug}.description`]: 1 },
       },
     });
-    const html = evt?.[app_name]?.description ?? null;
+    const html = evt?.[slug]?.description ?? null;
     // Defensive (D3): request-changes comments are text-only (inline files are
     // disabled on the input), but legacy image-only rows stored TipTap's empty
     // doc marker `<p></p>` with the content in `fileList` (not read here). Treat
@@ -304,7 +308,7 @@ async function GetWorkflowAction(lowdefyContext) {
   }
 
   // ── Step 6: Curated envelope (explicit allowlist — no spread of raw doc) ──
-  const message = action[app_name]?.message ?? null;
+  const message = action[slug]?.message ?? null;
   const required_after_close = actionConfig.required_after_close ?? null;
 
   // ── Universal-fields presence list (author config, resolved per read) ──────

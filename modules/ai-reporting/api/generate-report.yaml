@@ -1,7 +1,7 @@
 # Report tool: validate the report spec against the catalog and the
 # allow-listed section types (each query section's pipeline is run through
 # validatePipeline before persist), persist the VALIDATOR'S OUTPUT, return the
-# report's URL.
+# report's id.
 #
 # The document holds validateReportSpec's return value, not the payload it was
 # handed. That fixes the spec's meaning at create time: section ids are assigned
@@ -29,7 +29,8 @@ description: >
   Query-backed sections carry a { collection, pipeline } query plus a
   presentation contract (kpi: valueKey, format?; chart: x, y; table: columns
   [{ key, label?, format? }]); bind sections to filter controls with
-  filterBy: [field]. Returns the report URL to share with the user.
+  filterBy: [field]. Returns the saved report's id; the report appears in
+  the panel's "Reports from this chat" list, where the user opens it.
 payloadSchema:
   type: object
   required:
@@ -102,9 +103,3 @@ routine:
       ok: true
       report_id:
         _step: insert_report.insertedId
-      url:
-        _string.concat:
-          - "/"
-          - _module.id: true
-          - "/report?report_id="
-          - _step: insert_report.insertedId

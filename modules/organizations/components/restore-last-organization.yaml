@@ -1,0 +1,58 @@
+# restore-last-organization — actions for an app's landing page that return a
+# person to the organisation they last switched to in this browser. The engine
+# starts every new session in the person's oldest membership.
+#
+#   events:
+#     onMount:
+#       _build.array.concat:
+#         - _ref:
+#             module: organizations
+#             component: restore-last-organization
+#             vars:
+#               to: /home        # where the landing page would go next
+#               skip: <operator> # optional: true runs nothing
+#         - - id: route
+#             type: Link
+#             skip:
+#               _state: last_organization_restore
+#             ...
+#
+# When the stored organisation differs from the session's it sets
+# `last_organization_restore` in page state and hands off to the switch page,
+# which checks the membership; a stored organisation the person is no longer in
+# is forgotten there and the switch page goes on to `to` without a message. The landing page's own routing skips on that state. An empty
+# store, or one naming the session's organisation, changes nothing.
+#
+# Vars:
+#   to     the app path the switch page goes on to
+#   skip   optional, default false
+- id: read_last_organization
+  type: GetLocalStorage
+  skip:
+    _var:
+      key: skip
+      default: false
+  params:
+    key:
+      _ref: components/last_organization_key.yaml
+    default: null
+- id: mark_last_organization_restore
+  type: SetState
+  skip:
+    _ref: components/restore_not_needed.yaml
+  params:
+    last_organization_restore: true
+- id: restore_last_organization
+  type: Link
+  skip:
+    _ref: components/restore_not_needed.yaml
+  params:
+    pageId:
+      _module.pageId: switch-organization
+    urlQuery:
+      org:
+        _actions: read_last_organization.response
+      to:
+        _var: to
+      restore: true
+    replace: true

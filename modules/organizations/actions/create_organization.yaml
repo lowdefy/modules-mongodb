@@ -1,0 +1,61 @@
+# Create the organisation, show a refusal under the name field, or hand off to
+# the switch page, which moves the session into the new organisation and goes
+# on to its setup. The button and Enter in the name field both run it, so a
+# create already in flight (`creating_organization`) ends a second run at once,
+# and the button and field are disabled while it is set. A refusal or an error
+# clears it so the form can be used again.
+try:
+  - :if:
+      _eq:
+        - _state: creating_organization
+        - true
+    :then:
+      - :return: null
+  - id: validate_new_organization_name
+    type: Validate
+    params: new_organization.name
+  - id: mark_creating_organization
+    type: SetState
+    params:
+      creating_organization: true
+  - id: call_create_organization
+    type: CallAPI
+    messages:
+      loading: Creating…
+    params:
+      endpointId:
+        _module.endpointId: create-organization
+      payload:
+        name:
+          _state: new_organization.name
+  - id: show_create_refused
+    type: SetState
+    skip:
+      _eq:
+        - _actions: call_create_organization.response.response.refused
+        - null
+    params:
+      create_refused_message:
+        _actions: call_create_organization.response.response.refused.message
+      creating_organization: false
+  - id: switch_to_new_organization
+    type: Link
+    skip:
+      _ne:
+        - _actions: call_create_organization.response.response.refused
+        - null
+    params:
+      pageId:
+        _module.pageId: switch-organization
+      urlQuery:
+        org:
+          _actions: call_create_organization.response.response.organization_id
+        to:
+          _build.string.concat:
+            - /
+            - _module.pageId: setup
+catch:
+  - id: clear_creating_organization
+    type: SetState
+    params:
+      creating_organization: false

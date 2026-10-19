@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Login — user-account</title>
+<link rel="stylesheet" href="mock.css" />
+<style>
+  .auth-page{width:360px}
+  #ls_signin:checked   ~ .stage .layer[data-layer=signin]{display:block}
+  #ls_noaccess:checked ~ .stage .layer[data-layer=noaccess]{display:block}
+  #ls_signin:checked   ~ .statebar label[for=ls_signin],
+  #ls_noaccess:checked ~ .statebar label[for=ls_noaccess]{background:var(--violet);color:#fff}
+</style>
+</head>
+<body>
+<div class="mock">
+  <input type="radio" name="login_state" id="ls_signin" checked />
+  <input type="radio" name="login_state" id="ls_noaccess" />
+  <div class="statebar">
+    <span class="lbl">Login states</span>
+    <label for="ls_signin">Sign in (resting)</label>
+    <label for="ls_noaccess">No access — authPages.error</label>
+  </div>
+  <div class="stage">
+
+    <!-- ============ Layer: sign in (resting) ============ -->
+    <div class="layer" data-layer="signin">
+      <div class="auth-page" id="login_page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover" id="auth_cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3 id="login_title">Sign in</h3>
+            <p class="lead">Welcome back. Use your work email to continue.</p>
+            <div class="frow" id="login_email"><label>Email</label><div class="inp"><input value="jane.mokoena@example.com"/><span class="aff">&#9993;</span></div></div>
+            <div class="frow" id="login_password"><label>Password <span class="spacer"><a class="btn link" id="login_forgot_link" href="forgot-password.html">Forgot?</a></span></label><div class="inp"><input type="password" value="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/><span class="aff">&#128065;</span></div></div>
+            <button class="btn pri lg block" id="login_submit">Sign in</button>
+            <div class="div-or" id="login_oauth_divider">or</div>
+            <button class="provider" id="login_oauth_google"><span class="glyph g-google">G</span> Continue with Google</button>
+            <button class="provider" id="login_passkey"><span class="glyph g-key">&#9917;</span> Sign in with a passkey</button>
+          </div>
+        </div>
+        <div class="auth-footer" id="login_footer">New here? <a href="signup.html">Create an account</a></div>
+      </div>
+    </div>
+
+    <!-- ============ Layer: no access (authPages.error redirect render) ============ -->
+    <div class="layer" data-layer="noaccess">
+      <div class="auth-page" data-ldf-component="auth-page">
+        <div class="auth-card">
+          <div class="auth-cover"><div class="logo"><span class="mk">M</span><span class="nm">Module Demo App</span></div></div>
+          <div class="auth-blocks">
+            <h3>Sign in</h3>
+            <div class="authalert" id="login_error_alert"><span class="ai">&#9940;</span><div><div class="at">You don't have access to this app</div><div class="ax">Your sign-in worked, but no one has granted you access to Module Demo App yet. Ask an administrator for an invitation.</div></div></div>
+            <div class="frow"><label>Email</label><div class="inp"><input value="new.person@example.com"/><span class="aff">&#9993;</span></div></div>
+            <div class="frow"><label>Password <span class="spacer"><a class="btn link" href="forgot-password.html">Forgot?</a></span></label><div class="inp"><input type="password" value="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/><span class="aff">&#128065;</span></div></div>
+            <button class="btn pri lg block">Sign in</button>
+          </div>
+        </div>
+        <div class="auth-footer">New here? <a href="signup.html">Create an account</a></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -23,7 +23,7 @@ _ref:
     content_width: 760
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Deals
         pageId: deals/all
       - label: Quote builder
@@ -220,7 +220,7 @@ _ref:
                 properties:
                   title: Send for approval
                   type: primary
-                  icon: AiOutlineSend
+                  icon: send
                 events:
                   onClick:
                     - id: validate_quote_value

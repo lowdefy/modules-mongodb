@@ -13,17 +13,21 @@ The display pattern is `SmartDescriptions` reading the same `fields` defs read-o
 ## Task
 
 **1. Detail view (`modules/deals/pages/view.yaml`):**
+
 - Add a `SmartDescriptions` section rendering `_module.var: fields` read-only (the `view_company.yaml` pattern — `_build.if` on `_build.array.length` to hide when empty). Place it where the deal's host attributes belong in the detail layout (alongside the existing company/info sections).
 - Remove the pipeline-header `product_name` derivation (the `_get` against the `products` var and the `get_selected_deal.0.product` / `product_name_freetext` reads). The header subtitle becomes description-only.
 
 **2. Manifest (`modules/deals/module.lowdefy.yaml`):**
+
 - Remove the `products` var (now unreferenced after step 1).
 
 **3. List requests:**
+
 - `modules/deals/requests/get_deals_list.yaml` — remove the `filter.product` match clause and the `product: 1` / `product_name_freetext: 1` projections; add `attributes: 1` to the projection so host columns can read `attributes.*`.
 - `modules/deals/requests/get_active_deals.yaml` — remove the `product: 1` / `product_name_freetext: 1` projections (add `attributes: 1` if the active-deals surface needs host fields).
 
 **4. List card (`modules/deals/components/deal_list_card.yaml`):**
+
 - Remove the `product` render (the `_get`/label lookup around lines 48/61/71). If a host wants product on the card, it re-adds it via `card_fields`/`card_slots`.
 
 ## Acceptance Criteria

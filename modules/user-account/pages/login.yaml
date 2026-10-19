@@ -1,147 +1,909 @@
+# Login page. Serves authPages.signIn and authPages.error.
+# Three renders driven by `login_view` (signin | noaccess | link-sent):
+#   - signin    : the sign-in form + enabled OAuth / passkey / magic-link methods.
+#   - noaccess  : the authPages.error render (hard-wall "no access" etc.).
+#   - link-sent : the magic-link "check your email" result (send returns
+#                 { status: true } with no session, so it cannot navigate).
+#
+# Method enablement is read from the app auth config via `_build.authConfig`
+# (Decision 2): the password form renders only when emailAndPassword is enabled,
+# an OAuth button per configured provider, the passkey button only when passkey
+# is enabled, and the magic-link send only when magicLink is enabled. The `email`
+# input is shared by the password submit and the magic-link send, so it is
+# hoisted out of the password branch and gated on emailAndPassword OR magicLink.
+#
+# When password AND at least one alternative (magic-link / OAuth / passkey) are
+# enabled, the signin view is a method chooser: the email input leads, then a
+# "Use password" button and the alternative-method buttons. Choosing "Use
+# password" reveals the password form (the `login_show_password` sub-state) and
+# hides the other methods; "Other options" returns to the chooser. With password
+# as the only method the form shows directly (no chooser); with password off,
+# magic-link is the primary action under the email. The send button lives in the
+# shared `components/magic-link-send.yaml`; OAuth display metadata (label/icon)
+# comes from the `providers` var.
+#
+# Errors map through ONE code -> message table (the `_switch` blocks below):
+# password errors return inline on the `Login` call (mapped in the onClick
+# `catch`), OAuth / magic-link failures arrive as a redirect to authPages.error
+# (this page) carrying `?error=` (mapped in `onInit`). Terminal codes
+# (MEMBERSHIP_REQUIRED, EMAIL_NOT_VERIFIED) render the form-hiding noaccess wall.
+# Every retryable code stays on signin and surfaces as a persistent inline notice
+# (login_notice_alert) the user can read at their own pace: INVALID_EMAIL_OR_PASSWORD
+# and any unmapped/rate-limit default show it error-typed (red); a retryable
+# INVALID_TOKEN (expired / consumed magic link) shows it warning-typed (amber) so
+# the user can request a new link.
 _ref:
   module: layout
   component: auth-page
   vars:
     id: login
-    title: Login
+    title: ""
     events:
-      onMount:
-        - id: logged_in_redirect
-          type: Link
-          skip:
-            _eq:
-              - _user: id
-              - null
-          params: router
-        - id: set_error_message
+      onInit:
+        # Seed the render. If the page was reached as the authPages.error
+        # redirect target it carries `?error=<code>`. A retryable INVALID_TOKEN
+        # (expired / consumed magic link) stays on signin so the email input and
+        # send affordance remain reachable and drives the dedicated notice below;
+        # every other code flips to the noaccess wall with its friendly title.
+        - id: seed_login_view
           type: SetState
-          skip:
-            _eq:
-              - _url_query: error
-              - null
           params:
-            error_message:
+            # Resend affordance address — null on every load; only the in-page
+            # password catch fills it (EMAIL_NOT_VERIFIED), since only an
+            # in-page attempt holds the typed address. Seeded here so the
+            # state key exists for the build's state-refs check.
+            login_resend_email: null
+            login_view:
               _switch:
                 branches:
                   - if:
                       _eq:
                         - _url_query: error
-                        - EmailCreateAccount
-                    then: You have not been granted access to this app. Please contact an administrator to request access.
+                        - INVALID_TOKEN
+                    then: signin
+                  - if:
+                      _ne:
+                        - _url_query: error
+                        - null
+                    then: noaccess
+                default: signin
+            # Dedicated retryable notice, set only for INVALID_TOKEN (null for
+            # every other code and on a clean load), a separate state to the
+            # noaccess alert, whose title defaults on every load.
+            login_notice_title:
+              _if:
+                test:
+                  _eq:
+                    - _url_query: error
+                    - INVALID_TOKEN
+                then: Link expired
+                else: null
+            login_notice_desc:
+              _if:
+                test:
+                  _eq:
+                    - _url_query: error
+                    - INVALID_TOKEN
+                then:
+                  _build.if:
+                    test:
+                      _build.authConfig: emailOTP.enabled
+                    then: This link has expired or was already used. Enter your email and the code from that email below, or request a new link.
+                    else: This link has expired or was already used. Request a new one.
+                else: null
+            # Notice tone: warning (amber) for the retryable expired-link case;
+            # the password catch sets error (red) for a failed sign-in.
+            login_notice_type:
+              _if:
+                test:
+                  _eq:
+                    - _url_query: error
+                    - INVALID_TOKEN
+                then: warning
+                else: null
+            login_error_title:
+              _switch:
+                branches:
                   - if:
                       _eq:
                         - _url_query: error
-                        - Verification
-                    then: <p>The sign in link is no longer valid.</p><p>It may have been used already or it may have expired.</p>
-                default: An error occurred while logging in. Please contact an administrator.
-        - id: logout
-          type: Logout
-          skip:
-            _eq:
-              - _url_query: error
-              - null
-          params:
-            redirect: false
-        - id: set_hint
-          type: SetState
-          skip:
-            _eq:
-              - _url_query: hint
-              - null
-          params:
-            login_button_disabled: false
+                        - EMAIL_NOT_VERIFIED
+                    then: Verify your email to continue
+                default: You don't have access to this app
+            login_error_desc:
+              _switch:
+                branches:
+                  - if:
+                      _eq:
+                        - _url_query: error
+                        - EMAIL_NOT_VERIFIED
+                    then: Your email address hasn't been verified yet. Check your inbox for the verification link, then sign in again.
+                  - if:
+                      _eq:
+                        - _url_query: error
+                        - MEMBERSHIP_REQUIRED
+                    then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
+                default: Something went wrong while signing you in. Try again, or contact an administrator.
+            # Reveal sub-state for the signin method chooser. Seeded open only when
+            # password is the sole method (no chooser to show); otherwise the chooser
+            # leads and "Use password" opens the form. Baked at build time.
+            login_show_password:
+              _build.if:
+                test:
+                  _build.and:
+                    - _build.authConfig: emailAndPassword.enabled
+                    - _build.not:
+                        _build.or:
+                          - _build.authConfig: magicLink.enabled
+                          - _build.authConfig: passkey.enabled
+                          - _build.gt:
+                              - _build.array.length:
+                                  _build.authConfig: providers
+                              - 0
+                then: true
+                else: false
+            # `?email=` marks an address-bound entry (the accept page sends the
+            # invited address). Seeding it prefills the auto-bound email input,
+            # which then renders locked. See the input below.
             email:
-              _if_none:
-                - _url_query: hint
-                - ""
+              _url_query: email
     blocks:
-      - id: no_invite_alert
-        type: Alert
-        visible:
-          _ne:
-            - _state: error_message
-            - null
-        properties:
-          description:
-            _state: error_message
-          type: error
-          showIcon: true
-      - id: sign_in_title
-        type: Html
-        style:
-          color:
-            _theme: colorTextSecondary
-        properties:
-          html:
-            _module.var: login_message
-      - id: email
-        type: TextInput
-        required: true
-        validate:
-          _ref: validate/email.yaml
-        properties:
-          title: Email
-          label:
-            disabled: true
-          size: large
-          placeholder: Work Email
-          suffixIcon:
-            name: AiOutlineMail
-        events:
-          onPressEnter:
-            - id: validate
-              type: Validate
-            - id: set_login_button_disabled
-              type: SetState
-              params:
-                login_button_disabled: true
-            - id: login
-              type: Login
-              params:
-                email:
-                  _state: email
-                callbackUrl:
-                  _if:
-                    test:
-                      _ne:
-                        - _input: callbackUrl
+      _build.array.concat:
+        # --- Always present: resting title + lead + no-access alert ----------
+        - - id: login_title
+            type: Title
+            properties:
+              content: Sign in
+              level: 3
+
+          - id: login_lead
+            type: Html
+            visible:
+              _eq:
+                - _state: login_view
+                - signin
+            properties:
+              html:
+                _module.var: login_message
+            style:
+              marginTop: -8
+              fontSize: 13
+              color: "var(--ant-color-text-secondary)"
+
+          - id: login_error_alert
+            type: Alert
+            visible:
+              _eq:
+                - _state: login_view
+                - noaccess
+            properties:
+              type: error
+              showIcon: true
+              message:
+                _state: login_error_title
+              description:
+                _state: login_error_desc
+
+        # Resend affordance for the unverified-email wall: a returning user who
+        # lost the verification email has no other route back to a resend. Sends
+        # the verification email (enumeration-safe) for the captured address, then
+        # lands on verify-email's "check your email" screen — truthful because the
+        # send just ran — which carries its own resend fallback. Driven by
+        # login_resend_email, which the password catch sets only for
+        # EMAIL_NOT_VERIFIED — so the button shows for that wall alone (not the
+        # MEMBERSHIP_REQUIRED one it shares) and never without an address to send to.
+        # Built only when password sign-in is enabled: that catch is the one
+        # writer of login_resend_email, so without it the button can never show.
+        - _build.if:
+            test:
+              _build.authConfig: emailAndPassword.enabled
+            then:
+              - id: login_resend_verification
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - noaccess
+                    - _ne:
+                        - _state: login_resend_email
                         - null
-                    then:
-                      _input: callbackUrl
-                    else:
-                      pageId: router
-            - id: set_login_button_enabled
-              type: SetState
-              params:
-                login_button_disabled: false
-    actions:
-      - id: login_button
-        type: Button
-        style:
-          marginTop: 8
-        properties:
-          title: Login
-          icon: AiOutlineLogin
-          block: true
-          size: large
-          disabled:
-            _state: login_button_disabled
-        events:
-          onClick:
-            - id: validate
-              type: Validate
-            - id: login
-              type: Login
-              params:
-                email:
-                  _state: email
-                callbackUrl:
-                  _if:
+                properties:
+                  title: Resend verification email
+                  block: true
+                  size: large
+                events:
+                  onClick:
+                    - id: resend_verification
+                      type: SendVerificationEmail
+                      params:
+                        email:
+                          _state: login_resend_email
+                        callbackUrl:
+                          _ref:
+                            path: components/verify_email_callback.yaml
+                            vars:
+                              email:
+                                _state: login_resend_email
+                    # Carries `?callbackUrl=` on so the check render's own
+                    # resend keeps it too.
+                    - id: go_verify_email
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: verify-email
+                        urlQuery:
+                          _object.assign:
+                            - email:
+                                _state: login_resend_email
+                            - _ref: components/callback_url_query.yaml
+            else: []
+
+        # Retryable notice above the form. Carries both the expired-magic-link
+        # warning and a failed password sign-in (INVALID_EMAIL_OR_PASSWORD and
+        # any unmapped/rate-limit code). Driven by the dedicated login_notice_*
+        # state, so it stays hidden on a clean sign-in and leaves the form and
+        # send affordance reachable. Its tone is state-driven (login_notice_type):
+        # warning for the expired link, error for a failed sign-in.
+        - - id: login_notice_alert
+            type: Alert
+            visible:
+              _ne:
+                - _state: login_notice_title
+                - null
+            properties:
+              type:
+                _state: login_notice_type
+              showIcon: true
+              message:
+                _state: login_notice_title
+              description:
+                _state: login_notice_desc
+
+        # --- Shared email input. The one canonical `id: email` field both the
+        # password submit and the magic-link send read. Hoisted out of the
+        # password branch so it renders whenever either method is enabled. ------
+        - _build.if:
+            test:
+              _build.or:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.authConfig: magicLink.enabled
+            then:
+              # Locked on an address-bound entry (`?email=`): both methods that
+              # read this field, the password submit and the magic-link send,
+              # can only land the invitee where the invitation can be accepted
+              # if they run on the invited address. Magic-link is also the
+              # account-creating path in a passwordless deployment, where the
+              # accept page routes "create account" here.
+              - id: email
+                type: TextInput
+                visible:
+                  _eq:
+                    - _state: login_view
+                    - signin
+                required: true
+                properties:
+                  type: email
+                  size: large
+                  suffixIcon: mail
+                  disabled:
+                    _ne:
+                      - _url_query: email
+                      - null
+                  label:
+                    title: Email
+                    colon: false
+                    span: 24
+                    extra:
+                      _if:
+                        test:
+                          _ne:
+                            - _url_query: email
+                            - null
+                        then: Your invitation was sent to this address.
+                        else: null
+                  placeholder: you@example.com
+                events:
+                  # Enter runs the email's primary action: the password
+                  # sign-in when password is enabled (which first opens the
+                  # form from the chooser), else the magic-link send.
+                  onPressEnter:
+                    _build.if:
+                      test:
+                        _build.authConfig: emailAndPassword.enabled
+                      then:
+                        _ref: actions/sign_in_password.yaml
+                      else:
+                        _ref:
+                          path: actions/send_magic_link.yaml
+                          vars:
+                            on_sent:
+                              login_view: link-sent
+                              otp: null
+            else: []
+
+        # --- "Check your email" result + code entry. The magic-link send returns
+        # { status: true } with no session, so it cannot navigate; it flips
+        # login_view to link-sent and shows the result. With emailOTP on, the one
+        # send carries both the link and the code, so the code entry needs no
+        # second send. The code entry ALSO renders on the signin view when the
+        # page was reached as the expired/consumed-link redirect
+        # (`?error=INVALID_TOKEN`): corporate mail security spends the single-use
+        # link before the person opens it, but the code in the same email is
+        # still theirs to type — so an expired link offers the code under the
+        # email input instead of dead-ending on "request a new one". ---------
+        - _build.if:
+            test:
+              _build.authConfig: magicLink.enabled
+            then:
+              _build.array.concat:
+                - - id: login_link_sent
+                    type: Result
+                    visible:
+                      _eq:
+                        - _state: login_view
+                        - link-sent
+                    properties:
+                      icon:
+                        name: mail
+                        color: "var(--ant-color-primary)"
+                      status: info
+                      title: Check your email
+                      subTitle:
+                        _ref:
+                          path: components/link_sent_subtitle.yaml
+                          vars:
+                            email:
+                              _state: magic_link_sent_email
+
+                - _build.if:
                     test:
-                      _ne:
-                        - _input: callbackUrl
-                        - null
+                      _build.authConfig: emailOTP.enabled
                     then:
-                      _input: callbackUrl
-                    else:
-                      pageId: router
+                      - id: otp
+                        type: TextInput
+                        visible:
+                          _or:
+                            - _eq:
+                                - _state: login_view
+                                - link-sent
+                            - _and:
+                                - _eq:
+                                    - _state: login_view
+                                    - signin
+                                - _eq:
+                                    - _url_query: error
+                                    - INVALID_TOKEN
+                        required: true
+                        properties:
+                          size: large
+                          maxLength: 6
+                          placeholder: "000000"
+                          label:
+                            # Unlabelled under the result; titled beside the
+                            # email input on the expired-link render.
+                            disabled:
+                              _eq:
+                                - _state: login_view
+                                - link-sent
+                            title: Code from the email
+                            colon: false
+                            span: 24
+                        style:
+                          .element:
+                            textAlign: center
+                            letterSpacing: 8
+                            fontFamily: var(--mono)
+                        events:
+                          # Enter runs the same chain as the button below.
+                          onPressEnter:
+                            _ref: actions/verify_email_code.yaml
+                      - id: login_code_verify
+                        type: Button
+                        visible:
+                          _or:
+                            - _eq:
+                                - _state: login_view
+                                - link-sent
+                            - _and:
+                                - _eq:
+                                    - _state: login_view
+                                    - signin
+                                - _eq:
+                                    - _url_query: error
+                                    - INVALID_TOKEN
+                        properties:
+                          title: Sign in with code
+                          block: true
+                          size: large
+                          color: primary
+                          variant: solid
+                        events:
+                          onClick:
+                            _ref: actions/verify_email_code.yaml
+                    else: []
+            else: []
+
+        # --- Magic-link primary send. When password is off, the send is the
+        # primary action directly under the email input. The button, its `Login`
+        # dispatch, callback params, and cooldown live in the shared component. -
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: magicLink.enabled
+                - _build.not:
+                    _build.authConfig: emailAndPassword.enabled
+            then:
+              - _ref:
+                  path: components/magic-link-send.yaml
+                  vars:
+                    id: login_magic_send
+                    label:
+                      _if:
+                        test:
+                          _eq:
+                            - _url_query: error
+                            - INVALID_TOKEN
+                        then: Email me a new link
+                        else: Email me a sign-in link
+                    # Secondary under the code entry on the expired-link render
+                    # (emailOTP on), primary otherwise — without emailOTP it is
+                    # the only action on that render.
+                    color:
+                      _build.if:
+                        test:
+                          _build.authConfig: emailOTP.enabled
+                        then:
+                          _if:
+                            test:
+                              _eq:
+                                - _url_query: error
+                                - INVALID_TOKEN
+                            then: default
+                            else: primary
+                        else: primary
+                    variant:
+                      _build.if:
+                        test:
+                          _build.authConfig: emailOTP.enabled
+                        then:
+                          _if:
+                            test:
+                              _eq:
+                                - _url_query: error
+                                - INVALID_TOKEN
+                            then: outlined
+                            else: solid
+                        else: solid
+                    on_sent:
+                      login_view: link-sent
+                      otp: null
+                    visible:
+                      _eq:
+                        - _state: login_view
+                        - signin
+            else: []
+
+        # --- "Use password" chooser button. Only when password AND at least one
+        # alternative are enabled (otherwise the form shows directly, no chooser).
+        # Reveals the password form; hidden once it is open. -----------------------
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.or:
+                    - _build.authConfig: magicLink.enabled
+                    - _build.authConfig: passkey.enabled
+                    - _build.gt:
+                        - _build.array.length:
+                            _build.authConfig: providers
+                        - 0
+            then:
+              - id: login_use_password
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - signin
+                    - _not:
+                        _state: login_show_password
+                properties:
+                  title: Use password
+                  block: true
+                  size: large
+                  color: primary
+                  variant: solid
+                events:
+                  onClick:
+                    - id: show_password_form
+                      type: SetState
+                      params:
+                        login_show_password: true
+            else: []
+
+        # --- Password form. Rendered only when emailAndPassword is enabled; within
+        # the signin view it shows when login_show_password is set (always, in the
+        # password-only case; on demand via "Use password" in the chooser). --------
+        - _build.if:
+            test:
+              _build.authConfig: emailAndPassword.enabled
+            then:
+              - id: login_password_label
+                type: Box
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - signin
+                    - _state: login_show_password
+                layout:
+                  justify: space-between
+                  align: middle
+                  selfAlign: middle
+                blocks:
+                  - id: login_password_label_text
+                    type: Html
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      html: Password
+                    style:
+                      fontSize: 13
+                      fontWeight: 500
+                      color: "var(--ant-color-text-secondary)"
+                  - id: login_forgot_link
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Forgot password?
+                      variant: link
+                      color: primary
+                      size: small
+                    events:
+                      onClick:
+                        - id: go_forgot_password
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: forgot-password
+              - id: password
+                type: PasswordInput
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - signin
+                    - _state: login_show_password
+                properties:
+                  size: large
+                  label:
+                    disabled: true
+                events:
+                  onPressEnter:
+                    _ref: actions/sign_in_password.yaml
+
+              # Primary submit. Email/password via the one `Login` action; the
+              # chain is shared with the inputs' Enter key.
+              - id: login_submit
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - signin
+                    - _state: login_show_password
+                properties:
+                  title: Sign in
+                  block: true
+                  size: large
+                  color: primary
+                  variant: solid
+                events:
+                  onClick:
+                    _ref: actions/sign_in_password.yaml
+            else: []
+
+        # --- "Other options" back link. Returns from the revealed password form
+        # to the method chooser. Built alongside the "Use password" button. -------
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: emailAndPassword.enabled
+                - _build.or:
+                    - _build.authConfig: magicLink.enabled
+                    - _build.authConfig: passkey.enabled
+                    - _build.gt:
+                        - _build.array.length:
+                            _build.authConfig: providers
+                        - 0
+            then:
+              - id: login_back_to_methods
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - signin
+                    - _state: login_show_password
+                properties:
+                  title: Other options
+                  icon: arrow-left
+                  block: true
+                  variant: link
+                  color: primary
+                events:
+                  onClick:
+                    - id: hide_password_form
+                      type: SetState
+                      params:
+                        login_show_password: false
+            else: []
+
+        # --- Magic-link method button (chooser). A peer of the OAuth / passkey
+        # buttons; hidden while the password form is open. Same shared component as
+        # the primary send, restyled via vars. -----------------------------------
+        - _build.if:
+            test:
+              _build.and:
+                - _build.authConfig: magicLink.enabled
+                - _build.authConfig: emailAndPassword.enabled
+            then:
+              - _ref:
+                  path: components/magic-link-send.yaml
+                  vars:
+                    id: login_magic_send
+                    label: Email me a sign-in link
+                    variant: outlined
+                    color: default
+                    icon: mail
+                    on_sent:
+                      login_view: link-sent
+                      otp: null
+                    visible:
+                      _and:
+                        - _eq:
+                            - _state: login_view
+                            - signin
+                        - _not:
+                            _state: login_show_password
+            else: []
+
+        # --- Single "or" divider. Renders when there is an email-credential group
+        # above (password / magic-link) AND an OAuth or passkey group below, in both
+        # the mixed chooser and the passwordless render — so the two method groups
+        # are always separated by exactly one divider, never zero or two. Hidden
+        # while the password form is open. ----------------------------------------
+        - _build.if:
+            test:
+              _build.and:
+                - _build.or:
+                    - _build.gt:
+                        - _build.array.length:
+                            _build.authConfig: providers
+                        - 0
+                    - _build.authConfig: passkey.enabled
+                - _build.or:
+                    - _build.authConfig: emailAndPassword.enabled
+                    - _build.authConfig: magicLink.enabled
+            then:
+              - id: login_method_divider
+                type: Divider
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - signin
+                    - _not:
+                        _state: login_show_password
+                properties:
+                  title: or
+                  plain: true
+            else: []
+
+        # --- OAuth (signin state). One button per configured provider that
+        # also has display metadata in the `providers` var (label/icon). --------
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _build.authConfig: providers
+                - 0
+            then:
+              - id: login_oauth_buttons
+                type: Box
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - signin
+                    - _not:
+                        _state: login_show_password
+                layout:
+                  gap: 12
+                blocks:
+                  _build.array.map:
+                    on:
+                      # `providers` var entries whose id the auth config enables.
+                      _build.array.filter:
+                        on:
+                          _module.var: providers
+                        callback:
+                          _build.function:
+                            __build.array.includes:
+                              on:
+                                __build.array.map:
+                                  on:
+                                    __build.authConfig: providers
+                                  callback:
+                                    __build.function:
+                                      ___build.args: "0.id"
+                              value:
+                                __build.args: "0.id"
+                    callback:
+                      _build.function:
+                        id:
+                          __build.string.concat:
+                            - login_oauth_
+                            - __build.args: "0.id"
+                        type: Button
+                        properties:
+                          title:
+                            __build.string.concat:
+                              - "Continue with "
+                              - __build.args: "0.label"
+                          icon:
+                            __build.args: "0.icon"
+                          block: true
+                          size: large
+                          variant: outlined
+                        events:
+                          onClick:
+                            - id: oauth_login
+                              type: Login
+                              params:
+                                providerId:
+                                  __build.args: "0.id"
+            else: []
+
+        # --- Passkey (signin state). Rendered only when passkey is enabled ---
+        # PasskeySignIn runs the WebAuthn assertion ceremony in the browser and
+        # resolves its own destination on success, the same way the email path
+        # does.
+        - _build.if:
+            test:
+              _build.authConfig: passkey.enabled
+            then:
+              # Gated on a well-formed email: passkey itself is a
+              # discoverable-credential ceremony that needs no email, but the
+              # gate makes sure the member has identified themselves before
+              # the prompt, and the address is at hand for the magic-link
+              # fallback if the authenticator cancels. The button stays
+              # clickable either way (an antd-disabled Button dropped inside
+              # a block-width layout no longer stretches full width); an
+              # invalid email short-circuits the click with an inline notice
+              # instead of starting the ceremony.
+              - id: login_passkey
+                type: Button
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: login_view
+                        - signin
+                    - _not:
+                        _state: login_show_password
+                properties:
+                  title: Sign in with a passkey
+                  icon: Key
+                  block: true
+                  size: large
+                  variant: outlined
+                events:
+                  onClick:
+                    try:
+                      - :if:
+                          _not:
+                            _regex:
+                              pattern: '^[^\s@]+@[^\s@]+\.[^\s@]+$'
+                              on:
+                                _if_none:
+                                  - _state: email
+                                  - ""
+                        :then:
+                          - id: login_passkey_email_required
+                            type: DisplayMessage
+                            params:
+                              status: warning
+                              content: Enter your email address above first.
+                        :else:
+                          - id: passkey_signin
+                            type: PasskeySignIn
+                            messages:
+                              error: false
+                    # One generic message for every failure (no matching
+                    # passkey, the prompt was cancelled, the device doesn't
+                    # support it, or it timed out) — never reveal which case it
+                    # was, so this can't be used to probe whether an email has
+                    # an account or a passkey.
+                    catch:
+                      - id: passkey_signin_error
+                        type: DisplayMessage
+                        params:
+                          status: warning
+                          # The login page renders any mix of password,
+                          # email link/code and OAuth, so the copy names no
+                          # single alternative.
+                          content: >-
+                            No passkey could be used to sign in on this
+                            device. Sign in another way, then add a passkey
+                            under your account's Security settings.
+            else: []
+
+        # --- Link-sent actions. Resend re-fires the same shared send
+        # (cooldown-guarded); the link button returns to signin. The "check your
+        # email" result and the code entry render above (see the code-entry
+        # section after the email input). ------------------------------------
+        - _build.if:
+            test:
+              _build.authConfig: magicLink.enabled
+            then:
+              _build.array.concat:
+                - - _ref:
+                      path: components/magic-link-send.yaml
+                      vars:
+                        id: login_resend
+                        label: Resend link
+                        variant: outlined
+                        color: default
+                        on_sent:
+                          login_view: link-sent
+                          otp: null
+                        visible:
+                          _eq:
+                            - _state: login_view
+                            - link-sent
+                  # Offered only where the email is the user's to change, an
+                  # address-bound entry (`?email=`) holds a locked field, so this
+                  # would lead back to a form that cannot take a different address.
+                  - id: login_back_to_form
+                    type: Button
+                    visible:
+                      _and:
+                        - _eq:
+                            - _state: login_view
+                            - link-sent
+                        - _eq:
+                            - _url_query: email
+                            - null
+                    properties:
+                      title: Use a different email
+                      block: true
+                      variant: link
+                      color: primary
+                    events:
+                      onClick:
+                        - id: back_to_signin
+                          type: SetState
+                          params:
+                            login_view: signin
+                            otp: null
+            else: []
+    nav:
+      # Only when a signup page exists. Passwordless (emailAndPassword off) builds
+      # no signup route and collapses sign-up into this page's email -> link
+      # action, so the "create an account" prompt would 404 and misdescribe the
+      # flow; gated out there.
+      _build.if:
+        test:
+          _build.authConfig: emailAndPassword.enabled
+        then:
+          - id: login_footer
+            type: Html
+            properties:
+              html:
+                _string.concat:
+                  - 'Need an account? <a data-page-id="'
+                  - _module.pageId: signup
+                  - '">Create one</a>'
+        else: []

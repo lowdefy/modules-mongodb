@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import entityPageLink from "../../shared/render/entityPageLink.js";
 import {
   computeAllowed,
   collapseLink,
@@ -25,9 +26,9 @@ import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js
  */
 async function GetEntityWorkflows(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection, workflowsConfig } = context;
+  const { params, mongoDb, connection, workflowsConfig, tenant } = context;
   const { connection_id, id } = params.entity ?? {};
-  const app_name = connection.app_name;
+  const slug = connection.slug;
   const entry_id = connection.entry_id;
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? "workflows";
@@ -39,6 +40,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     collection: workflowsCollection,
     query: { "entity.connection_id": connection_id, "entity.id": id },
     options: { sort: { display_order: 1, "created.timestamp": -1 } },
+    tenant,
   });
 
   if (workflowDocs.length === 0) {
@@ -51,6 +53,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     mongoDb,
     collection: actionsCollection,
     query: { workflow_id: { $in: workflowIds } },
+    tenant,
   });
 
   // Index actions by workflow_id for quick lookup.
@@ -88,14 +91,14 @@ async function GetEntityWorkflows(lowdefyContext) {
     for (const action of rawActions) {
       const allowed = computeAllowed({
         access: action.access,
-        app_name,
+        slug,
         userRoles,
       });
       if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
         continue; // drop: no verb accessible
       }
-      const link = collapseLink({ links: action[app_name]?.links, allowed });
-      const message = action[app_name]?.message ?? null;
+      const link = collapseLink({ links: action[slug]?.links, allowed });
+      const message = action[slug]?.message ?? null;
       const status = action.status?.[0]?.stage ?? null;
       visibleActions.push({ action, allowed, link, message, status });
     }
@@ -182,8 +185,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     const entityConfig = wfConfig?.entity;
     const entity_link = entityConfig
       ? {
-          pageId: entityConfig.page_id,
-          urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
+          ...entityPageLink(entityConfig, wfDoc.entity.id),
           title: entityConfig.title ?? null,
         }
       : null;

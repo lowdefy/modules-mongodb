@@ -1,0 +1,48 @@
+# Rename passkey modal (F39): PasskeyUpdate client action on the caller's own
+# passkey. A user-supplied name is the distinguisher across multiple passkeys, so
+# each row's pencil seeds renamepk.passkey_id + prefills renamepk.name here.
+# Ownership is enforced server-side (updatePasskey), so a caller can only rename
+# their own. On success we re-fetch so the list (passkeys_ui state) shows the new
+# name. A validation failure in onOk throws and keeps the modal open.
+id: modal_rename_passkey
+type: Modal
+properties:
+  title: Rename passkey
+  width: 480
+  okText: Save name
+  cancelText: Cancel
+events:
+  onClose:
+    - id: reset_renamepk
+      type: SetState
+      params:
+        renamepk.passkey_id: null
+        renamepk.name: null
+  onOk:
+    _build.array.concat:
+      - - id: validate_renamepk
+          type: Validate
+          params: renamepk.name
+        - id: rename_passkey
+          type: PasskeyUpdate
+          messages:
+            loading: Saving…
+            success: Passkey renamed.
+            error: Couldn't rename the passkey. Try again.
+          params:
+            passkeyId:
+              _state: renamepk.passkey_id
+            name:
+              _state: renamepk.name
+      - _ref: actions/refetch_account.yaml
+blocks:
+  - id: renamepk.name
+    type: TextInput
+    required: true
+    layout:
+      span: 24
+    properties:
+      label:
+        title: Passkey name
+        span: 24
+      maxLength: 64

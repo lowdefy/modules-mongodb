@@ -89,15 +89,15 @@ table in Notes.
 
 - **The same collapsed state renders sensibly at both widths, by construction:**
 
-  | Width   | Collapsed renders as                                                          |
-  | ------- | ----------------------------------------------------------------------------- |
-  | ≥768px  | The narrow rail — span drops, body hidden, chevron remains                      |
-  | <768px  | A full-width header-only strip — the span change is inert, the hidden body acts |
+  | Width  | Collapsed renders as                                                            |
+  | ------ | ------------------------------------------------------------------------------- |
+  | ≥768px | The narrow rail — span drops, body hidden, chevron remains                      |
+  | <768px | A full-width header-only strip — the span change is inert, the hidden body acts |
 
   Lowdefy's top-level `span` applies from **768px upward**, while `sm: { span: 24 }` sets the base
   below it. So below 768px the column stays full width no matter what the collapse state says, and
   hiding the body is what takes effect. That sub-768px behaviour is a genuine improvement, not a
-  degenerate case: the list card is `calc(100vh - 110px)` tall and stacks *above* the workspace there,
+  degenerate case: the list card is `calc(100vh - 110px)` tall and stacks _above_ the workspace there,
   so today you scroll a full screen past it to reach the deal.
 
 - Whether the collapsed state should persist across page loads is an open question in the design.

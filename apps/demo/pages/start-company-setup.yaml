@@ -17,7 +17,7 @@ _ref:
     content_width: 640
     breadcrumbs:
       - home: true
-        icon: AiOutlineHome
+        icon: home
       - label: Deals
         pageId: deals/all
       - label: Company setup
@@ -121,7 +121,7 @@ _ref:
                 properties:
                   title: Start company setup
                   type: primary
-                  icon: AiOutlineCheck
+                  icon: check
                 events:
                   onClick:
                     - id: start_setup

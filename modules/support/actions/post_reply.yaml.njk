@@ -1,0 +1,80 @@
+# Send in a thread's composer: post the reply, with its files, on the open
+# ticket. The thread shows the view Pelican returns and the composer clears;
+# otherwise the draft stays and the composer says why. Nothing is resent on its
+# own.
+#
+# Vars:
+#   prefix  the state and block id prefix of the surface
+try:
+  - id: {{ prefix }}_reply_validate
+    type: Validate
+    params:
+      regex: ^{{ prefix }}_reply\.
+  - id: {{ prefix }}_reply_start
+    type: SetState
+    params:
+      {{ prefix }}_posting: true
+      {{ prefix }}_reply_error: null
+  - id: {{ prefix }}_post_message
+    type: CallAPI
+    params:
+      endpointId:
+        _module.endpointId: post-message
+      payload:
+        ticket:
+          _state: {{ prefix }}_thread._id
+        message:
+          _state: {{ prefix }}_reply.message
+        files:
+          _array.map:
+            on:
+              _if_none:
+                - _state: {{ prefix }}_reply.files
+                - []
+            callback:
+              _function:
+                key:
+                  __args: 0.key
+                name:
+                  __args: 0.name
+  - id: {{ prefix }}_reply_sent
+    type: SetState
+    skip:
+      _ne:
+        - _actions: {{ prefix }}_post_message.response.response.ok
+        - true
+    params:
+      {{ prefix }}_thread:
+        _actions: {{ prefix }}_post_message.response.response.ticket
+      {{ prefix }}_reply.message: null
+      {{ prefix }}_reply.files: []
+  - id: {{ prefix }}_reply_refused
+    type: SetState
+    skip:
+      _eq:
+        - _actions: {{ prefix }}_post_message.response.response.ok
+        - true
+    params:
+      {{ prefix }}_reply_error:
+        _ref:
+          path: components/parts/error_message.yaml
+          vars:
+            error:
+              _actions: {{ prefix }}_post_message.response.response.error
+  - id: {{ prefix }}_reply_done
+    type: SetState
+    params:
+      {{ prefix }}_posting: false
+catch:
+  - id: {{ prefix }}_reply_failed
+    type: SetState
+    skip:
+      _ne:
+        - _state: {{ prefix }}_posting
+        - true
+    params:
+      {{ prefix }}_reply_error: Something went wrong, try again.
+  - id: {{ prefix }}_reply_failed_done
+    type: SetState
+    params:
+      {{ prefix }}_posting: false

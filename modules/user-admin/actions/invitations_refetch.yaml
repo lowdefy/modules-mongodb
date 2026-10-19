@@ -1,0 +1,18 @@
+# Invitations tab refetch (design Decision 2). Independent per-tab state:
+# resets `inv_pagination` and re-runs get_all_invitations, leaving the Members
+# tab's state untouched.
+- id: reset_invitations_pagination
+  type: SetState
+  params:
+    inv_pagination:
+      current: 1
+      skip: 0
+      pageSize:
+        _if_none:
+          - _state: inv_pagination.pageSize
+          - 100
+- id: fetch_invitations
+  type: Request
+  messages:
+    loading: true
+  params: get_all_invitations

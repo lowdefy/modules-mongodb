@@ -1,2 +1,8 @@
+# PageHeaderMenu avatar for the signed-in user. Reads the top-level display
+# copy `_user.image` (denormalized from the contact's profile.picture by the
+# write-profile fragment, Decision 6). Falls back to profile.picture for a
+# session written before the display copy existed.
 src:
-  _user: profile.picture
+  _if_none:
+    - _user: image
+    - _user: profile.picture

@@ -1,0 +1,105 @@
+# update-access: this app's app roles + member attributes: UpdateMemberRoles +
+# UpdateMemberAttributes (both SET, not append, idempotent). Submitted role ids
+# are NOT validated against the app role catalog: an unrecognised id grants
+# nothing, so an orphan held in data rides through untouched and only an admin
+# removing it takes it away. Rejecting one would fail an admin's whole save over
+# a stale role they never touched.
+#
+# The `appRoles` param sets `app_roles`, the member row's native array field. The
+# organization-authority tier (`member.role`) is a different authority with its
+# own endpoint (update-org-role); nothing here touches it.
+#
+# `organizationId` is named explicitly on both steps: an absent one falls back to
+# the APP's pinned organization, so an instance administering another organization
+# would be authorized against, and write into, the wrong one. Role-gated
+# app-side; each step declares the permission it needs and the engine floors it
+# against the caller's member row in the organization the step names.
+#
+# Payload: { member_id, roles (array of role ids), member_attributes (object)?,
+#            user_id?, target_name?, target_email? }
+# The two-step chain's benign partial state (new roles, old attributes) is
+# resolved by retry. Audit event is the FINAL step. It records the member row's
+# `{ roles, attributes }` read before the first write and after the second, so an
+# attributes-only change still shows its difference.
+id: update-access
+type: Api
+routine:
+  - _ref:
+      path: api/steps/read_member_access.yaml
+      vars:
+        id: access_before
+        match:
+          _id:
+            _payload: member_id
+  - id: set_roles
+    type: UpdateMemberRoles
+    properties:
+      memberId:
+        _payload: member_id
+      organizationId:
+        _module.var: org_slug
+      appRoles:
+        _if_none:
+          - _payload: roles
+          - []
+  - id: set_member_attributes
+    type: UpdateMemberAttributes
+    properties:
+      memberId:
+        _payload: member_id
+      organizationId:
+        _module.var: org_slug
+      attributes:
+        _if_none:
+          - _payload: member_attributes
+          - {}
+  - _ref:
+      path: api/steps/read_member_access.yaml
+      vars:
+        id: access_after
+        match:
+          _id:
+            _payload: member_id
+  - id: audit
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: access-updated
+        display:
+          _build.object.fromEntries:
+            - - _build.app: slug
+              - title:
+                  _nunjucks:
+                    template:
+                      _build.if_none:
+                        - _module.var: event_display.access-updated
+                        - _ref:
+                            path: defaults/event_display.yaml
+                            key: access-updated
+                    on:
+                      user:
+                        _user: true
+                      target:
+                        name:
+                          _payload: target_name
+                        email:
+                          _payload: target_email
+                description: null
+        references:
+          user_ids:
+            - _payload: user_id
+        metadata:
+          before:
+            _if_none:
+              - _step: access_before.0
+              - null
+          after:
+            _if_none:
+              - _step: access_after.0
+              - null
+  - :return:
+      success: true

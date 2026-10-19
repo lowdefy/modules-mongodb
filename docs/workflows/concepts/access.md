@@ -31,12 +31,12 @@ Each key under `access:` is an app name. Under each app name, the keys are **ver
 
 Four verbs exist, each with independent meaning:
 
-| Verb     | Effect                                                                                                                                        |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`   | Shows the action in the `actions-on-entity` component; renders read-only detail pages                                                         |
-| `edit`   | Renders the submit form — form-action `-edit` page, or the `{workflow_type}-action` page in edit mode for check actions                        |
+| Verb     | Effect                                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `view`   | Shows the action in the `actions-on-entity` component; renders read-only detail pages                                                                  |
+| `edit`   | Renders the submit form — form-action `-edit` page, or the `{workflow_type}-action` page in edit mode for check actions                                |
 | `review` | Renders the review page — form-action `-review` page, or the `{workflow_type}-action` page in review mode. Ships `approve` / `request_changes` buttons |
-| `error`  | Renders the recovery page for form actions in `error` state                                                                                   |
+| `error`  | Renders the recovery page for form actions in `error` state                                                                                            |
 
 **Verbs are independent.** Granting `edit` does not grant `view`. An author who wants "everyone can see, only managers edit" writes both:
 
@@ -58,13 +58,13 @@ edit: [account-manager]             # single role
 edit: [account-manager, ops-lead]   # role OR (intersection is non-empty)
 ```
 
-Roles are checked against `_user.apps.{app_name}.roles` — that app's role list, never another app's. Cross-app role names don't interfere.
+Roles are checked against `_user.apps.{slug}.roles` — that app's role list, never another app's. Cross-app role names don't interfere.
 
 An empty array `[]` is invalid — omit the verb key instead.
 
 ## Three enforcement checkpoints
 
-**1. Build time.** `makeActionPages` emits a page only when the verb key is present in `access.{host_app_name}`. Presence is the gate — role values are irrelevant at build time. A verb absent from the config has no page in that app.
+**1. Build time.** `makeActionPages` emits a page only when the verb key is present in `access.{slug}` for the host app's slug. Presence is the gate — role values are irrelevant at build time. A verb absent from the config has no page in that app.
 
 **2. Query time.** `get-entity-workflows` evaluates every declared verb's gate against the caller's roles and returns the server-resolved `allowed` bag (`{ view, edit, review, error }`) on each action. If all four are `false`, the action is dropped from the response — invisible to that user. Page links rendered by `actions-on-entity` read these booleans to decide which links to show.
 

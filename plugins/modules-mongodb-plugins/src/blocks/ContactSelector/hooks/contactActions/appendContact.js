@@ -33,9 +33,14 @@ function createAppendContact({ blockId, methods, properties: { verified } }) {
 
   return function appendContact(contact, contactId) {
     if (!type.isObject(contact)) throw new Error("Contact must be an object");
+    // `contact` is the modal's form state, not the stored contact, so the
+    // server-derived `profile.name` is not on it. Same rule as the derivation.
+    const parts = [contact.profile?.given_name, contact.profile?.family_name]
+      .map((part) => (part || "").trim())
+      .filter(Boolean);
     const newContact = {
       contact_id: contactId,
-      name: `${contact.profile?.given_name} ${contact.profile?.family_name}`,
+      name: parts.length ? parts.join(" ") : null,
       email: contact?.email,
       verified: !!verified,
     };

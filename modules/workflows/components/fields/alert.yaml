@@ -52,7 +52,7 @@ config:
           _var: message
         description:
           _var: description
-        icon: AiOutlineAlert
+        icon: Siren
         type:
           _var:
             key: type

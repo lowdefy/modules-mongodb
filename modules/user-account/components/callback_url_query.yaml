@@ -1,0 +1,12 @@
+# The inbound `?callbackUrl=` as a `urlQuery` fragment: `{ callbackUrl }` when the
+# page has one, `{}` when it does not. The key is left out rather than set to null,
+# because a null serialises into the link as the string "null".
+_if:
+  test:
+    _ne:
+      - _url_query: callbackUrl
+      - null
+  then:
+    callbackUrl:
+      _url_query: callbackUrl
+  else: {}

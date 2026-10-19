@@ -2,6 +2,7 @@ _ref:
   module: layout
   component: card
   vars:
+    id: tile_companies
     title: Companies
     blocks:
       - id: contact_companies_list

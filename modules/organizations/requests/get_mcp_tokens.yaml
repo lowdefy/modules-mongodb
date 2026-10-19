@@ -1,0 +1,22 @@
+# Every MCP token in the caller's ACTIVE organization, newest first, without
+# its hash. The tenant wall scopes the read to the organization. The page adds
+# each token's member name from get_members.
+#
+# Owners and admins only: the read itself returns nothing to anyone else.
+id: get_mcp_tokens
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-mcp-tokens
+properties:
+  pipeline:
+    - $match:
+        _if:
+          test:
+            _ref: components/caller_is_org_admin.yaml
+          then: {}
+          else:
+            $expr: false
+    - $project:
+        hash: 0
+    - $sort:
+        created_at: -1

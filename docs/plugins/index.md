@@ -10,16 +10,22 @@ Custom Lowdefy blocks, actions, and connections used by the modules in this repo
 
 ## Blocks
 
-| Block                                      | Category          | Purpose                                                                                                                                                                            |
-| ------------------------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [ActionSteps](action-steps.md)             | `display`         | Antd `Steps` view of grouped actions — each step is an action group with badged, optionally linked sub-actions and a rolled-up status.                                             |
-| [ContactSelector](contact-selector.md)     | `input-container` | Multi-select contact picker with search, add, edit, remove, and verify flows. Backs the `contacts` module's selector component.                                                    |
-| [DataDescriptions](data-descriptions.md)   | `display`         | Rich, structured Antd `Descriptions` view driven by an explicit `formConfig` with sections, ordering, and component hints.                                                         |
-| [EventsTimeline](events-timeline.md)       | `display`         | Timeline of `log-events` documents — avatars, time-ago labels, action badges, optional file attachments. Backs the `events` module's timeline.                                     |
-| [FileManager](file-manager.md)             | `container`       | Drag-drop S3 upload with thumbnails, paste-to-upload, optional metadata form, download, and delete. Backs the `files` module.                                                      |
-| [FloatingPanel](floating-panel.md)         | `container`       | Intercom-style corner launcher + floating panel over a `pointer-events: none` wrapper — the page stays clickable. Backs the `ai-assistant` module.                                 |
-| [SmartDescriptions](smart-descriptions.md) | `display`         | Antd `Descriptions` view with auto type detection from the data — no schema required. Use `DataDescriptions` instead when you need explicit grouping.                              |
-| [WorkflowProgress](workflow-progress.md)   | `display`         | Collapsible per-workflow sections of grouped, status-colored action buttons — a presentation variant of `ActionSteps`. Backs the workflows module's `workflow-progress` component. |
+| Block                                      | Category          | Purpose                                                                                                                                                                                                                                                 |
+| ------------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ActionSteps](action-steps.md)             | `display`         | Antd `Steps` view of grouped actions — each step is an action group with badged, optionally linked sub-actions and a rolled-up status.                                                                                                                  |
+| [AvatarUpload](avatar-upload.md)           | `input`           | Round avatar that is the upload control — center-crops, downscales, and compresses a picked image to a data URI under a byte cap. Backs the shared `avatar-picker` row.                                                                                 |
+| [ChatThread](chat-thread.md)               | `display`         | Two-party conversation thread: own messages right, the other side left with avatars, day pills, author grouping, links and image or file attachments.                                                                                                   |
+| [ContactSelector](contact-selector.md)     | `input-container` | Multi-select contact picker with search, add, edit, remove, and verify flows. Backs the `contacts` module's selector component.                                                                                                                         |
+| [DataDescriptions](data-descriptions.md)   | `display`         | Rich, structured Antd `Descriptions` view driven by an explicit `formConfig` with sections, ordering, and component hints.                                                                                                                              |
+| [EventsTimeline](events-timeline.md)       | `display`         | Timeline of `log-events` documents — avatars, time-ago labels, action badges, optional file attachments. Backs the `events` module's timeline.                                                                                                          |
+| [FileManager](file-manager.md)             | `container`       | Drag-drop S3 upload with thumbnails, paste-to-upload, optional metadata form, download, and delete. Backs the `files` module.                                                                                                                           |
+| [FloatingPanel](floating-panel.md)         | `container`       | Intercom-style corner launcher + floating panel over a `pointer-events: none` wrapper — the page stays clickable. Backs the `ai-assistant` module.                                                                                                      |
+| [MessageComposer](message-composer.md)     | `input`           | One bordered message box: autosizing text, image or PDF attach by button, paste or drop with upload chips, a hint and a send button inside. Backs the `support` module's reply and report.                                                              |
+| [NotificationSound](notification-sound.md) | `input`           | Opt-in chirp for live notifications, and the viewer's Sound switch; plays once per batch across tabs.                                                                                                                                                   |
+| [SmartDescriptions](smart-descriptions.md) | `display`         | Antd `Descriptions` view with auto type detection from the data — no schema required. Use `DataDescriptions` instead when you need explicit grouping.                                                                                                   |
+| [SupportContext](support-context.md)       | `input`           | Renders nothing; its `snapshot` method reads the browser's details and the tab's last 20 errors, kept by a recorder the plugin installs at app start, for a support ticket. The `_support_context` operator gives the same for an agent's shared state. |
+| [SupportScreenshot](support-screenshot.md) | `display`         | Take screenshot button: draws the visible page to a PNG with passwords and marked fields blanked, lets the user blur or crop it, and uploads it to S3.                                                                                                  |
+| [WorkflowProgress](workflow-progress.md)   | `display`         | Collapsible per-workflow sections of grouped, status-colored action buttons — a presentation variant of `ActionSteps`. Backs the workflows module's `workflow-progress` component.                                                                      |
 
 ## `FetchRequest` action
 
@@ -114,6 +120,10 @@ Unlike `GenerateChatTitle` it **throws** on failure — a missing key, a gateway
 | `sections`    | array   | —                           | The shaped per-section data from `_analytics.buildSummaryInput`. Required.                  |
 | `model`       | string  | `anthropic/claude-sonnet-5` | Gateway model id (provider/model).                                                          |
 
+## `SupportWebhook` connection
+
+Verifies that a webhook delivery from Pelican's support desk was signed with the app's webhook secret within the last five minutes. Its `SupportWebhookVerify` request is the verifier the `support` module's webhook endpoint runs in its `webhook: { verify }` gate. See [SupportWebhook](support-webhook.md).
+
 ## Reporting analytics
 
 The `ai-reporting` module's query engine ships here. These are documented with the module rather than duplicated:
@@ -126,6 +136,17 @@ The `ai-reporting` module's query engine ships here. These are documented with t
 | `_analytics` server operator | Server-side spec validation and block compilation (`buildDataParts`, `compileReport`, `querySections`, `summaryQueries`, `buildSummaryInput`)              |
 
 See [AI Chat Reporting](../ai-reporting/index.md), and [the open query engine](../ai-reporting/concepts/open-query-engine.md) for the validation model and caps.
+
+## Data-set journeys
+
+Pages that use these connections run in a Lowdefy data-set journey. Each connection declares how a journey treats it (`meta.dataSet`):
+
+| Connection                                       | `meta.dataSet` | Under a data-set journey                                                        |
+| ------------------------------------------------ | -------------- | ------------------------------------------------------------------------------- |
+| `EventsTimeline`, `WorkflowAPI`, `ReportingData` | `redirect`     | Reads and writes the journey's own database (`databaseUri` and `databaseName`). |
+| `AiText`                                         | `external`     | Keeps calling the real AI Gateway.                                              |
+
+The `redirect` connections share one MongoDB client per URI and open the connection's `databaseName` on every request, so journeys on one server never see each other's data.
 
 ## Install
 

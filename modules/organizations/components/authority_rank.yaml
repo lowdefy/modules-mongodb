@@ -1,0 +1,29 @@
+# A member row's authority as a number to compare: 3 owner, 2 admin, 1 anything
+# else. The role may carry comma-joined tiers; the highest counts.
+#
+# Vars:
+#   role  the role string
+_if:
+  test:
+    _array.includes:
+      on:
+        _string.split:
+          - _if_none:
+              - _var: role
+              - ''
+          - ','
+      value: owner
+  then: 3
+  else:
+    _if:
+      test:
+        _array.includes:
+          on:
+            _string.split:
+              - _if_none:
+                  - _var: role
+                  - ''
+              - ','
+          value: admin
+      then: 2
+      else: 1

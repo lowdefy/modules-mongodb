@@ -4,13 +4,12 @@ import computeEngineLinks from "../../render/computeEngineLinks.js";
 import renderStatusMap from "../../render/renderStatusMap.js";
 import deepMerge from "./deepMerge.js";
 
-// Part 24 / Part 64 / Part 65: the action-level universal fields. On the UPDATE
-// path they are stripped for a USER submit (`source: 'user'`, any kind) — a
-// user edits assignees/due_date only through the `UpdateActionFields` operation,
-// never as a side effect of a transition they trigger (Part 65 D1). They pass
-// through for hook/cascade orchestration (`source: 'auxiliary'` / `'cascade'`),
-// the legitimate counterpart to start-time seeding. (Part 64 dropped
-// `description` — it is now author-authored config, not an editable field.)
+// The action-level universal fields. On the UPDATE path they are stripped for a
+// USER submit (`source: 'user'`, any kind) — a user edits assignees/due_date
+// only through the `UpdateActionFields` operation, never as a side effect of a
+// transition they trigger (design D1). They pass through for hook/cascade
+// orchestration (`source: 'auxiliary'` / `'cascade'`), the legitimate
+// counterpart to start-time seeding.
 const UNIVERSAL_FIELDS = ["assignees", "due_date"];
 
 /**

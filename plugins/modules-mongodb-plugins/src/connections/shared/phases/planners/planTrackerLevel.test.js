@@ -12,7 +12,7 @@ const now = {
 };
 const event_id = "LEVEL-EVT";
 const newId = () => "new-1";
-const connection = { entry_id: "workflows", app_name: "test-app" };
+const connection = { entry_id: "workflows", slug: "test-app" };
 
 function makeTrackerAction({
   _id = "track-1",

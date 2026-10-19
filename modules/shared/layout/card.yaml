@@ -7,14 +7,24 @@ _build.switch:
       then:
         _module.var: card
   default:
-    id: card-section
+    # Unique per page when a page stacks several cards — pass `id` to
+    # disambiguate (block ids are page state keys and must be unique).
+    id:
+      _var:
+        key: id
+        default: card-section
     type: Box
     layout:
       span: 24
       gap: 8
     blocks:
       _build.array.concat:
-        - - id: card
+        - - id:
+              _build.string.concat:
+                - _var:
+                    key: id
+                    default: card-section
+                - '_card'
             type: Card
             loading:
               _var:
@@ -41,13 +51,23 @@ _build.switch:
                     _var: title
             layout:
               gap: 16
-            # TODO: slots.extra forces the card title area to render even when hide_title: true
+            # An `extra` slot renders the card header even when it is empty, so
+            # only declare it when a caller passed header buttons — otherwise a
+            # title-less card gets a blank header band. Tested for presence, not
+            # length: header_buttons may be a runtime operator.
             slots:
-              extra:
-                blocks:
-                  _var:
-                    key: header_buttons
-                    default: []
+              _build.if:
+                test:
+                  _build.eq:
+                    - _var:
+                        key: header_buttons
+                        default: null
+                    - null
+                then: {}
+                else:
+                  extra:
+                    blocks:
+                      _var: header_buttons
             blocks:
               _var:
                 key: blocks

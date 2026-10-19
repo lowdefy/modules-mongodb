@@ -2,27 +2,240 @@
 title: User Admin
 module: user-admin
 type: index
+concepts:
+  [
+    access-lifecycle,
+    org-slug,
+    roles,
+    org-authority,
+    invitations,
+    suspend,
+    two-factor-recovery,
+    passkey-recovery,
+  ]
 ---
 
 # User Admin
 
-User administration — list, search, invite, edit, and manage user access for an app. Operates on the shared `user-contacts` collection with per-app data namespaced under `apps.{app_name}`, so a single collection serves multiple apps.
+The **operator console for a person's access lifecycle in one organization**. Rebuilt on
+the BetterAuth-based auth engine: it composes app-owned contact data, the
+sanctioned admin-step write surface, and audit events into per-concern routines —
+it is no longer CRUD over one fused collection.
 
-The end-user counterpart is [`user-account`](../user-account/index.md).
+One module instance administers **one organization — the one named by its required
+`org_slug` var**. Under the `pinned` organizations policy an organization's id _is_
+its slug, and the slug is welded into every read `$match` and every write step at
+build time: the instance never picks an organization at request time. The list and
+detail pages read as "this app's users"; "organization" surfaces in the UI only on
+the authority control that grants it.
+
+**Two admin surfaces in one app are two module instances** — same module source,
+two entries, two `org_slug` values. See
+[Installing an instance](#installing-an-instance). The self-service counterpart is
+[`user-account`](../user-account/index.md).
+
+## What it does
+
+- **Members + Invitations list** (`all` page) — two tabs, one menu entry. Members
+  reads `user-members` joined to `users` and `user-contacts`; Invitations shows
+  pending rows split into **Invited** / **Expired** (derived on `expires_at` — there
+  is no `expired` status in BetterAuth) with a pending-count badge. Server-side
+  filter / sort / pagination; a merged Excel export behind the `download` var.
+- **User detail** (`view` page) — one page with section-scoped edits: **Profile**
+  (contact fields), **Attributes** (this app's roles + member attributes, plus — behind
+  the `org_authority` var — the member's organization-authority tier, saved by the
+  tile's single Save), **Global attributes** (user attributes), **Security** (suspend/reinstate,
+  sign-out-everywhere, remove, delete, sessions, auth methods, two-factor and
+  passkey recovery — see [Two-factor and passkey recovery](#two-factor-and-passkey-recovery)),
+  **Apps** (cross-app badges), **Activity** (event timeline). Each tile edits
+  through its own modal and its own routine. The **auth methods** block is
+  read-only visibility of how the user can sign in — email-verified, OAuth
+  providers, MFA, and **passkeys** (a badge when the user has ≥ 1 enrolled;
+  enrolment/removal is `user-account` self-service, never this module).
+- **Invite** (`invite` page) — email-first: the admin enters an email, a check
+  resolves it to already-a-member / pending-invitation / existing-contact /
+  unknown before the form opens. The form then captures the invitee's **canonical
+  profile** (first/last name — both required — an optional honorific when
+  `fields.show_honorific`, and the configured `fields.profile`), identical to the
+  Profile edit modal. It also carries the invitee's app roles and — behind the
+  `org_authority` var — their organization-authority tier, seeded to `member` (no
+  authority), so a form nobody touches invites app roles and no authority. When
+  the email has an **expired** invitation in this organization, the form instead
+  opens with that invitation's app roles, organization tier and member attributes
+  (a stored `owner` tier seeds `admin`, the highest tier the form offers), and
+  sending cancels the expired row before inviting. The Invitations tab's
+  **Re-invite** on an Expired row opens the page with `?email=`, which runs the
+  check on load. That
+  profile is **persisted to the contact record at invite
+  time**, so the name shows on the Members list the moment the invitation is
+  accepted — without waiting for the invitee to onboard. The invitation email is
+  sent by BetterAuth via the deployment's `auth.email` — the module ships no email
+  endpoint or hook.
+
+## The access lifecycle
+
+```
+Invited ──accept──► Active ◄──unban──── Suspended (ban: global, reversible,
+   │                  │    ──ban─────►             sessions revoked)
+cancel / expire       │
+                 Remove from app (member row deleted; re-invite to restore)
+                      │
+                 Delete login identity (user row hard-deleted; contact survives)
+```
+
+**Suspend is user-level, so it applies across every app in the suite.** The
+confirm dialog enumerates the user's other memberships so the admin sees the
+blast radius. This rests on the deployment premise that the pinned suite is
+administered by one trusted operator group; it sits behind the `suspension` var
+(default on). **Remove from app** (`RemoveMember`) is the app-scoped alternative.
+**Delete login identity** is offered only when the user holds no other memberships.
+
+Remove from app deletes the member row, so the person's roles and member
+attributes go with it. Delete login removes the user id that other records may be
+keyed on, and a re-invite creates a new one. In an app whose people carry history
+or settings on those rows, set `remove_member: false` and `delete_user: false`:
+each hides its button and confirm modal and makes its endpoint (`remove-member`,
+`delete-user`) reject, the same shape as `suspension: false` on `suspend` /
+`reinstate`. The endpoints stay registered; the rejection is the routine's first
+step. Suspend and Reinstate are unaffected by either var.
+
+## Two-factor and passkey recovery
+
+The Security tile's Auth-methods area carries two recovery controls, each built
+only when the corresponding method is enabled deployment-wide
+(`_build.authConfig.twoFactor.enabled` / `.passkey.enabled`) and shown per-user
+only beside the badge for a method that user actually holds:
+
+- **Reset two-factor authentication** — clears the target's TOTP authenticator
+  (and its backup codes), shown beside the `MFA · TOTP` badge.
+- **Revoke passkeys** — clears the target's passkeys, all at once or one at a
+  time when they hold more than one, shown beside the passkey badge.
+
+Each control revokes the target's sessions, writes an audit event, and notifies
+the target — same shape as the existing suspend/ban actions, not a new pattern.
+
+**The reach is suite-wide.** `two_factor_enabled` and passkeys are keyed to the
+`user`, not the `member`, so a reset or revoke from one app's admin console
+removes the factor across **every app in the suite**, exactly like ban (see
+[The access lifecycle](#the-access-lifecycle)). The confirm dialog enumerates the
+target's other memberships so the admin sees the blast radius.
+
+**Who may perform it is bounded by org-authority, independent of who can see
+member management.** Each action is a distinct per-action org permission —
+`reset-two-factor` and `revoke-passkeys` — floored by the caller's own member
+row in `org_slug`'s organization, the same floor as every other write in
+[Write pathways](#write-pathways). A deployment can grant a role member
+management while withholding recovery by simply not granting these two
+permissions; there is no module var for this and none is needed.
+
+**There is no admin "exempt from 2FA" control, on purpose.** Both actions return
+the target to **unenrolled** for the factor cleared — never to an exempt state.
+In a deployment running `auth.twoFactor.required`, an unenrolled user is routed
+straight back into re-enrolment on their next request (see
+[Auth methods](../user-account/concepts/auth-methods.md)); recovery is not a way
+to excuse someone from that requirement, and none is offered.
+
+### The module cannot guarantee the recovery notice is sent
+
+The target is notified on both reset and revoke — the module dispatches through
+[`notifications`](../notifications/index.md)'s `send-notification` API after the
+audit event commits. **This is stated plainly because it is a real gap, not
+softened:** `notifications.send_routine` **defaults to `[]` — a no-op.** A
+deployment that enables `auth.twoFactor` but never binds `send_routine` will
+have this module silently send no notice to a person whose second factor was
+just cleared, and nothing in the module or the build will flag it. **A
+deployment enabling `auth.twoFactor` must bind `notifications.send_routine`, or
+the security notice silently goes nowhere.** The module cannot close this gap
+itself — the dispatch is the deployment's own mail/SMS/push infrastructure.
 
 ## Dependencies
 
-| Module                                     | Why                              |
-| ------------------------------------------ | -------------------------------- |
-| [layout](../layout/index.md)               | Page wrapper                     |
-| [events](../events/index.md)               | Audit logging and `change_stamp` |
-| [notifications](../notifications/index.md) | Invite + resend dispatch         |
+| Module                                     | Why                                                              |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| [layout](../layout/index.md)               | Page wrapper                                                     |
+| [events](../events/index.md)               | Audit logging and `change_stamp`                                 |
+| [notifications](../notifications/index.md) | Dispatches the two-factor reset / passkey revoke recovery notice |
 
-## When to use
+**`notifications` is now a hard dependency of every `user-admin` consumer** —
+declared unconditionally in the manifest, so it is required to build the module
+at all, not only in a deployment running `auth.twoFactor`. This is new: the
+invite email still rides the platform's `auth.email` connection, not this
+dependency — `notifications` exists solely for the recovery notice above. See
+[the `send_routine` obligation](#the-module-cannot-guarantee-the-recovery-notice-is-sent).
 
-Add `user-admin` when an app needs operator-facing user management — inviting users, managing roles, editing access, and viewing the user list. Pairs with `user-account` which covers the end-user self-service side.
+## Write pathways
 
-## Quickstart
+Every auth-owned write goes through a sanctioned admin step (raw writes bypass
+BetterAuth's invariants). Authorization has two independent halves:
+
+1. **The endpoint is gated app-side**, by the app's own `auth.api.roles` — see
+   [Installing an instance](#installing-an-instance). Nothing in the module gates it.
+2. **Every step names the organization it acts in** — `org_slug`, explicitly, never
+   the engine's absent-means-the-app's-pinned-organization fallback — and the engine
+   floors the step against **the caller's own member row in that organization**. So
+   the write lands only for someone holding `admin` there. For the steps that reach a
+   deployment-wide `user` row (`BanUser`, `UnbanUser`, `DeleteUser`,
+   `RevokeUserSessions`, `UpdateUserAttributes`) the floor additionally requires the
+   **target** to hold a member row in the same organization.
+
+| Concern                       | Record        | Write pathway                                                                                                                    |
+| ----------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Profile / CRM data            | `contact`     | Shared `write-profile` fragment: change-stamped `contact` write + `UpdateUserProfile` re-denorm of the target's `user.profile`   |
+| Login identity + global attrs | `user`        | `UpdateUserAttributes`, `BanUser` / `UnbanUser`, `DeleteUser`, `RevokeUserSessions`                                              |
+| This organization's access    | `member`      | `UpdateMemberRoles` (the `appRoles` array), `UpdateMemberAttributes`, `RemoveMember`                                             |
+| Organization authority        | `member.role` | `UpdateMemberOrgRole` — the `owner` / `admin` / `member` tier, on its own `update-org-role` endpoint (UI behind `org_authority`) |
+| Pending access                | `invitation`  | `InviteMember` (app roles **and** the org tier), `CancelInvitation`                                                              |
+
+Organization authority is a separate endpoint rather than a fourth step on
+`update-access`: the two writes take different paths (app roles adapter-direct, the
+tier through the organization plugin so its creator-protection and last-owner guards
+run), and they are separately audited. The access modal's single Save runs the tier
+write **first**, so a refused tier write halts before any app-role write lands — which
+is how it shares one submit with no rollback path. The tier is written only when it
+changed; the assignable values are `admin` and `member` (`owner` is the protected
+creator tier and is not settable from the UI). `org_authority: false` removes the
+two controls that reach it, makes the endpoint reject, mints every invitation with
+`member`, and makes a resend keep the invitation's stored tier, so a deployment
+granting organization authority out of band closes the surface rather than only
+hiding it.
+
+The shared contact fragments — `write-profile`, `ensure-contact`, and
+`resolve-own-contact` — live in `modules/shared/contact/` and are `_ref`'d by
+relative path (also by `user-account`). They are **shared files, not module
+exports**, and add no module dependency.
+
+## Prerequisite: same-database co-location
+
+Every list and detail read is a single aggregation that `$lookup`-joins the auth
+collections to `user-contacts`, and MongoDB's `$lookup` cannot cross databases.
+**The BetterAuth adapter database, the `user-contacts` connection, and the
+module's read connections must all resolve to one MongoDB database** — the natural
+shape being a single shared `_secret` (e.g. `MONGODB_URI`). The failure mode is
+silent: a cross-database `$lookup` returns empty rather than erroring, so a
+divergent deployment shows **blank contact data everywhere**. See
+[Same-database co-location](concepts/co-location.md).
+
+## Roles come from the platform role catalog
+
+The assignable role set, labels, and help text come from the app's authored
+`auth.roles` catalog (exposed to the module via `_build.authConfig.roles`), not a
+module var — the old `roles` var is retired. A role held in data but no longer in
+the catalog is displayed as a flagged "no longer configured" chip and can be
+removed, but never silently stripped.
+
+These are the member's **app roles**, stored as a native `string[]` on
+`member.app_roles`. They are a different fact from `member.role` — the organization's
+`owner` / `admin` / `member` authority tier — and the module never derives one from
+the other. The [install step below](#2-gate-each-instance-from-the-app-config) says
+what each one buys.
+
+## Installing an instance
+
+An instance needs two things, and both are the app's job: a module entry naming the
+organization it administers, and a gate on the pages and endpoints that entry
+contributes. Neither has a default.
+
+### 1. The module entries
 
 ```yaml
 # lowdefy.yaml
@@ -30,31 +243,119 @@ modules:
   - id: user-admin
     source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.48.0"
     vars:
-      app_name: my-app
+      # Required. The organization this surface administers — the same slug as this
+      # app's own `auth.organizations.org` for the app's own users.
+      org_slug: team
       app_title: Team
-      roles:
-        _ref: modules/user-admin/roles.yaml
       fields:
         show_honorific: true
         profile:
           _ref: modules/shared/profile/fields.yaml
-        global_attributes:
-          _ref: modules/user-admin/global_attributes_fields.yaml
-        app_attributes:
-          _ref: modules/user-admin/app_attributes_fields.yaml
+        user_attributes:
+          _ref: modules/user-admin/user_attributes_fields.yaml
+        member_attributes:
+          _ref: modules/user-admin/member_attributes_fields.yaml
+
+  # A second admin surface, administering ANOTHER app's organization: one module
+  # source, two entries, two `org_slug` values. Auto-scoping keeps them apart —
+  # `customer-user-admin/all` beside `user-admin/all`.
+  - id: customer-user-admin
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.17.0"
+    vars:
+      org_slug: customer-portal
+      app_title: Customer
 ```
 
-`app_name` and `roles` are required. See `apps/demo/modules/user-admin/vars.yaml` for a worked example. User documents share the `user-contacts` collection with plain contacts — users are distinguished by `apps.{app_name}.is_user === true`. The `contacts` module excludes user records from its list; this module is the only writer for users.
+**Deployment ordering: this module does not create the organization.** The app whose
+`auth.organizations.org` names a slug is what creates it, at startup. So a second
+instance administering another app's organization requires **that app to have booted
+against the same database first** — until it has, the surface's reads render **empty
+with no error** and its invite throws `ORGANIZATION_NOT_FOUND`. Either boot the owning
+app before administering its organization from elsewhere, or insert the organization
+row alongside the bootstrap invitation. And never rename a slug in place: the engine's
+startup ensure is by slug, so a rename mints a fresh organization and strands every
+member row in the old one.
+
+There is **no `app_name` var** (per-app scoping by the old `apps.{app}` map is gone)
+and **no `roles` var** (the catalog replaces it). See
+`apps/demo/modules/user-admin/vars.yaml` and `apps/demo/modules.yaml` for a worked
+two-instance example, and the [migration guide](how-to/migration.md) if upgrading.
+
+### 2. Gate each instance from the app config
+
+**Required, not defence in depth.** Each instance is gated by the app itself, with
+**one picomatch pattern per instance per entity** in the app's own `auth` block:
+
+```yaml
+auth:
+  # Every role a gate names must be declared here. A gate naming an undeclared id
+  # fails the build: [ConfigError] Auth gate references role "…", which is not
+  # declared in auth.roles.
+  roles:
+    - id: user-admin
+      label: User Admin
+      description: Administers users across the pinned suite (ban, invite, roles, sessions).
+    - id: customer-user-admin
+      label: Customer User Admin
+      description: Administers the users of the customer portal organization.
+  pages:
+    protected: true
+    public:
+      - "404"
+      - router
+    roles:
+      user-admin:
+        - user-admin/**
+      customer-user-admin:
+        - customer-user-admin/**
+  api:
+    roles:
+      user-admin:
+        - user-admin/**
+      customer-user-admin:
+        - customer-user-admin/**
+```
+
+Two entities, because that is what the demo declares — add a third block only if the
+app declares `auth.websockets`.
+
+`**` is what makes one line enough: it covers every page and endpoint the instance
+ships now and every one a later module version adds, while stopping at the instance
+boundary (`*` does not cross a slash, `**` does), so neither surface can reach the
+other organization's members.
+
+**Omit a block and the instance is public.** An entity that declares neither
+`protected` nor `public` resolves an item matching no glob to `{ public: true }` — so
+an ungated instance's endpoints answer **with no session at all**, handing that
+organization's members, emails and Excel export to anyone who knows the path. It is
+the absence of those keys that decides, not the entity: in the config above
+`auth.pages` sets `protected: true`, so an ungated _page_ still demands a session,
+while `auth.api` sets neither key, so an ungated _endpoint_ is public. Most apps
+declare neither on either.
+
+**Two facts, not one.** This gate is the read side's whole authorization — the
+organization an instance administers is welded into its reads at build time, so no
+per-request check remains, and there is no module var and no deployment-wide admin
+role behind it. It is also _only_ the read side. Holding the gate role says "show me
+this UI"; holding `admin` in `org_slug`'s organization is what makes a write land (see
+[Write pathways](#write-pathways)). The platform makes **no attempt to keep the two in
+agreement** — they are two facts, neither derived from the other, and a deployment
+that wants them aligned aligns them itself.
 
 ## Reference
 
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
+- [Members row contract](reference/row-contract.md) — the row keys a `table_columns` or `download_columns` entry may bind
+- [Audit events](reference/events.md) — the event each write routine logs, and the `before` / `after` values it records
+- [Indexes](reference/indexes.md) — the host-app-created `user-members` compound index the role filter depends on
+- [Same-database co-location](concepts/co-location.md) — the hard read precondition
+- [Migrating from v0.x](how-to/migration.md) — var renames/removals, page renames, dropped deps, and the per-organization upgrade (`org_slug`, app-side gates, `role` off the row)
 
 ## Shared idioms
 
-- [App name scoping](../shared/app-name.md) — how `app_name` keys per-app data paths
-- [Event display](../shared/event-display.md) — per-app Nunjucks title templates
+- [Event display](../shared/event-display.md) — per-type Nunjucks title templates
 - [Slots](../shared/slots.md) — `fields`, `components`, `request_stages` extension points
 - [Change stamps](../shared/change-stamps.md) — audit metadata stamped on writes
 - [Avatar colors](../shared/avatar-colors.md) — gradient pairs for avatar backgrounds
+- [Text search and the Atlas fallback](../shared/search.md) — this module takes **no** `atlas_search` flag: its members search is always a plain-`$match` regex over the post-`$lookup` name and email fields, so it needs no Atlas Search index and behaves the same on Atlas and on a local `mongod`
 - [Secrets](../shared/secrets.md) — `MONGODB_URI` and other connection secrets
