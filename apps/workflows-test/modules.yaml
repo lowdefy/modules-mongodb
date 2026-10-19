@@ -1,5 +1,5 @@
 # Keep workflows after its declared dependencies (layout, events,
-# notifications) — the experimental build's entry-vars resolve is
+# notifications) — Lowdefy's entry-vars resolve is
 # order-sensitive when cross-module _refs are involved.
 
 # user-account is not a workflows dependency, but layout declares a

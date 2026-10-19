@@ -9,7 +9,7 @@
     _ref: modules/ai-assistant/vars.yaml
 
 # workflows must be listed before companies: the companies entry vars
-# cross-module _ref workflows components, and the experimental build's
+# cross-module _ref workflows components, and Lowdefy's
 # entry-vars resolve is order-sensitive (target module entry must be
 # registered first).
 - id: workflows

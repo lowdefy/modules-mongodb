@@ -32,10 +32,9 @@ allowBuilds:
   sharp: false
   "@sentry/cli": false
 
-# Lowdefy ships as pinned experimental builds that we intentionally install the
-# day they publish, so exempt the whole scope (plus the unscoped `lowdefy` CLI)
-# from pnpm's default new-package cooldown. Patterns, not version pins, so this
-# never churns on version bumps.
+# Lowdefy releases are installed the day they publish, so exempt the whole scope
+# (plus the unscoped `lowdefy` CLI) from pnpm's default new-package cooldown.
+# Patterns, not version pins, so this never churns on version bumps.
 minimumReleaseAgeExclude:
   - "@lowdefy/*"
   - lowdefy

@@ -206,13 +206,10 @@ auth:
     # rendering the failure as a login-page state (Decision 2).
     error: login
     # The invitation-accept page serves the acceptInvitation role (Decisions 1
-    # & 4). The engine RUNTIME already consumes authConfig.authPages.
-    # acceptInvitation (getBetterAuthConfig builds the invitation-email accept
-    # URL from it); only the build-side schema/role registration is pending,
-    # landing in the next experimental release. Until then `ldf:b` errors on
-    # this unknown role, accepted deliberately. Do NOT route around it with a
-    # plain auth.public entry: the accept page stays public + AcceptInvitation
-    # action, but it earns public via THIS role, not auth.public.
+    # & 4): the engine builds the invitation-email accept URL from it. Do NOT
+    # route around it with a plain auth.public entry: the accept page stays
+    # public + AcceptInvitation action, but it earns public via THIS role, not
+    # auth.public.
     acceptInvitation: accept
     # The 2FA sign-in challenge. Required whenever twoFactor.enabled is true
     # (auth-hardening). The engine deletes the sign-in session and sets a signed
