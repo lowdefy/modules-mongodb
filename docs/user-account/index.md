@@ -33,8 +33,8 @@ auth engine. One package, two page families:
 
 It is the end-user counterpart to [`user-admin`](../user-admin/index.md) (the
 operator console). Both run against the same `contact` / `user` / `member` /
-`session` record model; one module instance serves **one pinned organization**
-(org = app).
+`session` record model, under either organizations policy: `pinned` (one
+organization, org = app) or `tenant` (the caller's active organization).
 
 ## What it does
 

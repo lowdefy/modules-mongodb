@@ -99,8 +99,6 @@ config:
 - Types in `filter_exempt_types` bypass both, because their filter is `false`, and `false` turns the environment's filter off too.
 - An environment with `email.enabled: false` sends nothing at all, exempt types included.
 
-`filter: false` needs a Lowdefy version with `config.environments`. Older versions reject it in the connection schema, which fails the send of every exempt type.
-
 Apps with an existing `SendGridMail` connection (for example one whose API key lives under a different secret name) remap the connection instead of setting the vars:
 
 ```yaml

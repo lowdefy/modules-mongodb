@@ -2,7 +2,7 @@
 
 A set of reusable [Lowdefy](https://lowdefy.com) modules backed by MongoDB — authentication, user admin, contacts, companies, file attachments, audit events, notifications, and more.
 
-> **Prerelease.** This repo is in a prerelease state (0.x). Breaking changes can land in any minor release. Pin to an exact version or commit SHA in production.
+> **Requires Lowdefy 7.** Pin module sources to a release tag.
 
 Full documentation: [`docs/`](docs/index.md)
 

@@ -36,9 +36,9 @@ guides held in its own database and bucket rather than at a third-party host.
 ```
 
 `source` can equally be a `file:` path against a local checkout. The module declares
-`@lowdefy/community-plugin-mongodb` (`^3`), `@lowdefy/plugin-aws` (`^5 || ^6`) and
-`@lowdefy/modules-mongodb-plugins` (`^0.42.0`), which carries its blocks and its upload action, so
-the app must list all three plugins, and it reads four secrets:
+`@lowdefy/modules-mongodb-plugins`, which carries its blocks and its upload action. The app
+must also list `@lowdefy/community-plugin-mongodb` and `@lowdefy/plugin-aws`, which its
+connections use, and it reads four secrets:
 `MONGODB_URI`, `FILES_S3_BUCKET_PUB`, `FILES_S3_ACCESS_KEY_ID` and `FILES_S3_SECRET_ACCESS_KEY`.
 
 ## Vars

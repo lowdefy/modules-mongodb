@@ -231,7 +231,7 @@ reports list's ⋯ column uses, plus the cell-renderer identity fix that menu ne
 `blocks-echarts` (re-applying a changed theme to the live chart through ECharts 6's
 `setTheme`, so a dark-mode toggle re-inks charts without a reload,
 [lowdefy/lowdefy#2358](https://github.com/lowdefy/lowdefy/pull/2358)). All four
-merged and ship in Lowdefy `6.0.0`, which the demo now pins. `pnpm check:patches`
+merged and ship in Lowdefy `6.0.0` and later. `pnpm check:patches`
 still runs in CI so that any future patch is keyed to the pinned Lowdefy version.
 
 ## 7. Chat → saved report

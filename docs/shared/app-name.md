@@ -29,7 +29,7 @@ modules:
 
 Modules read it directly with the `_build.app: slug` operator. No module takes an app-name var — `activities`, `companies`, `contacts`, `deals`, `notifications`, and `workflows` all scope themselves off the app's own slug.
 
-> The `user-account` and `user-admin` modules **do not scope by slug** — they are built on the BetterAuth-based auth engine, where one module instance serves one pinned organization (org = app), so per-app scoping by the `apps.{app}` map is gone. See [`user-account`](../user-account/how-to/migration.md) and [`user-admin`](../user-admin/how-to/migration.md).
+> The `user-account` and `user-admin` modules **do not scope by slug** — they are built on the BetterAuth-based auth engine, which scopes them by organization (the pinned organization, or the caller's active one under `tenant`), so per-app scoping by the `apps.{app}` map is gone. See [`user-account`](../user-account/how-to/migration.md) and [`user-admin`](../user-admin/how-to/migration.md).
 
 ## Reading the slug: always `_build.app: slug`
 

@@ -48,8 +48,7 @@ action and the policy. That is deliberate: a pinned deployment has one
 organization, so there is nothing to switch to and nothing to self-administer.
 A pinned app simply does not add the entry.
 
-The module needs Lowdefy `0.0.0-experimental-20261006081525` or later: its
-tables are Lowdefy's `Table` block, with the avatar cell's `descriptionField`.
+Its tables are Lowdefy's `Table` block, with the avatar cell's `descriptionField`.
 
 ## Pages
 
@@ -242,8 +241,7 @@ mcp_tokens: true
 
 It needs the app's MCP authorization server (`auth.oauthProvider`): member
 tokens live in its `user-mcp-tokens` collection, and switching one off
-(`RevokeOrgMcpToken`) fails without it. It also needs Lowdefy
-`0.0.0-experimental-20261009120232` or later. Members create and switch off
+(`RevokeOrgMcpToken`) fails without it. Members create and switch off
 their own tokens elsewhere, for example in `user-account`; this section is the
 organization's overview. With the var off (the default) the section, its read,
 the `user-mcp-tokens` connection and the `revoke-mcp-token` endpoint are left

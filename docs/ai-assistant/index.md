@@ -267,7 +267,7 @@ It needs `sender_attachments.enabled`, and the composer's `accept` list and `max
 
 ## Colours
 
-The user's bubble, the outlined reply border and the composer border take the theme's `colorPrimary`, applied inline, so a page stylesheet cannot recolour them. Where the primary doesn't suit, pass the chat block's `styles` (or `classNames`) instead: per bubble part under `message_display.roles.user` and `.assistant`, and per composer part under `sender`. They need Lowdefy 6.1 or later.
+The user's bubble, the outlined reply border and the composer border take the theme's `colorPrimary`, applied inline, so a page stylesheet cannot recolour them. Where the primary doesn't suit, pass the chat block's `styles` (or `classNames`) instead: per bubble part under `message_display.roles.user` and `.assistant`, and per composer part under `sender`.
 
 ```yaml
 message_display:
@@ -352,7 +352,6 @@ on_before_send:
 ## Requirements
 
 - An app agent whose id is passed as `agent_id`.
-- For `file_links_endpoint`, a Lowdefy version whose `AgentChat` keeps an upload's storage key on its file part (`providerMetadata.lowdefy.key`). On an earlier one, parts carry no key, so the endpoint is never called and stored links stay as they are.
 - `@lowdefy/modules-mongodb-plugins` — ships the [`FloatingPanel`](../plugins/floating-panel.md) block and the `AiText` connection used for titling.
 - Secrets `MONGODB_URI` and (while `generate_titles` is on) `AI_GATEWAY_API_KEY`.
 - Under `auth.organizations.policy: tenant` nothing extra: the threads connection is walled like any MongoDB connection, so each organization has its own thread history per (scope, user), and the `AiText` connection holds no data and is declared non-scopable.
