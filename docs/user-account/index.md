@@ -234,7 +234,7 @@ not depend on the `organizations` module for any of this.
 # lowdefy.yaml
 modules:
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.48.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v1.0.0"
     vars:
       fields:
         show_honorific: true
