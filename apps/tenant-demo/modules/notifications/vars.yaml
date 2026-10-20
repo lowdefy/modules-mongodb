@@ -19,3 +19,6 @@ views:
     icon: LifeBuoy
     types:
       - support-reply
+# Notification sounds offered to the viewer.
+sounds:
+  _ref: modules/notifications/sounds.yaml

@@ -44,6 +44,33 @@ vars:
         types:
           type: array
           description: Notification type ids the view lists.
+  sounds:
+    type: array
+    default: []
+    description: >
+      Notification sounds the viewer can pick from, for the page-wide player
+      (the `notification-sound` export) and the inbox's Sound switch. The
+      first is the default, and a pick no longer listed falls back to it. A
+      sound without `src` is the synthesised chirp. Empty plays the chirp.
+      Pass the same list to a NotificationSound block with `picker: true` to
+      let the viewer pick.
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique sound id, stored as the viewer's pick.
+        title:
+          type: string
+          description: The sound's name in the picker.
+        description:
+          type: string
+          description: A line under the name in the picker.
+        src:
+          type: string
+          description: >
+            URL of the sound file, such as one in the app's public folder.
+            Without it the sound is the chirp.
   live:
     type: boolean
     default: true
@@ -239,7 +266,7 @@ exports:
     - id: live-subscription
       description: Live notifications feed — `subscriptions` (the page subscription; batches refetch the bell, update the toast stack and chirp) and `actions` (its Subscribe action), both mounted by the layout page component; empty when `live` is false
     - id: notification-sound
-      description: Page-wide NotificationSound player (id notifications_sound) the live feed chirps through, mounted by the layout page component
+      description: Page-wide NotificationSound player (id notifications_sound) the live feed plays the viewer's sound through, mounted by the layout page component
     - id: popup-notifications-requests
       description: MongoDB requests backing the popup toasts — fetch (notifications_popups) and mark-read (set_popup_read)
 

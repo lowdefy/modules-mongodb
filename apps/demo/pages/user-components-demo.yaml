@@ -115,6 +115,23 @@ _ref:
           module: layout
           component: card
           vars:
+            title: NotificationSound
+            blocks:
+              # The viewer's pick of notification sound, from the same list the
+              # notifications module plays from. Picking one turns sound on;
+              # the inbox's Sound switch turns it off.
+              - id: notification_sound_picker
+                type: NotificationSound
+                properties:
+                  app:
+                    _build.app: slug
+                  picker: true
+                  sounds:
+                    _ref: modules/notifications/sounds.yaml
+      - _ref:
+          module: layout
+          component: card
+          vars:
             title: ChatThread
             blocks:
               # Two author types (reporter is own, team is the other side),

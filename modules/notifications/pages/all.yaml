@@ -189,6 +189,8 @@ _ref:
                       app:
                         _build.app: slug
                       toggle: true
+                      sounds:
+                        _module.var: sounds
                   - _ref: components/button-mark-all.yaml
           - id: inbox_panel
             type: Box
