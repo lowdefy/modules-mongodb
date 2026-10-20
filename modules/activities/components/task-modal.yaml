@@ -27,8 +27,7 @@
 #   assignee_search   — optional `{ request_id, state_key }`. When set,
 #                       wires server-side search: typing sets
 #                       `state.<state_key>` and refetches `request_id`
-#                       (holding the current value), and disables the
-#                       Selector's client-side filter. Omit for a plain
+#                       (holding the current value). Omit for a plain
 #                       client-filtered Selector fed by `assignee_options`.
 #   events            — required `{ created, completed, reopened }`, each
 #                       `{ type, title_template }`. `title_template` is a
@@ -316,18 +315,6 @@ blocks:
       title: Person Responsible
       allowClear: true
       showSearch: true
-      # Search runs server-side when assignee_search is wired — don't let
-      # the Selector client-filter the returned options too.
-      filterOption:
-        _build.if:
-          test:
-            _build.ne:
-              - _var:
-                  key: assignee_search
-                  default: null
-              - null
-          then: false
-          else: true
       placeholder: Select a person
       options:
         _if_none:

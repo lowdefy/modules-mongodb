@@ -103,14 +103,6 @@ blocks:
                     key: block_id
                     default: file_list
         - 0
-    properties:
-      data:
-        _request:
-          _build.string.concat:
-            - "get_entity_files_"
-            - _var:
-                key: block_id
-                default: file_list
     blocks:
       - id:
           _build.string.concat:
