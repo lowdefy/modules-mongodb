@@ -66,6 +66,10 @@ The endpoint checks each delivery before anything runs. It passes when the `Peli
 
 A deployment with no webhook address in Pelican refreshes a thread only when it opens and the list only when My tickets opens, and sends no reply notifications.
 
+### Release notes
+
+Pelican sends release announcements on the same webhook. A delivery whose event starts with `release.` goes, once verified, to the endpoint the `release_notes_endpoint` var names, such as `release-notes/receive` for the [release-notes](../release-notes/index.md) module, as `{ delivery, app_version }`, and the webhook answers with what it returns. With the var null (the default), it answers 404, "This app does not take release notes". Ticket events and test deliveries are unaffected.
+
 ### Reply notifications
 
 Each new team message, Pelican's own included, sends the user the module's `support-reply` notification, through the notifications module: in the app's bell and by email, with a button to the ticket's page. It goes even while the user has the thread open, since the server cannot know what a browser shows. Its key is `support-reply:{message id}`, so a repeated delivery sends nothing new; that needs the notifications module's unique index on `key`.
@@ -259,7 +263,7 @@ Each answers `{ ok: true, ... }` or `{ ok: false, error, ... }` and never fails 
 
 `ticket` is a ticket's id or its key.
 
-`webhook` takes Pelican's deliveries, `{ event, at, delivery_id, user_id, ticket }`. Every ticket event (`ticket.created`, `ticket.message`, `ticket.message_deleted`, `ticket.stage`, `ticket.updated`) writes `ticket`, the reporter view, into the copy of the user `user_id` names, creating the row when there is none, so a ticket the team logs for a user shows in their list. A view no newer than the stored one changes nothing and still answers 200, so Pelican stops sending it. `ticket.message` also sends a [reply notification](#reply-notifications) for each team message the row did not have. To try it on a dev server, `apps/demo/scripts/support-webhook-check.mjs` posts signed deliveries and checks what they store.
+`webhook` takes Pelican's deliveries, `{ event, at, delivery_id, user_id, ticket }`, and hands `release.*` events on as [Release notes](#release-notes) says. Every ticket event (`ticket.created`, `ticket.message`, `ticket.message_deleted`, `ticket.stage`, `ticket.updated`) writes `ticket`, the reporter view, into the copy of the user `user_id` names, creating the row when there is none, so a ticket the team logs for a user shows in their list. A view no newer than the stored one changes nothing and still answers 200, so Pelican stops sending it. `ticket.message` also sends a [reply notification](#reply-notifications) for each team message the row did not have. To try it on a dev server, `apps/demo/scripts/support-webhook-check.mjs` posts signed deliveries and checks what they store.
 
 The app's own agent files and follows up tickets through four more endpoints. A ticket it files carries the same page, browser and error context as the form's when the app adds the `agent-context` component to its agent's shared state: see [Give the app's agent the support tools](how-to/agent-tools.md).
 

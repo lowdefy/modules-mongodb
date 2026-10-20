@@ -1,0 +1,26 @@
+# Turns a note's body into the markdown its email shows, as state.email_body.
+# Reads state.email_source: { body, media: [{ name, content_type, url }] },
+# each url the link the email may use for the file, or null for a file it
+# cannot link. Each [[file:name]] embed becomes:
+#   - an image with a url: ![name](url)
+#   - a video, or a file with no url: a link to the note on What's new
+#   - any other file with a url: a link to the file
+#   - a name not on the note: nothing
+# The note's link is the RELEASE_NOTE_URL placeholder, which the template
+# swaps for links.button, the page link the notification resolves.
+- :set_state:
+    email_body:
+      _js: |
+        const source = state('email_source') || {};
+        const media = source.media || [];
+        const label = (name) => String(name).replace(/[[\]()<>\\]/g, '');
+        return String(source.body || '').replace(/\[\[file:([^\]]+)\]\]/g, (match, name) => {
+          const file = media.find((item) => item.name === name);
+          if (!file) return '';
+          const type = typeof file.content_type === 'string' ? file.content_type : '';
+          const url = typeof file.url === 'string' && file.url !== '' ? file.url : null;
+          if (url && type.startsWith('image/')) return `![${label(name)}](<${url}>)`;
+          if (url && !type.startsWith('video/')) return `[${label(name)}](<${url}>)`;
+          const verb = type.startsWith('video/') ? 'Watch' : 'See';
+          return `[${verb} ${label(name)} on What's new](RELEASE_NOTE_URL)`;
+        });

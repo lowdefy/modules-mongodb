@@ -1,0 +1,12 @@
+# The auth engine's member rows, one per person per organisation, read to find
+# who an announcement reaches. Read-only. Engine-owned rows carry no tenant
+# stamp, and an announcement can reach several organisations, so every read
+# scopes itself on organization_id (api/parts/selection-match.yaml).
+id: release-notes-members
+type: MongoDBCollection
+tenant: shared # engine-owned rows; reads scope organisations themselves
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: user-members
+  write: false

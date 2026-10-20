@@ -1,5 +1,7 @@
 send_routine:
   _ref: modules/notifications/send-routine.yaml
+# Origin for email link URLs — point at the deployed origin in production.
+server_url: http://localhost:3000
 # Inbox views: groups of notification types at the top of the inbox rail.
 views:
   - id: approvals

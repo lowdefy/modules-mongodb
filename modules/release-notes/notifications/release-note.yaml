@@ -1,0 +1,57 @@
+# An announced release note, in the app's bell and by email: the headline,
+# the preview, the note's body and a button to the note on What's new. The
+# deliver endpoint dispatches one per person per version, keyed on the note
+# and the user; release.test sends it to one address.
+#
+# body is markdown the module built from the note (api/parts/email-body.yaml),
+# so it is the one value marked with the markdown filter; every other value
+# stays escaped. Its links to What's new carry the RELEASE_NOTE_URL
+# placeholder, swapped here for the resolved button link.
+id: release-note
+type: NotificationEmail
+properties:
+  subject: "What's new: {{ title }}"
+  title: "{{ title }}"
+  message: |-
+    {{ preview }}
+
+    {{ body | markdown | replace("RELEASE_NOTE_URL", links.button | markdown) }}
+
+    ---
+
+    *You get these emails about new releases. [Turn them off]({{ links.email_settings | markdown }}) on What's new.*
+  preview: "{{ preview }}"
+  button:
+    label: Read the release note
+testData:
+  note_id: lowdefy/example-app@1.4.0
+  version: 1.4.0
+  title: Schedule jobs from the map
+  preview: Drag a job onto a technician's route to book it.
+  body: |-
+    ## Book from the map
+
+    - Drag a job onto a route
+    - Drop it between two stops
+
+    Read [the scheduling guide](https://docs.example.com/scheduling).
+
+    ![map.png](<https://example.com/map.png>)
+
+    [Watch demo.mp4 on What's new](RELEASE_NOTE_URL)
+  contact:
+    _id: U-TEST
+    user_id: U-TEST
+    email: jane@example.com
+    profile:
+      name: Jane Doe
+  links:
+    button:
+      pageId: release-notes/view
+      urlQuery:
+        note: lowdefy/example-app@1.4.0
+    email_settings:
+      pageId: release-notes/view
+      urlQuery:
+        note: lowdefy/example-app@1.4.0
+        section: email

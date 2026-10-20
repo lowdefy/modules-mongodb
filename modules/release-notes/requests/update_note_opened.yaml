@@ -1,0 +1,21 @@
+# Marks the shown note opened on the signed-in person's own recipient row, the
+# first time only, which clears its New mark in every organisation.
+id: update_note_opened
+type: MongoDBUpdateOne
+connectionId:
+  _module.connectionId: release-notes-recipients
+payload:
+  note_id:
+    _state: note._id
+properties:
+  disableNoMatchError: true
+  filter:
+    note_id:
+      _payload: note_id
+    user_id:
+      _user: id
+    opened_at: null
+  update:
+    $set:
+      opened_at:
+        _date: now

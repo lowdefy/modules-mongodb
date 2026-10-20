@@ -13,4 +13,6 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `content` | string |  |  | Markdown content to render (typically loaded from CHANGELOG.md via _ref) |
+| `audiences` | array | `[]` |  | The groups of the app's members Pelican can announce to, besides everyone, which is always offered. Each is { id, label, query }: query is a MongoDB filter over the person's member row in user-members (app_roles, attributes). |
+| `email_template` | string |  |  | A notifications template id in the app's own config for the release note email. Null uses the module's release-note template. |
+| `region` | string |  | Yes | The AWS region of the public files bucket, for the URLs of a note's images and videos. |

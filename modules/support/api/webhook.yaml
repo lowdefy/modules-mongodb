@@ -6,7 +6,9 @@ description: >-
   minutes, else Lowdefy answers 401. A ticket event writes the reporter view
   into the copy of the user the body names, creating the row for a ticket the
   team logged, and a new team message sends that user a support-reply
-  notification. A test delivery answers 200 and writes nothing. The app lists
+  notification. A test delivery answers 200 and writes nothing. A release.*
+  event goes to the endpoint the release_notes_endpoint var names, whose answer
+  is the webhook's, or answers 404 when the var is null. The app lists
   support/webhook in auth.api.public.
 webhook:
   verify:
@@ -31,6 +33,32 @@ routine:
     :then:
       - :return:
           ok: true
+  - :if:
+      _js: |
+        const delivery = state('delivery');
+        return Boolean(delivery) && typeof delivery.event === 'string' && delivery.event.startsWith('release.');
+    :then:
+      _build.if:
+        test:
+          _build.eq:
+            - _module.var: release_notes_endpoint
+            - null
+        then:
+          - :reject: This app does not take release notes
+            :status: 404
+        else:
+          - id: release_notes
+            type: CallApi
+            properties:
+              endpointId:
+                _module.var: release_notes_endpoint
+              payload:
+                delivery:
+                  _state: delivery
+                app_version:
+                  _module.var: app_version
+          - :return:
+              _step: release_notes
   - :if:
       _js: |
         const delivery = state('delivery');

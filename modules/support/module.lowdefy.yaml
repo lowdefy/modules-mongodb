@@ -34,8 +34,20 @@ vars:
       Sent with every ticket and shown on it. Set it from a build-time env var,
       never guess it at runtime.
   app_version:
+    type: string
     default: null
-    description: The app's version, sent with every ticket and shown on it.
+    description: >-
+      The app's bare X.Y.Z version (1.4.0, no leading v), sent with every ticket
+      and shown on it, and answered to Pelican's release.audience event so the
+      announce form can warn while a deploy is still running.
+  release_notes_endpoint:
+    type: string
+    default: null
+    description: >-
+      The full endpoint id of the release-notes module's receiver, such as
+      release-notes/receive. The webhook hands every release.* event to it. Null
+      (the default) answers those events 404, "This app does not take release
+      notes".
   types:
     type: array
     default:
@@ -207,7 +219,8 @@ exports:
     - id: webhook
       description: >-
         Pelican's signed webhook: stores each ticket change in the copy and
-        notifies the user of new team messages. List it in auth.api.public
+        notifies the user of new team messages, and hands release.* events to
+        the release_notes_endpoint. List it in auth.api.public
     - id: agent-file-ticket
       description: >-
         Agent tool: file a ticket for the session user, with the images and

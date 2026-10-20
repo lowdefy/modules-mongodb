@@ -15,7 +15,8 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 |---|---|---|---|---|
 | `pelican_url` | string | `https://pelican.lowdefy.app` |  | Origin of the Pelican deployment holding the support app, no trailing slash. Every deployment of an app talks to production Pelican; only building this module points it elsewhere. |
 | `environment` | string |  | Yes | The deployment that filed a ticket: production, staging or development. Sent with every ticket and shown on it. Set it from a build-time env var, never guess it at runtime. |
-| `app_version` |  |  |  | The app's version, sent with every ticket and shown on it. |
+| `app_version` | string |  |  | The app's bare X.Y.Z version (1.4.0, no leading v), sent with every ticket and shown on it, and answered to Pelican's release.audience event so the announce form can warn while a deploy is still running. |
+| `release_notes_endpoint` | string |  |  | The full endpoint id of the release-notes module's receiver, such as release-notes/receive. The webhook hands every release.* event to it. Null (the default) answers those events 404, "This app does not take release notes". |
 | `types` | array | _(see manifest)_ |  | The ticket types offered on the report form, as { value, label, description }. Values are Pelican's ticket types (bug, question, feature_request, feedback); labels and descriptions are the app's. |
 | `context` | object | `{}` |  | Runtime operators evaluated when a ticket is sent, into its context's `extra`. For facts about the user's situation the module cannot know, such as the record they are looking at. |
 | `mask_selectors` | array | `[]` |  | CSS selectors blanked in screenshots before the capture, beside the built-in ones (password inputs and `[data-support-mask]`). |

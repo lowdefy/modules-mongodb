@@ -1,0 +1,50 @@
+# Checks state.selection, { audiences, organizations: { mode, ids } }, against
+# the audiences the app declares, and answers 400 naming the field that is
+# wrong. audiences null (or left out) is everyone; organizations null (or left
+# out) is every organisation.
+- :set_state:
+    declared_audiences:
+      _module.var: audiences
+- :set_state:
+    selection_error:
+      _js: |
+        const selection = state('selection');
+        if (!selection || typeof selection !== 'object' || Array.isArray(selection)) {
+          return 'selection must be an object with audiences and organizations.';
+        }
+        const { audiences, organizations } = selection;
+        if (audiences !== null && audiences !== undefined) {
+          if (!Array.isArray(audiences)) {
+            return 'selection.audiences must be null or a list of audience ids.';
+          }
+          const declared = state('declared_audiences').map((audience) => audience.id);
+          const unknown = audiences.filter((id) => !declared.includes(id));
+          if (unknown.length > 0) {
+            return `selection.audiences names an audience this app does not offer: ${unknown.join(', ')}.`;
+          }
+        }
+        if (organizations !== null && organizations !== undefined) {
+          if (typeof organizations !== 'object' || Array.isArray(organizations)) {
+            return 'selection.organizations must be an object with mode and ids.';
+          }
+          if (!['all', 'only', 'except'].includes(organizations.mode)) {
+            return 'selection.organizations.mode must be all, only or except.';
+          }
+          const { ids } = organizations;
+          if (
+            ids !== null &&
+            ids !== undefined &&
+            (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string'))
+          ) {
+            return 'selection.organizations.ids must be a list of organisation ids.';
+          }
+        }
+        return null;
+- :if:
+    _ne:
+      - _state: selection_error
+      - null
+  :then:
+    - :reject:
+        _state: selection_error
+      :status: 400

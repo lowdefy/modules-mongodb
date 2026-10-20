@@ -90,6 +90,10 @@ Per item the pipeline: mints the record id → `RenderNotification` (interpolate
 
 The typical `send_routine` is one aggregation per event type that shapes items (recipient contact embed, template data, links) followed by a `CallApi` to `dispatch-notifications`. (The demo app's `apps/demo/modules/notifications/send-routine.yaml` shows the shaping half with an inbox-only `MongoDBInsertMany`; a dispatch-pipeline routine replaces the insert with the `CallApi`.)
 
+## Test sends
+
+`send-email` (exported InternalApi) renders one notification and emails it to one address, and stores nothing: no record, so no bell or inbox entry, no dedup and no drain retry. Use it to let someone check an email before the real dispatch, such as a release note before it is announced. Payload: `notification_id`, `email` (the address) and `item` (the template data). Its `{ pageId, urlQuery }` links resolve straight to `{server_url}{basePath}/{page path}`, not through the landing page, since there is no record to land on. It answers `{ sent, filtered, to }`, a missing or invalid address answers 400, and a failed send throws.
+
 ## Drain retry
 
 `drain-notifications` (exported InternalApi) re-sends records left at `sent: false` by a failed send. Records store their render outputs, so a retry sends the stored email without re-rendering. Payload (all optional): `max_attempts` (default 5) — records at or past this many failed attempts are left alone; `limit` (default 50) — max records per run, oldest attempt first.

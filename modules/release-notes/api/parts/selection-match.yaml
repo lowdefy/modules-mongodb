@@ -1,0 +1,35 @@
+# Turns a checked state.selection into the member-row filters the counts and
+# the recipients use:
+#   organization_match: the organisations the selection reaches. Under the
+#     pinned policy, the app's one organisation, whatever the selection says.
+#     Under tenant, every organisation (all), the ids (only) or all but the ids
+#     (except).
+#   audience_match: the picked audiences' queries joined by $or, or {} for
+#     everyone. An empty list reaches nobody.
+# Run api/parts/check-selection.yaml first: it sets declared_audiences.
+- :set_state:
+    audience_match:
+      _js: |
+        const audiences = state('selection').audiences;
+        if (audiences === null || audiences === undefined) return {};
+        if (audiences.length === 0) return { $expr: false };
+        const declared = state('declared_audiences');
+        return {
+          $or: audiences.map((id) => declared.find((audience) => audience.id === id).query),
+        };
+    organization_match:
+      _build.if:
+        test:
+          _build.eq:
+            - _build.authConfig: organizations.policy
+            - tenant
+        then:
+          _js: |
+            const organizations = state('selection').organizations;
+            if (!organizations || organizations.mode === 'all') return {};
+            const ids = organizations.ids || [];
+            if (organizations.mode === 'only') return { organization_id: { $in: ids } };
+            return { organization_id: { $nin: ids } };
+        else:
+          organization_id:
+            _organization: id

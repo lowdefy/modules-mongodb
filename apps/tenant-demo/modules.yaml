@@ -67,8 +67,12 @@
 - id: release-notes
   source: "file:../../modules/release-notes"
   vars:
-    content:
-      _ref: ../../CHANGELOG.md
+    _ref: modules/release-notes/vars.yaml
+
+- id: support
+  source: "file:../../modules/support"
+  vars:
+    _ref: modules/support/vars.yaml
 
 - id: user-account
   source: "file:../../modules/user-account"

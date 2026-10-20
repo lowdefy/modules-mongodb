@@ -1,0 +1,20 @@
+# The notes announced to the app, one row per {repository}@{version}. A note
+# belongs to the app, not to an organisation, so the connection stands outside
+# the tenant wall, and every read and write filters by the note key.
+id: release-notes
+type: MongoDBCollection
+tenant: shared # one row per app release, read by every organisation
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: release-notes
+  # Its own change-log collection: the engine writes a shared connection's
+  # change-log records without organization_id, and one such record in a
+  # collection a walled connection reads (log-changes) makes the tenant
+  # preflight refuse to serve the app.
+  changeLog:
+    collection: log-changes-system
+    meta:
+      user:
+        _user: true
+  write: true

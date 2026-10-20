@@ -5,5 +5,5 @@ links:
     pageId:
       _module.pageId: view
     properties:
-      title: Release Notes
+      title: What's new
       icon: document
