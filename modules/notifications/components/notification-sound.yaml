@@ -1,8 +1,10 @@
-# The page-wide notification sound player: draws nothing, and chirps when the
-# live feed brings a popup notification and the viewer has turned sound on
-# (the Sound switch in the inbox header).
+# The page-wide notification sound player: draws nothing, and plays the
+# viewer's picked sound when the live feed brings a popup notification and the
+# viewer has turned sound on (the Sound switch in the inbox header).
 id: notifications_sound
 type: NotificationSound
 properties:
   app:
     _build.app: slug
+  sounds:
+    _module.var: sounds

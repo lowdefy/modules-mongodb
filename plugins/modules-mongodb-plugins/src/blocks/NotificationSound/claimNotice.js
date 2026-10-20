@@ -80,3 +80,22 @@ export function writeSetting(storage, key, on) {
     // Storage refused: the setting holds for this page only.
   }
 }
+
+// The localStorage key holding one app's sound pick, a sound id.
+export const soundKey = (app) => `${settingKey(app)}:sound`;
+
+export function readSound(storage, key) {
+  try {
+    return storage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeSound(storage, key, id) {
+  try {
+    storage?.setItem(key, id);
+  } catch {
+    // Storage refused: the pick holds for this page only.
+  }
+}

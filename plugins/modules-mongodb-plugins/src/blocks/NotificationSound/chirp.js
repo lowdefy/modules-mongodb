@@ -1,11 +1,11 @@
 // A short two-tone chirp synthesised with the Web Audio API, so there is no
 // audio file to ship. One AudioContext serves every NotificationSound on the
-// page. A browser keeps it suspended until the viewer interacts with the page;
-// the first pointer or key press resumes it, and a chirp asked for before then
-// plays nothing.
+// page, and sounds.js decodes sound files into it. A browser keeps it
+// suspended until the viewer interacts with the page; the first pointer or key
+// press resumes it, and a chirp asked for before then plays nothing.
 let context = null;
 
-function audioContext() {
+export function audioContext() {
   if (typeof window === "undefined") return null;
   if (context) return context;
   const AudioContext = window.AudioContext || window.webkitAudioContext;
