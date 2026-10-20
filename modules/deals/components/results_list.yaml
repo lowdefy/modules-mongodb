@@ -15,19 +15,15 @@ skeleton:
   blocks:
     - type: Skeleton
       properties:
-        active: true
         height: 88
     - type: Skeleton
       properties:
-        active: true
         height: 88
     - type: Skeleton
       properties:
-        active: true
         height: 88
     - type: Skeleton
       properties:
-        active: true
         height: 88
 blocks:
   # Empty state
