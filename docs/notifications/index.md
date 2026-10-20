@@ -220,7 +220,36 @@ The bell, the toast stack and the inbox update the moment a notification arrives
 
 ### Sound
 
-A short chirp can play when a popup notification arrives. It is **off until the person turns it on** with the **Sound** switch in the inbox header. The setting is kept in the browser, per app, so it holds per device; other open tabs follow a change at once. It plays once per batch across all open tabs, and nothing plays before the person has clicked or typed on the page (browsers block it). The layout mounts the player on every page (the `notification-sound` export, the plugins package's [NotificationSound](../plugins/notification-sound.md) block), so the module declares `@lowdefy/modules-mongodb-plugins`.
+A short sound can play when a popup notification arrives. It is **off until the person turns it on** with the **Sound** switch in the inbox header. The setting is kept in the browser, per app, so it holds per device; other open tabs follow a change at once. It plays once per batch across all open tabs, and nothing plays before the person has clicked or typed on the page (browsers block it). The layout mounts the player on every page (the `notification-sound` export, the plugins package's [NotificationSound](../plugins/notification-sound.md) block), so the module declares `@lowdefy/modules-mongodb-plugins`.
+
+By default the sound is a chirp of two tones. To offer more sounds, set the `sounds` var: a list of `{ id, title, description?, src? }`, where `src` is the URL of a sound file (such as one in the app's `public` folder) and a sound without it is the chirp. The first sound is the default, and a pick that is no longer offered falls back to it. To let a person pick, draw a NotificationSound block with `picker: true` and the same list, on a settings page say:
+
+```yaml
+# modules.yaml
+- id: notifications
+  vars:
+    sounds:
+      _ref: sounds.yaml
+
+# sounds.yaml
+- id: chirp
+  title: Chirp
+- id: bell
+  title: Bell
+  src: /sounds/bell.mp3
+
+# On a page
+- id: notification_sound_picker
+  type: NotificationSound
+  properties:
+    app:
+      _build.app: slug
+    picker: true
+    sounds:
+      _ref: sounds.yaml
+```
+
+Picking a sound turns the sound on; the inbox's Sound switch turns it off.
 
 ## Deep-link and file-download pages
 
