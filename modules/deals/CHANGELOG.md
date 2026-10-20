@@ -1,5 +1,11 @@
 # @lowdefy/modules-mongodb-deals
 
+## 1.1.0
+
+### Patch Changes
+
+- [#305](https://github.com/lowdefy/modules-mongodb/pull/305) [`0931d8e`](https://github.com/lowdefy/modules-mongodb/commit/0931d8e7af1a86655ae6cdfe6131c8a237636603) Thanks [@puffin-mrm](https://github.com/puffin-mrm)! - Apps on Lowdefy 7 no longer get build warnings from the deal page's pagers, the task modal's person picker or the file list. Each of these, and the deals list's loading placeholders, set a block property Lowdefy 7 doesn't have; nothing changes on screen.
+
 ## 1.0.0
 
 ### Major Changes

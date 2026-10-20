@@ -1,5 +1,5 @@
 name: Contacts
-version: 1.0.0
+version: 1.1.0
 description: Contact management — list, detail, edit, create, selector
 
 dependencies:
@@ -226,4 +226,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.0.0"
+    version: "^1.1.0"

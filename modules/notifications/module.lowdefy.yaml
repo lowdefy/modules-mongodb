@@ -1,5 +1,5 @@
 name: Notifications
-version: 1.0.0
+version: 1.1.0
 description: Notification dispatch pipeline, bell, inbox, and deep-link routing
 
 dependencies:
@@ -203,7 +203,7 @@ vars:
 plugins:
   # NotificationSound (the inbox's Sound switch and the page-wide player).
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.0.0"
+    version: "^1.1.0"
 
 websockets:
   - _ref: websockets/notifications-live.yaml
