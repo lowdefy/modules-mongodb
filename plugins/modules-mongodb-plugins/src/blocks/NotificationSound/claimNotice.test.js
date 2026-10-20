@@ -3,8 +3,11 @@ import {
   claimBatch,
   claimNotice,
   readSetting,
+  readSound,
   settingKey,
+  soundKey,
   writeSetting,
+  writeSound,
 } from "./claimNotice.js";
 
 const memoryStorage = (entries = {}) => {
@@ -135,4 +138,29 @@ test("a hidden tab waits once for a batch, not once per notification", async () 
     }),
   ).toBe(true);
   expect(Date.now() - started).toBeLessThan(120);
+});
+
+test("the sound pick is kept per app, beside the on/off setting", () => {
+  const storage = memoryStorage();
+  const key = soundKey("demo");
+  expect(key).toBe(`${settingKey("demo")}:sound`);
+  expect(key).not.toBe(soundKey("other"));
+  expect(readSound(storage, key)).toBe(null);
+  writeSound(storage, key, "bell");
+  expect(readSound(storage, key)).toBe("bell");
+  expect(readSound(storage, soundKey("other"))).toBe(null);
+  expect(readSetting(storage, settingKey("demo"))).toBe(false);
+  expect(readSound(null, key)).toBe(null);
+});
+
+test("a sound pick storage refuses is kept for nothing, and never throws", () => {
+  const refusing = memoryStorage();
+  refusing.setItem = () => {
+    throw new Error("QuotaExceededError");
+  };
+  refusing.getItem = () => {
+    throw new Error("SecurityError");
+  };
+  expect(() => writeSound(refusing, soundKey("demo"), "bell")).not.toThrow();
+  expect(readSound(refusing, soundKey("demo"))).toBe(null);
 });

@@ -1,23 +1,28 @@
-// NotificationSound: the chirp that plays when a live popup notification
-// arrives, and the viewer's switch for it. The value is the viewer's setting,
-// kept in localStorage per app and off until they turn it on. With `toggle`
-// the block draws a small "Sound" switch; without it the block draws nothing
-// and only plays, so the layout can mount one on every page.
+// NotificationSound: the sound that plays when a live popup notification
+// arrives, and the viewer's controls for it. The value is the viewer's
+// on/off setting, kept in localStorage per app and off until they turn it on.
+// With `toggle` the block draws a small "Sound" switch, and with `picker` a
+// dropdown of the app's `sounds`; without either it draws nothing and only
+// plays, so the layout can mount one on every page.
 //
-// play(ids) reads the stored setting at the moment it is called, so an
-// instance on another page, or in another tab, always follows the latest
-// switch. Each batch chirps once across tabs and reloads (claimNotice.js).
-import React, { useCallback, useEffect, useRef } from "react";
-import { Switch } from "antd";
+// play(ids) reads the stored setting and pick at the moment it is called, so
+// an instance on another page, or in another tab, always follows the latest
+// change. Each batch plays once across tabs and reloads (claimNotice.js).
+import React, { useEffect, useRef, useState } from "react";
+import { Button, Select, Switch } from "antd";
 import { withBlockDefaults } from "@lowdefy/block-utils";
 
-import { playChirp, unlockAudio } from "./chirp.js";
+import { unlockAudio } from "./chirp.js";
 import {
   claimBatch,
   readSetting,
+  readSound,
   settingKey,
+  soundKey,
   writeSetting,
+  writeSound,
 } from "./claimNotice.js";
+import { loadSound, playSound, resolveSound } from "./sounds.js";
 
 function browserStorage() {
   try {
@@ -57,6 +62,12 @@ const IconVolume = ({ muted }) => (
   </svg>
 );
 
+// Plays a preview after a gesture has unlocked the audio.
+function preview(sound) {
+  unlockAudio();
+  setTimeout(() => playSound(sound), 50);
+}
+
 const NotificationSound = ({
   blockId,
   classNames = {},
@@ -66,75 +77,156 @@ const NotificationSound = ({
   value,
 }) => {
   const key = settingKey(properties.app);
-  const keyRef = useRef(key);
-  keyRef.current = key;
+  const pickKey = soundKey(properties.app);
+  const sounds = properties.sounds ?? [];
+  const latest = useRef();
+  latest.current = { key, pickKey, sounds };
 
-  // State follows the stored setting on mount and whenever another tab
-  // changes it.
+  const [pick, setPick] = useState(null);
+  const sound = resolveSound(sounds, pick);
+
+  // State follows the stored setting and pick on mount and whenever another
+  // tab changes them.
   useEffect(() => {
     methods.setValue(readSetting(browserStorage(), key));
+    setPick(readSound(browserStorage(), pickKey));
     const onStorage = (event) => {
-      if (event.key !== keyRef.current) return;
-      methods.setValue(event.newValue === "on");
+      if (event.key === latest.current.pickKey) {
+        setPick(event.newValue);
+      } else if (event.key === latest.current.key) {
+        methods.setValue(event.newValue === "on");
+      } else {
+        return;
+      }
       methods.triggerEvent({ name: "onChange" });
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [key]);
+  }, [key, pickKey]);
+
+  // Decode the picked file ahead of the first notification.
+  useEffect(() => {
+    if (sound?.src) loadSound(sound.src);
+  }, [sound?.src]);
 
   useEffect(() => {
     methods.registerMethod("play", async (ids) => {
-      if (!readSetting(browserStorage(), keyRef.current)) return false;
+      const { key, pickKey, sounds } = latest.current;
+      const storage = browserStorage();
+      if (!readSetting(storage, key)) return false;
       if (!(await claimBatch(ids, claimEnv()))) return false;
-      return playChirp();
+      return playSound(resolveSound(sounds, readSound(storage, pickKey)));
     });
   });
 
-  const onToggle = useCallback(
-    (checked) => {
-      writeSetting(browserStorage(), key, checked);
-      methods.setValue(checked);
-      methods.triggerEvent({ name: "onChange" });
-      // The switch is a gesture, so the chirp it previews is allowed to play.
-      if (checked) {
-        unlockAudio();
-        setTimeout(() => playChirp(), 50);
-      }
-    },
-    [key],
-  );
+  // The switch and the dropdown are gestures, so the previews they play are
+  // allowed to sound.
+  const onToggle = (checked) => {
+    writeSetting(browserStorage(), key, checked);
+    methods.setValue(checked);
+    methods.triggerEvent({ name: "onChange" });
+    if (checked) preview(sound);
+  };
 
-  if (!properties.toggle) {
+  const onPick = (id) => {
+    const storage = browserStorage();
+    writeSound(storage, pickKey, id);
+    writeSetting(storage, key, true);
+    setPick(id);
+    methods.setValue(true);
+    methods.triggerEvent({ name: "onChange" });
+    preview(resolveSound(sounds, id));
+  };
+
+  if (!properties.toggle && !properties.picker) {
     return <span id={blockId} style={{ display: "none" }} />;
   }
 
   const label = properties.label ?? "Sound";
+  const offLabel = properties.offLabel ?? "Off";
   return (
-    <label
+    <span
       id={blockId}
       className={classNames.element}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 6,
-        cursor: "pointer",
+        gap: 8,
         color: "var(--ant-color-text-secondary)",
         fontSize: "var(--ant-font-size, 14px)",
         whiteSpace: "nowrap",
         ...styles.element,
       }}
-      title={value ? "Sound on for new notifications" : "Sound off"}
     >
-      <IconVolume muted={!value} />
-      <span>{label}</span>
-      <Switch
-        id={`${blockId}_input`}
-        size="small"
-        checked={!!value}
-        onChange={onToggle}
-        aria-label={label}
-      />
-    </label>
+      {properties.toggle && (
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            cursor: "pointer",
+          }}
+          title={value ? "Sound on for new notifications" : "Sound off"}
+        >
+          <IconVolume muted={!value} />
+          <span>{label}</span>
+          <Switch
+            id={`${blockId}_input`}
+            size="small"
+            checked={!!value}
+            onChange={onToggle}
+            aria-label={label}
+          />
+        </label>
+      )}
+      {properties.picker && (
+        <Select
+          id={`${blockId}_picker`}
+          aria-label={label}
+          style={{ minWidth: 160 }}
+          value={value ? sound?.id : undefined}
+          placeholder={offLabel}
+          onChange={onPick}
+          options={sounds.map(({ id, title }) => ({ value: id, label: title }))}
+          optionRender={(option) => {
+            const item = sounds.find(({ id }) => id === option.value);
+            return (
+              <span
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block" }}>{item?.title}</span>
+                  {item?.description && (
+                    <span
+                      style={{
+                        display: "block",
+                        whiteSpace: "normal",
+                        fontSize: "var(--ant-font-size-sm, 12px)",
+                        color: "var(--ant-color-text-secondary)",
+                      }}
+                    >
+                      {item.description}
+                    </span>
+                  )}
+                </span>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<IconVolume />}
+                  aria-label={`Hear ${item?.title}`}
+                  title={`Hear ${item?.title}`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    preview(item);
+                  }}
+                />
+              </span>
+            );
+          }}
+        />
+      )}
+    </span>
   );
 };
 
