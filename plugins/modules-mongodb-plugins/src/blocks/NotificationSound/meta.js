@@ -19,7 +19,7 @@ export default {
         type: "boolean",
         default: false,
         description:
-          "Draw the Sound switch. Without it the block draws nothing and only plays.",
+          "Draw the Sound switch. Without it or picker the block draws nothing and only plays.",
       },
       label: {
         type: "string",

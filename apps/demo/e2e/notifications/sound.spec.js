@@ -44,8 +44,8 @@ async function fakeAudio(page) {
         });
         return source;
       }
-      decodeAudioData(data) {
-        return Promise.resolve({ kind: data.byteLength > 0 ? "file" : "" });
+      decodeAudioData(data, resolve) {
+        resolve({ kind: data.byteLength > 0 ? "file" : "" });
       }
     };
   });

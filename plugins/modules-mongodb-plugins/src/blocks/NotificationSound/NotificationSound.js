@@ -62,6 +62,12 @@ const IconVolume = ({ muted }) => (
   </svg>
 );
 
+// Tells every instance in this tab that the setting or pick under `key` (the
+// app's setting key) changed.
+const CHANGE_EVENT = "lowdefy:notification-sound";
+const announce = (key) =>
+  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: key }));
+
 // Plays a preview after a gesture has unlocked the audio.
 function preview(sound) {
   unlockAudio();
@@ -85,29 +91,40 @@ const NotificationSound = ({
   const [pick, setPick] = useState(null);
   const sound = resolveSound(sounds, pick);
 
-  // State follows the stored setting and pick on mount and whenever another
-  // tab changes them.
+  // State follows the stored setting and pick on mount, whenever another tab
+  // changes them (the storage event) and whenever another instance in this tab
+  // does (CHANGE_EVENT, as a tab never receives its own storage events).
   useEffect(() => {
-    methods.setValue(readSetting(browserStorage(), key));
-    setPick(readSound(browserStorage(), pickKey));
+    const sync = () => {
+      const storage = browserStorage();
+      methods.setValue(readSetting(storage, latest.current.key));
+      setPick(readSound(storage, latest.current.pickKey));
+    };
+    sync();
     const onStorage = (event) => {
-      if (event.key === latest.current.pickKey) {
-        setPick(event.newValue);
-      } else if (event.key === latest.current.key) {
-        methods.setValue(event.newValue === "on");
-      } else {
-        return;
-      }
+      const { key, pickKey } = latest.current;
+      if (event.key !== key && event.key !== pickKey) return;
+      sync();
+      methods.triggerEvent({ name: "onChange" });
+    };
+    const onChange = (event) => {
+      if (event.detail !== latest.current.key) return;
+      sync();
       methods.triggerEvent({ name: "onChange" });
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(CHANGE_EVENT, onChange);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(CHANGE_EVENT, onChange);
+    };
   }, [key, pickKey]);
 
-  // Decode the picked file ahead of the first notification.
+  // Decode the picked file ahead of the first notification, once the viewer
+  // has the sound on.
   useEffect(() => {
-    if (sound?.src) loadSound(sound.src);
-  }, [sound?.src]);
+    if (value && sound?.src) loadSound(sound.src);
+  }, [value, sound?.src]);
 
   useEffect(() => {
     methods.registerMethod("play", async (ids) => {
@@ -123,8 +140,7 @@ const NotificationSound = ({
   // allowed to sound.
   const onToggle = (checked) => {
     writeSetting(browserStorage(), key, checked);
-    methods.setValue(checked);
-    methods.triggerEvent({ name: "onChange" });
+    announce(key);
     if (checked) preview(sound);
   };
 
@@ -132,9 +148,7 @@ const NotificationSound = ({
     const storage = browserStorage();
     writeSound(storage, pickKey, id);
     writeSetting(storage, key, true);
-    setPick(id);
-    methods.setValue(true);
-    methods.triggerEvent({ name: "onChange" });
+    announce(key);
     preview(resolveSound(sounds, id));
   };
 

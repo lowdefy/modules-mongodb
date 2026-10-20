@@ -28,7 +28,14 @@ export function loadSound(src) {
         if (!response.ok) throw new Error(`${response.status} ${src}`);
         return response.arrayBuffer();
       })
-      .then((data) => ctx.decodeAudioData(data))
+      // The callback form: Safari's prefixed webkitAudioContext has no
+      // promise form.
+      .then(
+        (data) =>
+          new Promise((resolve, reject) =>
+            ctx.decodeAudioData(data, resolve, reject),
+          ),
+      )
       .catch(() => {
         buffers.delete(src);
         return null;

@@ -64,7 +64,7 @@ Behaviours worth knowing:
 | Property   | Type    | Default | Description                                                                                                                                      |
 | ---------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `app`      | string  | —       | Names the app the setting belongs to, so apps sharing an origin keep their own. Use the same value for every instance in one app.                |
-| `toggle`   | boolean | `false` | Draw the Sound switch. Without it the block draws nothing and only plays.                                                                        |
+| `toggle`   | boolean | `false` | Draw the Sound switch. Without it or `picker` the block draws nothing and only plays.                                                            |
 | `label`    | string  | `Sound` | The switch's label, and the dropdown's accessible name.                                                                                          |
 | `sounds`   | array   | `[]`    | The sounds to pick from, `[{ id, title, description?, src? }]`. The first is the default; one without `src` is the chirp. Empty plays the chirp. |
 | `picker`   | boolean | `false` | Draw a dropdown of the sounds, each with a button to hear it.                                                                                    |
