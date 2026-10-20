@@ -3,7 +3,7 @@
 The FULL default input/control vocabulary that ships with a Lowdefy app — when a
 mock shows a control, the right block is on this list (plus `EventsTimeline` from
 `@lowdefy/modules-mongodb-plugins`). This is a starting index; **verify the exact
-properties of any block you place with `lowdefy_get_schema` via the `lowdefy-docs`
+properties of any block you place with `lowdefy_get_schema` via the `lowdefy`
 MCP** — it is release-exact and includes the project's local plugins.
 
 ## Input blocks (category: input) — the complete set
