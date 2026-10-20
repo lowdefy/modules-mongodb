@@ -75,6 +75,7 @@ properties:
             attachments:
               _module.var: sender_attachments
           else: {}
+      - _module.var: sender
   messageDisplay:
     _build.object.assign:
       - # Borderless, not the block's default `outlined`. An outlined assistant

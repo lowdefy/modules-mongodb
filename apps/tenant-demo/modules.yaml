@@ -9,7 +9,7 @@
     _ref: modules/ai-assistant/vars.yaml
 
 # workflows must be listed before companies: the companies entry vars
-# cross-module _ref workflows components, and the experimental build's
+# cross-module _ref workflows components, and Lowdefy's
 # entry-vars resolve is order-sensitive (target module entry must be
 # registered first).
 - id: workflows
@@ -29,7 +29,7 @@
 
 # organizations must be listed before events and layout: the events entry vars
 # take its event_types, and the layout entry vars wire the org-switcher into
-# header_extra, both by cross-module _ref, and the experimental build's
+# header_extra, both by cross-module _ref, and Lowdefy's
 # entry-vars resolve is order-sensitive (target module entry must be
 # registered first).
 - id: organizations

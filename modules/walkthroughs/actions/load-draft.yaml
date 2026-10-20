@@ -63,6 +63,8 @@
       _actions: walkthrough_load_draft.response.response.has_draft
     walkthrough_published:
       _actions: walkthrough_load_draft.response.response.published
+    walkthrough_unpublished:
+      _actions: walkthrough_load_draft.response.response.unpublished
     walkthrough_edit_index: 0
     walkthrough_editor_loaded: true
 # After the fetch, which skips on the id this sets. Nothing is stored until the first save, so an
@@ -83,6 +85,7 @@
     walkthrough_updated: null
     walkthrough_has_draft: false
     walkthrough_published: null
+    walkthrough_unpublished: null
     walkthrough_edit_index: 0
     walkthrough_editor_loaded: true
 - _ref:

@@ -33,8 +33,8 @@ auth engine. One package, two page families:
 
 It is the end-user counterpart to [`user-admin`](../user-admin/index.md) (the
 operator console). Both run against the same `contact` / `user` / `member` /
-`session` record model; one module instance serves **one pinned organization**
-(org = app).
+`session` record model, under either organizations policy: `pinned` (one
+organization, org = app) or `tenant` (the caller's active organization).
 
 ## What it does
 
@@ -234,7 +234,7 @@ not depend on the `organizations` module for any of this.
 # lowdefy.yaml
 modules:
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v1.0.0"
     vars:
       fields:
         show_honorific: true

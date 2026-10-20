@@ -35,7 +35,7 @@ notifications: # framework template configs — the pipeline renders these
 
 modules:
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v1.0.0"
     vars:
       server_url: https://my-app.example.com
       email:
@@ -96,7 +96,7 @@ The typical `send_routine` is one aggregation per event type that shapes items (
 
 Each record is claimed with an optimistic lock (an update conditional on the `last_attempt` value the drain read) before sending, so overlapping drain runs cannot double-send. Only records with at least one failed attempt (`send_attempts >= 1`) drain — a record whose first send is still in flight is never raced, and legacy (Lambda-era) records, which lack the field, are never picked up.
 
-Under `policy: tenant` the drain reads unsent records across organizations and retries each one bound to the record's `organization_id` (a `CallApi` with `organization`), so the claim and the send bookkeeping keep the tenant wall and their change-log rows carry the record's organization. Lowdefy accepts that binding only in a trusted system run, so call the drain from a schedule; called from a signed-in caller's routine, the retry of a record that carries an `organization_id` is refused. This needs a Lowdefy version whose `CallApi` takes `organization`.
+Under `policy: tenant` the drain reads unsent records across organizations and retries each one bound to the record's `organization_id` (a `CallApi` with `organization`), so the claim and the send bookkeeping keep the tenant wall and their change-log rows carry the record's organization. Lowdefy accepts that binding only in a trusted system run, so call the drain from a schedule; called from a signed-in caller's routine, the retry of a record that carries an `organization_id` is refused.
 
 The module ships no schedule of its own — apps choose the cadence with a small cron-only endpoint:
 

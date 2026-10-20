@@ -33,7 +33,7 @@ Per-page overrides are supported via `_ref` vars when a single app needs more th
 # lowdefy.yaml
 modules:
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v1.0.0"
     vars:
       page_type: header-menu
       footer:
@@ -138,7 +138,7 @@ The page block pads its content area `0 40px 40px 40px`. Set the `content_style`
 
 ```yaml
 - id: layout
-  source: "github:lowdefy/modules-mongodb/modules/layout@v0.36.0"
+  source: "github:lowdefy/modules-mongodb/modules/layout@v1.0.0"
   vars:
     content_style:
       padding: 0 24px 24px 24px

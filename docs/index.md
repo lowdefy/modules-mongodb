@@ -10,7 +10,7 @@ A set of reusable [Lowdefy](https://lowdefy.com) modules backed by MongoDB. Drop
 
 The repo is for app builders who already use Lowdefy and want a curated set of modules that work together — shared change stamps, shared event collection, shared layout — instead of assembling them piece by piece.
 
-> **Prerelease.** This repo is in a prerelease state (0.x). Breaking changes can land in any minor release. Pin to an exact version or commit SHA in production and review the changelog before upgrading.
+> **Requires Lowdefy 7.** Pin module sources to a release tag and review the changelog before upgrading.
 
 ## Modules
 
@@ -110,22 +110,22 @@ slug: my-app # kebab-case; the scope every app-scoped module reads via `_build.a
 
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/events@v1.0.0"
     # display_key defaults to the app's slug — set it only to render
     # another app's event display strings.
 
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v1.0.0"
     # Drop logo-{light,dark}-theme.png and logo-square-{light,dark}-theme.png
     # into the app's public/ folder — the layout reads them by convention.
 
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v1.0.0"
     # Method enablement is read from the app's auth: config via _build.authConfig
     # — no method mirror vars. See docs/user-account/.
 
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v1.0.0"
 ```
 
 Each entry pins a `source` (GitHub ref or local `file:` path), passes `vars`, and optionally remaps `dependencies` and `connections` when entry IDs don't match the names declared in the module manifest. See <https://docs.lowdefy.com/modules> for the full module-system reference.

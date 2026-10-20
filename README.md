@@ -2,7 +2,7 @@
 
 A set of reusable [Lowdefy](https://lowdefy.com) modules backed by MongoDB — authentication, user admin, contacts, companies, file attachments, audit events, notifications, and more.
 
-> **Prerelease.** This repo is in a prerelease state (0.x). Breaking changes can land in any minor release. Pin to an exact version or commit SHA in production.
+> **Requires Lowdefy 7.** Pin module sources to a release tag.
 
 Full documentation: [`docs/`](docs/index.md)
 
@@ -16,23 +16,23 @@ slug: my-app # kebab-case; modules scope themselves to it via `_build.app: slug`
 
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/events@v1.0.0"
 
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v1.0.0"
 
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v1.0.0"
 
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.44.1"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v1.0.0"
 ```
 
 The slug is declared once and read by every module that scopes data per app — there is no per-module app-name var. Where a value needs it explicitly, use the operator; the audit stamp's app attribution is the common case (the stored field stays named `app_name`, its value is the slug):
 
 ```yaml
 - id: events
-  source: "github:lowdefy/modules-mongodb/modules/events@v0.44.1"
+  source: "github:lowdefy/modules-mongodb/modules/events@v1.0.0"
   vars:
     change_stamp:
       timestamp:

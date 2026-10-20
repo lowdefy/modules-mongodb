@@ -1,5 +1,86 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 1.0.0
+
+### Major Changes
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: the modules need Lowdefy 7.** This release moves every module and the plugins package to Lowdefy 7 and its auth engine, page paths, tenant wall, websockets and Lucide icons. Apps on Lowdefy 5 or 6 stay on the previous release.
+
+  To upgrade, move the app to Lowdefy 7 (`lowdefy upgrade` applies the framework codemods), then work through the breaking entries in this release, chiefly:
+
+  - **Icon names** are Lowdefy 7 semantic and Lucide names; icon names an app passes into module vars need the same rewrite.
+  - **`app_name` is gone.** Declare `slug:` on the root of `lowdefy.yaml` and drop the var from every module entry.
+  - **`user-account` and `user-admin` run on the Better Auth engine**, with contacts linked to their auth user and organization authority separate from app roles.
+  - **Search:** `request_stages.filter_match` takes plain `$match` clauses, the new `atlas_search` var picks Atlas `$search` or a regex fallback, and the Atlas Search index contract changes.
+  - **Events:** `contact_page_url` is replaced by `contact_page_id`.
+  - **ai-reporting:** the app lists the module's `report-policy` in `policies.dynamicBlocks`, and the report endpoints return `report_id` without `url`.
+  - **`profile.picture`** is derived by every write, and `create-contact` mints the contact `_id` itself.
+
+### Minor Changes
+
+- [#294](https://github.com/lowdefy/modules-mongodb/pull/294) [`32f79c2`](https://github.com/lowdefy/modules-mongodb/commit/32f79c2a736d4840baeebfd731be96c698e6faed) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **Take a screenshot from the assistant's chat panel.** With `screenshot: true`, the panel gets a Take screenshot button. It captures the page behind the panel with password inputs, `[data-support-mask]` elements and the `screenshot_mask_selectors` var's matches blanked, lets the user blur or crop it, and attaches it to the composer like any file, so the agent can send it with a support ticket. The chat uploads it through `sender_attachments`, so attachments must be on and the app's upload policy must accept an image. Not shown in the embedded shell.
+
+- [#287](https://github.com/lowdefy/modules-mongodb/pull/287) [`c6ea2f1`](https://github.com/lowdefy/modules-mongodb/commit/c6ea2f11150bb3f7174cb5cadca99be6a678d4b0) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **File attachments in the assistant's chat, with stored file links signed again on open.**
+
+  `sender_attachments` turns on file attachments in the composer. It is passed through as the chat block's `sender.attachments`, naming the app's own upload and download requests. Null, the default, leaves attachments off.
+
+  A file part keeps the link signed at upload, which stops working within days, so a thread reopened later would send the model dead links. `file_links_endpoint` names an app endpoint that signs new ones: when a thread is opened or resumed, the module collects the file parts that carry a storage key and calls it once with `{ files: [{ key, filename, mediaType }] }`. It returns `{ files: [{ key, url }] }`. Each part takes its key's new link, and a key returned with no url keeps the stored link. The keys come from the browser, so the endpoint must check each is one the caller may read before signing it.
+
+- [#253](https://github.com/lowdefy/modules-mongodb/pull/253) [`0934897`](https://github.com/lowdefy/modules-mongodb/commit/09348976bb082886ef7429ef75eddb54d24de079) Thanks [@SamTolmay](https://github.com/SamTolmay)! - New `open-with-prompt` component: an action list for a button anywhere on a page that mounts `panel`. It opens the panel on a new thread and sends its `prompt` var (a string, or a runtime operator resolved on click) into it, whether the panel is open on another thread, closed, or was never opened. The earlier thread stays in the list, untouched. Like the welcome prompts, the send does not run `on_before_send`.
+
+- [#242](https://github.com/lowdefy/modules-mongodb/pull/242) [`9e083dc`](https://github.com/lowdefy/modules-mongodb/commit/9e083dc8a2696abeee3c91004c75fdc2606196d8) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: icon names are Lowdefy 7 semantic and Lucide names.** Lowdefy 7 replaces react-icons with Lucide and fails the build on a react-icons name, so every `AiOutline*`, `AiFill*` and `Lu*` name in the modules and the plugin blocks is rewritten with the `@lowdefy/codemods` `v7-0-0/react-icons-to-lucide.json` table: a semantic name (`edit`, `delete`, `mail`) where one fits, otherwise the Lucide name (`Waypoints`, `FileSpreadsheet`).
+
+  The modules now need a Lowdefy version with Lucide icons. Glyphs the table marks for review: filled status icons (`check-circle`, `close-circle`, `CircleAlert`) are outline, the FileManager's PDF and Word icons are both `FileText` and its Excel icon is `FileSpreadsheet`, and the Cluster icon is `Waypoints`.
+
+  Apps that pass icon names into module vars (menu entries, enum `icon` fields, `event_types`) need the same rewrite; `lowdefy upgrade` applies it.
+
+### Patch Changes
+
+- [#253](https://github.com/lowdefy/modules-mongodb/pull/253) [`19cf65a`](https://github.com/lowdefy/modules-mongodb/commit/19cf65a5c6d04cbfefc246d8f8c0dad91c5064ca) Thanks [@SamTolmay](https://github.com/SamTolmay)! - Threads save again when the `tag` var is left unset, and thread titling runs when `title_context` is left unset. Both vars default to null, and the `save-thread` and `title-thread` endpoints refused a null `tag` or `context` against their payload schemas, so an app that set neither never persisted a thread.
+
+- [#253](https://github.com/lowdefy/modules-mongodb/pull/253) [`5e4d09e`](https://github.com/lowdefy/modules-mongodb/commit/5e4d09e1650bb9748e046f299699e01ea4068996) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **The ai-assistant module installs under `auth.organizations.policy: tenant`.** The threads connection is walled like any MongoDB connection, so each organization keeps its own thread history. The `AiText` connection (thread titling) holds no data and declares itself non-scopable (`tenant: false`).
+
+## 0.48.0
+
+## 0.47.0
+
+### Patch Changes
+
+- [#264](https://github.com/lowdefy/modules-mongodb/pull/264) [`51b2790`](https://github.com/lowdefy/modules-mongodb/commit/51b2790aea96a956b861a619aa5946f0b5c310dd) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: one tooltip per toolbar button
+
+  - Fix the double tooltip on the embedded toolbar's icon-only buttons. `toolbar.icon_only` wrapped each button in a tooltip, but the Button already shows its title as a tooltip when the title is hidden, so each showed twice.
+  - The toolbar icons in both the panel and the embedded shell no longer show a browser tooltip naming the icon ("Outline Plus").
+
+## 0.46.0
+
+### Minor Changes
+
+- [#262](https://github.com/lowdefy/modules-mongodb/pull/262) [`6068a64`](https://github.com/lowdefy/modules-mongodb/commit/6068a64f02a22c35426e2e21b3f3d8acf6e5f70e) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: an icon-only toolbar for the embedded chat
+
+  - New `toolbar.icon_only` var hides the labels of New chat, Manage chats, Back to chat and Delete chat in the embedded shell. Each button keeps its icon, and a tooltip gives its name on hover. Off by default, so existing pages keep their labelled buttons.
+
+## 0.45.0
+
+### Minor Changes
+
+- [#260](https://github.com/lowdefy/modules-mongodb/pull/260) [`06a9e17`](https://github.com/lowdefy/modules-mongodb/commit/06a9e1771148a399ff13ba5af96bca00cb4b42a3) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: follow a scope that changes mid-session, and recolour the composer
+
+  - `enter` now notices when the `scope` var no longer matches the scope the open thread belongs to, drops that thread and its list, and resumes in the new scope. Apps with an active-company or active-record switcher no longer need their own reset on every visit. A page hosting `embedded` should splice `enter` into `onMount` as well as `onInit`.
+  - New `sender` var, merged over the chat's composer properties, so the composer's `styles` and `classNames` can be set. Together with `styles` under `message_display.roles`, this recolours the chat without `!important` (Lowdefy 6.1 or later).
+
+## 0.44.2
+
+### Patch Changes
+
+- [#259](https://github.com/lowdefy/modules-mongodb/pull/259) [`0eef584`](https://github.com/lowdefy/modules-mongodb/commit/0eef584c9b7148d59b7b175e436ea4c835e31eb7) Thanks [@Yianni99](https://github.com/Yianni99)! - ai-assistant: keep threads and their names intact, and refuse calls with no session
+
+  - New chat, Manage chats and Delete are disabled while a reply streams. Switching mid-reply dropped the reply before it could be saved, and left the thread named after its question.
+  - A name the user types is kept. Renaming before the first reply skips titling, a rename while the title is generating wins, and a later save no longer puts an older name back.
+  - The generated title updates the thread list even after the user has switched threads.
+  - Every endpoint rejects a call with no signed-in user, and `title-thread` refuses when titling is off.
+  - The empty thread list reads in secondary text, and thread tag chips have a background.
+  - Docs: the panel mount example sets its vars on the module entry, and `on_before_send` is documented as a browser-side check that some sends skip.
+
 ## 0.44.1
 
 ## 0.44.0

@@ -1,5 +1,120 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 1.0.0
+
+### Major Changes
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: the modules need Lowdefy 7.** This release moves every module and the plugins package to Lowdefy 7 and its auth engine, page paths, tenant wall, websockets and Lucide icons. Apps on Lowdefy 5 or 6 stay on the previous release.
+
+  To upgrade, move the app to Lowdefy 7 (`lowdefy upgrade` applies the framework codemods), then work through the breaking entries in this release, chiefly:
+
+  - **Icon names** are Lowdefy 7 semantic and Lucide names; icon names an app passes into module vars need the same rewrite.
+  - **`app_name` is gone.** Declare `slug:` on the root of `lowdefy.yaml` and drop the var from every module entry.
+  - **`user-account` and `user-admin` run on the Better Auth engine**, with contacts linked to their auth user and organization authority separate from app roles.
+  - **Search:** `request_stages.filter_match` takes plain `$match` clauses, the new `atlas_search` var picks Atlas `$search` or a regex fallback, and the Atlas Search index contract changes.
+  - **Events:** `contact_page_url` is replaced by `contact_page_id`.
+  - **ai-reporting:** the app lists the module's `report-policy` in `policies.dynamicBlocks`, and the report endpoints return `report_id` without `url`.
+  - **`profile.picture`** is derived by every write, and `create-contact` mints the contact `_id` itself.
+
+### Minor Changes
+
+- [#127](https://github.com/lowdefy/modules-mongodb/pull/127) [`b8a2ef6`](https://github.com/lowdefy/modules-mongodb/commit/b8a2ef697323f432926ba784b2e49ff88a599140) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: the `app_name` module var is replaced by Lowdefy's `_app` operator.** Apps now declare their identity once, as `slug:` on the root of `lowdefy.yaml`, and every module reads it directly with `_build.app: slug`.
+
+  Migration for consumers:
+
+  - Add `slug: <your-app-slug>` to the root of `lowdefy.yaml` if it isn't there already. It must be kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`) — Lowdefy validates it, and referencing an undeclared slug fails the build.
+  - Remove the `app_name:` var from every module entry. `activities`, `companies`, `contacts`, `deals`, `notifications`, `user-account`, `user-admin` and `workflows` no longer declare it.
+  - `events.display_key` is now optional, defaulting to the app's own slug. Drop it unless the app deliberately renders another app's event display strings.
+  - If a `change_stamp` override baked in an app-attribution literal (`app_name: my-app`), change the value to `{ _build.app: slug }`. The stamp field keeps the name `app_name`.
+  - Any shared config file that existed only to hold `app_name` (e.g. an `app_config.yaml`) can be deleted.
+
+  No data migration is required — the slug produces the same string the `app_name` var did, and no stored field or key is renamed. `created.app_name` keeps its name on event and notification documents.
+
+  Connection schema changes in `@lowdefy/modules-mongodb-plugins`: the `WorkflowAPI` connection property `app_name` is renamed to `slug`, and the `EventsTimeline` connection property `app_name` is renamed to `display_key` (it carries the events module's `display_key`, which may legitimately differ from the slug). Apps wiring these connections directly must rename the property keys.
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`240e981`](https://github.com/lowdefy/modules-mongodb/commit/240e981479be3a5747ad200a0ace8458d2c0c1c2) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: the profile name and avatar are derived on the server when a profile is written.** `contacts`' `create-contact` and `update-contact`, and the shared `write-profile` fragment that `user-account` and `user-admin` use, all call one derivation (`modules/shared/profile/derive-profile.js.njk`). It sets `profile.name`, `profile.avatar_color` and `profile.picture`.
+
+  - **A payload's `profile.picture` is ignored.** The write computes it, so renames update the avatar on every path. The contacts create and edit forms do not render an avatar preview.
+  - **`profile.name` is the non-empty given and family names joined by a space**, so a person with only one name part keeps their name. Initials are the first letter of each part, or the first two letters of the only part.
+  - **A profile with no `avatar_color` is given one random palette entry, and it is stored** so it stays stable. Picking a colour still wins, and people who already have a stored colour keep it. Because the rendered avatar is stored too, existing people are recoloured on their next write, not at upgrade. To recolour everyone, clear `profile.avatar_color` in a migration. See `docs/shared/avatar-colors.md`.
+  - **A profile with no name stores no `picture`**, so the Avatar block shows its person icon.
+  - **Profile photos.** The new `AvatarUpload` plugin block is a round avatar that is also the upload control. It crops, downscales and compresses the image in the browser to a data URI, which is stored inline. The shared avatar picker (onboarding and the profile modals) binds it to `profile.photo`, and an uploaded photo becomes the stored `profile.picture`. Removing the photo goes back to the initials avatar. `update-profile` rejects a photo that is not an image data URI or is over about 512 KB.
+  - **`create-contact` mints the contact `_id` on the server and ignores a payload `_id`.** Read the new id from the response's `contactId`. A payload carrying a known `_id` with a new email could otherwise overwrite that contact.
+  - **Every payload value these writes put into an aggregation update is wrapped in `$literal`**, so a value that begins with `$` (a `given_name` of `$email`, or an email local part) is stored as written instead of being read as a field path.
+
+  `request_stages.write` stages still run last, so a stage that overrides `profile.name` or `profile.picture` still wins.
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **A person's contact links to their auth user through `user-contacts.user_id`.** A contact belongs to one organization, while the auth `user` is global, so the link lives on the contact and a person holds one contact per organization.
+
+  - The caller's own contact is the one with `{ organization_id, user_id }`: the organization from the tenant wall and the user from the session. The shared `modules/shared/contact/resolve-own-contact.yaml` fragment resolves it. If the person has no linked contact there, it claims the unlinked contact for their verified address and stamps `user_id`. A contact already linked to someone else is never claimed. After the claim, identity is by id, so an email change does not break the link.
+  - `modules/shared/contact/ensure-contact.yaml` makes sure a contact exists and is safe to run on every sign-in. It sets `user_id` only when there is an auth user, so a contact minted for an invitee who has no login yet is unlinked until they first sign in.
+  - Joins from `users` to `user-contacts` match through `modules/shared/contact/contact-match-expr.yaml`: `user_id`, or the address while the contact is still unclaimed.
+  - The events timeline (`GetEventsTimeline`) finds an author's picture through the contact's `user_id`. Under `policy: tenant` only the caller's organization's contact is read. An author whose contact has no `user_id` yet shows initials.
+  - App config that needs the caller's contact should resolve it with `resolve-own-contact`, or match `{ organization_id, user_id }` in a join.
+
+  **New required index** on `user-contacts`: `{ organization_id: 1, user_id: 1 }`, unique, partial on `user_id: { $exists: true }`, alongside the partial-unique `{ organization_id: 1, lowercase_email: 1 }`. Under `pinned` the single-field `{ user_id: 1 }` and `{ lowercase_email: 1 }` work too. See `docs/user-account/reference/indexes.md`. No backfill is needed: an existing contact is claimed on its person's next sign-in.
+
+  Contacts are minted and claimed only for a verified email. Turn on `requireEmailVerification` so that an unverified signup holds no session.
+
+- [#244](https://github.com/lowdefy/modules-mongodb/pull/244) [`f6d14d8`](https://github.com/lowdefy/modules-mongodb/commit/f6d14d8ceeb03d88aa1b70dfb5259bb8b624144b) Thanks [@SamTolmay](https://github.com/SamTolmay)! - FileManager can take its upload policy from the page's own actions instead of a page request.
+
+  When a page defines the new `onUploadPolicy` event, the block triggers it before each upload in place of the `s3PostPolicyRequestId` request, with `_event` set to `{ file, pasted }`. The actions fetch the policy (for example from an API endpoint that checks permissions and picks the key on the server) and hand it back with the new `setUploadPolicy` method. If the event ends without a policy, the block holds the upload quietly, with no error state, so the page can ask the user and then send it (`setUploadPolicy` with the policy and the file's `uid`) or drop it (the new `cancelUpload` method with the `uid`, which from the event itself drops the upload instead of holding it). A file pasted from the clipboard carries `pasted: true` in the policy event and on `onSave`'s `file`. Apps that set `s3PostPolicyRequestId` and define no `onUploadPolicy` behave as before.
+
+  Each upload now keeps its own thumbnail, so two uploads started close together no longer swap thumbnails on `onSave`.
+
+- [#242](https://github.com/lowdefy/modules-mongodb/pull/242) [`9e083dc`](https://github.com/lowdefy/modules-mongodb/commit/9e083dc8a2696abeee3c91004c75fdc2606196d8) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: icon names are Lowdefy 7 semantic and Lucide names.** Lowdefy 7 replaces react-icons with Lucide and fails the build on a react-icons name, so every `AiOutline*`, `AiFill*` and `Lu*` name in the modules and the plugin blocks is rewritten with the `@lowdefy/codemods` `v7-0-0/react-icons-to-lucide.json` table: a semantic name (`edit`, `delete`, `mail`) where one fits, otherwise the Lucide name (`Waypoints`, `FileSpreadsheet`).
+
+  The modules now need a Lowdefy version with Lucide icons. Glyphs the table marks for review: filled status icons (`check-circle`, `close-circle`, `CircleAlert`) are outline, the FileManager's PDF and Word icons are both `FileText` and its Excel icon is `FileSpreadsheet`, and the Cluster icon is `Waypoints`.
+
+  Apps that pass icon names into module vars (menu entries, enum `icon` fields, `event_types`) need the same rewrite; `lowdefy upgrade` applies it.
+
+- [#300](https://github.com/lowdefy/modules-mongodb/pull/300) [`d2642ae`](https://github.com/lowdefy/modules-mongodb/commit/d2642ae6bebbcd02828b5d5cda708f6f972f5942) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **New `NotificationSound` block: an opt-in chirp for live notifications.** It plays a short two-tone chirp synthesised in the browser (no audio file), at most once per batch of notifications across every open tab and reload. The sound is off until the viewer turns it on with the block's Sound switch (`toggle: true`); the setting is kept per app in the browser's `localStorage`, so it holds per device and other tabs follow a change at once. Without `toggle` the block draws nothing and only plays, through its `play(ids)` method.
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Module links follow Lowdefy page paths and `basePath`.** No module builds a page URL by hand any more, so nothing breaks when a page has a `path` or the app has a `basePath`.
+
+  - **Pages with paths.** The layout `page` component takes a `path` var, such as `tickets/{ticket_id}`, to serve the page at a URL pattern.
+  - **Record links.** Links in HTML (company and contact lists, the activities timeline, the company hierarchy, the deal card and the deal's people, the workflow open-actions card and the overview subtitle) are `data-page-id` links, so they move within the app without a full page load. `DataDescriptions` and `SmartDescriptions` render contact and company links with Lowdefy's `Link`, and `ActionSteps`, `WorkflowProgress` and `EventsTimeline` pass a link's `pathParams` to it. The sign-in, sign-up, forgot-password and accept pages link to each other by page id.
+  - **Workflows.** A workflow's `entity:` block takes `id_path_key`, the entity page's path placeholder for the entity id (for a page at `deals/{deal_id}`, `id_path_key: deal_id`); the entity link then carries the id in `pathParams`. `id_query_key` defaults to `_id` only when `id_path_key` is not set, so set both to also pass the id in the query. `tracker.start_link` and the custom-kind `status_map` `link:` / `view_link:` cells take `pathParams` next to `urlQuery`, with the same `action_id: true` / `entity_id: true` sentinels. Breadcrumbs, the return to the entity after a terminal signal, the events timeline and the deal's open items pass `pathParams` too.
+  - **Breaking (events): `contact_page_url` is replaced by `contact_page_id`.** Set it to the contact page's id, such as `contacts/view`. The contact id goes in the query as `contact_id_query_key` (default `_id`), in the path value `contact_id_path_key` names when the page has a path like `contacts/{contact_id}`, or both. The events-timeline component takes the same three vars per call, and the `EventsTimeline` block takes `contactPageId`, `contactIdQueryKey` and `contactIdPathKey` in place of `contactPageUrl`. The timeline's avatar, timestamp and note @mentions link to the contact page; `note-capture` stores each @mention as a `#contact-<id>` link, and mentions in notes saved before this show unlinked.
+  - **Breaking (ai-reporting): `generate-report`, `create-report` and `duplicate-report` return `{ ok, report_id }` without `url`.** Open a report with a `Link` to the `report` page and `urlQuery: { report_id }`. The reporting agent points the user to the panel's "Reports from this chat" list instead of replying with a link.
+  - **Fix (deals):** deal event titles name the user as plain text. The old link pointed at `/contacts/view` with the user's id, which is not a contact id.
+
+- [#286](https://github.com/lowdefy/modules-mongodb/pull/286) [`497fc1f`](https://github.com/lowdefy/modules-mongodb/commit/497fc1fe75a31068c4056797296b413d8d355201) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **New `ChatThread` block.** A two-party conversation thread: own messages on the right, the other side on the left with avatars, day pills, grouping of one author's messages within five minutes, linked URLs, and image or file attachments. It is its own scroll container and stays at the bottom while the reader is there. See `docs/plugins/chat-thread.md`.
+
+- [#290](https://github.com/lowdefy/modules-mongodb/pull/290) [`08abd4d`](https://github.com/lowdefy/modules-mongodb/commit/08abd4dbc1a68bc67b9a554b759ebdcabe8ec80a) Thanks [@Gervwyk](https://github.com/Gervwyk)! - Pages that use the plugin connections now run in Lowdefy data-set journeys.
+
+  - `EventsTimeline`, `WorkflowAPI` and `ReportingData` declare `meta.dataSet: redirect`, so a journey points them at its own database.
+  - `AiText` declares `meta.dataSet: external` and keeps calling the AI Gateway.
+  - These connections share one MongoDB client per URI but open the connection's `databaseName` on every request. Before, the first database opened on a URI was reused for every later request on it, whatever `databaseName` it named.
+
+- [#294](https://github.com/lowdefy/modules-mongodb/pull/294) [`b2e7950`](https://github.com/lowdefy/modules-mongodb/commit/b2e795061d60d82bb6000a6e3384b1e97a3b6edf) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **New `MessageComposer` block.** One bordered message box: the text on top, the attached images and PDFs as small removable thumbnails with upload progress, and along the bottom an attach button, a short hint and the send button. Pasting an image or dropping a file onto the box attaches it, and Ctrl or Cmd with Enter sends. See `docs/plugins/message-composer.md`.
+
+- [#286](https://github.com/lowdefy/modules-mongodb/pull/286) [`e4dc983`](https://github.com/lowdefy/modules-mongodb/commit/e4dc983bfa4ffad5aa41bd6deb421caf7110b1b0) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **New `SupportContext` block, `_support_context` operator and error recorder.** When the plugin's blocks or the operator load, a recorder on `window` starts keeping the tab's last 20 `console.error` calls, uncaught errors and unhandled rejections, in memory only. The `SupportContext` block renders nothing; its `snapshot` method sets its value to the page URL, user agent, viewport, screen, locale, time zone and those errors, and fires `onSnapshot`, for a support form to send with a ticket. The `_support_context` operator gives the same snapshot with the page id as a value, for an agent's shared state. See `docs/plugins/support-context.md`.
+
+- [#286](https://github.com/lowdefy/modules-mongodb/pull/286) [`0f463b9`](https://github.com/lowdefy/modules-mongodb/commit/0f463b9dae79706feb16c6ef0bd1309278a9a489) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **New `SupportScreenshot` block.** A Take screenshot button that draws the visible page to a PNG from its DOM (no browser permission prompt), with every password input, every `[data-support-mask]` element and every `maskSelectors` match drawn as a solid box, and `hideSelectors` left out. The user can blur or crop the result before it is uploaded through an S3 presigned POST policy request; `onUse` fires with the uploaded file only after S3 stores it. With `attachTo`, a CSS selector of a file input on the page, **Use** hands the image to that input instead and the block uploads nothing. The page itself is left as it was. See `docs/plugins/support-screenshot.md`. Adds `modern-screenshot` as a dependency.
+
+- [#286](https://github.com/lowdefy/modules-mongodb/pull/286) [`cb004d1`](https://github.com/lowdefy/modules-mongodb/commit/cb004d18bdb879121f78d5716df46431509154b2) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **New `SupportWebhook` connection with a `SupportWebhookVerify` request.** It checks that a webhook delivery from Pelican's support desk was signed with the app's webhook secret: any `sha256=<hex>` entry in `Pelican-Signature` must be the HMAC-SHA256 of `"{Pelican-Timestamp}.{rawBody}"`, and the timestamp must be within five minutes of the server's clock. It is meant for an endpoint's `webhook: { verify }` gate, and fails verification rather than throwing on bad input. See `docs/plugins/support-webhook.md`.
+
+### Patch Changes
+
+- [#253](https://github.com/lowdefy/modules-mongodb/pull/253) [`5e4d09e`](https://github.com/lowdefy/modules-mongodb/commit/5e4d09e1650bb9748e046f299699e01ea4068996) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **The ai-assistant module installs under `auth.organizations.policy: tenant`.** The threads connection is walled like any MongoDB connection, so each organization keeps its own thread history. The `AiText` connection (thread titling) holds no data and declares itself non-scopable (`tenant: false`).
+
+- [#266](https://github.com/lowdefy/modules-mongodb/pull/266) [`97ba374`](https://github.com/lowdefy/modules-mongodb/commit/97ba37430af68d9d488d69703378ff2d9a2b1bf1) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **A contact with one name part is labelled correctly in contact lists.** The `ContactSelector` block's `appendContact` method named a newly created contact by joining the given and family names as written, so a contact with only one of them was added to the selection as `Thandi undefined` or `undefined Nkosi`. It now uses the trimmed non-empty parts joined by a space, and no name when both are empty, in which case the list item shows the email. The activities and companies contact lists, when a contact has no stored picture, now build the initials with the same rule as the shared profile derivation: the first letter of each part when both are set, otherwise the first two letters of the part that is set, and `?` when neither is.
+
+- [#286](https://github.com/lowdefy/modules-mongodb/pull/286) [`2ed0457`](https://github.com/lowdefy/modules-mongodb/commit/2ed0457bf0a5f0f4011cbee0236887a3815ba87c) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **A refused upload is an error, not a saved file.** `FileManager` treated the end of every upload post as success, so a post S3 refused (a file over the policy's size cap, an expired policy) or a network error still fired `onSave` for a file that never arrived. Only a 2xx answer is now a stored file; any other answer, a network error or an abort shows the upload as failed and fires no `onSave`.
+
+- [#266](https://github.com/lowdefy/modules-mongodb/pull/266) [`31984eb`](https://github.com/lowdefy/modules-mongodb/commit/31984ebcb833426bc587dcec015a0900cbb1dc94) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Fix: report rows can no longer run as operators.** `compileReport` now strips, at any depth, every key that starts with `_` from the section rows it inlines into a report, except `_id`. Before this, a query field named `__function`, `_state` or `__api` ran as a live operator in the viewer's browser. `_id` is not an operator, so a `$group` result can still use it as a table column or KPI value. A contract that declares any other underscore key now renders that section as an Alert naming the available columns. Project the field under another name to show it.
+
+## 0.48.0
+
+## 0.47.0
+
+## 0.46.0
+
+## 0.45.0
+
+## 0.44.2
+
 ## 0.44.1
 
 ## 0.44.0

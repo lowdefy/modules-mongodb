@@ -12,8 +12,9 @@
 # a page gets one shell or the other. An app-wide launcher should be hidden (its
 # `visible` var) on pages that embed.
 #
-# The chrome buttons keep their labels here — unlike the 420px panel, an
-# embedded chat has the width, and a visible word beats an icon-only glyph.
+# The chrome buttons keep their labels by default — unlike the 420px panel, an
+# embedded chat has the width. `toolbar.icon_only` hides them where the column
+# is narrow; the Button then shows its title as a tooltip itself.
 id: ai_embedded
 type: Box
 layout:
@@ -95,7 +96,13 @@ blocks:
               - _state: ai_busy
               - true
           title: New chat
-          icon: add
+          hideTitle:
+            _module.var: toolbar.icon_only
+          icon:
+            # A blank title: Lowdefy titles an icon's SVG from its name, and the browser
+            # shows that as a second tooltip over the button's own.
+            name: add
+            title: ''
           type: text
           size:
             _module.var: toolbar.size
@@ -121,7 +128,11 @@ blocks:
               - _state: ai_busy
               - true
           title: Manage chats
-          icon: list
+          hideTitle:
+            _module.var: toolbar.icon_only
+          icon:
+            name: list
+            title: ''
           type: text
           size:
             _module.var: toolbar.size
@@ -143,7 +154,11 @@ blocks:
           flex: 0 0 auto
         properties:
           title: Back to chat
-          icon: arrow-left
+          hideTitle:
+            _module.var: toolbar.icon_only
+          icon:
+            name: arrow-left
+            title: ''
           type: text
           size:
             _module.var: toolbar.size
@@ -169,7 +184,11 @@ blocks:
               - _state: ai_busy
               - true
           title: Delete chat
-          icon: delete
+          hideTitle:
+            _module.var: toolbar.icon_only
+          icon:
+            name: delete
+            title: ''
           type: text
           danger: true
           size:

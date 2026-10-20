@@ -59,7 +59,7 @@ When the consumer doesn't override `event_display`, the build wraps these templa
 
 ```yaml
 - id: companies
-  source: "github:lowdefy/modules-mongodb/modules/companies@v0.44.1"
+  source: "github:lowdefy/modules-mongodb/modules/companies@v1.0.0"
   vars:
     event_display:
       my-app:

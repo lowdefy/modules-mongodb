@@ -241,10 +241,8 @@ stays registered; the rejection is the routine's first step.
 ### 7. Bump the engine
 
 The module's steps now pass `appRoles` arrays and `orgRole`, and run
-`UpdateMemberOrgRole`. All three need the engine release that carries this work.
-**The version floor is not yet known** — the engine changes are unreleased at the time
-of writing, so no floor can be quoted here. Until they ship, the symptom of building
-against an engine that predates them is a build failure of the form:
+`UpdateMemberOrgRole`. All three need **Lowdefy 7**. Building against an earlier
+engine fails with:
 
 ```
 [ConfigError] Step connectionId missing at endpoint "user-admin/update-org-role".

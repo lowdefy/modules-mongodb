@@ -1,5 +1,86 @@
 # @lowdefy/modules-mongodb-notifications
 
+## 1.0.0
+
+### Major Changes
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: the modules need Lowdefy 7.** This release moves every module and the plugins package to Lowdefy 7 and its auth engine, page paths, tenant wall, websockets and Lucide icons. Apps on Lowdefy 5 or 6 stay on the previous release.
+
+  To upgrade, move the app to Lowdefy 7 (`lowdefy upgrade` applies the framework codemods), then work through the breaking entries in this release, chiefly:
+
+  - **Icon names** are Lowdefy 7 semantic and Lucide names; icon names an app passes into module vars need the same rewrite.
+  - **`app_name` is gone.** Declare `slug:` on the root of `lowdefy.yaml` and drop the var from every module entry.
+  - **`user-account` and `user-admin` run on the Better Auth engine**, with contacts linked to their auth user and organization authority separate from app roles.
+  - **Search:** `request_stages.filter_match` takes plain `$match` clauses, the new `atlas_search` var picks Atlas `$search` or a regex fallback, and the Atlas Search index contract changes.
+  - **Events:** `contact_page_url` is replaced by `contact_page_id`.
+  - **ai-reporting:** the app lists the module's `report-policy` in `policies.dynamicBlocks`, and the report endpoints return `report_id` without `url`.
+  - **`profile.picture`** is derived by every write, and `create-contact` mints the contact `_id` itself.
+
+### Minor Changes
+
+- [#127](https://github.com/lowdefy/modules-mongodb/pull/127) [`b8a2ef6`](https://github.com/lowdefy/modules-mongodb/commit/b8a2ef697323f432926ba784b2e49ff88a599140) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: the `app_name` module var is replaced by Lowdefy's `_app` operator.** Apps now declare their identity once, as `slug:` on the root of `lowdefy.yaml`, and every module reads it directly with `_build.app: slug`.
+
+  Migration for consumers:
+
+  - Add `slug: <your-app-slug>` to the root of `lowdefy.yaml` if it isn't there already. It must be kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`) — Lowdefy validates it, and referencing an undeclared slug fails the build.
+  - Remove the `app_name:` var from every module entry. `activities`, `companies`, `contacts`, `deals`, `notifications`, `user-account`, `user-admin` and `workflows` no longer declare it.
+  - `events.display_key` is now optional, defaulting to the app's own slug. Drop it unless the app deliberately renders another app's event display strings.
+  - If a `change_stamp` override baked in an app-attribution literal (`app_name: my-app`), change the value to `{ _build.app: slug }`. The stamp field keeps the name `app_name`.
+  - Any shared config file that existed only to hold `app_name` (e.g. an `app_config.yaml`) can be deleted.
+
+  No data migration is required — the slug produces the same string the `app_name` var did, and no stored field or key is renamed. `created.app_name` keeps its name on event and notification documents.
+
+  Connection schema changes in `@lowdefy/modules-mongodb-plugins`: the `WorkflowAPI` connection property `app_name` is renamed to `slug`, and the `EventsTimeline` connection property `app_name` is renamed to `display_key` (it carries the events module's `display_key`, which may legitimately differ from the slug). Apps wiring these connections directly must rename the property keys.
+
+- [#242](https://github.com/lowdefy/modules-mongodb/pull/242) [`9e083dc`](https://github.com/lowdefy/modules-mongodb/commit/9e083dc8a2696abeee3c91004c75fdc2606196d8) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **Breaking: icon names are Lowdefy 7 semantic and Lucide names.** Lowdefy 7 replaces react-icons with Lucide and fails the build on a react-icons name, so every `AiOutline*`, `AiFill*` and `Lu*` name in the modules and the plugin blocks is rewritten with the `@lowdefy/codemods` `v7-0-0/react-icons-to-lucide.json` table: a semantic name (`edit`, `delete`, `mail`) where one fits, otherwise the Lucide name (`Waypoints`, `FileSpreadsheet`).
+
+  The modules now need a Lowdefy version with Lucide icons. Glyphs the table marks for review: filled status icons (`check-circle`, `close-circle`, `CircleAlert`) are outline, the FileManager's PDF and Word icons are both `FileText` and its Excel icon is `FileSpreadsheet`, and the Cluster icon is `Waypoints`.
+
+  Apps that pass icon names into module vars (menu entries, enum `icon` fields, `event_types`) need the same rewrite; `lowdefy upgrade` applies it.
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **The notifications module owns the dispatch pipeline around Lowdefy's notification render.** Lowdefy renders notification emails from the app's `notifications:` config through the `RenderNotification` step; the module composes the rest. See `docs/notifications/index.md`.
+
+  - **`dispatch-notifications`** (exported InternalApi, payload `{ notification_id, items }`): per item it mints the record id, renders the app's template, inserts the record before sending (claiming the dedup `key`, so concurrent dispatches cannot double-send), sends, and records the result. A failed send never fails the dispatch: the record stays `sent: false` with `send_attempts` bumped. `send_routine` keeps its `{ event_ids }` contract and typically ends in a `CallApi` to `dispatch-notifications`.
+  - **`drain-notifications`** (exported InternalApi) re-sends records a failed send left unsent, from their stored render, claiming each with an optimistic lock so overlapping runs cannot double-send. The module ships no schedule: call it from a cron-only endpoint of the app's own. Under `policy: tenant` it retries each record bound to its `organization_id`, which Lowdefy accepts only in a trusted system run, so call it from a schedule.
+  - **Transports.** `transport: smtp` (default, the `notifications-email` connection, configured by the `email` vars with the `NOTIFICATIONS_SMTP_PASS` secret) or `sendgrid` (`notifications-email-sendgrid`, the `sendgrid` vars with `SENDGRID_API_KEY`). Either connection can be remapped to the app's own.
+  - **Recipient filters.** `email.filter` and `sendgrid.filter` take `{ replaceAddress, allowlist, regex }`. Left null they fall back to the current Lowdefy environment's `email.filter`, and `server_url` (the origin of email links) falls back to the environment's `url`, so an app that declares `config.environments` can leave them unset. Types in the new `filter_exempt_types` var (default: the pre-auth invite types) always reach the real recipient. `email_result` on the record shows where the mail actually went.
+  - **Links.** A notification link is `{ pageId, pathParams?, urlQuery?, input? }`; the landing page and the inbox's View button follow `pathParams`. `public_link_types` names the link types the `link` page resolves without a session.
+  - **Public pages.** The manifest contributes `link`, `invalid` and `file-download` to `auth.pages.public`, so they can come out of the app's own list. The inbox (`all`) stays protected.
+  - **Tenant wall.** Every notification write keeps the wall; none uses `tenant: none`.
+
+  **Required index:** dedup needs a unique partial index on `key` (`notification_key_unique`, partial on `key: { $type: 'string' }`). Without it the guarantee does not exist. Two read indexes on `user_id` / `contact_id` with `created.app_name` and `created.timestamp` keep the inbox fast; see the module docs.
+
+  Auth emails (verify, magic link, invitation) are sent by the auth engine through `auth.email`, not through this pipeline.
+
+- [#303](https://github.com/lowdefy/modules-mongodb/pull/303) [`f7659a7`](https://github.com/lowdefy/modules-mongodb/commit/f7659a77af93cd37291a62869accf0cfcd123f7d) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **The notifications inbox is redesigned, and notifications are live.**
+
+  - **Inbox.** The `all` page fills the screen with a rail of views and types, each with its unread count, a list of up to 1000 notifications that scrolls on its own, and a reading pane. Filters are Unread / All / Read, a date range, a search over title and preview, and a view or type from the rail. The new `views` var groups notification types, such as Mentions, at the top of the rail. Below tablet width the rail becomes a View selector and the list and pane take turns.
+  - **Mark all as read follows the filters.** It marks only the unread notifications the filters match, across all pages, and names the count whenever a view, type, search or date narrows it. A notification can be marked unread again from the pane.
+  - **The reading pane shows the message, not the email.** The stored email's canvas, card, logo, sign-off and footer are hidden, and the message takes the app's typography. Emails themselves are unchanged.
+  - **Appearance per type.** Each type takes its icon and colour from the app's `event_types` entry; a type with none gets a palette colour chosen consistently from its id. Every colour follows the app's theme, dark mode included.
+  - **Live.** The bell, the toasts and the inbox update the moment a notification arrives or is read in another tab or device, through the module's `notifications-live` websocket. The `layout` page component subscribes on every page with a signed-in user, unless the page passes `hide_notifications: true`. Each signed-in user with a page open holds one change stream and one pooled MongoDB connection, so size `maxPoolSize` for concurrent users. Change streams need a replica set; where they cannot run, set the new `live` var to `false` and the bell and toasts update on navigation.
+  - **Toasts.** A notification flagged `popup: true` toasts the moment it arrives. The toast is 360px wide under the header, with the type's icon, a one-line title, a two-line preview, the time, **Dismiss** and **Open** (now also for links stored at `data.links.button`). The dispatch pipeline stores `popup` from the item, default `false`.
+  - **Sound.** An opt-in chirp plays once per batch of popup notifications, after the viewer turns on **Sound** in the inbox header; the setting is kept per device. The module now declares `@lowdefy/modules-mongodb-plugins` for the `NotificationSound` block.
+  - **A record's type** reads `type` before `event_type` everywhere, so a record carrying both is filtered, counted and labelled under its notification id.
+
+### Patch Changes
+
+- [#250](https://github.com/lowdefy/modules-mongodb/pull/250) [`538d3cc`](https://github.com/lowdefy/modules-mongodb/commit/538d3cce7e10fbec78a50b794d8e705dc802b6f3) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **Fix: a notification reaches its signed-in recipient when the app's contact id is not the user id.**
+
+  The module found a caller's records by comparing the record's `contact_id` with `_user.id`, a contact id against an auth user id. Where an app keeps people as per-organization contact rows, those differ, so the inbox, bell, popups and mark-read never saw the record and the landing link sent it to the invalid page. Records now store `user_id`, from `item.contact.user_id`, and every session-scoped read and write matches the caller against `contact_id` or `user_id`. To use it, add `user_id` to each item's `contact`. Apps whose contact id is the user id, and records written before this, behave as before.
+
+  The landing link also stops taking the caller's id from the request payload and reads the session on the server. With no session, a record addressed to a contact with no login is readable only through `public_link_types`.
+
+## 0.48.0
+
+## 0.47.0
+
+## 0.46.0
+
+## 0.45.0
+
+## 0.44.2
+
 ## 0.44.1
 
 ## 0.44.0
