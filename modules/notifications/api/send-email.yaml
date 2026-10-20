@@ -1,0 +1,97 @@
+# Renders one notification and emails it to one address, storing nothing: no
+# notification record, so no bell, inbox entry, dedup or drain retry. For a
+# test or preview send, such as a release note checked before it is
+# announced. Payload:
+#   notification_id: id from the app's `notifications:` config section
+#   email: the address to send to
+#   item: the template data, links.* as { pageId, urlQuery } page links,
+#         which resolve straight to their pages (no landing page)
+# Answers { sent, filtered, to }. A send failure throws.
+id: send-email
+type: InternalApi
+routine:
+  - :if:
+      _not:
+        _type:
+          type: string
+          on:
+            _payload: notification_id
+    :then:
+      - :throw: send-email requires payload.notification_id (string).
+  - :set_state:
+      email:
+        _string.toLowerCase:
+          _string.trim:
+            _if_none:
+              - _payload: email
+              - ""
+  - :if:
+      _not:
+        _regex:
+          pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+          on:
+            _state: email
+    :then:
+      - :reject: send-email requires a valid payload.email.
+        :status: 400
+  - id: render
+    type: RenderNotification
+    properties:
+      notificationId:
+        _payload: notification_id
+      data:
+        _if_none:
+          - _payload: item
+          - {}
+      serverUrl:
+        _module.var: server_url
+  # Transport switch: the _module.var resolves at build, so only one branch
+  # is in the built routine.
+  - :if:
+      _eq:
+        - _module.var: transport
+        - sendgrid
+    :then:
+      - id: send_mail_sendgrid
+        type: SendGridMailSend
+        connectionId:
+          _module.connectionId: notifications-email-sendgrid
+        properties:
+          to:
+            _state: email
+          cc: []
+          bcc: []
+          subject:
+            _step: render.subject
+          text:
+            _step: render.text
+          html:
+            _step: render.html
+    :else:
+      - id: send_mail_smtp
+        type: SMTPMailSend
+        connectionId:
+          _module.connectionId: notifications-email
+        properties:
+          to:
+            _state: email
+          cc: []
+          bcc: []
+          subject:
+            _step: render.subject
+          text:
+            _step: render.text
+          html:
+            _step: render.html
+  - :return:
+      sent: true
+      filtered:
+        _if_none:
+          - _step: send_mail_sendgrid.results.0.filtered
+          - _if_none:
+              - _step: send_mail_smtp.results.0.filtered
+              - false
+      to:
+        _if_none:
+          - _step: send_mail_sendgrid.results.0.to
+          - _step: send_mail_smtp.results.0.to

@@ -136,7 +136,7 @@ The support webhook checks Pelican's signature, then calls the module's `receive
 - `organizations`: under tenant, each organisation with members, counting the people the selection's audiences reach in it, by name. `[]` under pinned.
 - `totals`: for the whole selection, the people reached in the app, the people who would be emailed (with an address, and not opted out), and the people who turned release emails off.
 
-A bad selection answers 400 naming the field: an audience id the app does not declare, or a `mode` other than the three. Any other release event answers 400, "Unknown release event".
+A bad selection answers 400 naming the field: an audience id the app does not declare, or a `mode` other than the three. A release event other than `release.audience`, `release.announced` and `release.test` answers 400, "Unknown release event".
 
 To try it on a dev server, `apps/demo/scripts/release-audience-check.mjs` posts signed deliveries to the support webhook and checks the counts, under either policy.
 
@@ -152,6 +152,10 @@ A release without its repository and version, or a media file without a name, an
 
 To try it on a server, `apps/demo/scripts/release-announced-check.mjs` posts signed announcements to the support webhook and checks the rows, the notifications and the sweep, under either policy.
 
+### `release.test`
+
+`{ event, at, release, to: { name, email } }`. Sends the email for `release` as sent, to `to.email` only, so a person can check it before announcing. Images link to Pelican's presigned `url`s and nothing is copied. It writes nothing: no note, no recipient row and no notification, so no bell rings. It sends through the notifications module's `send-email`, over the app's email transport, with the template described under [The notification](#the-notification). Answers `{ sent: true }`; a release without its repository and version, or no `to.email`, answers 400, and a failed send answers 5xx.
+
 ## Delivering
 
 `deliver` runs in its own function call, does one bounded piece of work and calls itself, detached, while work remains:
@@ -163,7 +167,18 @@ A detached call runs once and is not retried. `sweep` restarts any note no `deli
 
 ## The notification
 
-The module ships the `release-note` NotificationEmail: the headline as title and subject, the preview, and a button to the note on What's new. To restyle it, copy it into the app's own `notifications:` config and set `email_template` to its id. The template gets `title`, `preview`, `version`, `note_id` and `links.button`.
+The module ships the `release-note` NotificationEmail: the headline as title and subject, the preview, the note's body, a button to the note on What's new, and a footer link to the email switch there. The template gets `title`, `preview`, `body`, `version`, `note_id`, `links.button` and `links.email_settings`.
+
+`body` is the note's markdown with each `[[file:name]]` embed made fit for an email: an image becomes `![name](url)`, any other file a link to it, and a video, or a file not copied yet, a link to the note on What's new. A name not on the note is dropped. Those links to the note are written as the `RELEASE_NOTE_URL` placeholder, which the template swaps for `links.button`. The body is the template's one value marked with Lowdefy's `markdown` filter, so its headings, lists, links and images render; raw HTML in it stays text, and every other value stays escaped.
+
+To restyle the email, copy the module's `notifications/release-note.yaml` into the app's own `notifications:` config, give it an id and set `email_template` to it. Keep the body line as it is:
+
+```yaml
+message: |-
+  {{ preview }}
+
+  {{ body | markdown | replace("RELEASE_NOTE_URL", links.button | markdown) }}
+```
 
 ## Collections
 

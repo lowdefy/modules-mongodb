@@ -1,0 +1,80 @@
+# release.test: { event, at, release, to: { name, email } }. Sends the
+# release-note email for the release as sent to one address, so a person can
+# check it before announcing. Media link to Pelican's presigned urls, nothing
+# is copied, and nothing is written: no note, no recipient row, no bell.
+# Answers { sent: true }; a bad release or address answers 400, and a send
+# that fails throws, so the webhook answers 5xx and the log names the cause.
+- :set_state:
+    release:
+      _state: delivery.release
+    to:
+      _state: delivery.to
+- :if:
+    _js: |
+      const release = state('release');
+      if (!release || typeof release !== 'object') return true;
+      if (typeof release.repository !== 'string' || release.repository === '') return true;
+      if (typeof release.version !== 'string' || release.version === '') return true;
+      const to = state('to');
+      return !to || typeof to.email !== 'string' || to.email === '';
+  :then:
+    - :reject: >-
+        release.test names a release with its repository and version, and an
+        address to send to in to.email.
+      :status: 400
+- :set_state:
+    note_id:
+      _string.concat:
+        - _state: release.repository
+        - "@"
+        - _state: release.version
+    view_page_id:
+      _module.pageId: view
+    email_source:
+      _js: |
+        const release = state('release');
+        return {
+          body: release.body,
+          media: (release.media || [])
+            .filter((file) => file && typeof file.name === 'string')
+            .map((file) => ({
+              name: file.name,
+              content_type: file.content_type ?? null,
+              url: file.url ?? null,
+            })),
+        };
+- _ref: api/parts/email-body.yaml
+- id: send_test
+  type: CallApi
+  properties:
+    endpointId:
+      _module.endpointId:
+        id: send-email
+        module: notifications
+    payload:
+      notification_id:
+        _if_none:
+          - _module.var: email_template
+          - _module.notificationId: release-note
+      email:
+        _state: to.email
+      item:
+        _js: |
+          const release = state('release');
+          const to = state('to');
+          const noteId = state('note_id');
+          const page = state('view_page_id');
+          return {
+            contact: { email: to.email, profile: { name: to.name ?? null } },
+            note_id: noteId,
+            version: release.version,
+            title: release.title ?? release.version,
+            preview: release.preview ?? '',
+            body: state('email_body'),
+            links: {
+              button: { pageId: page, urlQuery: { note: noteId } },
+              email_settings: { pageId: page, urlQuery: { note: noteId, section: 'email' } },
+            },
+          };
+- :return:
+    sent: true

@@ -225,6 +225,8 @@ exports:
       description: Public S3 bucket for notification attachment downloads
   api:
     - id: send-notification
+    - id: send-email
+      description: Renders one notification and emails it to one address, storing no record (no bell, dedup or retry) — for test sends; payload { notification_id, email, item }
     - id: dispatch-notifications
       description: Generic dispatch pipeline — render, store with dedup, send, record the result; payload { notification_id, items }
     - id: drain-notifications
@@ -245,6 +247,7 @@ exports:
 
 api:
   - _ref: api/send-notification.yaml
+  - _ref: api/send-email.yaml
   - _ref: api/dispatch-notifications.yaml
   - _ref: api/dispatch-notification-item.yaml
   - _ref: api/send-notification-record.yaml

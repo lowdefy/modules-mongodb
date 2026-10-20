@@ -2,7 +2,8 @@
 // checks what the release-notes module stores and delivers: the answer and its time,
 // the note and recipient rows, the release-note notifications, a repeat delivery, a
 // second release of the same version, the email switches, a stalled chain the sweep
-// finishes, a media file whose copy fails, and media sent with no url or content type. Runs against apps/demo (policy pinned)
+// finishes, a media file whose copy fails, media sent with no url or content type, the
+// email's body, and a release.test send. Runs against apps/demo (policy pinned)
 // or apps/tenant-demo (policy tenant), served with `lowdefy dev` or `lowdefy start`.
 //
 //   node scripts/release-announced-check.mjs <app url> <mongodb uri> <webhook secret> <cron secret> <pinned|tenant>
@@ -295,6 +296,15 @@ try {
     key: `release-note:${noteId("1.0.0")}:${id("mailed")}`,
   });
   check(
+    "the email shows the note's body, its embeds resolved, and links to the email switch",
+    typeof mailed?.body === "string" &&
+      mailed.body.includes("Some $dollar text and") &&
+      !mailed.body.includes("[[file:") &&
+      mailed.body.includes("option=links.email_settings") &&
+      mailed?.data?.links?.email_settings?.urlQuery?.section === "email",
+    mailed?.body?.slice(0, 400),
+  );
+  check(
     "an opted-out person gets a bell and no email",
     optout?.send_email === false,
     optout?.send_email,
@@ -586,6 +596,53 @@ try {
         "https://127.0.0.1/a-later.png" &&
       fileNamed(relinked, "b.mp4")?.source_url === "https://127.0.0.1/b.mp4",
     relinked?.media,
+  );
+
+  // release.test emails one address and writes nothing. Without a working email
+  // transport on the server the send fails and answers 5xx; the writes are checked
+  // either way.
+  const testVersion = "9.9.9";
+  const tested = await deliver({
+    event: "release.test",
+    at: new Date().toISOString(),
+    release: release(testVersion, {
+      media: [
+        {
+          name: "shot.png",
+          content_type: "image/png",
+          url: "https://example.com/shot.png",
+        },
+      ],
+    }),
+    to: { name: "Tester", email: `tester-${RUN}@example.com` },
+  });
+  console.log(
+    `      release.test answered ${tested.status} ${JSON.stringify(tested.body)}`,
+  );
+  check(
+    "release.test sends or fails the send, nothing else",
+    (tested.status === 200 && tested.body?.sent === true) ||
+      tested.status >= 500,
+    tested,
+  );
+  check(
+    "release.test writes no note, recipient row or notification",
+    (await notes.countDocuments({ _id: noteId(testVersion) })) === 0 &&
+      (await recipients.countDocuments({ note_id: noteId(testVersion) })) ===
+        0 &&
+      (await notifications.countDocuments({
+        email: `tester-${RUN}@example.com`,
+      })) === 0,
+  );
+  const noAddress = await deliver({
+    event: "release.test",
+    at: new Date().toISOString(),
+    release: release(testVersion),
+  });
+  check(
+    "release.test with no address answers 400",
+    noAddress.status === 400,
+    noAddress,
   );
 
   const bad = await deliver({

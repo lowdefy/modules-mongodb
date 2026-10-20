@@ -5,7 +5,8 @@ description: >-
   checked Pelican's signature, as { delivery, app_version }, and routes them by
   delivery.event. release.audience answers live counts of the people an
   announcement would reach. release.announced stores the note and who is owed
-  it, then hands the rest to deliver. Any other event answers 400.
+  it, then hands the rest to deliver. release.test emails the release-note
+  email to one address and writes nothing. Any other event answers 400.
 routine:
   - :set_state:
       delivery:
@@ -22,5 +23,11 @@ routine:
         - release.announced
     :then:
       - _ref: api/events/announced.yaml
+  - :if:
+      _eq:
+        - _state: delivery.event
+        - release.test
+    :then:
+      - _ref: api/events/test.yaml
   - :reject: Unknown release event
     :status: 400

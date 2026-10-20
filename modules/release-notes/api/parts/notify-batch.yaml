@@ -83,6 +83,29 @@
           _step: batch
         view_page_id:
           _module.pageId: view
+        public_origin:
+          _string.concat:
+            - https://
+            - _secret: FILES_S3_BUCKET_PUB
+            - .s3.
+            - _module.var: region
+            - .amazonaws.com/
+    # The email links each copied file by its public URL; a file not copied
+    # links to the note on What's new instead.
+    - :set_state:
+        email_source:
+          _js: |
+            const note = state('note');
+            const origin = state('public_origin');
+            return {
+              body: note.body,
+              media: (note.media || []).map((file) => ({
+                name: file.name,
+                content_type: file.content_type,
+                url: file.copied === true ? `${origin}${file.key}` : null,
+              })),
+            };
+    - _ref: api/parts/email-body.yaml
     - :set_state:
         batch_size:
           _array.length:
@@ -108,10 +131,15 @@
                 version: note.version,
                 title: note.title ?? note.version,
                 preview: note.preview ?? '',
+                body: state('email_body'),
                 links: {
                   button: {
                     pageId: state('view_page_id'),
                     urlQuery: { note: note._id },
+                  },
+                  email_settings: {
+                    pageId: state('view_page_id'),
+                    urlQuery: { note: note._id, section: 'email' },
                   },
                 },
               }));
