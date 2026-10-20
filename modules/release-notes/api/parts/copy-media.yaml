@@ -39,6 +39,8 @@
       connectionId:
         _module.connectionId: release-notes
       properties:
+        # The note may be gone by the time its copy finishes.
+        disableNoMatchError: true
         filter:
           _id:
             _state: note_id

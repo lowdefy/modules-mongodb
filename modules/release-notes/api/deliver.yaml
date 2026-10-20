@@ -16,12 +16,13 @@ routine:
           - _payload: failed
           - []
   # Marks the note as being worked on, so the sweep leaves a running chain
-  # alone.
+  # alone. A note that is gone matches nothing and ends the chain.
   - id: note
     type: MongoDBUpdateOne
     connectionId:
       _module.connectionId: release-notes
     properties:
+      disableNoMatchError: true
       filter:
         _id:
           _state: note_id
