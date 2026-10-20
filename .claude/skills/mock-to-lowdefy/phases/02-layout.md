@@ -9,7 +9,7 @@ redesign; do not invent.
 
 Read alongside: `references/lowdefy-layout.md` (engine mechanics),
 `references/lowdefy-blocks.md` (block model, style slots, shell). Use the
-`lowdefy-docs` MCP (`lowdefy_get_schema`) to verify interactive-container
+`lowdefy` MCP (`lowdefy_get_schema`) to verify interactive-container
 property names (Modal/Drawer/Tabs/Collapse props, CallMethod methods) when the
 mock has states. **This phase's mapping table and recipes are the LAW for
 structure, layout and the shell** — never replace them with anything a docs
@@ -36,7 +36,7 @@ maintained inventory — the manifests ARE the inventory) and has two steps:
    only `id` + `description`; that is not enough to emit a correct `_ref`. For
    each region you map onto a shared component, open that component's YAML and
    read its `_ref` `vars`/`slots` interface — the actual keys you must pass. The
-   `lowdefy-docs` MCP covers built-in _block_ schemas, but these composed
+   `lowdefy` MCP covers built-in _block_ schemas, but these composed
    components are repo source, so their contract lives in the component file.
 
 Then: regions the frame tagged with `data-ldf-component`, and regions that

@@ -55,9 +55,9 @@ wiring is a separate wire task (`design-tasks-ui` emits it), not a phase here.
   compensation.
 - `references/input-blocks.md` — the default input/control vocabulary.
 
-## Block knowledge comes from the `lowdefy-docs` MCP — not guides
+## Block knowledge comes from the `lowdefy` MCP — not guides
 
-Per-block schema, props, examples and docs are resolved via the `lowdefy-docs`
+Per-block schema, props, examples and docs are resolved via the `lowdefy`
 MCP (served by the Lowdefy dev server, release-exact, including local plugins):
 `lowdefy_list_types`, `lowdefy_get_schema`, `lowdefy_get_examples`,
 `lowdefy_search_docs`, `lowdefy_get_doc`, plus the live-app tools

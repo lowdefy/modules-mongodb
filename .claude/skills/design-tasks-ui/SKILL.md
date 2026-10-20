@@ -79,7 +79,7 @@ Produce the complete ordered task set:
      the design's behavioural spec.
    - **wire** — resolve every `TODO(request-substitute)` marker into real
      `connections:`/`requests:`/operators/state/events, driven by the design's
-     request+logic spec, using the `lowdefy-docs` MCP (request/operator/connection
+     request+logic spec, using the `lowdefy` MCP (request/operator/connection
      schemas, examples, docs). No bespoke wiring skill — this task consumes the
      markers directly.
 

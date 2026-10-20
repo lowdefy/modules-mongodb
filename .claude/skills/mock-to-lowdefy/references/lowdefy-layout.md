@@ -1,6 +1,6 @@
 # Lowdefy layout engine (v5 / vite-hono line) — verified against source
 
-This is the layout _discipline_ the pipeline depends on. The `lowdefy-docs` MCP
+This is the layout _discipline_ the pipeline depends on. The `lowdefy` MCP
 gives you per-block schemas and props; it does NOT teach any of the grid math,
 the align/selfAlign shim, the breakpoint cascade, or the geometry anti-patterns
 below. That is what this reference is for.

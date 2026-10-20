@@ -15,10 +15,17 @@
   "sandbox": {
     "enabled": true,
     "network": {
-      "allowedDomains": ["github.com", "api.github.com", "registry.npmjs.org"]
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "registry.npmjs.org"
+      ]
     },
     "filesystem": {
-      "allowWrite": ["~/Library/pnpm", "~/Library/Caches/pnpm"]
+      "allowWrite": [
+        "~/Library/pnpm",
+        "~/Library/Caches/pnpm"
+      ]
     },
     "excludedCommands": [
       "gh",
@@ -26,8 +33,12 @@
       "pnpm --filter @lowdefy/modules-demo e2e*"
     ]
   },
-  "enabledMcpjsonServers": ["lowdefy-docs"],
+  "enabledMcpjsonServers": [
+    "lowdefy"
+  ],
   "permissions": {
-    "allow": ["mcp__lowdefy-docs"]
+    "allow": [
+      "mcp__lowdefy"
+    ]
   }
 }

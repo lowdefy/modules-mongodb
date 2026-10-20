@@ -102,7 +102,7 @@ Delete=`AiOutlineDelete`); styling via `color: primary|danger` +
 `variant: solid|borderless|link` (never the deprecated `type:` prop);
 `hideTitle: true` for icon-only buttons.
 
-### 2. Look up the chosen block's schema via the `lowdefy-docs` MCP
+### 2. Look up the chosen block's schema via the `lowdefy` MCP
 
 The MCP is served by the dev server and is release-exact — core blocks AND the
 project's local plugins. It is the source of truth for per-block knowledge:
@@ -213,7 +213,7 @@ task greps for these and swaps the mock data for `requests:` + operators.
 
 ### Validate as you go (against the running app)
 
-The developer runs the dev server; the `lowdefy-docs` MCP serves live-app tools
+The developer runs the dev server; the `lowdefy` MCP serves live-app tools
 against it. After each few replacements: `lowdefy_build_status` (build errors,
 file:line) → `lowdefy_get_page_config` (bad block types surface here) →
 `lowdefy_screenshot_page` (LOOK at the render vs the mock: geometry,
@@ -267,7 +267,7 @@ pattern recurs; a clean one-off is fine if it doesn't.
 3. Remind the developer of the next hop: the **wire** task replaces every
    `TODO(request-substitute)` with real `connections:`/`requests:` wiring
    (`design-tasks-ui` emits it; it resolves requests/operators against the same
-   `lowdefy-docs` MCP).
+   `lowdefy` MCP).
 
 ## Production polish rules (recurring faults — treat each as a hard rule)
 

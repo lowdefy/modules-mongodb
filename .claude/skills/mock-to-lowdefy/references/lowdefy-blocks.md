@@ -2,7 +2,7 @@
 
 The layout phase uses this small block set plus the page shell. All ship with a
 default Lowdefy app (no `plugins:`). This reference is the discipline the
-`lowdefy-docs` MCP does not teach — where `style:` lands, the sizeless-structure
+`lowdefy` MCP does not teach — where `style:` lands, the sizeless-structure
 rule, the repetition family, and the page-shell compensation.
 
 | Block                                      | Role                                                                                                          | Sizing                                                            |
