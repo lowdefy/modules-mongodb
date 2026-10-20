@@ -30,10 +30,6 @@ blocks:
           showSizeChanger: false
           pageSizeOptions:
             - 4
-          current:
-            _if_none:
-              - _state: related_deals_page
-              - 1
           total:
             _array.length:
               _if_none:

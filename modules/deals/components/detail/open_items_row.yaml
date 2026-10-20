@@ -38,10 +38,6 @@ blocks:
           showSizeChanger: false
           pageSizeOptions:
             - 4
-          current:
-            _if_none:
-              - _state: open_items_page
-              - 1
           total:
             _array.length:
               _if_none:
