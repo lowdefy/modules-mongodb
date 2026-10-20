@@ -1,5 +1,42 @@
 # @lowdefy/modules-mongodb-release-notes
 
+## 1.1.0
+
+### Minor Changes
+
+- [#302](https://github.com/lowdefy/modules-mongodb/pull/302) [`76ec282`](https://github.com/lowdefy/modules-mongodb/commit/76ec28225da70b5b43284ce01d5e246730fdb8a1) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **Breaking: the release-notes module no longer renders `CHANGELOG.md`.** It now takes release notes the team announces from Pelican, which arrive on the support module's signed webhook. The support webhook hands `release.*` events to the module, and the module answers Pelican's `release.audience` with live counts of who an announcement would reach.
+
+  - **release-notes:** the `content` var is removed. New vars: `audiences` (the groups Pelican can announce to, each a filter over the person's `user-members` row), `email_template` and `region` (required). The module now depends on `notifications`, `files` and `events`, declares three collections (`release-notes`, `release-notes-recipients`, `release-notes-preferences`) and read-only views of the auth `user-members`, `users` and `user-organizations`, and exports an internal `receive` endpoint.
+  - **support:** new var `release_notes_endpoint`, the release-notes receiver's full endpoint id (such as `release-notes/receive`). With it null, the webhook answers `release.*` events 404. `app_version` is now described as the app's bare X.Y.Z version, which Pelican compares with the release it announces.
+
+  Migration:
+
+  - Remove `content` from the release-notes entry and set `region` (the public files bucket's region) and any `audiences`.
+  - Add an `events` module entry if the app has none.
+  - Set the support module's `release_notes_endpoint` to `{release-notes entry id}/receive`, and `app_version` from the build.
+  - Create the two indexes on `release-notes-recipients` listed in the module's docs.
+
+- [#302](https://github.com/lowdefy/modules-mongodb/pull/302) [`308e228`](https://github.com/lowdefy/modules-mongodb/commit/308e2281e862c001b6ec2748376b2e37eed0bc0b) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **release-notes:** an announced release note now reaches the app's members. `release.announced` stores the note and a recipient row per person the audience reaches, and answers `{ notified, emailed, opted_out }`. A detached `deliver` chain copies the note's images and videos into the public files bucket and sends each person one `release-note` notification per version, in the bell and by email. The new exported `sweep` endpoint restarts a chain that stalled.
+
+  Migration:
+
+  - Set `CRON_SECRET` in the app's environment, which detached endpoint calls need.
+  - Add an app endpoint that calls `release-notes/sweep` every 10 minutes with a `schedules:` cron, as the module docs show.
+
+- [#302](https://github.com/lowdefy/modules-mongodb/pull/302) [`aeb1397`](https://github.com/lowdefy/modules-mongodb/commit/aeb1397c251322885efbefcf93d7ee424ecd7720) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **release-notes:** the release note email now shows the note's body, with its headings, lists, links and images, and a footer link to turn release emails off on What's new. A video in the note becomes a link to the note on What's new. Pelican's new `release.test` event sends that email to one address, so the team can check it before announcing; it writes nothing and rings no bell.
+
+  **notifications:** a new exported `send-email` endpoint renders one notification and emails it to one address without storing it, for test sends.
+
+  Migration:
+
+  - An app that restyles the email with `email_template` adds the body to its copy of the template, as the module docs show. Without it, its email carries no body.
+
+- [#302](https://github.com/lowdefy/modules-mongodb/pull/302) [`9602441`](https://github.com/lowdefy/modules-mongodb/commit/960244158955c99253f0867f2a23e82346da0059) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **release-notes:** What's new lists the notes announced to the signed-in person, newest first, beside the one picked (`urlQuery.note`, else the newest). Images and videos embedded in a note load from the public files bucket; one not copied yet shows a placeholder. A New mark clears once the person has opened the note, in every organisation. A switch at the foot, **Email me about new releases**, saves the person's choice; `urlQuery.section=email` scrolls to it. The menu link now reads "What's new".
+
+  The module now reads the `FILES_S3_BUCKET_PUB` secret.
+
+  Migration: set `FILES_S3_BUCKET_PUB` (the files module's public bucket) for the app.
+
 ## 1.0.0
 
 ### Major Changes

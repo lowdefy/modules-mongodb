@@ -25,7 +25,7 @@ Add `events` whenever another module that depends on it is present — it is a f
 # lowdefy.yaml
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v1.0.0"
+    source: "github:lowdefy/modules-mongodb/modules/events@v1.1.0"
     vars:
       change_stamp:
         timestamp:
@@ -78,7 +78,7 @@ Two vars point the engine at the app's collections. Both default to `null` on th
 ```yaml
 # lowdefy.yaml  (the events module entry)
 - id: events
-  source: "github:lowdefy/modules-mongodb/modules/events@v1.0.0"
+  source: "github:lowdefy/modules-mongodb/modules/events@v1.1.0"
   vars:
     actions_collection: actions # collection-name override; matches the engine default
     contacts_collection: user-contacts
