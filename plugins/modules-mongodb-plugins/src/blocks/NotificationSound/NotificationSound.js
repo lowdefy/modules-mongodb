@@ -184,6 +184,7 @@ const NotificationSound = ({
           id={`${blockId}_picker`}
           aria-label={label}
           style={{ minWidth: 160 }}
+          popupMatchSelectWidth={240}
           value={value ? sound?.id : undefined}
           placeholder={offLabel}
           onChange={onPick}
@@ -191,9 +192,7 @@ const NotificationSound = ({
           optionRender={(option) => {
             const item = sounds.find(({ id }) => id === option.value);
             return (
-              <span
-                style={{ display: "flex", alignItems: "center", gap: 8 }}
-              >
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block" }}>{item?.title}</span>
                   {item?.description && (
