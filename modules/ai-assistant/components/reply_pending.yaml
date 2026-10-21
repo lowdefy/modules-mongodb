@@ -1,7 +1,8 @@
 # reply_pending.yaml — the open thread, as loaded, ends on the user's message: the agent was
 # still answering when the chat that sent it went away, and its onFinish hook stores the reply on
 # the server when it finishes. Says so in place of an empty answer, with a Check again that loads
-# the thread once more.
+# the thread once more. A turn that ended with no answer looks the same from here, so the text
+# says what to do if nothing comes.
 #
 # The id is passed in so each shell names its own, as notice.yaml's is.
 id:
@@ -25,7 +26,7 @@ properties:
   type: info
   showIcon: true
   message: Waiting for the assistant's reply
-  description: It appears here once the assistant has finished.
+  description: Check again in a moment. If nothing comes, send your message again.
 slots:
   action:
     blocks:

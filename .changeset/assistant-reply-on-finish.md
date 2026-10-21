@@ -13,7 +13,7 @@ agents:
         - ai-assistant/save-thread-on-finish
 ```
 
-Without the hook, nothing changes from before. With it, opening the panel again (or returning to a page with the embedded chat) shows the finished reply, and a thread still waiting for one says "Waiting for the assistant's reply", with **Check again**.
+The panel now reloads the open thread the first time it opens on each page visit, so the finished reply is there. A page with the embedded chat gets the same by running `enter` in its `onMount` as well as its `onInit`, which the docs already ask for when the scope can change. A thread still waiting for its reply says "Waiting for the assistant's reply", with **Check again**.
 
 `save-thread` now merges the history it is sent with the stored one rather than replacing it, so a reply the hook stored survives the browser's next save. The chat sends `known_ids`, the ids of every message it has held, and a stored message is dropped only when it is one of those. An app that calls `save-thread` itself without `known_ids` gets the old behaviour: its history replaces the stored one.
 

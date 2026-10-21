@@ -26,6 +26,8 @@ payloadSchema:
       minLength: 1
     messages:
       type: array
+      items:
+        type: object
       description: The agent's input messages followed by its reply.
 routine:
   - _ref: api/routines/require_user.yaml

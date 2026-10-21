@@ -21,6 +21,8 @@ payloadSchema:
       minLength: 1
     messages:
       type: array
+      items:
+        type: object
       description: Full UIMessage history (user + assistant) from the chat block.
     known_ids:
       type: array

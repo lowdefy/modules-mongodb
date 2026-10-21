@@ -367,9 +367,9 @@ agents:
 
 Lowdefy calls the hook on the server once the stream ends, as the person who sent the message, so it writes only that person's thread. It stores the messages and nothing else: the title, scope and tags stay with the browser's saves. It writes only to a thread the browser has already saved, which it does when the message is sent, so an agent the app also uses outside this module can keep the hook: a conversation that is not one of the module's threads is left alone. The hook adds no `dataParts` to the stream.
 
-Without the hook, a reply the person leaves before it finishes is lost, as it always was.
+Without the hook, a reply the person leaves before it finishes is lost.
 
-**What the person sees.** Opening the panel again (or coming back to a page with the embedded chat) reloads the open thread from the server when a reply was streaming as they left, so a finished reply is there without a refresh, and after one. A thread whose last message is still the person's shows "Waiting for the assistant's reply" with **Check again**, which loads it once more. The same note shows for a turn that ended with no answer, until the person sends again.
+**What the person sees.** The first time the panel opens on a page visit, it reloads the open thread from the server, so a reply that finished while they were elsewhere is there without a refresh, and after one. A page with the embedded chat does the same when `enter` runs in its `onMount`, which it needs for this (see [Scope](#scope) for the splice). A thread whose last message is still the person's shows "Waiting for the assistant's reply" with **Check again**, which loads it once more. A turn that ended with no answer looks the same, so the note tells the person to send again if nothing comes.
 
 **Two writers, one history.** The browser's saves and the hook's can land in either order, and the browser may not hold a reply the hook stored, for example when the person reopens the thread and sends again before the reply has landed. So neither write replaces the stored history. Messages are matched by id; the browser sends the ids of every message it has held, and a stored message is dropped only when the browser held it and left it out (deleted, regenerated or edited away). A reply only the server holds is kept, before the browser's next question.
 

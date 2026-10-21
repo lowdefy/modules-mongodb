@@ -8,10 +8,11 @@
 # the new scope.
 #
 # Re-entering on a chat that has just mounted (`fresh_mount`) reloads the open
-# thread when a reply was streaming or still to come: the chat that was streaming
-# it went with the page, and the agent's onFinish hook stores the reply on the
-# server. The panel passes its onOpen's `first`; a shell that mounts the chat on
-# every entry (embedded) leaves the var at true.
+# thread. Page state outlives a page change, but the chat does not: the thread
+# may have moved on since this page last showed it, on another page or through
+# the agent's onFinish hook storing a reply on the server. The panel passes its
+# onOpen's `first`; a shell that mounts the chat on every entry (embedded)
+# leaves the var at true.
 #
 # vars:
 #   fresh_mount — whether the chat mounted for this entry. Default true.
@@ -172,11 +173,6 @@ _build.array.concat:
                 _var:
                   key: fresh_mount
                   default: true
-            - _and:
-                - _not:
-                    _state: ai_busy
-                - _not:
-                    _state: ai_reply_pending
   # Unconditional, and LAST: the only step guaranteed to run on both paths. A
   # rejected fetch aborts the chain before it — panel.yaml wraps this list in
   # try/catch and clears the flag there, so a failed resume cannot leave a spinner

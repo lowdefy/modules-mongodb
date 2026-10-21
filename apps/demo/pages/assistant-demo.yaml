@@ -31,6 +31,19 @@ _ref:
             type: SetState
             params:
               ai_loading: false
+      # Every visit after the first: page state survives a page change and onInit does not
+      # run again, but the chat mounts anew, so enter reloads the open thread (and picks up a
+      # changed scope).
+      onMount:
+        try:
+          _ref:
+            module: ai-assistant
+            component: enter
+        catch:
+          - id: ai_end_loading_on_error_mount
+            type: SetState
+            params:
+              ai_loading: false
     blocks:
       - id: assistant_intro
         type: Paragraph

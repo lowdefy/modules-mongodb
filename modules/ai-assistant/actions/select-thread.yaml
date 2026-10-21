@@ -1,10 +1,9 @@
 # select-thread.yaml — open a thread from the list: load its stored messages
 # FIRST, then commit the switch in one step, and flip back to the chat view.
 #
-# Load-then-commit, not commit-then-load: committing the id with empty messages
-# first meant a transiently failed fetch left the switched thread active and
-# empty, and the next send saved that as the thread's whole history. Loading first, a failed fetch aborts the chain with
-# the previously open thread still intact.
+# Load-then-commit: a failed fetch must leave the previously open thread intact.
+# Committing the id with empty messages first would leave the switched thread
+# active and empty, and the next send would save that as its whole history.
 #
 # ONE click opens. Reads the key/label off the EVENT rather than the selection
 # state, so this never depends on whether the ListSelector has committed its own

@@ -115,6 +115,14 @@ test("the second turn's saves keep the first reply, in either order", () => {
   );
 });
 
+test("a send from a page that last showed the thread earlier puts the newer stored turn first", () => {
+  // The thread moved on (q2, a2) on another page; this page still holds q1, a1.
+  const q3 = user("q3");
+  expect(
+    ids(browserSave([q1, a1, q2, a2], [q1, a1, q3], ["q1", "a1", "q3"])),
+  ).toEqual(["q1", "a1", "q2", "a2", "q3"]);
+});
+
 test("a message the browser deleted is dropped", () => {
   expect(
     ids(browserSave([q1, a1, q2, a2], [q1, q2, a2], ["q1", "a1", "q2", "a2"])),

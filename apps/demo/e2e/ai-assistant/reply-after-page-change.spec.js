@@ -303,6 +303,65 @@ test("a reply that finishes after the page changes shows when the panel opens ag
   await expect(page.getByText(SECOND_REPLY)).toBeVisible();
 });
 
+test("a reply sent from the embedded chat shows in another page's panel and back in the embedded chat", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await mdb.seed(THREADS, [
+    threadDoc("e2e-shared", [
+      text("q0", "user", "An earlier question"),
+      text("a0", "assistant", "An earlier answer"),
+    ]),
+  ]);
+  const posted = await interceptAgent(page);
+  await ldf.user(USER);
+  await ldf.goto("/home");
+  // Home's panel resumes the thread first, so its page state is older than what follows.
+  await page.getByRole("button", { name: "Open assistant" }).click();
+  await expect(page.getByText("An earlier answer")).toBeVisible();
+  await page.getByRole("button", { name: "Close panel" }).click();
+
+  await page.getByRole("menuitem", { name: "AI Assistant" }).click();
+  await expect(page).toHaveURL(/assistant-demo/);
+  await page.getByPlaceholder("Ask about the demo app…").fill(PROMPT);
+  await page.keyboard.press("Enter");
+  const conversationId = await ldf.state("ai_conversation_id").value();
+  expect(conversationId).toBe("e2e-shared");
+  await expect.poll(() => storedIds(mdb, conversationId)).toHaveLength(3);
+  await expect.poll(() => posted.length).toBe(1);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/home/);
+  const { body } = await post(
+    page,
+    "save-thread-on-finish",
+    finishPayload({
+      conversationId,
+      messages: [
+        ...posted[0].messages,
+        text("server-reply-1", "assistant", REPLY),
+      ],
+    }),
+  );
+  expect(body?.response).toEqual({ saved: true });
+
+  await page.getByRole("button", { name: "Open assistant" }).click();
+  await ldf.state("ai_conversation_id").expect.toBe(conversationId);
+  await expect(page.getByText(REPLY)).toBeVisible();
+
+  await page.goForward();
+  await expect(page).toHaveURL(/assistant-demo/);
+  await expect(page.getByText(REPLY)).toBeVisible();
+  await ldf.state("ai_busy").expect.toBe(false);
+  expect(await storedIds(mdb, conversationId)).toEqual([
+    "q0",
+    "a0",
+    posted[0].messages.at(-1).id,
+    "server-reply-1",
+  ]);
+});
+
 for (const viewport of [
   { name: "desktop", width: 1280, height: 800 },
   { name: "phone", width: 390, height: 844 },
