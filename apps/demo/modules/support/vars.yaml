@@ -22,3 +22,5 @@ chat_files_prefix:
     - /
 # Pelican's release.* events go to the release-notes module's receiver.
 release_notes_endpoint: release-notes/receive
+# Pelican's users.lookup answers with the email and name of the members it names.
+user_lookup: true

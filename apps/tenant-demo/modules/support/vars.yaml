@@ -14,3 +14,5 @@ app_version:
     key: APP_VERSION
     default: null
 release_notes_endpoint: release-notes/receive
+# Pelican's users.lookup answers with the email and name of the members it names.
+user_lookup: true

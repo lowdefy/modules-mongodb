@@ -2,18 +2,20 @@
 // support module's webhook stores and notifies. Lowdefy's e2e server has no
 // webhook route, so this runs against `lowdefy dev` instead.
 //
-//   node scripts/support-webhook-check.mjs <app url> <mongodb uri> <webhook secret>
+//   node scripts/support-webhook-check.mjs <app url> <mongodb uri> <webhook secret> <on|off>
 //
-// The dev server must run with the same MONGODB_URI and SUPPORT_WEBHOOK_SECRET.
-// It seeds and removes rows of its own (ids starting webhook-check-), and refuses
-// a database that is not on this machine.
+// The last argument is the app's user_lookup var: on checks the users.lookup
+// answer, off checks it answers 404. The dev server must run with the same
+// MONGODB_URI and SUPPORT_WEBHOOK_SECRET, and its pinned organisation (slug demo)
+// must be in the database. It seeds and removes rows of its own (ids starting
+// webhook-check-), and refuses a database that is not on this machine.
 import { createHmac, randomUUID } from "node:crypto";
 import { MongoClient } from "mongodb";
 
-const [appUrl, mongoUri, secret] = process.argv.slice(2);
-if (!appUrl || !mongoUri || !secret) {
+const [appUrl, mongoUri, secret, lookupMode] = process.argv.slice(2);
+if (!appUrl || !mongoUri || !secret || !["on", "off"].includes(lookupMode)) {
   console.error(
-    "Usage: node scripts/support-webhook-check.mjs <app url> <mongodb uri> <webhook secret>",
+    "Usage: node scripts/support-webhook-check.mjs <app url> <mongodb uri> <webhook secret> <on|off>",
   );
   process.exit(2);
 }
@@ -29,6 +31,7 @@ const WEBHOOK = `${appUrl}/api/endpoints/support/webhook`;
 const RUN = randomUUID().slice(0, 8);
 const USER_ID = `webhook-check-user-${RUN}`;
 const ORG_USER_ID = `webhook-check-org-user-${RUN}`;
+const lookupId = (name) => `webhook-check-lookup-${RUN}-${name}`;
 
 const client = new MongoClient(mongoUri);
 await client.connect();
@@ -36,6 +39,27 @@ const db = client.db();
 const tickets = db.collection("support-tickets");
 const notifications = db.collection("notifications");
 const users = db.collection("users");
+const members = db.collection("user-members");
+const organizations = db.collection("user-organizations");
+
+const pinned = await organizations.findOne({ slug: "demo" });
+if (!pinned) {
+  console.error(
+    "The pinned organisation (slug demo) is not in the database yet. Open the app once so the auth engine creates it.",
+  );
+  await client.close();
+  process.exit(2);
+}
+
+const member = (name, user, organizationId) => ({
+  _id: lookupId(`member-${name}`),
+  user_id: lookupId(user),
+  organization_id: organizationId,
+  role: "member",
+  app_roles: [],
+  attributes: {},
+  created_at: new Date(),
+});
 
 const failures = [];
 function check(name, ok, detail) {
@@ -109,7 +133,7 @@ const repliesFor = (ticketId) =>
     .find({
       type: "support/support-reply",
       key: { $regex: `^support-reply:webhook-check-${RUN}-` },
-      "data.links.button.urlQuery.ticket": ticketId,
+      "data.links.button.pathParams.ticket_key": ticketId,
     })
     .toArray();
 
@@ -209,8 +233,8 @@ try {
     reply?.user_id,
   );
   check(
-    "the button opens the ticket on the support page",
-    reply?.data?.links?.button?.pageId === "support/support",
+    "the button opens the ticket page",
+    reply?.data?.links?.button?.pageId === "support/ticket",
     reply?.data?.links,
   );
   const long = replies.find(
@@ -303,12 +327,110 @@ try {
     "ticket.stage writes the view",
     (await tickets.findOne({ _id: t2v3.id }))?.view?.stage === "Resolved",
   );
+
+  // An event the module does not know answers 404, with or without a ticket.
+  const unknown = await deliver(
+    delivery("ticket.archived", USER_ID, view("T3", 1, [])),
+  );
+  check(
+    "an unknown event answers 404",
+    unknown.status === 404 && unknown.body?.error?.message === "Unknown event",
+    unknown,
+  );
+  const noEvent = await deliver({ user_id: USER_ID });
+  check(
+    "a delivery with no event answers 404",
+    noEvent.status === 404,
+    noEvent,
+  );
+
+  // users.lookup: only the app's members, once each, email lowercased.
+  await users.insertMany([
+    {
+      _id: lookupId("mixed"),
+      email: `Mixed.Case-${RUN}@Example.COM`,
+      name: "Mixed Case",
+    },
+    { _id: lookupId("no-email"), name: "No Email" },
+    {
+      _id: lookupId("not-member"),
+      email: `nm-${RUN}@example.com`,
+      name: "Not Member",
+    },
+    {
+      _id: lookupId("other-org"),
+      email: `oo-${RUN}@example.com`,
+      name: "Other Org",
+    },
+  ]);
+  await members.insertMany([
+    member("mixed", "mixed", pinned._id),
+    // The engine keeps one row per person per organisation, so a second row is
+    // in another organisation; it must not answer twice.
+    member("mixed-elsewhere", "mixed", lookupId("other-organisation")),
+    member("no-email", "no-email", pinned._id),
+    member("other-org", "other-org", lookupId("other-organisation")),
+  ]);
+  const askedIds = [
+    lookupId("mixed"),
+    lookupId("no-email"),
+    lookupId("not-member"),
+    lookupId("other-org"),
+    lookupId("unknown"),
+  ];
+  const lookup = (userIds) =>
+    deliver({
+      event: "users.lookup",
+      at: new Date().toISOString(),
+      user_ids: userIds,
+    });
+
+  if (lookupMode === "on") {
+    const answer = await lookup(askedIds);
+    check("users.lookup answers 200", answer.status === 200, answer);
+    const answered = [...(answer.body?.users ?? [])].sort((a, b) =>
+      a.id.localeCompare(b.id),
+    );
+    check(
+      "users.lookup answers only the app's members, once each",
+      JSON.stringify(answered) ===
+        JSON.stringify([
+          {
+            id: lookupId("mixed"),
+            email: `mixed.case-${RUN}@example.com`,
+            name: "Mixed Case",
+          },
+          { id: lookupId("no-email"), email: null, name: "No Email" },
+        ]),
+      answered,
+    );
+    const tooMany = await lookup(
+      Array.from({ length: 201 }, (_, index) => lookupId(`many-${index}`)),
+    );
+    check("201 ids answer 422", tooMany.status === 422, tooMany);
+    const blank = await lookup(["", lookupId("mixed")]);
+    check("an empty id answers 422", blank.status === 422, blank);
+  } else {
+    const off = await lookup(askedIds);
+    check(
+      "users.lookup answers 404 when the app does not share",
+      off.status === 404 &&
+        off.body?.error?.message === "This app does not share user details",
+      off,
+    );
+  }
 } finally {
   await tickets.deleteMany({ _id: { $regex: `^webhook-check-${RUN}-` } });
   await notifications.deleteMany({
     key: { $regex: `^support-reply:webhook-check-${RUN}-` },
   });
   await users.deleteMany({ _id: { $in: [USER_ID, ORG_USER_ID] } });
+  await users.deleteMany({
+    _id: { $regex: `^webhook-check-lookup-${RUN}-` },
+  });
+  await members.deleteMany({
+    _id: { $regex: `^webhook-check-lookup-${RUN}-` },
+  });
   await client.close();
 }
 
