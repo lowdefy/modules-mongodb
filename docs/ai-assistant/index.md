@@ -72,6 +72,8 @@ onInit:
 
 Without it, Lowdefy raises a ConfigWarning for every `ai_*` key the chat reads. Keeping the list inside the module means adding a key never silently breaks a consumer. All keys are `ai_`-prefixed, so they cannot collide with the page's.
 
+**Every open shows the stored thread.** The open thread lives in page state, one copy per page, and Lowdefy keeps a page's state when the user comes back to it. So each time the panel opens with a thread already showing, `enter` re-reads the thread the user last opened in the scope and replaces the one showing, without a spinner: messages sent on another page since, or a thread switched to there, show without a refresh. A reply streaming on this page keeps what it shows. When the fetch fails, or the scope has no stored thread yet, the thread showing stays. A new chat not yet sent in is not stored, so closing and reopening the panel takes the user back to the thread they last opened.
+
 ## Mounting the embedded variant
 
 The embedded shell renders the same chat and thread lifecycle inline — a toolbar (thread name, rename, delete, new chat, manage chats) over the chat area. The page owns the container: put it inside whatever Card or column the layout calls for, and size it with the `embedded_height` var.
@@ -143,7 +145,7 @@ It needs the `panel` shell: on a page using `embedded` there is no panel to open
 
 The operator is resolved **each time it is used** — when a thread is minted, listed, or saved — not once at page init. So a scope whose value arrives late (state populated by an async request, for example) is not frozen as null.
 
-**A scope that changes mid-session** — an active-company or active-record switcher, typically — is picked up by `enter`. It keeps the scope the open thread belongs to in `ai_scope`, and when the `scope` var no longer matches, it drops the open thread and its list and resumes the thread last opened in the new scope. Nothing in the module can observe the scope moving, so this happens the next time `enter` runs. The panel runs it on every open, so a page carrying the docked panel needs nothing more. A page hosting `embedded` runs it in `onInit`, which fires once per page per session, so it also splices `enter` into `onMount`, which runs on every visit. `enter` is a no-op there while the scope is unchanged:
+**A scope that changes mid-session** — an active-company or active-record switcher, typically — is picked up by `enter`. It keeps the scope the open thread belongs to in `ai_scope`, and when the `scope` var no longer matches, it drops the open thread and its list and resumes the thread last opened in the new scope. Nothing in the module can observe the scope moving, so this happens the next time `enter` runs. The panel runs it on every open, so a page carrying the docked panel needs nothing more. A page hosting `embedded` runs it in `onInit`, which fires once per page per session, so it also splices `enter` into `onMount`, which runs on every visit. While the scope is unchanged it re-reads the stored thread there, as the panel does on each open:
 
 ```yaml
 onMount:

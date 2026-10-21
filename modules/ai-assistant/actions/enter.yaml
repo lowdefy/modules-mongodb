@@ -3,14 +3,17 @@
 # FIRST entry (no active thread yet): mint a thread id SYNCHRONOUSLY first, so
 # the chat has a conversationId before the user can possibly send, then fetch
 # this user's threads for the scope and resume the one they last opened.
-# Re-entering with a thread already active is a no-op, unless the scope has
-# changed since: then the open thread is dropped first, and the chain resumes in
-# the new scope.
+# Re-entering with a thread already active re-reads the thread last opened and
+# replaces the one showing, quietly: page state outlives a visit, so the thread
+# this page holds can be one the user has since added to, or left, on another
+# page. A reply streaming on this page (ai_busy) keeps what it shows. When the
+# scope has changed since, the open thread is dropped first, and the chain
+# resumes in the new scope.
 #
-# ai_loading covers the whole chain. Without it the panel showed the empty-thread
-# welcome screen — "start a new chat", with its suggestion prompts — for as long
-# as the fetch took, then swapped it for the resumed conversation: advertising a
-# new chat and immediately taking it away.
+# ai_loading covers the whole first-entry chain. Without it the panel showed the
+# empty-thread welcome screen — "start a new chat", with its suggestion prompts —
+# for as long as the fetch took, then swapped it for the resumed conversation:
+# advertising a new chat and immediately taking it away.
 
 # `ai_scope` is the open thread's scope; it differs from the var when the scope
 # moved mid-session, which nothing else in the module can observe.
@@ -43,11 +46,76 @@
         - _state: ai_conversation_id
         - null
     # Same expression, so re-opening with a thread already active clears the
-    # flag instead of flashing a spinner at somebody who is not waiting.
+    # flag instead of flashing a spinner over a thread already showing.
     ai_loading:
       _eq:
         - _state: ai_conversation_id
         - null
+    # The thread showing when the re-read starts, or null when there is none to
+    # re-read: no thread yet, a reply streaming, or open-with-prompt about to
+    # send into the thread it just minted.
+    ai_refresh_for:
+      _if:
+        test:
+          _or:
+            - _eq:
+                - _state: ai_busy
+                - true
+            - _eq:
+                - _state: ai_keep_thread
+                - true
+        then: null
+        else:
+          _state: ai_conversation_id
+    ai_keep_thread: false
+
+# Load-then-commit, as on the first entry below: a failed fetch aborts the chain
+# with the thread already showing left as it is.
+- id: ai_refresh_active_thread
+  type: CallAPI
+  skip:
+    _eq:
+      - _state: ai_refresh_for
+      - null
+  params:
+    endpointId:
+      _module.endpointId: get-active-thread
+    payload:
+      scope:
+        _module.var: scope
+
+# Keeps the thread showing when the scope has no stored thread: a new chat not
+# yet sent in has no row to come back from. Also skips when the user switched
+# threads or sent while the fetch was out.
+- id: ai_apply_active_thread
+  type: SetState
+  skip:
+    _or:
+      - _eq:
+          - _state: ai_refresh_for
+          - null
+      - _ne:
+          - _state: ai_refresh_for
+          - _state: ai_conversation_id
+      - _eq:
+          - _state: ai_busy
+          - true
+      - _eq:
+          - _if_none:
+              - _actions: ai_refresh_active_thread.response.response.conversationId
+              - null
+          - null
+  params:
+    ai_conversation_id:
+      _actions: ai_refresh_active_thread.response.response.conversationId
+    ai_messages:
+      _if_none:
+        - _actions: ai_refresh_active_thread.response.response.messages
+        - []
+    ai_title:
+      _if_none:
+        - _actions: ai_refresh_active_thread.response.response.title
+        - New chat
 
 - id: ai_mint_thread
   type: SetState
@@ -141,9 +209,9 @@
         - _actions: ai_load_active_thread.response.response.title
         - New chat
 
-# Unconditional, and LAST: every skip above is on the seeding condition, so this
-# is the only step guaranteed to run on both paths. A rejected fetch aborts the
-# chain before it — panel.yaml wraps this list in try/catch and clears the flag
+# Unconditional, and LAST: every skip above is on the seeding or refresh
+# condition, so this is the only step guaranteed to run on every path. A
+# rejected fetch aborts the chain before it — panel.yaml wraps this list in try/catch and clears the flag
 # there, so a failed resume cannot leave a spinner running forever.
 - id: ai_end_loading
   type: SetState
