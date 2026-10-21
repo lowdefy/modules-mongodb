@@ -1,6 +1,6 @@
 # refresh-thread.yaml — load the open thread's stored messages again. For a thread whose reply the
-# agent's onFinish hook stores on the server while no chat on screen was streaming it: on the
-# first open after a page change (enter.yaml), and from the pending-reply note's Check again.
+# agent's onFinish hook stores on the server while no chat on screen was streaming it: the
+# pending-reply note's Check again.
 #
 # The chat streaming into this thread is gone by then, so ai_busy is cleared with it.
 #

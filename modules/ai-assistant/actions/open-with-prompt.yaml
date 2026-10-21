@@ -10,8 +10,9 @@
 #
 # 1. `enter` first, awaited. On a page where the panel was never opened it seeds
 #    the thread list (and resumes, which the new thread then replaces); anywhere
-#    else it is a no-op. Running it here rather than leaving it to the panel's
-#    onOpen means its resume can never land on top of the thread minted below.
+#    else it re-reads the open thread. Running it here rather than leaving it to
+#    the panel's onOpen means its resume can never land on top of the thread
+#    minted below.
 # 2. Unmount the chat (ai_loading shows its skeleton) before minting the new
 #    thread, and remount it once the new thread is active. AgentChat registers
 #    its methods once per mount, bound to the conversation it mounted on, so a
@@ -19,7 +20,12 @@
 #    thread it was showing before. The Wait lets React commit the unmount;
 #    without it the two ai_loading writes batch into one render and the chat
 #    never unmounts.
-# 3. Open the panel. Its onOpen runs `enter` again, which is now a no-op.
+# 3. Open the panel. Its onOpen runs `enter` again. ai_keep_thread stops that
+#    run re-reading the stored thread, which would otherwise replace the new
+#    thread, unsent and so not stored, with the one last opened. `enter` clears
+#    the flag, and so does the last step, for a panel already open, whose onOpen
+#    does not run. Not cleared straight after the open: onOpen fires when the
+#    panel next renders, which can be after the steps that follow have started.
 # 4. Wait for the remounted chat to register its methods, then send. Until the
 #    chat has mounted there is no sendMessage to call (never opened), or only the
 #    unmounted chat's (open or closed on another thread).
@@ -42,7 +48,11 @@ _build.array.concat:
       params:
         ms: 50
   - _ref: actions/new-thread.yaml
-  - - id: ai_owp_open_panel
+  - - id: ai_owp_keep_new_thread
+      type: SetState
+      params:
+        ai_keep_thread: true
+    - id: ai_owp_open_panel
       type: CallMethod
       params:
         blockId: ai_panel
@@ -65,3 +75,7 @@ _build.array.concat:
         args:
           - text:
               _var: prompt
+    - id: ai_owp_release_thread
+      type: SetState
+      params:
+        ai_keep_thread: false

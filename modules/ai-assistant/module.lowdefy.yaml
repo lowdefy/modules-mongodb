@@ -424,8 +424,10 @@ exports:
     - id: enter
       description: >-
         The resume-or-mint action chain as an action list: mint a thread id,
-        fetch the scope's threads, resume the most recent. The `panel` runs this
-        itself on first open; a page using `embedded` splices it into onInit
+        fetch the scope's threads, resume the most recent. Run again with a
+        thread open, it re-reads the thread last opened, unless a reply is
+        streaming. The `panel` runs this itself on every open; a page using
+        `embedded` splices it into onInit
         AFTER `state`, inside a try/catch whose catch clears ai_loading — a
         rejected fetch aborts the chain before its own clear, and without the
         catch the chat spins forever.
