@@ -6,6 +6,7 @@ _ref:
   vars:
     id: support
     title: My tickets
+    content_width: 960
     breadcrumbs:
       - label: Support
       - label: My tickets
@@ -38,9 +39,6 @@ _ref:
     blocks:
       - id: support_list_column
         type: Box
-        style:
-          maxWidth: 960
-          width: 100%
         layout:
           gap: 16
         blocks:
