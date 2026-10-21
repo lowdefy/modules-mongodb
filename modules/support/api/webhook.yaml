@@ -8,7 +8,9 @@ description: >-
   team logged, and a new team message sends that user a support-reply
   notification. A test delivery answers 200 and writes nothing. A release.*
   event goes to the endpoint the release_notes_endpoint var names, whose answer
-  is the webhook's, or answers 404 when the var is null. The app lists
+  is the webhook's, or answers 404 when the var is null. A users.lookup event
+  answers the email and name of the app's members among its user_ids when the
+  user_lookup var is on, else 404. Any other event answers 404. The app lists
   support/webhook in auth.api.public.
 webhook:
   verify:
@@ -60,17 +62,103 @@ routine:
           - :return:
               _step: release_notes
   - :if:
+      _eq:
+        - _state: delivery.event
+        - users.lookup
+    :then:
+      _build.if:
+        test:
+          _build.eq:
+            - _module.var: user_lookup
+            - true
+        then:
+          - :if:
+              _js: |
+                const ids = state('delivery').user_ids;
+                if (!Array.isArray(ids) || ids.length === 0 || ids.length > 200) return true;
+                return !ids.every((id) => typeof id === 'string' && id !== '');
+            :then:
+              - :reject: A users.lookup names 1 to 200 user ids.
+                :status: 422
+          # Only ids with a member row in this app are answered: users holds
+          # everyone on the auth database, which can span organisations and apps.
+          - id: looked_up_users
+            type: MongoDBAggregation
+            connectionId:
+              _module.connectionId: support-members
+            properties:
+              pipeline:
+                - $match:
+                    _build.if:
+                      test:
+                        _build.eq:
+                          - _build.authConfig: organizations.policy
+                          - tenant
+                      then:
+                        user_id:
+                          $in:
+                            _state: delivery.user_ids
+                      else:
+                        user_id:
+                          $in:
+                            _state: delivery.user_ids
+                        organization_id:
+                          _organization: id
+                - $group:
+                    _id: $user_id
+                - $lookup:
+                    from: users
+                    localField: _id
+                    foreignField: _id
+                    as: user
+                    pipeline:
+                      - $project:
+                          name: 1
+                          email: 1
+                - $unwind: $user
+                - $project:
+                    _id: 0
+                    id: $_id
+                    # $toLower turns a missing email into "", so test the type.
+                    email:
+                      $cond:
+                        - $and:
+                            - $eq:
+                                - $type: $user.email
+                                - string
+                            - $ne:
+                                - $user.email
+                                - ""
+                        - $toLower: $user.email
+                        - null
+                    name:
+                      $ifNull:
+                        - $user.name
+                        - null
+          - :return:
+              users:
+                _step: looked_up_users
+        else:
+          - :reject: This app does not share user details
+            :status: 404
+  - :set_state:
+      ticket_events:
+        - ticket.created
+        - ticket.message
+        - ticket.message_deleted
+        - ticket.stage
+        - ticket.updated
+  - :if:
       _js: |
         const delivery = state('delivery');
-        const events = [
-          'ticket.created',
-          'ticket.message',
-          'ticket.message_deleted',
-          'ticket.stage',
-          'ticket.updated',
-        ];
         if (!delivery || typeof delivery !== 'object') return true;
-        if (!events.includes(delivery.event)) return true;
+        return !state('ticket_events').includes(delivery.event);
+    :then:
+      - :reject: Unknown event
+        :status: 404
+  - :if:
+      _js: |
+        const delivery = state('delivery');
         if (typeof delivery.user_id !== 'string' || delivery.user_id === '') return true;
         const ticket = delivery.ticket;
         if (!ticket || typeof ticket !== 'object') return true;
