@@ -1,13 +1,15 @@
 # reply_pending.yaml — the open thread, as loaded, ends on the user's message: the agent was
 # still answering when the chat that sent it went away, and its onFinish hook stores the reply on
-# the server when it finishes. Says so in place of an empty answer, with a Check again that loads
-# the thread once more. A turn that ended with no answer looks the same from here, so the text
-# says what to do if nothing comes.
+# the server when it finishes. A slim status row says so in place of an empty answer, with a
+# Check again that loads the thread once more.
+#
+# AgentChat has no slot inside its message list, so the row sits outside the chat, and keeps to
+# one line so the chat below it keeps its composer in view.
 #
 # The id is passed in so each shell names its own, as notice.yaml's is.
 id:
   _var: id
-type: Alert
+type: Box
 visible:
   _and:
     - _ne:
@@ -22,28 +24,58 @@ visible:
     - _ne:
         - _state: ai_loading
         - true
-properties:
-  type: info
-  showIcon: true
-  message: Waiting for the assistant's reply
-  description: Check again in a moment. If nothing comes, send your message again.
-slots:
-  action:
-    blocks:
-      - id:
-          _build.string.concat:
-            - _var: id
-            - _check_again
-        type: Button
-        properties:
-          title: Check again
-          size: small
-        events:
-          onClick:
-            _ref:
-              path: actions/refresh-thread.yaml
-              vars:
-                id:
-                  _build.string.concat:
-                    - _var: id
-                    - _refresh
+layout:
+  direction: row
+  align: middle
+  gap: 8
+style:
+  margin: 4px 0 8px
+  padding: 4px 4px 4px 12px
+  borderRadius: 8px
+  background: var(--ant-color-fill-quaternary)
+blocks:
+  - id:
+      _build.string.concat:
+        - _var: id
+        - _spinner
+    type: Spinner
+    layout:
+      flex: 0 0 auto
+    properties:
+      size: 14
+  - id:
+      _build.string.concat:
+        - _var: id
+        - _text
+    type: Paragraph
+    layout:
+      flex: 1 1 auto
+    style:
+      .element:
+        margin: 0
+        fontSize: 13px
+    properties:
+      type: secondary
+      content: The assistant is still replying.
+  - id:
+      _build.string.concat:
+        - _var: id
+        - _check_again
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: Check again
+      color: primary
+      variant: link
+      size: small
+      icon: refresh
+    events:
+      onClick:
+        _ref:
+          path: actions/refresh-thread.yaml
+          vars:
+            id:
+              _build.string.concat:
+                - _var: id
+                - _refresh

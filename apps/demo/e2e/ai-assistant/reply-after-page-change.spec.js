@@ -384,7 +384,7 @@ for (const viewport of [
     await page.getByRole("button", { name: "Open assistant" }).click();
     await expect(page.getByText(PROMPT).last()).toBeVisible();
     await expect(
-      page.getByText("Waiting for the assistant's reply"),
+      page.getByText("The assistant is still replying."),
     ).toBeVisible();
     await page.screenshot({
       path: `test-results/reply-pending-${viewport.name}.png`,
@@ -399,7 +399,7 @@ for (const viewport of [
     await page.getByRole("button", { name: "Check again" }).click();
     await expect(page.getByText(REPLY)).toBeVisible();
     await expect(
-      page.getByText("Waiting for the assistant's reply"),
+      page.getByText("The assistant is still replying."),
     ).toBeHidden();
     await page.screenshot({
       path: `test-results/reply-loaded-${viewport.name}.png`,
@@ -419,7 +419,7 @@ test("the embedded chat says a resumed thread is still waiting for its reply", a
   await ldf.goto("/assistant-demo");
   await expect(page.getByText(PROMPT).last()).toBeVisible();
   await expect(
-    page.getByText("Waiting for the assistant's reply"),
+    page.getByText("The assistant is still replying."),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/reply-pending-embedded.png",
