@@ -3,8 +3,7 @@
 #
 # Load-then-commit, not commit-then-load: committing the id with empty messages
 # first meant a transiently failed fetch left the switched thread active and
-# empty, and the next send overwrote the thread's entire stored history via
-# save-thread's full $set. Loading first, a failed fetch aborts the chain with
+# empty, and the next send saved that as the thread's whole history. Loading first, a failed fetch aborts the chain with
 # the previously open thread still intact.
 #
 # ONE click opens. Reads the key/label off the EVENT rather than the selection
@@ -29,6 +28,12 @@ _build.array.concat:
           _if_none:
             - _actions: ai_load_thread_messages.response.response.messages
             - []
+        ai_reply_pending:
+          _ref:
+            path: components/ends_on_user.yaml
+            vars:
+              messages:
+                _actions: ai_load_thread_messages.response.response.messages
         ai_title:
           _if_none:
             - _event: item.label

@@ -32,7 +32,8 @@ export default {
     launcher: "The launcher button.",
   },
   events: {
-    onOpen: "Fired when the panel opens.",
+    onOpen:
+      "Fired when the panel opens. _event = { first }, true on the first open since the block mounted, when its children mount.",
     onClose: "Fired when the panel closes.",
     onToggle:
       "Fired on every open/close, before onOpen / onClose. _event = { open }.",

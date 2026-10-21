@@ -199,6 +199,12 @@ toolbar:
                       blockId: ai_panel_delete_confirm_modal
                       method: open
 
+    # In the toolbar so the chat below, sized to the measured body, keeps its composer in view.
+    - _ref:
+        path: components/reply_pending.yaml
+        vars:
+          id: ai_panel_reply_pending
+
 # ── Scrolling body: the conversation, or the thread list ───────────────────
 # Both are sized to fill the panel body exactly: --fp-body-height is a
 # measured pixel value published by the FloatingPanel block, and it inherits

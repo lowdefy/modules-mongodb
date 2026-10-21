@@ -1,0 +1,49 @@
+# refresh-thread.yaml — load the open thread's stored messages again. For a thread whose reply the
+# agent's onFinish hook stores on the server while no chat on screen was streaming it: on the
+# first open after a page change (enter.yaml), and from the pending-reply note's Check again.
+#
+# The chat streaming into this thread is gone by then, so ai_busy is cleared with it.
+#
+# vars:
+#   id   — the CallAPI's id; each caller names its own.
+#   skip — skips both steps; the second reads the first's response.
+- id:
+    _var: id
+  type: CallAPI
+  skip:
+    _var:
+      key: skip
+      default: false
+  params:
+    endpointId:
+      _module.endpointId: get-thread
+    payload:
+      conversationId:
+        _state: ai_conversation_id
+- id:
+    _build.string.concat:
+      - _var: id
+      - _apply
+  type: SetState
+  skip:
+    _var:
+      key: skip
+      default: false
+  params:
+    ai_messages:
+      _if_none:
+        - _actions:
+            _build.string.concat:
+              - _var: id
+              - .response.response.messages
+        - []
+    ai_reply_pending:
+      _ref:
+        path: components/ends_on_user.yaml
+        vars:
+          messages:
+            _actions:
+              _build.string.concat:
+                - _var: id
+                - .response.response.messages
+    ai_busy: false

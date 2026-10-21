@@ -19,6 +19,7 @@ _build.array.concat:
               - scope:
                   _module.var: scope
         ai_messages: []
+        ai_reply_pending: false
     - id: ai_prepend_new_thread
       type: SetState
       params:

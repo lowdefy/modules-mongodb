@@ -444,7 +444,11 @@ exports:
       description: AI Gateway connection for the thread-titling call
   api:
     - id: save-thread
-      description: Upsert a thread's full message history, title, scope and tags
+      description: Upsert a thread's messages, merged with the stored ones, and its title, scope and tags
+    - id: save-thread-on-finish
+      description: >-
+        An agent hooks.onFinish endpoint that stores the finished reply on its
+        thread, so a reply that lands after the person left the page is kept
     - id: list-threads
       description: List the session user's threads for one scope, newest first
     - id: get-thread
@@ -464,6 +468,7 @@ connections:
 
 api:
   - _ref: api/save-thread.yaml
+  - _ref: api/save-thread-on-finish.yaml
   - _ref: api/list-threads.yaml
   - _ref: api/get-thread.yaml
   - _ref: api/get-active-thread.yaml

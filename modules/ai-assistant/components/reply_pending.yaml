@@ -1,0 +1,48 @@
+# reply_pending.yaml — the open thread, as loaded, ends on the user's message: the agent was
+# still answering when the chat that sent it went away, and its onFinish hook stores the reply on
+# the server when it finishes. Says so in place of an empty answer, with a Check again that loads
+# the thread once more.
+#
+# The id is passed in so each shell names its own, as notice.yaml's is.
+id:
+  _var: id
+type: Alert
+visible:
+  _and:
+    - _ne:
+        - _state: ai_view
+        - threads
+    - _eq:
+        - _module.var: notice
+        - null
+    - _eq:
+        - _state: ai_reply_pending
+        - true
+    - _ne:
+        - _state: ai_loading
+        - true
+properties:
+  type: info
+  showIcon: true
+  message: Waiting for the assistant's reply
+  description: It appears here once the assistant has finished.
+slots:
+  action:
+    blocks:
+      - id:
+          _build.string.concat:
+            - _var: id
+            - _check_again
+        type: Button
+        properties:
+          title: Check again
+          size: small
+        events:
+          onClick:
+            _ref:
+              path: actions/refresh-thread.yaml
+              vars:
+                id:
+                  _build.string.concat:
+                    - _var: id
+                    - _refresh

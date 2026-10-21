@@ -109,10 +109,14 @@ events:
       # persistence and titling are the module's job, not the consumer's.
       onBeforeSend:
         _module.var: on_before_send
-      # Persist on SEND as well as on completion. Saving only when the reply lands means a
-      # thread the client leaves mid-stream was never created at all, and the question goes
-      # with it — there is nothing to resume, and nothing to tell them why. Saving here makes
-      # the worst case a thread missing its answer rather than a thread that never existed.
+      # Persist on SEND as well as on completion. The save on send is what creates the thread:
+      # the agent's onFinish hook (save-thread-on-finish) only adds the reply to a thread that
+      # is already stored, so this is what lets a reply that lands after the person has left
+      # the page reach the thread. Without the hook, the worst case is a thread missing its
+      # answer rather than a thread that never existed.
+      #
+      # save-thread merges this history with the stored one, so a reply the hook stored for an
+      # earlier turn, which this chat never received, survives the save.
       #
       # The module's own steps run before the consumer's, and are not overridable: persistence
       # is the module's job. `messages` from this event already includes the message just sent.
@@ -122,6 +126,9 @@ events:
               type: SetState
               params:
                 ai_busy: true
+                ai_reply_pending: false
+                ai_known_ids:
+                  _ref: components/known_message_ids.yaml
             - _ref: actions/stash-provisional-title.yaml
             - _ref:
                 path: actions/persist-thread.yaml
@@ -139,20 +146,28 @@ events:
           type: SetState
           params:
             ai_busy: true
+            # The reply being replaced, so the save on completion drops it.
+            ai_known_ids:
+              _ref: components/known_message_ids.yaml
       onStop:
         - id: ai_clear_busy_on_stop
           type: SetState
           params:
             ai_busy: false
 
-      # Persist the full history (incl. the assistant reply) from the client:
-      # this is where the thread title and the thread-list update also live,
-      # so all three stay in one place.
+      # Persist the full history (incl. the assistant reply) from the client too: the
+      # onFinish hook stores only the messages, and this is where the thread title and the
+      # thread-list update live.
       onMessageComplete:
         - id: ai_save_messages
           type: SetState
           params:
             ai_busy: false
+            ai_reply_pending: false
+            # Read before ai_messages below is replaced: a SetState evaluates every param
+            # against the state it started from.
+            ai_known_ids:
+              _ref: components/known_message_ids.yaml
             # A turn cut off mid-stream leaves its tool call with no result. That pairing is
             # invalid to send back, so every later turn on the thread fails and the thread is
             # dead — drop the unresolved call, and any message left carrying nothing.
@@ -356,6 +371,8 @@ events:
         - id: ai_drop_message
           type: SetState
           params:
+            ai_known_ids:
+              _ref: components/known_message_ids.yaml
             ai_messages:
               _js:
                 fn: |

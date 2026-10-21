@@ -78,12 +78,12 @@ Three behaviours worth knowing:
 
 ## Events
 
-| Event      | Fires                                                              |
-| ---------- | ------------------------------------------------------------------ |
-| `onOpen`   | When the panel opens.                                              |
-| `onClose`  | When the panel closes.                                             |
-| `onToggle` | On every open/close, before the two above. `_event = { open }`.    |
-| `onExpand` | When the expand/collapse control is used. `_event = { expanded }`. |
+| Event      | Fires                                                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `onOpen`   | When the panel opens. `_event = { first }`: `true` on the first open since the block mounted, which is when its children mount. |
+| `onClose`  | When the panel closes.                                                                                                          |
+| `onToggle` | On every open/close, before the two above. `_event = { open }`.                                                                 |
+| `onExpand` | When the expand/collapse control is used. `_event = { expanded }`.                                                              |
 
 ## Methods
 

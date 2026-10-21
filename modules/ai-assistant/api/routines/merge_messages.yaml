@@ -1,0 +1,69 @@
+# `stored_messages` and `replayable_messages` (this write's history, after sanitize_messages) in,
+# `merged_messages` out. A thread has two writers: the browser (save-thread) and the agent's
+# onFinish hook (save-thread-on-finish), which lands the reply when the browser has left the page.
+# Each holds a history the other may not have seen, so neither may simply replace the stored one.
+#
+# Messages are matched by id. Those in both lists keep their order, and take the writer's version
+# when `merge_prefer` is `sent`, the stored one when it is `stored`. A run of messages only one side
+# holds, between the same two shared messages, is placed by role: a run that starts with an
+# assistant message answers the shared message before it, so it goes first. When both runs start
+# with an assistant message, the writer's replaces the stored one's (a regenerated reply).
+#
+# `removed_ids` are stored messages the writer held and dropped on purpose (deleted, regenerated,
+# edited away): they go. Any other stored message the writer does not hold is kept.
+- :set_state:
+    merged_messages:
+      _js: |
+        const stored = state('stored_messages') || [];
+        const sent = state('replayable_messages') || [];
+        const removed = new Set(state('removed_ids') || []);
+        const preferStored = state('merge_prefer') === 'stored';
+        const sentIds = new Set(sent.map((message) => message.id));
+        const storedById = new Map(stored.map((message) => [message.id, message]));
+        const isAssistant = (message) => (message || {}).role === 'assistant';
+
+        // Stored messages the writer does not hold, grouped by the shared message before them
+        // (null before the first).
+        const storedRuns = new Map();
+        let anchor = null;
+        for (const message of stored) {
+          if (sentIds.has(message.id)) {
+            anchor = message.id;
+            continue;
+          }
+          if (removed.has(message.id)) continue;
+          if (!storedRuns.has(anchor)) storedRuns.set(anchor, []);
+          storedRuns.get(anchor).push(message);
+        }
+
+        const placeRuns = (storedRun, sentRun) => {
+          if (storedRun.length === 0) return sentRun;
+          if (sentRun.length === 0) return storedRun;
+          if (isAssistant(storedRun[0]) && isAssistant(sentRun[0])) {
+            let start = 0;
+            while (start < storedRun.length && isAssistant(storedRun[start])) start += 1;
+            return [...sentRun, ...storedRun.slice(start)];
+          }
+          return isAssistant(storedRun[0])
+            ? [...storedRun, ...sentRun]
+            : [...sentRun, ...storedRun];
+        };
+
+        const merged = [];
+        let sentRun = [];
+        anchor = null;
+        const flush = () => {
+          merged.push(...placeRuns(storedRuns.get(anchor) || [], sentRun));
+          sentRun = [];
+        };
+        for (const message of sent) {
+          if (!storedById.has(message.id)) {
+            sentRun.push(message);
+            continue;
+          }
+          flush();
+          merged.push(preferStored ? storedById.get(message.id) : message);
+          anchor = message.id;
+        }
+        flush();
+        return merged;

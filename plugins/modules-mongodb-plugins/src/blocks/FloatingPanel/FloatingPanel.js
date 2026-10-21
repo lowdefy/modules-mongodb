@@ -160,6 +160,8 @@ const FloatingPanel = ({
   const [expanded, setExpanded] = useState(false);
   // Latch: children mount on the first open and stay mounted after that.
   const [everOpened, setEverOpened] = useState(Boolean(properties.defaultOpen));
+  // Read when an open is requested, so onOpen can say whether the children mount now.
+  const everOpenedRef = useRef(Boolean(properties.defaultOpen));
 
   const bodyRef = useRef(null);
   const panelRef = useRef(null);
@@ -185,11 +187,16 @@ const FloatingPanel = ({
 
   const applyOpen = useCallback(
     (next) => {
+      const first = !everOpenedRef.current;
       setOpen((prev) => {
         if (prev === next) return prev;
-        if (next) setEverOpened(true);
+        if (next) {
+          everOpenedRef.current = true;
+          setEverOpened(true);
+        }
         fire("onToggle", { open: next });
-        fire(next ? "onOpen" : "onClose");
+        if (next) fire("onOpen", { first });
+        else fire("onClose");
         return next;
       });
     },

@@ -54,7 +54,12 @@ events:
       # the try: they read the thread `enter` just resolved, and a rejection there has to
       # clear ai_loading like any other or the panel spins forever.
       _build.array.concat:
-        - _ref: actions/enter.yaml
+        # The chat mounts on the panel's first open, also after a page change.
+        - _ref:
+            path: actions/enter.yaml
+            vars:
+              fresh_mount:
+                _event: first
         - _module.var: on_panel_open
     catch:
       - id: ai_end_loading_on_error

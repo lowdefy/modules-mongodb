@@ -300,6 +300,11 @@ agents:
       _ref:
         module: support
         component: agent-tools
+    # Stores each finished reply on its thread from the server, so a reply that
+    # lands after the person has left the page is there when they come back.
+    hooks:
+      onFinish:
+        - ai-assistant/save-thread-on-finish
 
 pages:
   - _ref: pages/router.yaml

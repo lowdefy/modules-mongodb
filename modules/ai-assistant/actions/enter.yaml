@@ -7,145 +7,181 @@
 # changed since: then the open thread is dropped first, and the chain resumes in
 # the new scope.
 #
+# Re-entering on a chat that has just mounted (`fresh_mount`) reloads the open
+# thread when a reply was streaming or still to come: the chat that was streaming
+# it went with the page, and the agent's onFinish hook stores the reply on the
+# server. The panel passes its onOpen's `first`; a shell that mounts the chat on
+# every entry (embedded) leaves the var at true.
+#
+# vars:
+#   fresh_mount — whether the chat mounted for this entry. Default true.
+#
 # ai_loading covers the whole chain. Without it the panel showed the empty-thread
 # welcome screen — "start a new chat", with its suggestion prompts — for as long
 # as the fetch took, then swapped it for the resumed conversation: advertising a
 # new chat and immediately taking it away.
 
-# `ai_scope` is the open thread's scope; it differs from the var when the scope
-# moved mid-session, which nothing else in the module can observe.
-- id: ai_rescope
-  type: SetState
-  skip:
-    _eq:
-      - _state: ai_scope
-      - _module.var: scope
-  params:
-    ai_scope:
-      _module.var: scope
-    ai_view: chat
-    ai_conversation_id: null
-    ai_messages: []
-    ai_threads: []
-    ai_thread_selection: null
-    ai_title: New chat
-    ai_first_exchange: null
-    ai_delete_target: null
-    ai_titling_for: null
-    ai_title_provisional: null
-    ai_busy: false
+_build.array.concat:
+  # `ai_scope` is the open thread's scope; it differs from the var when the scope
+  # moved mid-session, which nothing else in the module can observe.
+  - - id: ai_rescope
+      type: SetState
+      skip:
+        _eq:
+          - _state: ai_scope
+          - _module.var: scope
+      params:
+        ai_scope:
+          _module.var: scope
+        ai_view: chat
+        ai_conversation_id: null
+        ai_messages: []
+        ai_threads: []
+        ai_thread_selection: null
+        ai_title: New chat
+        ai_first_exchange: null
+        ai_delete_target: null
+        ai_titling_for: null
+        ai_title_provisional: null
+        ai_busy: false
+        ai_reply_pending: false
 
-- id: ai_mark_seed_needed
-  type: SetState
-  params:
-    ai_seed_needed:
-      _eq:
-        - _state: ai_conversation_id
-        - null
-    # Same expression, so re-opening with a thread already active clears the
-    # flag instead of flashing a spinner at somebody who is not waiting.
-    ai_loading:
-      _eq:
-        - _state: ai_conversation_id
-        - null
+    - id: ai_mark_seed_needed
+      type: SetState
+      params:
+        ai_seed_needed:
+          _eq:
+            - _state: ai_conversation_id
+            - null
+        # Same expression, so re-opening with a thread already active clears the
+        # flag instead of flashing a spinner at somebody who is not waiting.
+        ai_loading:
+          _eq:
+            - _state: ai_conversation_id
+            - null
 
-- id: ai_mint_thread
-  type: SetState
-  skip:
-    _ne:
-      - _state: ai_seed_needed
-      - true
-  params:
-    ai_conversation_id:
-      _js:
-        fn: |
-          const scope = (args && args[0] && args[0].scope) || 'global';
-          return `${scope}_${user('id')}_${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        args:
-          - scope:
-              _module.var: scope
-    ai_messages: []
-    ai_title: New chat
-
-- id: ai_fetch_threads
-  type: CallAPI
-  skip:
-    _ne:
-      - _state: ai_seed_needed
-      - true
-  params:
-    endpointId:
-      _module.endpointId: list-threads
-    payload:
-      scope:
-        _module.var: scope
-
-- id: ai_seed_thread_list
-  type: SetState
-  skip:
-    _ne:
-      - _state: ai_seed_needed
-      - true
-  params:
-    ai_threads:
-      _if_none:
-        - _actions: ai_fetch_threads.response.response
-        - []
-
-# Existing threads → resume the last one OPENED instead of the blank one just
-# minted. Asked of get-active-thread rather than read off ai_threads.0: that list
-# is sorted `updated: -1`, which only moves on send, so resuming from it dropped
-# the user into the thread they last SENT in rather than the one they were last
-# reading.
-#
-# Load-then-commit, same reasoning as select-thread.yaml: a failed fetch aborts
-# the chain with the freshly minted blank thread still active (usable), instead
-# of leaving the recent thread active and EMPTY — where the next send would
-# overwrite its stored history via save-thread's full $set.
-- id: ai_load_active_thread
-  type: CallAPI
-  skip:
-    _ne:
-      - _state: ai_seed_needed
-      - true
-  params:
-    endpointId:
-      _module.endpointId: get-active-thread
-    payload:
-      scope:
-        _module.var: scope
-
-# Skips on the returned id, not on the thread list: a user with no threads gets
-# null here and keeps the blank thread just minted.
-- id: ai_resume_recent
-  type: SetState
-  skip:
-    _or:
-      - _ne:
+    - id: ai_mint_thread
+      type: SetState
+      skip:
+        _ne:
           - _state: ai_seed_needed
           - true
-      - _eq:
-          - _if_none:
-              - _actions: ai_load_active_thread.response.response.conversationId
-              - null
-          - null
-  params:
-    ai_conversation_id:
-      _actions: ai_load_active_thread.response.response.conversationId
-    ai_messages:
-      _if_none:
-        - _actions: ai_load_active_thread.response.response.messages
-        - []
-    ai_title:
-      _if_none:
-        - _actions: ai_load_active_thread.response.response.title
-        - New chat
+      params:
+        ai_conversation_id:
+          _js:
+            fn: |
+              const scope = (args && args[0] && args[0].scope) || 'global';
+              return `${scope}_${user('id')}_${Date.now()}${Math.floor(Math.random() * 1000)}`;
+            args:
+              - scope:
+                  _module.var: scope
+        ai_messages: []
+        ai_reply_pending: false
+        ai_title: New chat
 
-# Unconditional, and LAST: every skip above is on the seeding condition, so this
-# is the only step guaranteed to run on both paths. A rejected fetch aborts the
-# chain before it — panel.yaml wraps this list in try/catch and clears the flag
-# there, so a failed resume cannot leave a spinner running forever.
-- id: ai_end_loading
-  type: SetState
-  params:
-    ai_loading: false
+    - id: ai_fetch_threads
+      type: CallAPI
+      skip:
+        _ne:
+          - _state: ai_seed_needed
+          - true
+      params:
+        endpointId:
+          _module.endpointId: list-threads
+        payload:
+          scope:
+            _module.var: scope
+
+    - id: ai_seed_thread_list
+      type: SetState
+      skip:
+        _ne:
+          - _state: ai_seed_needed
+          - true
+      params:
+        ai_threads:
+          _if_none:
+            - _actions: ai_fetch_threads.response.response
+            - []
+
+    # Existing threads → resume the last one OPENED instead of the blank one just
+    # minted. Asked of get-active-thread rather than read off ai_threads.0: that list
+    # is sorted `updated: -1`, which only moves on send, so resuming from it dropped
+    # the user into the thread they last SENT in rather than the one they were last
+    # reading.
+    #
+    # Load-then-commit, same reasoning as select-thread.yaml: a failed fetch aborts
+    # the chain with the freshly minted blank thread still active (usable), instead
+    # of leaving the recent thread active and EMPTY, which the next send would save
+    # as the thread's whole history.
+    - id: ai_load_active_thread
+      type: CallAPI
+      skip:
+        _ne:
+          - _state: ai_seed_needed
+          - true
+      params:
+        endpointId:
+          _module.endpointId: get-active-thread
+        payload:
+          scope:
+            _module.var: scope
+
+    # Skips on the returned id, not on the thread list: a user with no threads gets
+    # null here and keeps the blank thread just minted.
+    - id: ai_resume_recent
+      type: SetState
+      skip:
+        _or:
+          - _ne:
+              - _state: ai_seed_needed
+              - true
+          - _eq:
+              - _if_none:
+                  - _actions: ai_load_active_thread.response.response.conversationId
+                  - null
+              - null
+      params:
+        ai_conversation_id:
+          _actions: ai_load_active_thread.response.response.conversationId
+        ai_messages:
+          _if_none:
+            - _actions: ai_load_active_thread.response.response.messages
+            - []
+        ai_title:
+          _if_none:
+            - _actions: ai_load_active_thread.response.response.title
+            - New chat
+        ai_reply_pending:
+          _ref:
+            path: components/ends_on_user.yaml
+            vars:
+              messages:
+                _actions: ai_load_active_thread.response.response.messages
+  # Only with a thread already open, so never on the seeding path above.
+  - _ref:
+      path: actions/refresh-thread.yaml
+      vars:
+        id: ai_refresh_on_enter
+        skip:
+          _or:
+            - _eq:
+                - _state: ai_seed_needed
+                - true
+            - _not:
+                _var:
+                  key: fresh_mount
+                  default: true
+            - _and:
+                - _not:
+                    _state: ai_busy
+                - _not:
+                    _state: ai_reply_pending
+  # Unconditional, and LAST: the only step guaranteed to run on both paths. A
+  # rejected fetch aborts the chain before it — panel.yaml wraps this list in
+  # try/catch and clears the flag there, so a failed resume cannot leave a spinner
+  # running forever.
+  - - id: ai_end_loading
+      type: SetState
+      params:
+        ai_loading: false
