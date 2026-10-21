@@ -213,6 +213,11 @@ blocks:
         id: ai_embedded_notice
 
   - _ref:
+      path: components/reply_pending.yaml
+      vars:
+        id: ai_embedded_reply_pending
+
+  - _ref:
       path: components/chat.yaml
       vars:
         height:

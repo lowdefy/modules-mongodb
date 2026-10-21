@@ -1,6 +1,7 @@
 # persist-thread.yaml — write the thread to the store. Three callers, differing only in where
 # the history comes from: on send (the event's, including the message just sent), on reply
-# complete, and after a message is deleted.
+# complete, and after a message is deleted. Each sets ai_known_ids first, from the history
+# before its change, so save-thread drops only the messages this chat removed.
 #
 # Skipped without a conversation id: `enter` mints one before anything can be typed, so a null
 # here is the panel mid-setup rather than a thread worth saving.
@@ -19,6 +20,8 @@ params:
       _state: ai_conversation_id
     messages:
       _var: messages
+    known_ids:
+      _state: ai_known_ids
     title:
       _state: ai_title
     scope:

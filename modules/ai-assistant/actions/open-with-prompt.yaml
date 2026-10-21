@@ -34,7 +34,11 @@
 # panel's own onOpen then clears ai_loading the next time the user opens it, so
 # no catch is needed here.
 _build.array.concat:
-  - _ref: actions/enter.yaml
+  # Not a fresh mount: a chat still streaming here keeps its reply until the switch below.
+  - _ref:
+      path: actions/enter.yaml
+      vars:
+        fresh_mount: false
   - - id: ai_owp_unmount_chat
       type: SetState
       params:

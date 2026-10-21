@@ -211,6 +211,10 @@ agents:
         You are the assistant in the Lowdefy modules-mongodb tenant demo app.
         Answer briefly and concretely. You have no tools; when asked about
         specifics you cannot know, say so and point at the repo docs.
+    # As in apps/demo: stores each finished reply on its thread from the server.
+    hooks:
+      onFinish:
+        - ai-assistant/save-thread-on-finish
 
 pages:
   - _ref: pages/router.yaml

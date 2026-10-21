@@ -1,0 +1,88 @@
+id: save-thread-on-finish
+type: Api
+description: >
+  An agent `hooks.onFinish` endpoint: stores the reply the agent just finished
+  on its thread, so a reply that lands after the person has left the page is
+  there when the thread is opened again. Lowdefy calls it on the server once the
+  agent's stream ends, whether or not the browser is still reading it.
+
+  Merges the reply into the stored history (see merge_messages) and leaves
+  title, scope and tags to save-thread. It upserts nothing: the browser saves the
+  thread when the message is sent, so a thread with no stored row is one this
+  module does not hold, and is left alone.
+
+  Private per user: the thread is matched on the session user, the person who
+  sent the message.
+payloadSchema:
+  type: object
+  required:
+    - conversationId
+    - messages
+  # Lowdefy sends the whole finish payload (steps, usage, sharedState, ...); only
+  # these two are read.
+  properties:
+    conversationId:
+      type: string
+      minLength: 1
+    messages:
+      type: array
+      items:
+        type: object
+      description: The agent's input messages followed by its reply.
+routine:
+  - _ref: api/routines/require_user.yaml
+  - :set_state:
+      raw_messages:
+        _payload: messages
+  - _ref: api/routines/sanitize_messages.yaml
+  - id: load_stored_messages
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      query:
+        conversationId:
+          _payload: conversationId
+        user_id:
+          _user: id
+      options:
+        projection:
+          _id: 0
+          messages: 1
+  - :if:
+      _eq:
+        - _if_none:
+            - _step: load_stored_messages
+            - null
+        - null
+    :then:
+      - :return:
+          saved: false
+  - :set_state:
+      stored_messages:
+        _if_none:
+          - _step: load_stored_messages.messages
+          - []
+      # The agent server rewrites inline (data: URL) file parts in its input, so the
+      # browser's stored copy of each input message is the one to keep.
+      merge_prefer: stored
+      removed_ids: []
+  - _ref: api/routines/merge_messages.yaml
+  - id: set_thread_messages
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: ai_assistant_threads
+    properties:
+      filter:
+        conversationId:
+          _payload: conversationId
+        user_id:
+          _user: id
+      update:
+        $set:
+          messages:
+            _state: merged_messages
+          updated:
+            _date: now
+  - :return:
+      saved: true

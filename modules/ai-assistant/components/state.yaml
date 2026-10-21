@@ -64,3 +64,9 @@ params:
   # True while a reply streams. The controls that switch threads are disabled,
   # since a switch would drop the reply before the module could save it.
   ai_busy: false
+  # True when the open thread, as loaded from the server, ends on the user's
+  # message: its reply is still to come, or never came. Shows the pending-reply note.
+  ai_reply_pending: false
+  # Every message id the chat has held this visit, sent with each save so
+  # save-thread can tell a message removed here from one stored elsewhere.
+  ai_known_ids: []

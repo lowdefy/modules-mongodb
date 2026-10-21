@@ -1,0 +1,12 @@
+# ends_on_user.yaml — true when a history's last message is the user's: the reply to it has not
+# been stored yet. Sets ai_reply_pending wherever a thread is loaded from the server.
+#
+# vars:
+#   messages — the history, as an operator.
+_js:
+  fn: |
+    const messages = args.messages || [];
+    return (messages[messages.length - 1] || {}).role === 'user';
+  args:
+    messages:
+      _var: messages

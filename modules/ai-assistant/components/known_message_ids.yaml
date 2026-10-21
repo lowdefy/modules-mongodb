@@ -1,0 +1,12 @@
+# known_message_ids.yaml — every message id the chat has held this visit: the ids already
+# known, the open history's and the event's. save-thread drops a stored message only when its id
+# is here, so a reply the agent's onFinish hook stored while this chat was elsewhere is kept.
+# Ids are unique across threads, so the set is never reset when the thread changes.
+_js:
+  fn: |
+    const ids = new Set(state('ai_known_ids') || []);
+    for (const message of [...(state('ai_messages') || []), ...(event('messages') || [])]) {
+      if (message && message.id) ids.add(message.id);
+    }
+    return [...ids];
+  args: {}

@@ -10,6 +10,15 @@
 # scope has changed since, the open thread is dropped first, and the chain
 # resumes in the new scope.
 #
+# A chat that has just mounted (`fresh_mount`) is not streaming, whatever ai_busy
+# says: page state outlives a page change, but the chat does not, and a reply it
+# was streaming is the agent's onFinish hook's to store. The panel passes its
+# onOpen's `first`; a shell that mounts the chat on every entry (embedded) leaves
+# the var at true.
+#
+# vars:
+#   fresh_mount — whether the chat mounted for this entry. Default true.
+#
 # ai_loading covers the whole first-entry chain. Without it the panel showed the
 # empty-thread welcome screen — "start a new chat", with its suggestion prompts —
 # for as long as the fetch took, then swapped it for the resumed conversation:
@@ -36,6 +45,18 @@
     ai_delete_target: null
     ai_titling_for: null
     ai_title_provisional: null
+    ai_busy: false
+    ai_reply_pending: false
+
+- id: ai_clear_stale_busy
+  type: SetState
+  skip:
+    _ne:
+      - _var:
+          key: fresh_mount
+          default: true
+      - true
+  params:
     ai_busy: false
 
 - id: ai_mark_seed_needed
@@ -130,6 +151,12 @@
       _if_none:
         - _actions: ai_refresh_active_thread.response.response.title
         - New chat
+    ai_reply_pending:
+      _ref:
+        path: components/ends_on_user.yaml
+        vars:
+          messages:
+            _actions: ai_refresh_active_thread.response.response.messages
 
 - id: ai_mint_thread
   type: SetState
@@ -147,6 +174,7 @@
           - scope:
               _module.var: scope
     ai_messages: []
+    ai_reply_pending: false
     ai_title: New chat
 
 - id: ai_fetch_threads
@@ -182,8 +210,8 @@
 #
 # Load-then-commit, same reasoning as select-thread.yaml: a failed fetch aborts
 # the chain with the freshly minted blank thread still active (usable), instead
-# of leaving the recent thread active and EMPTY — where the next send would
-# overwrite its stored history via save-thread's full $set.
+# of leaving the recent thread active and EMPTY, which the next send would save
+# as the thread's whole history.
 - id: ai_load_active_thread
   type: CallAPI
   skip:
@@ -222,6 +250,12 @@
       _if_none:
         - _actions: ai_load_active_thread.response.response.title
         - New chat
+    ai_reply_pending:
+      _ref:
+        path: components/ends_on_user.yaml
+        vars:
+          messages:
+            _actions: ai_load_active_thread.response.response.messages
 
 # Unconditional, and LAST: every skip above is on the seeding or refresh
 # condition, so this is the only step guaranteed to run on every path. A

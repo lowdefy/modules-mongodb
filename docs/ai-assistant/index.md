@@ -289,7 +289,7 @@ sender:
 
 ## App behaviour on the chat
 
-The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` and will not hand that over. A thread is persisted twice: once when the message is sent, and again when the reply completes. The first save is what makes a thread survive a client that leaves mid-stream — without it the thread was never created, and the question went with it. Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:
+The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` and will not hand that over. The browser saves a thread twice: once when the message is sent, and again when the reply completes. The first save creates the thread, so it survives a client that leaves mid-stream. The reply itself reaches it from the server through the agent's `onFinish` hook (see [Replies that finish after the page changes](#replies-that-finish-after-the-page-changes)). Everything else an app might want to do around a message is a var, each a list of actions run on the corresponding chat-block event:
 
 | Var                | Event           | For                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -350,6 +350,32 @@ on_before_send:
       throw: true
       message: You have reached today's question limit.
 ```
+
+## Replies that finish after the page changes
+
+The browser saves the reply when it finishes streaming. A person who moves to another page while the agent is still answering takes the chat with them, so that save never runs. The agent keeps going on the server: set the module's `save-thread-on-finish` endpoint as the agent's `onFinish` hook, and the reply is stored on its thread when the agent finishes, whoever is still watching.
+
+```yaml
+# lowdefy.yaml
+agents:
+  - id: support
+    type: AIGatewayAgent
+    connectionId: ai_gateway
+    properties: { ... }
+    hooks:
+      onFinish:
+        - ai-assistant/save-thread-on-finish # <module entry id>/save-thread-on-finish
+```
+
+Lowdefy calls the hook on the server once the stream ends, as the person who sent the message, so it writes only that person's thread. It stores the messages and nothing else: the title, scope and tags stay with the browser's saves. It writes only to a thread the browser has already saved, which it does when the message is sent, so an agent the app also uses outside this module can keep the hook: a conversation that is not one of the module's threads is left alone. The hook adds no `dataParts` to the stream.
+
+Without the hook, a reply the person leaves before it finishes is lost.
+
+**What the person sees.** Each time the panel opens with a thread showing, it re-reads the stored thread, so a reply that finished while they were elsewhere is there without a refresh, and after one. A page with the embedded chat does the same when `enter` runs in its `onMount`, which it needs for this (see [Scope](#scope) for the splice). A thread whose last message is still the person's shows a one-line status above the chat, "The assistant is still replying.", with a **Check again** link that loads it once more. A turn that ended with no answer looks the same: if Check again brings nothing, the person sends their message again.
+
+**Two writers, one history.** The browser's saves and the hook's can land in either order, and the browser may not hold a reply the hook stored, for example when the person reopens the thread and sends again before the reply has landed. So neither write replaces the stored history. Messages are matched by id; the browser sends the ids of every message it has held, and a stored message is dropped only when the browser held it and left it out (deleted, regenerated or edited away). A reply only the server holds is kept, before the browser's next question.
+
+The merge is a read then a write, so two saves to one thread within a few milliseconds of each other can still lose one of them. The two writers are a send and a reply finishing, which a person rarely lines up that closely.
 
 ## Requirements
 
