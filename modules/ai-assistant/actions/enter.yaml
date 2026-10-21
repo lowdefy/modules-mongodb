@@ -68,6 +68,14 @@
         else:
           _state: ai_conversation_id
     ai_keep_thread: false
+    # How many messages were showing when the re-read starts: a reply that
+    # completes while the fetch is out changes it, and the older stored copy
+    # must not replace that exchange.
+    ai_refresh_count:
+      _array.length:
+        _if_none:
+          - _state: ai_messages
+          - []
 
 # Load-then-commit, as on the first entry below: a failed fetch aborts the chain
 # with the thread already showing left as it is.
@@ -86,7 +94,7 @@
 
 # Keeps the thread showing when the scope has no stored thread: a new chat not
 # yet sent in has no row to come back from. Also skips when the user switched
-# threads or sent while the fetch was out.
+# threads, or sent, while the fetch was out.
 - id: ai_apply_active_thread
   type: SetState
   skip:
@@ -100,6 +108,12 @@
       - _eq:
           - _state: ai_busy
           - true
+      - _ne:
+          - _state: ai_refresh_count
+          - _array.length:
+              _if_none:
+                - _state: ai_messages
+                - []
       - _eq:
           - _if_none:
               - _actions: ai_refresh_active_thread.response.response.conversationId
@@ -211,8 +225,9 @@
 
 # Unconditional, and LAST: every skip above is on the seeding or refresh
 # condition, so this is the only step guaranteed to run on every path. A
-# rejected fetch aborts the chain before it — panel.yaml wraps this list in try/catch and clears the flag
-# there, so a failed resume cannot leave a spinner running forever.
+# rejected fetch aborts the chain before it — panel.yaml wraps this list in
+# try/catch and clears the flag there, so a failed resume cannot leave a spinner
+# running forever.
 - id: ai_end_loading
   type: SetState
   params:

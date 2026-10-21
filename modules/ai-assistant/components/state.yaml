@@ -37,6 +37,8 @@ params:
   ai_seed_needed: false
   # The thread a later open is re-reading from the server (see actions/enter.yaml).
   ai_refresh_for: null
+  # How many messages showed when that re-read started.
+  ai_refresh_count: 0
   # Set by open-with-prompt while it opens the panel, so that open's re-read does
   # not replace the thread it is about to send into. `enter` clears it.
   ai_keep_thread: false
