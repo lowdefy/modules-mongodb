@@ -31,6 +31,19 @@ _ref:
             type: SetState
             params:
               ai_loading: false
+      # onInit runs once per page per session, and the page keeps its state when
+      # the user comes back. enter on every visit re-reads the stored thread, so
+      # messages sent in the home page's docked panel since show here too.
+      onMount:
+        try:
+          _ref:
+            module: ai-assistant
+            component: enter
+        catch:
+          - id: ai_end_loading_on_error_mount
+            type: SetState
+            params:
+              ai_loading: false
     blocks:
       - id: assistant_intro
         type: Paragraph
