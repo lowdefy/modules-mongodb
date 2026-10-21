@@ -324,7 +324,10 @@ test("a reply sent from the embedded chat shows in another page's panel and back
 
   await page.getByRole("menuitem", { name: "AI Assistant" }).click();
   await expect(page).toHaveURL(/assistant-demo/);
-  await page.getByPlaceholder("Ask about the demo app…").fill(PROMPT);
+  // Scoped to the embedded shell: the home panel's composer can linger while the page changes.
+  const embedded = page.locator("#ai_embedded");
+  await expect(embedded.getByText("An earlier answer")).toBeVisible();
+  await embedded.getByPlaceholder("Ask about the demo app…").fill(PROMPT);
   await page.keyboard.press("Enter");
   const conversationId = await ldf.state("ai_conversation_id").value();
   expect(conversationId).toBe("e2e-shared");
@@ -352,7 +355,7 @@ test("a reply sent from the embedded chat shows in another page's panel and back
 
   await page.goForward();
   await expect(page).toHaveURL(/assistant-demo/);
-  await expect(page.getByText(REPLY)).toBeVisible();
+  await expect(embedded.getByText(REPLY)).toBeVisible();
   await ldf.state("ai_busy").expect.toBe(false);
   expect(await storedIds(mdb, conversationId)).toEqual([
     "q0",

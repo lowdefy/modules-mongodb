@@ -173,6 +173,18 @@ _build.array.concat:
                 _var:
                   key: fresh_mount
                   default: true
+            # A thread this page has just minted has nothing stored to reload, and
+            # open-with-prompt sends into one straight after opening the panel: a
+            # reload landing mid-stream would replace the chat's messages under it.
+            - _and:
+                - _not:
+                    _state: ai_busy
+                - _eq:
+                    - _array.length:
+                        _if_none:
+                          - _state: ai_messages
+                          - []
+                    - 0
   # Unconditional, and LAST: the only step guaranteed to run on both paths. A
   # rejected fetch aborts the chain before it — panel.yaml wraps this list in
   # try/catch and clears the flag there, so a failed resume cannot leave a spinner
