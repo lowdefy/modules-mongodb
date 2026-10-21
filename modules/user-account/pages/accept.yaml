@@ -356,10 +356,11 @@ _ref:
                     email:
                       _user: email
       # Accept the invitation. BetterAuth merges the profile fragment and applies
-      # invite-time attributes engine-side; on success we log the join and enter
-      # the app. A retry against an invitation this caller already accepted (an
-      # interrupted first attempt) fails "not found" although they are in, so the
-      # catch re-reads the invitation: accepted means log the join and enter.
+      # invite-time attributes engine-side; on success we refresh the session, log
+      # the join and enter the app. A retry against an invitation this caller
+      # already accepted (an interrupted first attempt) fails "not found" although
+      # they are in, so the catch re-reads the invitation: accepted means refresh,
+      # log the join and enter.
       - id: accept_continue
         type: Button
         visible:
@@ -382,6 +383,14 @@ _ref:
                 params:
                   invitationId:
                     _url_query: invitationId
+              # Refresh the session, bypassing its cookie cache, before any
+              # server call. The accept made the caller a member, and Lowdefy
+              # reloads a page whose call is answered as another caller than it
+              # renders, which would drop the rest of this chain and show the
+              # member render. UpdateSession sets the page's caller to the new
+              # one, and the page load below reads the organization it now has.
+              - id: refresh_session_after_accept
+                type: UpdateSession
               - id: log_joined
                 type: CallAPI
                 messages:
@@ -392,10 +401,6 @@ _ref:
                   payload:
                     invitationId:
                       _url_query: invitationId
-              # Refresh the session, bypassing its cookie cache, so the page
-              # load below reads the organization the accept just gave it.
-              - id: refresh_session_after_accept
-                type: UpdateSession
               # A full page load (components/app_home_href.yaml): this page
               # loaded before the caller was a member, so its menus are empty.
               - id: accept_enter_app
@@ -408,6 +413,9 @@ _ref:
               # consumed (an interrupted first accept) fails "not found" even
               # though they are in. Re-read the invitation: consumed by them →
               # refresh the session and enter; anything else is a real error.
+              # While the page still renders the caller from before the accept,
+              # the re-read itself is answered as the new member and reloads
+              # the page into the member render, which logs the join.
               - id: refetch_invitation_after_error
                 type: Request
                 params: get_invitation
@@ -416,6 +424,8 @@ _ref:
                     - _request: get_invitation.0.status
                     - accepted
                 :then:
+                  - id: refresh_session_after_retry
+                    type: UpdateSession
                   - id: log_joined_after_retry
                     type: CallAPI
                     async: true
@@ -427,8 +437,6 @@ _ref:
                       payload:
                         invitationId:
                           _url_query: invitationId
-                  - id: refresh_session_after_retry
-                    type: UpdateSession
                   - id: enter_app_after_retry
                     type: Link
                     params:
