@@ -1,5 +1,29 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 1.2.0
+
+### Minor Changes
+
+- [#313](https://github.com/lowdefy/modules-mongodb/pull/313) [`07e7fdd`](https://github.com/lowdefy/modules-mongodb/commit/07e7fdd8767333240d7551b188957b9000aa4d8a) Thanks [@puffin-mrm](https://github.com/puffin-mrm)! - **A reply that finishes after the person leaves the page is kept.** Only the browser saved the assistant's reply, when it finished streaming, so moving to another page mid-reply lost it, even though the agent finished on the server. The new `save-thread-on-finish` endpoint stores the reply from the server. Set it as your agent's `onFinish` hook:
+
+  ```yaml
+  agents:
+    - id: support
+      hooks:
+        onFinish:
+          - ai-assistant/save-thread-on-finish
+  ```
+
+  Each time the panel opens it re-reads the stored thread, so the finished reply is there, also when the chat was streaming when the person left. A page with the embedded chat gets the same by running `enter` in its `onMount` as well as its `onInit`. A thread still waiting for its reply shows a one-line status above the chat, "The assistant is still replying.", with a **Check again** link.
+
+  `save-thread` now merges the history it is sent with the stored one rather than replacing it, so a reply the hook stored survives the browser's next save. The chat sends `known_ids`, the ids of every message it has held, and a stored message is dropped only when it is one of those. An app that calls `save-thread` itself without `known_ids` gets the old behaviour: its history replaces the stored one.
+
+  The `FloatingPanel` block's `onOpen` event now carries `{ first }`, true on the first open since the block mounted, when its children mount.
+
+### Patch Changes
+
+- [#311](https://github.com/lowdefy/modules-mongodb/pull/311) [`1bf629e`](https://github.com/lowdefy/modules-mongodb/commit/1bf629e13e03d995a4b8ddbf4c0a2134e513047d) Thanks [@puffin-mrm](https://github.com/puffin-mrm)! - **ai-assistant:** opening the panel now shows the thread as it is stored, not the copy the page held from an earlier visit. Messages sent on another page, and a thread switched to there, show on going back without a refresh. A reply streaming on the page is left as it is. A page using `embedded` gets the same on each visit through the `enter` it already splices into `onMount`. Nothing to change in your app. One difference to know: a new chat nobody has sent in yet is not stored, so closing and reopening the panel returns to the thread last opened.
+
 ## 1.1.0
 
 ## 1.0.0
