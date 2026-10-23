@@ -98,7 +98,7 @@ Block ids must be distinct from those in the global `attributes` list. When `att
 
 ## Attachment slots
 
-The attachments UI is a pair of block-array slots defaulting to the files module — `components.form_attachments` (divider + `file-manager` at the bottom of the form) and `components.view_attachments` (`file-card` tile at the top of the detail sidebar). Apps that don't wire the files module supply their own blocks, or `[]` to drop the section. In the form, `state.activity_id` holds the activity id (minted before create); on the view page the id is at `_url_query: _id`.
+The attachments UI is a pair of block-array slots defaulting to the files module — `components.form_attachments` (divider + `file-manager` at the bottom of the form) and `components.view_attachments` (`file-card` tile at the top of the detail sidebar). Apps that don't wire the files module supply their own blocks, or `[]` to drop the section. In the form, `state.activity_id` holds the activity id (minted before create); on the view page the id is at `_url_query: _id`. Because the id is minted before the activity is saved, a files module `access_check` endpoint can be asked about an activity that does not exist yet (`entity_type: activity`, operations `list`, `upload` and `save`), and must decide what to answer for it, for example by allowing a caller who may create activities.
 
 ## Post-create hook
 

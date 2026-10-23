@@ -22,7 +22,10 @@ Use it for quick views over data with a known shape but no declared layout. Use 
     column: 2
     data:
       _request: get_contact
-    s3GetPolicyRequestId: download_policy
+    downloadEndpointId:
+      _module.endpointId:
+        id: download-file
+        module: files
 ```
 
 The block walks `data` and renders every recognisable leaf. Unrecognised objects are flattened recursively with dotted-path labels (e.g. `address.street`).
@@ -58,21 +61,22 @@ This is the path most consumers want — it lets a single field config drive bot
 
 ## Properties
 
-| Property               | Type                           | Default          | Description                                                                                                                                                      |
-| ---------------------- | ------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data`                 | object                         | —                | The source data. Field paths in `fields` resolve via dot-notation against this object.                                                                           |
-| `fields`               | array                          | —                | Lowdefy block definitions used as field hints. When provided, only these fields render. Without it, the block flattens `data` and renders every recognised leaf. |
-| `title`                | string (HTML)                  | —                | Header rendered above the items. Sanitised through `renderHtml`.                                                                                                 |
-| `bordered`             | boolean                        | `true`           | Render items in the bordered table layout.                                                                                                                       |
-| `colon`                | boolean                        | —                | Show a colon after each label.                                                                                                                                   |
-| `column`               | number \| object               | `2`              | Number of items per row, or breakpoint object `{ xs, sm, md, lg, xl }`.                                                                                          |
-| `layout`               | `"horizontal"` \| `"vertical"` | —                | Label position relative to value.                                                                                                                                |
-| `size`                 | `"default"` \| `"small"`       | —                | Antd `Descriptions` size.                                                                                                                                        |
-| `theme`                | object                         | —                | Antd design token overrides. See the [Antd docs](https://ant.design/components/descriptions#design-token).                                                       |
-| `disableCrmLinks`      | boolean                        | `false`          | Disable hyperlinks on detected `contact` and `company` values.                                                                                                   |
-| `contactDetailPageId`  | string                         | `contacts/view`  | Page id used to build contact detail links.                                                                                                                      |
-| `companyDetailPageId`  | string                         | `companies/view` | Page id used to build company detail links.                                                                                                                      |
-| `s3GetPolicyRequestId` | string                         | —                | Request id resolving to an S3 download-policy URL. Required for `file` and `fileList` field types to render download links.                                      |
+| Property              | Type                           | Default          | Description                                                                                                                                                      |
+| --------------------- | ------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`                | object                         | —                | The source data. Field paths in `fields` resolve via dot-notation against this object.                                                                           |
+| `fields`              | array                          | —                | Lowdefy block definitions used as field hints. When provided, only these fields render. Without it, the block flattens `data` and renders every recognised leaf. |
+| `title`               | string (HTML)                  | —                | Header rendered above the items. Sanitised through `renderHtml`.                                                                                                 |
+| `bordered`            | boolean                        | `true`           | Render items in the bordered table layout.                                                                                                                       |
+| `colon`               | boolean                        | —                | Show a colon after each label.                                                                                                                                   |
+| `column`              | number \| object               | `2`              | Number of items per row, or breakpoint object `{ xs, sm, md, lg, xl }`.                                                                                          |
+| `layout`              | `"horizontal"` \| `"vertical"` | —                | Label position relative to value.                                                                                                                                |
+| `size`                | `"default"` \| `"small"`       | —                | Antd `Descriptions` size.                                                                                                                                        |
+| `theme`               | object                         | —                | Antd design token overrides. See the [Antd docs](https://ant.design/components/descriptions#design-token).                                                       |
+| `disableCrmLinks`     | boolean                        | `false`          | Disable hyperlinks on detected `contact` and `company` values.                                                                                                   |
+| `contactDetailPageId` | string                         | `contacts/view`  | Page id used to build contact detail links.                                                                                                                      |
+| `companyDetailPageId` | string                         | `companies/view` | Page id used to build company detail links.                                                                                                                      |
+| `downloadEndpointId`  | string                         | —                | Id of an API endpoint that takes `{ file_id, ...downloadPayload }` and returns `{ url }`. Required for `file` and `fileList` values to render downloads.         |
+| `downloadPayload`     | object                         | —                | Extra fields sent to `downloadEndpointId` with each download. `file_id` is each file's `_id`, else its `key`.                                                    |
 
 ### `fields` items
 
@@ -129,6 +133,7 @@ In the no-`fields` path:
 
 ## Notes
 
+- **Downloads.** `file` and `fileList` values render as a [FileDownload](file-download.md) list on `downloadEndpointId`. The block's meta declares the `CallAPI` action and the `_event` operator the list uses, so a page whose own config uses neither still downloads.
 - **Empty state.** When no items resolve from `data`, the block renders the literal string `No data to display`.
 - **Selector options.** A `Selector` field with no `options` still renders the value as a tag — supplying `options` only changes the dropdown source, not the read-only render.
 - **Field-mode label fallback.** When `properties.title` is absent on a `fields` entry, the label is `formatFieldName(lastSegmentOf(id))` — so `id: profile.given_name` becomes `Given Name`.

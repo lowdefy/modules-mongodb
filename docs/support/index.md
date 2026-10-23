@@ -267,7 +267,7 @@ Each answers `{ ok: true, ... }` or `{ ok: false, error, ... }` and never fails 
 
 The app's own agent files and follows up tickets through four more endpoints. A ticket it files carries the same page, browser and error context as the form's when the app adds the `agent-context` component to its agent's shared state: see [Give the app's agent the support tools](how-to/agent-tools.md).
 
-`create-ticket` and `post-message` check what the browser sent before Pelican is called: the type is one of the `types` var's values, the title is 1 to 120 characters, the message 1 to 4,000, there are at most five files, and each file key is under the user's own `support/{user id}/` prefix. A failed check answers a `fix` error. The server adds `app`, `environment`, `version` and `organization` to the ticket's context, over anything the browser sent for them.
+`create-ticket` and `post-message` check what the browser sent before Pelican is called: the type is one of the `types` var's values, the title is 1 to 120 characters, the message 1 to 4,000, there are at most five files, and each file key is under the user's own upload prefix: `{organization_id}/support/{user id}/`, or `support/{user id}/` for a user with no organization. A failed check answers a `fix` error. The server adds `app`, `environment`, `version` and `organization` to the ticket's context, over anything the browser sent for them.
 
 Neither retries on its own. Pelican's create has no idempotency key, so a create repeated after a lost answer files a second ticket: let the user decide to try again.
 
@@ -275,7 +275,7 @@ Neither retries on its own. Pelican's create has no idempotency key, so a create
 
 Every file a reporter sends goes to the app's own files bucket first, through the `files` module:
 
-1. The browser uploads it with the module's upload policy (`requests/upload_policy.yaml`), under `support/{user id}/{uuid}/{file name}`, up to 10 MB, with the uploader metadata the `files` module's own policy sets.
+1. The browser uploads it with the module's upload policy (`requests/upload_policy.yaml`), under `{organization_id}/support/{user id}/{uuid}/{file name}` (`support/{user id}/{uuid}/{file name}` for a user with no organization, who can still report), up to 10 MB, with the uploader metadata the `files` module's own policy sets.
 2. `create-ticket` or `post-message` takes the uploaded files as `[{ key, name }]` and refuses any key outside the user's prefix.
 3. The server signs a 15-minute GET link for each key and sends Pelican `files: [{ name, url }]`. Pelican copies each file into its own bucket within that time.
 

@@ -1,6 +1,7 @@
 # The presigned POST policy the report form and the composer upload through, to
-# the app's files bucket under support/{user}/{uuid}/{name}. send-ticket and
-# send-message sign links only for keys under the caller's own prefix.
+# the app's files bucket under the caller's own prefix
+# (api/parts/upload-key-prefix.yaml), then {uuid}/{name}. send-ticket and
+# send-message sign links only for keys under that prefix.
 #
 # Vars:
 #   block_id  the upload block's id; the request is upload_policy_{block_id}
@@ -23,9 +24,7 @@ payload:
 properties:
   key:
     _string.concat:
-      - support/
-      - _user: id
-      - /
+      - _ref: api/parts/upload-key-prefix.yaml
       - _uuid: true
       - /
       - _payload: file_name

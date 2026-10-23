@@ -6,6 +6,7 @@ import dispatchGroupOnComplete from "../../shared/phases/dispatchGroupOnComplete
 import invokePostHook from "../../shared/phases/invokePostHook.js";
 import runTrackerCascade from "../../shared/phases/runTrackerCascade.js";
 import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js";
+import checkSubmittedFormFiles from "./checkSubmittedFormFiles.js";
 
 /**
  * SubmitWorkflowAction handler — the reference phase composition (design D2/D3;
@@ -13,6 +14,7 @@ import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js"
  * follow this same shape.
  *
  *   load (incl. per-verb access gate)
+ *     → checkSubmittedFormFiles
  *     → invokePreHook
  *     → planSubmit (composition of the pure planners)
  *     → commitPlan
@@ -58,6 +60,9 @@ async function handleSubmit(context) {
   // Per-workflow endpoints key hooks by action type (Part 48 D7); re-slice to
   // the signal-keyed shape the hook phases consume (params.hooks[signal].{pre|post}).
   params.hooks = params.hooks?.[loadedState.targetAction.type];
+
+  // ── Form files (refused before any side effect or write) ─────────────────
+  checkSubmittedFormFiles({ params, loadedState, user });
 
   // ── Pre-hook (D5; external side effects only after access is granted) ────
   const preHookResult = await invokePreHook(loadedState, params, user, callApi);

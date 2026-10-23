@@ -16,9 +16,13 @@
       "type": "object",
       "description": "Map of action status → display metadata (color, title, card_color, border_color). Used to render action status badges within events."
     },
-    "s3GetPolicyRequestId": {
+    "downloadEndpointId": {
       "type": "string",
-      "description": "Request ID for S3 file download policy. When provided, events with a files array render an attachment list."
+      "description": "Id of an API endpoint that takes { file_id, ...downloadPayload } and returns { url }. When provided, events with a files array render a download list; file_id is each file's _id, else its key."
+    },
+    "downloadPayload": {
+      "type": "object",
+      "description": "Extra fields sent to downloadEndpointId with each download."
     },
     "contactPageId": {
       "type": "string",

@@ -440,16 +440,19 @@ S3 put via policy. Renders a `Label` wrapping an `S3UploadDragger`. When `requir
 
 #### `file_download`
 
-File-list S3 get via policy. Renders a `Label` wrapping an `S3Download`.
+Lists files and downloads each through an API endpoint. Renders a `Label` wrapping a [`FileDownload`](../../../../docs/plugins/file-download.md).
 
-| Var                    | Type    | Required / Default     |
-| ---------------------- | ------- | ---------------------- |
-| `key`                  | string  | required               |
-| `title`                | string  | —                      |
-| `visible`              | boolean | `true`                 |
-| `fileList`             | array   | required               |
-| `label_disabled`       | boolean | `true`                 |
-| `s3GetPolicyRequestId` | string  | `file_download_policy` |
+| Var                    | Type    | Required / Default                     |
+| ---------------------- | ------- | -------------------------------------- |
+| `key`                  | string  | required                               |
+| `title`                | string  | —                                      |
+| `visible`              | boolean | `true`                                 |
+| `fileList`             | array   | required                               |
+| `label_disabled`       | boolean | `true`                                 |
+| `download_endpoint_id` | string  | this module's `download-form-file`     |
+| `download_payload`     | object  | `{ workflow_id }` of the page's action |
+
+With no app config, a form file signs through `download-form-file`, which signs the key only when it is in the form slots of actions the caller may view in that workflow. Files that are `files` module records (from its `list-files`) need `download_endpoint_id: files/download-file` (the files module's entry id, then `download-file`), which signs by record.
 
 ```yaml
 - component: file_download

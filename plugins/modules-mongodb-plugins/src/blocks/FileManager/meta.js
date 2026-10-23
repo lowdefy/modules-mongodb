@@ -1,5 +1,9 @@
 export default {
   category: "container",
+  // Downloads run a CallAPI action that reads _event, registered by the
+  // block; a page's own config may use neither, so they are counted from here.
+  actions: ["CallAPI"],
+  operators: ["_event"],
   slots: {
     form: "Fields rendered in the post-upload modal. Field ids must be nested under `{blockId}.form.*`; their state is passed through to onSave.",
   },

@@ -1,0 +1,115 @@
+id: upload-policy
+type: Api
+description: >-
+  Mints a key for one upload under the caller's organization and record,
+  {organization_id}/files/{entity_type}/{entity_id}/{YYYYMMDD_HHmmssSSS}/{uuid}/{name},
+  and returns the presigned POST policy for it. The policy caps the size at
+  max_file_size and fixes the Content-Type to the declared type.
+payloadSchema:
+  type: object
+  required:
+    - entity_type
+    - entity_id
+    - file
+  properties:
+    entity_type:
+      type: string
+    entity_id:
+      type: string
+    file:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        type:
+          type:
+            - string
+            - "null"
+        size:
+          type:
+            - number
+            - "null"
+routine:
+  - _ref: api/parts/check-upload.yaml
+  - :if:
+      _ne:
+        - _state: upload_problem
+        - null
+    :then:
+      - :reject:
+          _state: upload_problem
+  - _ref:
+      path: api/parts/check-access.yaml
+      vars:
+        operation: upload
+        entity_type:
+          _payload: entity_type
+        entity_id:
+          _payload: entity_id
+  - :set_state:
+      content_type:
+        # Browsers send an empty type for a file they cannot name; S3 needs one.
+        _if:
+          test:
+            _eq:
+              - _if_none:
+                  - _payload: file.type
+                  - ""
+              - ""
+          then: application/octet-stream
+          else:
+            _payload: file.type
+      key:
+        _string.concat:
+          - _user: organization_id
+          - /files/
+          - _payload: entity_type
+          - /
+          - _payload: entity_id
+          - /
+          - _dayjs.format:
+              on:
+                _date: now
+              format: YYYYMMDD_HHmmssSSS
+          - /
+          - _uuid: true
+          - /
+          - _array.join:
+              - _string.split:
+                  - _payload: file.name
+                  - /
+              - "-"
+  - id: policy
+    type: AwsS3PresignedPostPolicy
+    connectionId:
+      _module.connectionId: files-bucket
+    properties:
+      key:
+        _state: key
+      fields:
+        Content-Type:
+          _state: content_type
+        x-amz-meta-uploaded-by-id:
+          _if_none:
+            - _user: id
+            - unknown
+        x-amz-meta-uploaded-by-name:
+          _if_none:
+            - _user: name
+            - _if_none:
+                - _user: profile.name
+                - unknown
+      conditions:
+        - - content-length-range
+          - 1
+          - _module.var: max_file_size
+        - - starts-with
+          - $x-amz-meta-uploaded-by-id
+          - ""
+        - - starts-with
+          - $x-amz-meta-uploaded-by-name
+          - ""
+  - :return:
+      _step: policy

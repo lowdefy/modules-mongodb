@@ -201,7 +201,10 @@ form:
   - key: form.file_download
     component: file_download
     title: File download
-    fileList: []
+    # Lists the files on the upload field above, so the field downloads a
+    # stored form file with no app config.
+    fileList:
+      _state: form.file_upload.fileList
 
   # ── Location — EXCLUDED FROM THE ROSTER (documented exception) ──────────────────
   # The `location` field component (components/fields/location.yaml) renders

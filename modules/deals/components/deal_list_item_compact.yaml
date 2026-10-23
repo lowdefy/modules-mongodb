@@ -36,7 +36,8 @@ events:
         - get_last_contact
         - get-events
         - get_activities_for_entity
-        - get_entity_files_detail_files_list
+    - _ref: actions/fetch_deal_files.yaml
+    - _ref: actions/set_deal_files.yaml
     # Refetch the workflow-progress phase view for the newly-selected deal
     # (master-detail: the surface self-fetches only on mount).
     - id: refetch_entity_workflows

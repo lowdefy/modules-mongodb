@@ -19,6 +19,7 @@ import { Timeline, Modal, Tooltip, Card, Button } from "antd";
 import { withBlockDefaults, HtmlComponent } from "@lowdefy/block-utils";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration.js";
+import FileDownload from "../FileDownload/FileDownload.js";
 import "./style.module.css";
 
 dayjs.extend(duration);
@@ -187,12 +188,7 @@ function Html({ html, contactLink, ...props }) {
   return <HtmlComponent html={linkMentions(html, contactLink)} {...props} />;
 }
 
-function TimeAgo({
-  timestamp,
-  userName,
-  userId,
-  contactLink,
-}) {
+function TimeAgo({ timestamp, userName, userId, contactLink }) {
   if (!timestamp) return null;
 
   const ts = dayjs(timestamp);
@@ -243,16 +239,14 @@ function TimeAgo({
   return <Tooltip title={tooltipTitle}>{content}</Tooltip>;
 }
 
-function EventTitle({
-  title,
-  timestamp,
-  userName,
-  userId,
-  contactLink,
-}) {
+function EventTitle({ title, timestamp, userName, userId, contactLink }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <Html html={title} contactLink={contactLink} style={{ fontWeight: 500 }} />
+      <Html
+        html={title}
+        contactLink={contactLink}
+        style={{ fontWeight: 500 }}
+      />
       <TimeAgo
         timestamp={timestamp}
         userName={userName}
@@ -263,12 +257,7 @@ function EventTitle({
   );
 }
 
-function EventDescription({
-  event,
-  typeConfig,
-  contactLink,
-  compact,
-}) {
+function EventDescription({ event, typeConfig, contactLink, compact }) {
   const user = event.created?.user;
 
   const cardStyle = { marginBottom: compact ? 2 : 4 };
@@ -292,11 +281,7 @@ function EventDescription({
           alignItems: "flex-start",
         }}
       >
-        <Avatar
-          user={user}
-          contactLink={contactLink}
-          compact={compact}
-        />
+        <Avatar user={user} contactLink={contactLink} compact={compact} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <EventTitle
             title={event.title}
@@ -350,11 +335,7 @@ function EventInfoModal({
       destroyOnClose
     >
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        <Avatar
-          user={user}
-          contactLink={contactLink}
-          compact={compact}
-        />
+        <Avatar user={user} contactLink={contactLink} compact={compact} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <Html
             div
@@ -494,29 +475,14 @@ function EventAction({
   );
 }
 
-function EventFiles({ files, s3GetPolicyRequestId, methods }) {
-  // Lazy import approach — we render the S3Download block inline.
-  // S3Download expects: blockId, properties ({ s3GetPolicyRequestId, fileList }), methods
-  // We dynamically import it to avoid hard failure if @lowdefy/plugin-aws is not installed.
-  const [S3Download, setS3Download] = useState(null);
-
-  React.useEffect(() => {
-    import("@lowdefy/plugin-aws/blocks/S3Download/S3Download.js")
-      .then((mod) => setS3Download(() => mod.default))
-      .catch(() => {
-        // @lowdefy/plugin-aws not available — silently skip
-      });
-  }, []);
-
-  if (!s3GetPolicyRequestId || !files || files.length === 0) return null;
-  if (!S3Download) return null;
-
+function EventFiles({ files, downloadEndpointId, downloadPayload, methods }) {
   return (
     <div style={{ marginTop: 6 }}>
-      <S3Download
-        blockId={`events_files_${s3GetPolicyRequestId}`}
+      <FileDownload
+        blockId={`events_files_${downloadEndpointId}`}
         properties={{
-          s3GetPolicyRequestId,
+          downloadEndpointId,
+          downloadPayload,
           fileList: files,
         }}
         methods={methods}
@@ -533,7 +499,8 @@ function EventTimelineItem({
   event,
   typeConfig,
   actionStatusConfig,
-  s3GetPolicyRequestId,
+  downloadEndpointId,
+  downloadPayload,
   contactLink,
   compact,
   methods,
@@ -549,9 +516,7 @@ function EventTimelineItem({
     Array.isArray(event.actions) &&
     event.actions.length > 0;
   const hasFiles =
-    s3GetPolicyRequestId &&
-    Array.isArray(event.files) &&
-    event.files.length > 0;
+    downloadEndpointId && Array.isArray(event.files) && event.files.length > 0;
 
   return (
     <div>
@@ -620,7 +585,8 @@ function EventTimelineItem({
       {hasFiles && (
         <EventFiles
           files={event.files}
-          s3GetPolicyRequestId={s3GetPolicyRequestId}
+          downloadEndpointId={downloadEndpointId}
+          downloadPayload={downloadPayload}
           methods={methods}
         />
       )}
@@ -645,7 +611,8 @@ const EventsTimeline = ({
     data = [],
     eventTypeConfig = {},
     actionStatusConfig,
-    s3GetPolicyRequestId,
+    downloadEndpointId,
+    downloadPayload,
     contactPageId,
     contactIdQueryKey,
     contactIdPathKey,
@@ -666,7 +633,13 @@ const EventsTimeline = ({
             idPathKey: contactIdPathKey,
           }
         : null,
-    [Link, contactPageId, contactIdQueryKey, contactIdPathKey, disableContactLink],
+    [
+      Link,
+      contactPageId,
+      contactIdQueryKey,
+      contactIdPathKey,
+      disableContactLink,
+    ],
   );
 
   const enrichedData = useMemo(() => {
@@ -693,7 +666,8 @@ const EventsTimeline = ({
             event={_event}
             typeConfig={_typeConfig}
             actionStatusConfig={actionStatusConfig}
-            s3GetPolicyRequestId={s3GetPolicyRequestId}
+            downloadEndpointId={downloadEndpointId}
+            downloadPayload={downloadPayload}
             contactLink={contactLink}
             compact={compact}
             methods={methods}
@@ -717,7 +691,8 @@ const EventsTimeline = ({
   }, [
     enrichedData,
     actionStatusConfig,
-    s3GetPolicyRequestId,
+    downloadEndpointId,
+    downloadPayload,
     contactLink,
     compact,
     methods,

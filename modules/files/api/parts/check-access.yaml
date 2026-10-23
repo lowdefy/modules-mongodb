@@ -1,0 +1,44 @@
+# Asks the app's access_check endpoint whether the caller may do this
+# operation, and rejects with its message unless it answers { allowed: true }.
+# With no access_check set this adds no steps: every signed-in member of the
+# organization passes, and the tenant wall keeps organizations apart.
+#
+# Vars:
+#   operation    list, upload, save, download or delete
+#   entity_type  the record type the file belongs to
+#   entity_id    the record's id
+#   file_id      the file record's id, or null for list and upload
+_build.if:
+  test:
+    _build.ne:
+      - _build.if_none:
+          - _module.var: access_check.endpoint_id
+          - null
+      - null
+  then:
+    - id: check_access
+      type: CallApi
+      properties:
+        endpointId:
+          _module.var: access_check.endpoint_id
+        payload:
+          operation:
+            _var: operation
+          entity_type:
+            _var: entity_type
+          entity_id:
+            _var: entity_id
+          file_id:
+            _var:
+              key: file_id
+              default: null
+    - :if:
+        _ne:
+          - _step: check_access.allowed
+          - true
+      :then:
+        - :reject:
+            _if_none:
+              - _step: check_access.message
+              - You do not have access to these files.
+  else: []

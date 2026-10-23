@@ -36,25 +36,29 @@ The block ships a registry of field-type renderers — change stamps, contacts, 
             - key: created
               # Auto-detects as `changeStamp` when the value matches.
             - key: updated
-    s3GetPolicyRequestId: download_policy
+    downloadEndpointId:
+      _module.endpointId:
+        id: download-file
+        module: files
 ```
 
 The `data` is the source object. The `formConfig` describes which keys to show, how to label them, and how to nest them. Every level supports a `title`, optional `extra` slot at the top, and arbitrary nesting of sections and fields.
 
 ## Properties
 
-| Property               | Type                           | Default        | Description                                                                                                                                         |
-| ---------------------- | ------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data`                 | object                         | —              | The data object to display. Field `key`s in `formConfig` resolve via dot-notation against this object.                                              |
-| `formConfig`           | object \| array                | —              | Layout for the data. The root is a `section` or an array of items. See [Form config](#form-config).                                                 |
-| `bordered`             | boolean                        | `true`         | Render items in the bordered table layout.                                                                                                          |
-| `colon`                | boolean                        | `true`         | Show a colon after each label.                                                                                                                      |
-| `column`               | number \| object               | `2`            | Number of items per row, or breakpoint object `{ xs, sm, md, lg, xl }`.                                                                             |
-| `layout`               | `"horizontal"` \| `"vertical"` | `"horizontal"` | Label position. Horizontal puts the label to the left of the value.                                                                                 |
-| `size`                 | `"default"` \| `"small"`       | `"default"`    | Antd `Descriptions` size.                                                                                                                           |
-| `theme`                | object                         | —              | Antd design token overrides scoped to this block. See [Theme](#theme) and the [Antd docs](https://ant.design/components/descriptions#design-token). |
-| `disableCrmLinks`      | boolean                        | `false`        | Disable hyperlinks on detected `contact` and `company` values.                                                                                      |
-| `s3GetPolicyRequestId` | string                         | —              | Request id resolving to an S3 download-policy URL. Required for `file` and `fileList` field types to render download links.                         |
+| Property             | Type                           | Default        | Description                                                                                                                                              |
+| -------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`               | object                         | —              | The data object to display. Field `key`s in `formConfig` resolve via dot-notation against this object.                                                   |
+| `formConfig`         | object \| array                | —              | Layout for the data. The root is a `section` or an array of items. See [Form config](#form-config).                                                      |
+| `bordered`           | boolean                        | `true`         | Render items in the bordered table layout.                                                                                                               |
+| `colon`              | boolean                        | `true`         | Show a colon after each label.                                                                                                                           |
+| `column`             | number \| object               | `2`            | Number of items per row, or breakpoint object `{ xs, sm, md, lg, xl }`.                                                                                  |
+| `layout`             | `"horizontal"` \| `"vertical"` | `"horizontal"` | Label position. Horizontal puts the label to the left of the value.                                                                                      |
+| `size`               | `"default"` \| `"small"`       | `"default"`    | Antd `Descriptions` size.                                                                                                                                |
+| `theme`              | object                         | —              | Antd design token overrides scoped to this block. See [Theme](#theme) and the [Antd docs](https://ant.design/components/descriptions#design-token).      |
+| `disableCrmLinks`    | boolean                        | `false`        | Disable hyperlinks on detected `contact` and `company` values.                                                                                           |
+| `downloadEndpointId` | string                         | —              | Id of an API endpoint that takes `{ file_id, ...downloadPayload }` and returns `{ url }`. Required for `file` and `fileList` values to render downloads. |
+| `downloadPayload`    | object                         | —              | Extra fields sent to `downloadEndpointId` with each download, such as `{ workflow_id }`. `file_id` is each file's `_id`, else its `key`.                 |
 
 ### Form config
 
@@ -143,7 +147,8 @@ Antd `Descriptions` design tokens scoped to this instance:
 
 ## Notes
 
+- **Downloads.** `file` and `fileList` values render as a [FileDownload](file-download.md) list on `downloadEndpointId`. The block's meta declares the `CallAPI` action and the `_event` operator the list uses, so a page whose own config uses neither still downloads.
 - **Empty state.** When no fields resolve from the data (everything is `null` / `undefined` or `formConfig` is empty), the block renders the literal string `No data to display`.
-- **`fileList` priority.** A value with a `fileList` array renders before being treated as a generic file. Use `s3GetPolicyRequestId` to enable downloads.
+- **`fileList` priority.** A value with a `fileList` array renders before being treated as a generic file. Set `downloadEndpointId` to enable downloads.
 - **Auto-formatted labels.** When `title` is omitted, the field's `key` is converted to title case (`assigned_to` → `Assigned To`).
 - **`extra` slot only at the top.** The `extra` slot renders only on the first top-level group.

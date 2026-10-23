@@ -17,10 +17,7 @@
       types:
         _module.var: types
       key_prefix:
-        _string.concat:
-          - support/
-          - _user: id
-          - /
+        _ref: api/parts/upload-key-prefix.yaml
       ticket:
         _var:
           key: ticket

@@ -55,7 +55,7 @@ const FIELD_KEYS = [
   "form.yes_no_selector", // yes_no_selector
   // ── files ─────────────────────────────────────────────────────────────────────
   "form.file_upload", // file_upload (inner S3UploadDragger carries the key)
-  "form.file_download", // file_download (inner S3Download carries the key)
+  "form.file_download", // file_download (inner FileDownload carries the key)
   // ── contact (wrap the contacts module's contact-selector) ──────────────────────
   "form.contact", // contact
   "form.stakeholders", // multiple_contact

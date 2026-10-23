@@ -2,10 +2,11 @@ import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
 import entityPageLink from "../../shared/render/entityPageLink.js";
 import resolveEntityData from "../../shared/render/resolveEntityData.js";
+import { collapseLink } from "../../shared/render/resolveActionAccess.js";
 import {
-  computeAllowed,
-  collapseLink,
-} from "../../shared/render/resolveActionAccess.js";
+  pruneFormData,
+  viewableActions,
+} from "../../shared/render/viewableFormData.js";
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 import summarizeStatuses from "../../shared/render/summarizeStatuses.js";
 import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js";
@@ -67,21 +68,17 @@ async function GetWorkflowOverview(lowdefyContext) {
   });
 
   // ── Access filter + link collapse ──
-  const visibleActions = [];
-  for (const action of rawActions) {
-    const allowed = computeAllowed({
-      access: action.access,
-      slug,
-      userRoles,
-    });
-    if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
-      continue; // drop: no verb accessible
-    }
-    const link = collapseLink({ links: action[slug]?.links, allowed });
-    const message = action[slug]?.message ?? null;
-    const status = action.status?.[0]?.stage ?? null;
-    visibleActions.push({ action, allowed, link, message, status });
-  }
+  const visibleActions = viewableActions({
+    actions: rawActions,
+    slug,
+    userRoles,
+  }).map(({ action, allowed }) => ({
+    action,
+    allowed,
+    link: collapseLink({ links: action[slug]?.links, allowed }),
+    message: action[slug]?.message ?? null,
+    status: action.status?.[0]?.stage ?? null,
+  }));
 
   // ── Sort: declaration order (group, not-required sink, action, key, _id) ──
   const compareOrder = makeWorkflowOrderComparator();
@@ -153,65 +150,10 @@ async function GetWorkflowOverview(lowdefyContext) {
   groups.sort((a, b) => a.order - b.order);
 
   // ── Prune form_data to view-visible actions ──
-  // form_data structure (per planFormDataMerge):
-  //   unkeyed action: form_data[type] = { ...values }
-  //   keyed action:   form_data[type] = { [key]: { ...values }, [key2]: { ...values } }
-  //
-  // For unkeyed visible actions → keep form_data[type] whole.
-  // For keyed visible actions → keep only the form_data[type][key] slices for
-  //   visible keys; rebuild the nested object with just those keys so denied
-  //   keyed siblings do not ship.
-  const rawFormData = wfDoc.form_data ?? {};
-
-  // Collect visible keys per type.
-  // visibleKeysByType: type → Set<key> | 'unkeyed' sentinel
-  const visibleKeysByType = new Map();
-  for (const { action } of visibleActions) {
-    const type = action.type;
-    const key = action.key ?? null;
-    if (key == null) {
-      // Unkeyed: keep the whole type slice.
-      visibleKeysByType.set(type, "unkeyed");
-    } else {
-      // Keyed: only if no unkeyed instance already claimed the whole slice.
-      if (
-        !visibleKeysByType.has(type) ||
-        visibleKeysByType.get(type) !== "unkeyed"
-      ) {
-        if (!visibleKeysByType.has(type)) {
-          visibleKeysByType.set(type, new Set());
-        }
-        visibleKeysByType.get(type).add(key);
-      }
-    }
-  }
-
-  const prunedFormData = {};
-  for (const [type, sentinel] of visibleKeysByType) {
-    if (!(type in rawFormData)) continue;
-    if (sentinel === "unkeyed") {
-      // Unkeyed action: keep the whole form_data[type] value.
-      prunedFormData[type] = rawFormData[type];
-    } else {
-      // Keyed action: rebuild form_data[type] with only visible key slices.
-      const typeSlice = rawFormData[type];
-      if (
-        typeSlice != null &&
-        typeof typeSlice === "object" &&
-        !Array.isArray(typeSlice)
-      ) {
-        const filtered = {};
-        for (const k of sentinel) {
-          if (k in typeSlice) {
-            filtered[k] = typeSlice[k];
-          }
-        }
-        if (Object.keys(filtered).length > 0) {
-          prunedFormData[type] = filtered;
-        }
-      }
-    }
-  }
+  const prunedFormData = pruneFormData({
+    formData: wfDoc.form_data,
+    actions: visibleActions.map(({ action }) => action),
+  });
 
   // ── Workflow title + entity_link ──
   // Part 26: the instance `name` is lifted onto entity_link from the host's

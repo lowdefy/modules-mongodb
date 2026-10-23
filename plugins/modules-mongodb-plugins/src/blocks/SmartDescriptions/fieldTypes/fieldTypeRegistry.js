@@ -1,10 +1,6 @@
 import React from "react";
 import { type } from "@lowdefy/helpers";
-// Deep import — the blocks barrel pulls S3UploadDragger's CSS module, which
-// crashes Node's SSR external import in apps that don't independently
-// transpile @lowdefy/plugin-aws (it is only added to Next transpilePackages
-// when one of its block types is used on a page).
-import S3Download from "@lowdefy/plugin-aws/blocks/S3Download/S3Download.js";
+import FileDownload from "../../FileDownload/FileDownload.js";
 import { DangerousHtml } from "@lowdefy/blocks-basic/blocks";
 import formatValue from "../utils/formatValue.js";
 import formatFieldName from "../utils/formatFieldName.js";
@@ -155,16 +151,14 @@ export const fieldTypeRegistry = {
               pageId={contactDetailPageId}
               urlQuery={{ _id: contactId }}
             >
-              <Icon blockId="contact-icon" properties="user" />{" "}
-              {displayName}
+              <Icon blockId="contact-icon" properties="user" /> {displayName}
             </Link>
           </span>
         );
       }
       return (
         <span className="dataview-value">
-          <Icon blockId="contact-icon" properties="user" />{" "}
-          {displayName}
+          <Icon blockId="contact-icon" properties="user" /> {displayName}
         </span>
       );
     },
@@ -197,8 +191,7 @@ export const fieldTypeRegistry = {
       }
       return (
         <span className="dataview-value">
-          <Icon blockId="company-icon" properties="Waypoints" />{" "}
-          {value.name}
+          <Icon blockId="company-icon" properties="Waypoints" /> {value.name}
         </span>
       );
     },
@@ -210,20 +203,16 @@ export const fieldTypeRegistry = {
     priority: 35, // Check before 'file' (more specific)
     detect: (value) => type.isObject(value) && type.isArray(value.fileList),
     render: ({ value, methods, properties }) => {
-      if (
-        value.fileList &&
-        methods &&
-        properties?.s3GetPolicyRequestId &&
-        S3Download
-      ) {
+      if (value.fileList && methods && properties?.downloadEndpointId) {
         return (
           <span className="dataview-value">
-            <S3Download
+            <FileDownload
               blockId={`file-downloads`}
               methods={methods}
               properties={{
                 fileList: value.fileList,
-                s3GetPolicyRequestId: properties.s3GetPolicyRequestId,
+                downloadEndpointId: properties.downloadEndpointId,
+                downloadPayload: properties.downloadPayload,
               }}
             />
           </span>
@@ -244,17 +233,17 @@ export const fieldTypeRegistry = {
         value.bucket &&
         value.key &&
         methods &&
-        properties?.s3GetPolicyRequestId &&
-        S3Download
+        properties?.downloadEndpointId
       ) {
         return (
           <span className="dataview-value">
-            <S3Download
+            <FileDownload
               blockId={`file-download-${value.key}`}
               methods={methods}
               properties={{
                 fileList: [value],
-                s3GetPolicyRequestId: properties.s3GetPolicyRequestId,
+                downloadEndpointId: properties.downloadEndpointId,
+                downloadPayload: properties.downloadPayload,
               }}
             />
           </span>
@@ -281,8 +270,7 @@ export const fieldTypeRegistry = {
       if (!value.geometry?.location) {
         return (
           <span className="dataview-value">
-            <Icon blockId="location-icon" properties="location" />{" "}
-            {address}
+            <Icon blockId="location-icon" properties="location" /> {address}
           </span>
         );
       }
@@ -299,8 +287,7 @@ export const fieldTypeRegistry = {
             rel="noopener noreferrer"
             target="_blank"
           >
-            <Icon blockId="location-icon" properties="location" />{" "}
-            {address}
+            <Icon blockId="location-icon" properties="location" /> {address}
           </a>
         </span>
       );
