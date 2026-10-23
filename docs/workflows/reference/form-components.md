@@ -490,6 +490,43 @@ S3 put via policy. Renders a `Label` wrapping an `S3UploadDragger`. When `requir
   required: true
 ```
 
+The app supplies the upload policy, a page request named by `s3PostPolicyRequestId`, on the action's edit page through `pages.edit.requests`. It must mint keys under `{organization_id}/workflows/`:
+
+```yaml
+pages:
+  edit:
+    requests:
+      - id: upload_files
+        type: AwsS3PresignedPostPolicy
+        connectionId: files/files-bucket
+        payload:
+          file_name:
+            _event: file.name
+        properties:
+          key:
+            _string.concat:
+              - _user: organization_id
+              - /workflows/sales-pipeline/upload-po/
+              - _uuid: true
+              - /
+              - _array.join:
+                  - _string.split:
+                      - _payload: file_name
+                      - /
+                  - "-"
+          conditions:
+            - - content-length-range
+              - 1
+              - 26214400
+```
+
+Form data is written from the browser, so the module checks form file keys by their prefix. A form file is any object in the form with a string `key`.
+
+- **Submit** refuses a form file whose key is not under the caller's `{organization_id}/workflows/`, naming the field, and writes nothing. A file already in the slot the submit writes to is accepted, so resubmitting a form keeps its earlier files. A pre-hook's `form_overrides` is not checked.
+- **Download** (`download-form-file`) signs a key only when it is under the caller's `{organization_id}/workflows/` or has no module prefix, meaning its second path segment is not `workflows`, `files` or `support`. Keys without the organization are form files uploaded before it was required. Another organization's key, and a `files` or support module key put in a form, are refused.
+
+Form files stored before the prefix was required had no checks, so any key already in a form slot stays signable for the people who may view that slot. So does a key without a module prefix that app code writes into `form_data` outside the module's submit.
+
 ### `file_download`
 
 Lists files and downloads each through an API endpoint. Renders a `Label` wrapping a [`FileDownload`](../../plugins/file-download.md).
@@ -504,7 +541,7 @@ Lists files and downloads each through an API endpoint. Renders a `Label` wrappi
 | `download_endpoint_id` | string  | this module's `download-form-file`     |
 | `download_payload`     | object  | `{ workflow_id }` of the page's action |
 
-With no app config, a form file signs through `download-form-file`, which signs the key only when it is in the form slots of actions the caller may view in that workflow. Files that are `files` module records (from its `list-files`) need `download_endpoint_id: files/download-file` (the files module's entry id, then `download-file`), which signs by record.
+With no app config, a form file signs through `download-form-file`, which signs the key only when it is in the form slots of actions the caller may view in that workflow, and is the caller's organization's form file or one stored before keys carried the organization (see [`file_upload`](#file_upload)). Files that are `files` module records (from its `list-files`) need `download_endpoint_id: files/download-file` (the files module's entry id, then `download-file`), which signs by record.
 
 ```yaml
 - component: file_download

@@ -1,10 +1,13 @@
 import { test, expect } from "../fixtures.js";
 
-// The workflows module's download-form-file endpoint, called as the browser
-// calls it, with two organizations on one in-memory MongoDB. It signs a key
-// only when the key is in the form slots of actions the caller holds a verb
-// on, in a workflow the tenant wall lets the caller read. Signing is computed
-// locally, so the placeholder bucket secrets in playwright.config.js are enough.
+// The workflows module's download-form-file endpoint and the per-workflow
+// submit endpoint, called as the browser calls them, with two organizations on
+// one in-memory MongoDB. A key is signed only when it is in the form slots of
+// actions the caller holds a verb on, in a workflow the tenant wall lets the
+// caller read, and is the caller's own {organization_id}/workflows/ key or a
+// key from before form files carried the organization. Submit refuses any
+// other new form file key. Signing is computed locally, so the placeholder
+// bucket secrets in playwright.config.js are enough.
 
 const SLUG = "tenant-demo";
 const STAMP = {
@@ -14,13 +17,19 @@ const STAMP = {
 const ORG_A = { organization_id: "org-a", email: "a@example.com" };
 const ORG_B = { organization_id: "org-b", email: "b@example.com" };
 
-// Form files carry no organization in their key; uploads go through the app's
-// own policy request.
-const PO_KEY = "workflows/po/20260701/po.pdf";
-const SITE_A_KEY = "workflows/sign/site-a.pdf";
-const SITE_B_KEY = "workflows/sign/site-b.pdf";
-const AUDIT_KEY = "workflows/audit/report.pdf";
+// Form files upload through the app's own policy request, under
+// {organization_id}/workflows/. LEGACY_* keys are the shape form files had
+// before that: no module prefix.
+const PO_KEY = "org-a/workflows/po/20260701/po.pdf";
+const SITE_A_KEY = "org-a/workflows/sign/site-a.pdf";
+const SITE_B_KEY = "org-a/workflows/sign/site-b.pdf";
+const AUDIT_KEY = "org-a/workflows/audit/report.pdf";
+const LEGACY_A_KEY = "workflows/po/20260701/legacy-a.pdf";
 const OTHER_ORG_KEY = "workflows/po/20260701/other-org.pdf";
+// Planted in org B's own form slot: another organization's form file and a
+// files module key, neither of which org B may have signed.
+const PLANTED_A_KEY = "org-a/workflows/po/20260701/planted.pdf";
+const PLANTED_FILES_KEY = "org-b/files/deal/D-0001/20260701_090000000/u/x.pdf";
 
 const fileValue = (key) => {
   const file = { key, name: key.split("/").pop(), type: "application/pdf" };
@@ -67,7 +76,10 @@ async function seed(mdb) {
       _id: "wf-a",
       organization_id: "org-a",
       form_data: {
-        "upload-po": { po_files: fileValue(PO_KEY) },
+        "upload-po": {
+          po_files: fileValue(PO_KEY),
+          old_files: fileValue(LEGACY_A_KEY),
+        },
         "sign-site": {
           "site-a": { scan: fileValue(SITE_A_KEY) },
           "site-b": { scan: fileValue(SITE_B_KEY) },
@@ -78,7 +90,17 @@ async function seed(mdb) {
     workflow({
       _id: "wf-b",
       organization_id: "org-b",
-      form_data: { "upload-po": { po_files: fileValue(OTHER_ORG_KEY) } },
+      form_data: {
+        "upload-po": {
+          po_files: fileValue(OTHER_ORG_KEY),
+          planted: {
+            fileList: [
+              fileValue(PLANTED_A_KEY).file,
+              fileValue(PLANTED_FILES_KEY).file,
+            ],
+          },
+        },
+      },
     }),
   ]);
   await mdb.seed("actions", [
@@ -149,7 +171,7 @@ test("signs a form file in a slot the caller may view, keyed slots included", as
 }) => {
   await seed(mdb);
   await as(ldf, ORG_A);
-  for (const key of [PO_KEY, SITE_A_KEY]) {
+  for (const key of [PO_KEY, SITE_A_KEY, LEGACY_A_KEY]) {
     const result = await download(page, { workflow_id: "wf-a", file_id: key });
     expect(result.status).toBe(200);
     expect(result.body.response.url).toContain(key);
@@ -204,4 +226,118 @@ test("refuses another organization's workflow and a key from it", async ({
     file_id: OTHER_ORG_KEY,
   });
   expect(own.body.response.url).toContain(OTHER_ORG_KEY);
+});
+
+test("refuses another organization's key and a files module key planted in the caller's own form", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await seed(mdb);
+  await as(ldf, ORG_B);
+  refused(
+    await download(page, { workflow_id: "wf-b", file_id: PLANTED_A_KEY }),
+  );
+  refused(
+    await download(page, { workflow_id: "wf-b", file_id: PLANTED_FILES_KEY }),
+  );
+});
+
+// ── Submit ────────────────────────────────────────────────────────────────
+
+async function seedSubmittable(mdb) {
+  await mdb.seed("workflows", [
+    {
+      ...workflow({
+        _id: "wf-b-open",
+        organization_id: "org-b",
+        form_data: {},
+      }),
+      entity: { connection_id: "deals", id: "D-0001", ref_key: "deal_ids" },
+      summary: { done: 0, not_required: 0, total: 1 },
+      groups: [],
+    },
+  ]);
+  await mdb.seed("actions", [
+    {
+      ...action({
+        _id: "act-po-open",
+        workflow_id: "wf-b-open",
+        organization_id: "org-b",
+        type: "upload-po",
+        access: { view: true, edit: true },
+      }),
+      kind: "form",
+      action_group: "order",
+      status: [{ stage: "action-required", created: STAMP }],
+    },
+  ]);
+}
+
+async function submit(page, form) {
+  const raw = await page.request.post(
+    "/api/endpoints/workflows/sales-pipeline-submit",
+    {
+      data: {
+        payload: { action_id: "act-po-open", signal: "progress", form },
+      },
+    },
+  );
+  const body = await raw.json().catch(() => null);
+  return { status: raw.status(), body, text: JSON.stringify(body ?? "") };
+}
+
+test("refuses a submitted form file under another organization, and writes nothing", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await seedSubmittable(mdb);
+  await as(ldf, ORG_B);
+  const result = await submit(page, {
+    po_number: "PO-1",
+    po_document: fileValue(PLANTED_A_KEY),
+  });
+  expect(result.body?.success).not.toBe(true);
+  expect(result.text).toContain("form.po_document");
+
+  const stored = await mdb
+    .collection("workflows")
+    .findOne({ _id: "wf-b-open" });
+  expect(stored.form_data).toEqual({});
+  const act = await mdb.collection("actions").findOne({ _id: "act-po-open" });
+  expect(act.status[0].stage).toBe("action-required");
+
+  // A new key with no organization is refused the same way.
+  const legacy = await submit(page, {
+    po_document: fileValue("workflows/po/20260701/new.pdf"),
+  });
+  expect(legacy.text).toContain("form.po_document");
+});
+
+test("saves a form file under the caller's own organization, and it downloads", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await seedSubmittable(mdb);
+  await as(ldf, ORG_B);
+  const OWN_KEY = "org-b/workflows/sales-pipeline/upload-po/u/po.pdf";
+  const result = await submit(page, {
+    po_number: "PO-2",
+    po_document: fileValue(OWN_KEY),
+  });
+  expect(result.status).toBe(200);
+  expect(result.body?.success).not.toBe(false);
+
+  const stored = await mdb
+    .collection("workflows")
+    .findOne({ _id: "wf-b-open" });
+  expect(stored.form_data["upload-po"].po_document.file.key).toBe(OWN_KEY);
+
+  const signed = await download(page, {
+    workflow_id: "wf-b-open",
+    file_id: OWN_KEY,
+  });
+  expect(signed.body.response.url).toContain(OWN_KEY);
 });

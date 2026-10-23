@@ -77,6 +77,33 @@ form:
 # "button → modal" pattern (docs/workflows/reference/authoring-grammar.md).
 pages:
   edit:
+    # The policy the PO document field uploads through (file_upload's default
+    # s3PostPolicyRequestId). Form file keys must start with
+    # {organization_id}/workflows/: submit refuses any other new key, and
+    # download-form-file signs only those and keys from before the prefix.
+    requests:
+      - id: upload_files
+        type: AwsS3PresignedPostPolicy
+        connectionId: files/files-bucket
+        payload:
+          file_name:
+            _event: file.name
+        properties:
+          key:
+            _string.concat:
+              - _user: organization_id
+              - /workflows/sales-pipeline/upload-po/
+              - _uuid: true
+              - /
+              - _array.join:
+                  - _string.split:
+                      - _payload: file_name
+                      - /
+                  - "-"
+          conditions:
+            - - content-length-range
+              - 1
+              - 26214400
     formHeader:
       - id: po_guidance
         type: Alert
