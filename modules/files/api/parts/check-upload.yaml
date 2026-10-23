@@ -1,0 +1,43 @@
+# Checks an upload-policy payload before a key is minted, leaving
+# state.upload_problem null or the message to refuse with. The key is built
+# from the caller's organization and the payload's entity, so a "/" in either
+# would let a caller write outside their own prefix.
+- :set_state:
+    upload_check:
+      organization_id:
+        _if_none:
+          - _user: organization_id
+          - null
+      entity_type:
+        _payload: entity_type
+      entity_id:
+        _payload: entity_id
+      file:
+        _payload: file
+      max_file_size:
+        _module.var: max_file_size
+      allowed_content_types:
+        _module.var: allowed_content_types
+- :set_state:
+    upload_problem:
+      _js: |
+        const { organization_id, entity_type, entity_id, file, max_file_size, allowed_content_types } =
+          state('upload_check');
+        const segment = (value) => typeof value === 'string' && value.length > 0 && !value.includes('/');
+        if (typeof organization_id !== 'string' || organization_id.length < 1) {
+          return 'Files can only be uploaded by a member of an organization.';
+        }
+        if (!segment(entity_type) || !segment(entity_id)) {
+          return 'The record type and ID must be set and cannot contain "/".';
+        }
+        if (!file || typeof file.name !== 'string' || file.name.length < 1) {
+          return 'The file has no name.';
+        }
+        if (typeof file.size === 'number' && file.size > max_file_size) {
+          const limit = Math.round((max_file_size / 1048576) * 10) / 10;
+          return `This file is larger than the ${limit} MB limit.`;
+        }
+        if (Array.isArray(allowed_content_types) && !allowed_content_types.includes(file.type)) {
+          return `Files of type "${file.type || 'unknown'}" cannot be uploaded here.`;
+        }
+        return null;

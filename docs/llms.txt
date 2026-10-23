@@ -92,6 +92,7 @@
 ## files
 
 - docs/files/index.md: Files — File attachments backed by S3 — drag-drop upload with thumbnails, downloads, deletes, and category filters. Every file is stamped onto a parent entity (`{ collection, doc_id }`), so the same component drops onto contact pages, company pages, or any entity page.
+- docs/files/reference/endpoints.md: Endpoints — Every file operation goes through one of the module's five API endpoints. Each loads what it acts on through the `files-collection` connection, so the tenant wall applies, and calls the app's [access check](../index.md#access-check) before it acts. A refusal rejects the call with a message the bl...
 - docs/files/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## layout

@@ -16,6 +16,40 @@ vars:
     type: boolean
     default: true
     description: Log file upload/delete events via the events module
+  access_check:
+    type: object
+    description: >-
+      An app endpoint that decides who may work with a record's files. When
+      set, list-files, upload-policy, save-file, download-file and delete-file
+      each call it before they act, with { operation (list, upload, save,
+      download or delete), entity_type, entity_id, file_id } (file_id is null
+      for list and upload). Only { allowed: true } lets the operation go ahead;
+      { allowed: false, message } stops it with that message, which the block
+      shows. Unset, every signed-in member of the organization passes. A record
+      may not be saved yet when it is asked: the activities module mints
+      activity_id before the activity is saved, so files can be uploaded to a
+      new activity, and the endpoint decides what to answer for a record it
+      cannot find.
+    properties:
+      endpoint_id:
+        type: string
+        default: null
+        description: Id of the app endpoint to call.
+  max_file_size:
+    type: number
+    default: 26214400
+    description: >-
+      Largest upload in bytes (default 25 MB). upload-policy refuses a larger
+      declared size, and the presigned policy carries the limit, so S3 refuses a
+      larger upload.
+  allowed_content_types:
+    type: array
+    default: null
+    description: >-
+      Content types upload-policy accepts, such as [application/pdf,
+      image/png]. Null (the default) accepts any type.
+    items:
+      type: string
   components:
     type: object
     description: "Component overrides: file_list (deprecated)"
@@ -34,10 +68,26 @@ exports:
     - id: files-bucket-public
       description: S3 bucket for public file storage
   api:
+    - id: list-files
+      description: >-
+        List a record's live file records, newest first. Payload
+        { entity_type, entity_id, file_category? }.
+    - id: upload-policy
+      description: >-
+        Mint an upload key under the caller's organization and record and
+        return its presigned POST policy. Payload
+        { entity_type, entity_id, file: { name, type, size } }.
     - id: save-file
-      description: Upsert file metadata (with optional metadata object) after S3 upload
+      description: >-
+        Record a file uploaded through an upload-policy key. Payload
+        { entity_type, entity_id, key, thumbnail?, file_title?,
+        file_category?, metadata? }. Returns { fileId }.
+    - id: download-file
+      description: >-
+        Sign a download link for a live file record. Payload { file_id }.
+        Returns { url }.
     - id: delete-file
-      description: Soft-delete file metadata
+      description: Soft-delete a live file record. Payload { file_id }.
   components:
     - id: file-manager
       description: >-
@@ -56,14 +106,6 @@ exports:
         Lightweight read-only file list using standard Lowdefy blocks (no
         plugin needed). Vars: block_id, entity_type, entity_id, file_category,
         and `empty_text` (default "No files" — the empty-state message).
-    - id: download-policy
-      description: >-
-        Presigned S3 GET request on the files-bucket connection, for consumers
-        that render downloadable files outside file-manager/file-list (e.g. the
-        events module's EventsTimeline). _ref it inside a page's `requests:` list
-        with vars: { block_id: <id> }; the instantiated request id is
-        `download_policy_<block_id>`, which you pass as the consumer's
-        s3GetPolicyRequestId.
 
 connections:
   - _ref: connections/files-collection.yaml
@@ -71,7 +113,10 @@ connections:
   - _ref: connections/files-bucket-public.yaml
 
 api:
+  - _ref: api/list-files.yaml
+  - _ref: api/upload-policy.yaml
   - _ref: api/save-file.yaml
+  - _ref: api/download-file.yaml
   - _ref: api/delete-file.yaml
 
 components:
@@ -84,15 +129,6 @@ components:
   - id: file-list
     component:
       _ref: components/file-list.yaml
-  - id: download-policy
-    component:
-      _ref:
-        path: requests/download-policy.yaml
-        vars:
-          block_id:
-            _var:
-              key: block_id
-              default: file_download
 
 secrets:
   - name: MONGODB_URI

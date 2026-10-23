@@ -1,0 +1,37 @@
+id: download-file
+type: Api
+description: >-
+  Signs a download link for one live file record, by the key stored on the
+  record. Returns { url }.
+payloadSchema:
+  type: object
+  required:
+    - file_id
+  properties:
+    file_id:
+      type: string
+      minLength: 1
+routine:
+  - _ref: api/parts/load-file.yaml
+  - _ref:
+      path: api/parts/check-access.yaml
+      vars:
+        operation: download
+        entity_type:
+          _state: file_record.collection
+        entity_id:
+          _state: file_record.doc_id
+        file_id:
+          _state: file_record._id
+  - id: sign
+    type: AwsS3PresignedGetObject
+    connectionId:
+      _module.connectionId: files-bucket
+    properties:
+      key:
+        _state: file_record.file.key
+      responseContentType:
+        _state: file_record.file.type
+  - :return:
+      url:
+        _step: sign
