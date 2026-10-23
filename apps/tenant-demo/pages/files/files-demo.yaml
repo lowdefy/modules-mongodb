@@ -201,3 +201,55 @@ _ref:
                             block_id: demo_file_list
                             entity_type: files-demo
                             entity_id: showcase
+
+      # ── events-timeline ─────────────────────────────────────────────────
+      - id: events_timeline_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: Files on events
+      - id: events_timeline_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            The events module's timeline for the record the file-card above
+            manages. Files on an event's `files` download through the files
+            module's `download-file` (the component's `download_endpoint_id`
+            var), so a file that is not a file record is refused.
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: History
+            blocks:
+              - _ref:
+                  module: events
+                  component: events-timeline
+                  vars:
+                    reference_field: entity_id
+                    reference_value: showcase
+                    download_endpoint_id: files/download-file
+
+      # ── access check ────────────────────────────────────────────────────
+      - id: private_record_divider
+        type: Divider
+        properties:
+          orientation: left
+          title: A private record
+      - id: private_record_note
+        type: Paragraph
+        properties:
+          type: secondary
+          content: >
+            The app's `access_check` (api/files-access-check.yaml) refuses every
+            operation on a record whose id starts with "private-", so this card
+            shows the check's message and lists nothing.
+      - _ref:
+          module: files
+          component: file-card
+          vars:
+            block_id: demo_private_card
+            title: Private documents
+            entity_type: files-demo
+            entity_id: private-showcase

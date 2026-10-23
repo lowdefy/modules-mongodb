@@ -206,6 +206,15 @@ test("upload-policy mints a key under the organization and record", async ({
     }),
     "This file is larger than the 25 MB limit.",
   );
+  // modules.yaml limits the types to documents and images.
+  refusedWith(
+    await call(page, "upload-policy", {
+      entity_type: "lot",
+      entity_id: "lot-1",
+      file: { name: "a.exe", type: "application/x-msdownload", size: 1000 },
+    }),
+    'Files of type \\"application/x-msdownload\\" cannot be uploaded here.',
+  );
 });
 
 test("the app's access check stops every operation", async ({

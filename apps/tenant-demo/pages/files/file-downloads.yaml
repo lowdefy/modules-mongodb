@@ -1,0 +1,103 @@
+# Every download block, on a page whose own config uses no CallAPI action and
+# no _event operator. Each block registers a CallAPI action that reads _event
+# when it mounts, and Lowdefy loads only the action and operator types a page
+# needs, so the block metas must declare both for these downloads to work on a
+# cold load. Keep this page free of both; e2e/files/download-blocks.spec.js
+# loads it directly.
+#
+# The files are written into the page, as a page holding a file's key would
+# have them: the endpoint, not the page, decides what is signed. Each key is
+# the files module record a test seeds, except not-a-record.pdf, which no
+# record holds, so download-file refuses it.
+id: file-downloads
+type: Box
+layout:
+  gap: 16
+style:
+  padding: 24
+blocks:
+  - id: file_downloads_title
+    type: Title
+    properties:
+      content: File downloads
+      level: 3
+  - id: file_downloads_intro
+    type: Paragraph
+    properties:
+      type: secondary
+      content: >
+        The plugin's download blocks, each signing through the files module's
+        download-file endpoint. The endpoint loads the file's record, so a file
+        of another organization, a file the access check refuses and a key no
+        record holds are refused, whatever the page sends.
+
+  - id: download_file_download_title
+    type: Title
+    properties:
+      content: FileDownload
+      level: 5
+  - id: download_file_download
+    type: FileDownload
+    properties:
+      downloadEndpointId: files/download-file
+      fileList:
+        - key: lot/20240101_000000000/0b7c6a8e-3f2d-4c1b-9a8e-1d2c3b4a5f60/old.pdf
+          name: old.pdf
+        - key: lot/20240101_000000000/0b7c6a8e-3f2d-4c1b-9a8e-1d2c3b4a5f60/private.pdf
+          name: private.pdf
+
+  - id: download_file_manager_title
+    type: Title
+    properties:
+      content: FileManager
+      level: 5
+  - id: download_file_manager
+    type: FileManager
+    properties:
+      viewOnly: true
+      downloadEndpointId: files/download-file
+      files:
+        - file:
+            key: lot/20240101_000000000/0b7c6a8e-3f2d-4c1b-9a8e-1d2c3b4a5f60/old.pdf
+            name: old.pdf
+            type: application/pdf
+
+  - id: download_events_timeline_title
+    type: Title
+    properties:
+      content: EventsTimeline
+      level: 5
+  - id: download_events_timeline
+    type: EventsTimeline
+    properties:
+      downloadEndpointId: files/download-file
+      disableContactLink: true
+      data:
+        - id: event-with-files
+          title: Contract signed
+          created:
+            timestamp: "2026-07-01T09:00:00.000Z"
+            user:
+              id: user-e2e
+              name: E2E User
+          files:
+            - key: lot/20240101_000000000/0b7c6a8e-3f2d-4c1b-9a8e-1d2c3b4a5f60/old.pdf
+              name: old.pdf
+            - key: lot/20240101_000000000/0b7c6a8e-3f2d-4c1b-9a8e-1d2c3b4a5f60/not-a-record.pdf
+              name: not-a-record.pdf
+
+  - id: download_data_descriptions_title
+    type: Title
+    properties:
+      content: DataDescriptions
+      level: 5
+  - id: download_data_descriptions
+    type: DataDescriptions
+    properties:
+      downloadEndpointId: files/download-file
+      column: 1
+      data:
+        contract:
+          fileList:
+            - key: lot/20240101_000000000/0b7c6a8e-3f2d-4c1b-9a8e-1d2c3b4a5f60/old.pdf
+              name: old.pdf
