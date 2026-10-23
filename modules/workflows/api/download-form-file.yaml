@@ -1,0 +1,50 @@
+id: download-form-file
+type: Api
+description: >-
+  Signs a download link for a file uploaded through a workflow form, by its
+  key, only when the key is in the form slots of actions the caller may view.
+  Returns { url }.
+payloadSchema:
+  type: object
+  required:
+    - workflow_id
+    - file_id
+  properties:
+    workflow_id:
+      type: string
+      minLength: 1
+    file_id:
+      type: string
+      minLength: 1
+routine:
+  - id: find_file
+    type: GetWorkflowFormFile
+    connectionId:
+      _module.connectionId: workflow-api
+    properties:
+      workflow_id:
+        _payload: workflow_id
+      file_id:
+        _payload: file_id
+  - :if:
+      _eq:
+        - _if_none:
+            - _step: find_file
+            - null
+        - null
+    :then:
+      - :reject: This file was not found in this workflow's forms.
+  - id: sign
+    type: AwsS3PresignedGetObject
+    connectionId:
+      _module.connectionId:
+        id: files-bucket
+        module: files
+    properties:
+      key:
+        _step: find_file.key
+      responseContentType:
+        _step: find_file.type
+  - :return:
+      url:
+        _step: sign

@@ -11,13 +11,13 @@
 # not vars): `collapse_map` (slot key -> expanded?) and `workflow` (whose
 # `form_data` holds the submitted values, keyed by slot key).
 #
+# File fields download through download-form-file, which signs only keys in
+# the form slots this caller may view.
+#
 # Vars:
 #   - prefix                    build-time state-path prefix of the action, e.g.
 #                               "groups_list.$.actions.$" or "actions_list.$".
 #                               Also prefixes every block id in here.
-#   - s3_get_policy_request_id  the page's presigned-GET request id, so file
-#                               fields render as downloads (files module's
-#                               download-policy component).
 id:
   _build.string.concat:
     - _var: prefix
@@ -301,8 +301,11 @@ blocks:
                 default: null
             - null
     properties:
-      s3GetPolicyRequestId:
-        _var: s3_get_policy_request_id
+      downloadEndpointId:
+        _module.endpointId: download-form-file
+      downloadPayload:
+        workflow_id:
+          _state: workflow._id
       formConfig:
         _array.concat:
           - _if_none:

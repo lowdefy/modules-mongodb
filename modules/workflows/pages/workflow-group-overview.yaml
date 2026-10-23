@@ -97,15 +97,6 @@ _ref:
                       const next = {};
                       for (const id of ids) next[id] = true;
                       return next;
-    # Presigned S3 GET, so file fields inside the action cards download rather
-    # than rendering "No files available" (DataDescriptions needs the policy
-    # request id). Instantiated id: download_policy_group_overview.
-    requests:
-      - _ref:
-          module: files
-          component: download-policy
-          vars:
-            block_id: group_overview
     events:
       onMount:
         # workflow_id + group_id presence guard.
@@ -186,4 +177,3 @@ _ref:
               path: components/overview-action-card.yaml
               vars:
                 prefix: actions_list.$
-                s3_get_policy_request_id: download_policy_group_overview

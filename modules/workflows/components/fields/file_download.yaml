@@ -14,9 +14,13 @@ vars:
   label_disabled:
     type: boolean
     default: true
-  s3GetPolicyRequestId:
+  download_endpoint_id:
     type: string
-    default: file_download_policy
+    default: download-form-file
+  download_payload:
+    type: object
+    default:
+      workflow_id: action.workflow_id
 
 config:
   id:
@@ -41,11 +45,21 @@ config:
   blocks:
     - id:
         _var: key
-      type: S3Download
+      type: FileDownload
       properties:
-        s3GetPolicyRequestId:
+        # Unset, form files sign through this module's download-form-file for
+        # the page's workflow, which checks the key is in a form slot the
+        # caller may view.
+        downloadEndpointId:
           _var:
-            key: s3GetPolicyRequestId
-            default: file_download_policy
+            key: download_endpoint_id
+            default:
+              _module.endpointId: download-form-file
+        downloadPayload:
+          _var:
+            key: download_payload
+            default:
+              workflow_id:
+                _state: action.workflow_id
         fileList:
           _var: fileList

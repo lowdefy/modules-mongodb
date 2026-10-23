@@ -1804,6 +1804,27 @@ test("makeWorkflowsConfig: form-kind action carries form_meta matching makeActio
   });
 });
 
+test("makeWorkflowsConfig: a file_upload node carries no nested form, so the overview card renders its files", () => {
+  const wf = workflowWithFormActions({
+    type: "upload-po",
+    kind: "form",
+    form: [{ component: "file_upload", key: "form.po_files", title: "PO" }],
+  });
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [wf, deviceInstallationStub],
+  });
+  expect(out.actions[0].form_meta).toEqual({
+    form: [
+      {
+        component: "file_upload",
+        key: "form.po_files",
+        required: false,
+        title: "PO",
+      },
+    ],
+  });
+});
+
 test("makeWorkflowsConfig: form_meta includes form_review when present", () => {
   const wf = workflowWithFormActions(sendQuoteAction);
   const [out] = makeWorkflowsConfig(null, {
