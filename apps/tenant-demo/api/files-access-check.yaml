@@ -1,0 +1,22 @@
+# The files module's access_check: decides whether the caller may list, upload,
+# save, download or delete the files of one record. The module calls it with
+# { operation, entity_type, entity_id, file_id } before each operation.
+#
+# This demo keeps the files of any record whose id starts with "private-" from
+# everyone, so the refusal can be seen; an app checks the caller against the
+# record (its team, owner or roles) here instead.
+id: files-access-check
+type: InternalApi
+routine:
+  - :if:
+      _string.startsWith:
+        - _if_none:
+            - _payload: entity_id
+            - ""
+        - private-
+    :then:
+      - :return:
+          allowed: false
+          message: The files of this record are private.
+  - :return:
+      allowed: true

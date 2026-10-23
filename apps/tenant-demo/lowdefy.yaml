@@ -198,6 +198,7 @@ connections:
 
 api:
   - _ref: api/release-notes-sweep.yaml
+  - _ref: api/files-access-check.yaml
 
 agents:
   # The agent behind the ai-assistant module demo, as in apps/demo.
