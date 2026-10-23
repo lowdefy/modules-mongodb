@@ -16,6 +16,10 @@ import dayjs from "dayjs";
 import getS3Upload from "./getS3Upload.js";
 import useFileList from "./useFileList.js";
 import getOnPaste from "./getOnPaste.js";
+import {
+  downloadFile,
+  registerDownloadEvent,
+} from "../FileDownload/downloadFile.js";
 
 const { Dragger } = Upload;
 const { Text } = Typography;
@@ -58,14 +62,14 @@ const FILE_TYPE_ICONS = {
   webp: ["FileImage", "#722ed1"],
 };
 
-const downloadFile = async ({ fileDoc, methods }) => {
-  const s3DownloadPolicy = await methods.triggerEvent({
-    name: "__getS3DownloadPolicy",
-    event: { file: fileDoc.file },
+const downloadFileDoc = async ({ fileDoc, downloadPayload, methods }) => {
+  const url = await downloadFile({
+    file: fileDoc.file,
+    fileId: fileDoc._id,
+    downloadPayload,
+    methods,
   });
-  const url = s3DownloadPolicy?.responses?.__getS3DownloadPolicy?.response?.[0];
   if (!url) return;
-  window.open(url);
   methods.triggerEvent({ name: "onDownload", event: { fileDoc } });
 };
 
@@ -85,6 +89,10 @@ const downloadFile = async ({ fileDoc, methods }) => {
  *     with its uid, or cancelUpload forgets it
  *   onSave: { file: { name, key, bucket, size, type, thumbnail, pasted } }
  *   onDelete: { fileDoc: <full file document> }
+ *   onDownload: { fileDoc }, once the downloadEndpointId endpoint returned a url
+ *
+ * Downloads call the API endpoint `properties.downloadEndpointId` with
+ * { ...downloadPayload, file_id: fileDoc._id } and open the { url } it returns.
  */
 const FileManager = ({
   blockId,
@@ -181,16 +189,6 @@ const FileManager = ({
         },
       ],
     });
-    methods.registerEvent({
-      name: "__getS3DownloadPolicy",
-      actions: [
-        {
-          id: "__getS3DownloadPolicy",
-          type: "Request",
-          params: [properties.s3GetPolicyRequestId],
-        },
-      ],
-    });
     if (hasForm) {
       const escapedBlockId = blockId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       methods.registerEvent({
@@ -217,6 +215,13 @@ const FileManager = ({
       });
     }
   }, []);
+
+  useEffect(() => {
+    registerDownloadEvent({
+      methods,
+      downloadEndpointId: properties.downloadEndpointId,
+    });
+  }, [properties.downloadEndpointId]);
 
   useEffect(() => {
     methods.registerMethod("uploadFromPaste", async () => {
@@ -385,7 +390,11 @@ const FileManager = ({
             <a
               onClick={(e) => {
                 e.preventDefault();
-                downloadFile({ fileDoc, methods });
+                downloadFileDoc({
+                  fileDoc,
+                  downloadPayload: properties.downloadPayload,
+                  methods,
+                });
               }}
               style={{ fontWeight: 500, cursor: "pointer" }}
             >
@@ -426,7 +435,13 @@ const FileManager = ({
           <Button
             type="text"
             size="small"
-            onClick={() => downloadFile({ fileDoc, methods })}
+            onClick={() =>
+              downloadFileDoc({
+                fileDoc,
+                downloadPayload: properties.downloadPayload,
+                methods,
+              })
+            }
           >
             <Icon
               blockId={`${blockId}_file_${index}_dl`}
