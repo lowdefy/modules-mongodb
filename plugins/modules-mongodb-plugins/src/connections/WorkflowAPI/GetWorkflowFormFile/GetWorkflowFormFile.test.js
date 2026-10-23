@@ -1,0 +1,242 @@
+/**
+ * Integration tests for GetWorkflowFormFile against an in-memory Mongo: a key
+ * is found only in the form slots of actions the caller may see, at any depth.
+ */
+import { clearMongoClientCache } from "../../mongo/getMongoDb.js";
+import inMemoryMongo from "../../shared/inMemoryMongo.js";
+import GetWorkflowFormFile from "./GetWorkflowFormFile.js";
+
+jest.setTimeout(60000);
+
+const SLUG = "test-app";
+
+const changeStamp = {
+  timestamp: new Date("2026-05-20T00:00:00Z"),
+  user: { id: "u1", name: "Stamper" },
+};
+
+const file = (key) => ({ key, name: key.split("/").pop(), type: "text/plain" });
+
+let mongo;
+
+beforeAll(async () => {
+  mongo = await inMemoryMongo();
+});
+
+afterAll(async () => {
+  await clearMongoClientCache();
+  await mongo.cleanup();
+});
+
+beforeEach(async () => {
+  await clearMongoClientCache();
+  await mongo.db.collection("workflows").deleteMany({});
+  await mongo.db.collection("actions").deleteMany({});
+});
+
+function buildContext({ request, roles = ["member"], tenant = null }) {
+  return {
+    request,
+    tenant,
+    connection: {
+      databaseUri: mongo.uri,
+      useTransactions: false,
+      entry_id: "workflows",
+      workflowsCollection: "workflows",
+      actionsCollection: "actions",
+      slug: SLUG,
+      endpoints: {
+        new_event: "events/new-event",
+        send_notification: "notifications/send-notification",
+      },
+      workflowsConfig: [],
+      changeStamp,
+      user: { id: "U1", roles },
+    },
+    callApi: async () => null,
+  };
+}
+
+async function seedWorkflow({ _id = "wf-1", form_data, extra = {} }) {
+  await mongo.db
+    .collection("workflows")
+    .insertOne({ _id, workflow_type: "onboarding", form_data, ...extra });
+}
+
+async function seedAction({
+  _id,
+  type,
+  key = null,
+  access = { view: true },
+  workflow_id = "wf-1",
+  extra = {},
+}) {
+  await mongo.db.collection("actions").insertOne({
+    _id,
+    workflow_id,
+    type,
+    key,
+    access: { [SLUG]: access },
+    ...extra,
+  });
+}
+
+const find = (request, options = {}) =>
+  GetWorkflowFormFile(buildContext({ request, ...options }));
+
+test("finds a key in a { fileList } upload value of a viewable action", async () => {
+  await seedWorkflow({
+    form_data: {
+      inspect: {
+        photos: { file: file("a/1.png"), fileList: [file("a/1.png")] },
+      },
+    },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+
+  expect(await find({ workflow_id: "wf-1", file_id: "a/1.png" })).toEqual(
+    file("a/1.png"),
+  );
+});
+
+test("finds a key nested in lists and sections at any depth", async () => {
+  await seedWorkflow({
+    form_data: {
+      inspect: {
+        rooms: [
+          { name: "Kitchen", evidence: { fileList: [file("a/2.png")] } },
+          {
+            name: "Hall",
+            evidence: { fileList: [file("a/3.png"), file("a/4.png")] },
+          },
+        ],
+        contract: file("a/5.pdf"),
+      },
+    },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+
+  expect(await find({ workflow_id: "wf-1", file_id: "a/4.png" })).toEqual(
+    file("a/4.png"),
+  );
+  expect(await find({ workflow_id: "wf-1", file_id: "a/5.pdf" })).toEqual(
+    file("a/5.pdf"),
+  );
+});
+
+test("finds a key in a keyed slot the caller may view", async () => {
+  await seedWorkflow({
+    form_data: {
+      sign: {
+        "site-a": { scan: { fileList: [file("a/site-a.pdf")] } },
+      },
+    },
+  });
+  await seedAction({ _id: "act-a", type: "sign", key: "site-a" });
+
+  expect(await find({ workflow_id: "wf-1", file_id: "a/site-a.pdf" })).toEqual(
+    file("a/site-a.pdf"),
+  );
+});
+
+test("refuses a key in a keyed slot the caller may not view", async () => {
+  await seedWorkflow({
+    form_data: {
+      sign: {
+        "site-a": { scan: { fileList: [file("a/site-a.pdf")] } },
+        "site-b": { scan: { fileList: [file("a/site-b.pdf")] } },
+      },
+    },
+  });
+  await seedAction({ _id: "act-a", type: "sign", key: "site-a" });
+  await seedAction({
+    _id: "act-b",
+    type: "sign",
+    key: "site-b",
+    access: { view: ["admin"], edit: ["admin"] },
+  });
+
+  expect(
+    await find({ workflow_id: "wf-1", file_id: "a/site-b.pdf" }),
+  ).toBeNull();
+});
+
+test("refuses a key in the slot of an action the caller has no verb on", async () => {
+  await seedWorkflow({
+    form_data: {
+      inspect: { photos: { fileList: [file("a/open.png")] } },
+      audit: { report: { fileList: [file("a/secret.pdf")] } },
+    },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+  await seedAction({
+    _id: "act-2",
+    type: "audit",
+    access: { view: ["admin"], edit: ["admin"], review: ["admin"] },
+  });
+
+  expect(
+    await find({ workflow_id: "wf-1", file_id: "a/secret.pdf" }),
+  ).toBeNull();
+  expect(
+    await find(
+      { workflow_id: "wf-1", file_id: "a/secret.pdf" },
+      { roles: ["admin"] },
+    ),
+  ).toEqual(file("a/secret.pdf"));
+});
+
+test("refuses a key in no slot, or form data with no action", async () => {
+  await seedWorkflow({
+    form_data: {
+      inspect: { photos: { fileList: [file("a/1.png")] } },
+      orphan: { photos: { fileList: [file("a/orphan.png")] } },
+    },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+
+  expect(await find({ workflow_id: "wf-1", file_id: "a/other.png" })).toBe(
+    null,
+  );
+  expect(
+    await find({ workflow_id: "wf-1", file_id: "a/orphan.png" }),
+  ).toBeNull();
+});
+
+test("refuses an unknown workflow and another workflow's key", async () => {
+  await seedWorkflow({
+    form_data: { inspect: { photos: { fileList: [file("a/1.png")] } } },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+  await seedWorkflow({
+    _id: "wf-2",
+    form_data: { inspect: { photos: { fileList: [file("b/2.png")] } } },
+  });
+  await seedAction({ _id: "act-2", type: "inspect", workflow_id: "wf-2" });
+
+  expect(await find({ workflow_id: "missing", file_id: "a/1.png" })).toBe(null);
+  expect(await find({ workflow_id: "wf-1", file_id: "b/2.png" })).toBeNull();
+});
+
+test("refuses another organisation's workflow", async () => {
+  const tenant = { field: "organizationId", value: "org-a" };
+  await seedWorkflow({
+    form_data: { inspect: { photos: { fileList: [file("b/1.png")] } } },
+    extra: { organizationId: "org-b" },
+  });
+  await seedAction({
+    _id: "act-1",
+    type: "inspect",
+    extra: { organizationId: "org-b" },
+  });
+
+  expect(
+    await find({ workflow_id: "wf-1", file_id: "b/1.png" }, { tenant }),
+  ).toBeNull();
+  expect(
+    await find(
+      { workflow_id: "wf-1", file_id: "b/1.png" },
+      { tenant: { field: "organizationId", value: "org-b" } },
+    ),
+  ).toEqual(file("b/1.png"));
+});
