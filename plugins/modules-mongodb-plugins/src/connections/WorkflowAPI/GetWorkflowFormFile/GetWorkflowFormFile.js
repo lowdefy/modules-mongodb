@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import { isSignableFormFileKey } from "../../shared/render/formFiles.js";
 import {
   findFileByKey,
   pruneFormData,
@@ -16,6 +17,12 @@ import {
  * object whose `key` is `file_id`. The workflows `download-form-file` endpoint
  * signs the key only when this finds it.
  *
+ * form_data is written from the browser, so finding a key is not enough: it
+ * must also be under the caller's own `{organization_id}/workflows/`, or carry
+ * no module prefix at all (a form file uploaded before keys carried the
+ * organization). Another organization's key, or a files module or support key
+ * stored in a form slot, is never found.
+ *
  * Params: { workflow_id, file_id }
  *
  * Response: the stored file object ({ key, name?, type?, ... }) or null.
@@ -28,6 +35,9 @@ async function GetWorkflowFormFile(lowdefyContext) {
   const actionsCollection = connection.actionsCollection ?? "actions";
 
   if (typeof file_id !== "string" || file_id === "") return null;
+  if (!isSignableFormFileKey(file_id, context.user?.organization_id)) {
+    return null;
+  }
 
   const [wfDoc] = await findDocs({
     mongoDb,

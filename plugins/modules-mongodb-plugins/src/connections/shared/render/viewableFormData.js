@@ -4,6 +4,7 @@
  * so a form file can be downloaded exactly when the overview would show it.
  */
 
+import { isFormFile } from "./formFiles.js";
 import { computeAllowed } from "./resolveActionAccess.js";
 
 /**
@@ -84,9 +85,10 @@ export function pruneFormData({ formData, actions }) {
 }
 
 /**
- * The first object anywhere in `value` whose `key` equals `fileKey`: a file in
- * a `{ fileList }` upload value, a single `{ file }`, a bare file, or one in a
- * list or a keyed slot at any depth. Null when there is none.
+ * The first form file (see formFiles.js) anywhere in `value` whose `key`
+ * equals `fileKey`: a file in a `{ fileList }` upload value, a single
+ * `{ file }`, a bare file, or one in a list or a keyed slot at any depth. Null
+ * when there is none.
  *
  * @param {unknown} value
  * @param {string} fileKey
@@ -94,7 +96,7 @@ export function pruneFormData({ formData, actions }) {
  */
 export function findFileByKey(value, fileKey) {
   if (value == null || typeof value !== "object") return null;
-  if (!Array.isArray(value) && value.key === fileKey) return value;
+  if (isFormFile(value) && value.key === fileKey) return value;
   for (const child of Object.values(value)) {
     const found = findFileByKey(child, fileKey);
     if (found) return found;

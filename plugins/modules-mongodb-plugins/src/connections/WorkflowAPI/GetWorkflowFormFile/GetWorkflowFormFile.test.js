@@ -34,7 +34,12 @@ beforeEach(async () => {
   await mongo.db.collection("actions").deleteMany({});
 });
 
-function buildContext({ request, roles = ["member"], tenant = null }) {
+function buildContext({
+  request,
+  roles = ["member"],
+  tenant = null,
+  organization_id,
+}) {
   return {
     request,
     tenant,
@@ -51,7 +56,7 @@ function buildContext({ request, roles = ["member"], tenant = null }) {
       },
       workflowsConfig: [],
       changeStamp,
-      user: { id: "U1", roles },
+      user: { id: "U1", roles, organization_id },
     },
     callApi: async () => null,
   };
@@ -239,4 +244,36 @@ test("refuses another organisation's workflow", async () => {
       { tenant: { field: "organizationId", value: "org-b" } },
     ),
   ).toEqual(file("b/1.png"));
+});
+
+test("signs only the caller's own organization's keys and legacy keys", async () => {
+  const keys = {
+    own: "org-a/workflows/po/1.pdf",
+    legacy: "workflows/po/2.pdf",
+    otherOrg: "org-b/workflows/po/3.pdf",
+    filesModule: "org-a/files/deal/d1/20260101_000000000/u/4.pdf",
+    support: "org-a/support/u1/u/5.pdf",
+  };
+  await seedWorkflow({
+    form_data: {
+      inspect: {
+        docs: { fileList: Object.values(keys).map((key) => file(key)) },
+      },
+    },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+
+  const asOrgA = (file_id) =>
+    find({ workflow_id: "wf-1", file_id }, { organization_id: "org-a" });
+  expect(await asOrgA(keys.own)).toEqual(file(keys.own));
+  expect(await asOrgA(keys.legacy)).toEqual(file(keys.legacy));
+  expect(await asOrgA(keys.otherOrg)).toBeNull();
+  expect(await asOrgA(keys.filesModule)).toBeNull();
+  expect(await asOrgA(keys.support)).toBeNull();
+
+  // A caller with no organization gets only legacy keys.
+  expect(await find({ workflow_id: "wf-1", file_id: keys.own })).toBeNull();
+  expect(await find({ workflow_id: "wf-1", file_id: keys.legacy })).toEqual(
+    file(keys.legacy),
+  );
 });
