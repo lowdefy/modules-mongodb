@@ -1,0 +1,19 @@
+# Lists the selected deal's attachments through the files module. Paired with
+# set_deal_files.yaml, which seeds the files panel (file-list seeds its rows
+# only on its own mount).
+id: fetch_deal_files
+type: CallAPI
+skip:
+  _eq:
+    - _state: selected_deal_id
+    - null
+params:
+  endpointId:
+    _module.endpointId:
+      id: list-files
+      module: files
+  payload:
+    entity_type: deals
+    entity_id:
+      _state: selected_deal_id
+    file_category: deal-attachment

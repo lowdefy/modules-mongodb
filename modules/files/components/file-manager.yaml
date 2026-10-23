@@ -3,58 +3,19 @@ id:
     key: block_id
     default: file_manager
 type: FileManager
-requests:
-  - _ref:
-      path: requests/upload-policy.yaml
-      vars:
-        block_id:
-          _var:
-            key: block_id
-            default: file_manager
-        entity_type:
-          _var: entity_type
-  - _ref:
-      path: requests/download-policy.yaml
-      vars:
-        block_id:
-          _var:
-            key: block_id
-            default: file_manager
-  - _ref:
-      path: requests/get-entity-files.yaml
-      vars:
-        block_id:
-          _var:
-            key: block_id
-            default: file_manager
-        entity_type:
-          _var: entity_type
-        entity_id:
-          _var: entity_id
-        file_category:
-          _var:
-            key: file_category
-            default: null
 properties:
-  s3PostPolicyRequestId:
-    _build.string.concat:
-      - "upload_policy_"
-      - _var:
-          key: block_id
-          default: file_manager
-  s3GetPolicyRequestId:
-    _build.string.concat:
-      - "download_policy_"
-      - _var:
-          key: block_id
-          default: file_manager
+  downloadEndpointId:
+    _module.endpointId: download-file
+  # Set by the list-files actions, not by an input block.
   files:
-    _request:
+    _state:
       _build.string.concat:
-        - "get_entity_files_"
         - _var:
             key: block_id
             default: file_manager
+        - _files
+    ~ignoreBuildChecks:
+      - state-refs
   viewOnly:
     _var:
       key: view_only
@@ -107,19 +68,68 @@ slots:
         default: []
 events:
   onMount:
-    - id: fetch_files
-      type: Request
-      params:
-        requestIds:
-          - _build.string.concat:
-              - "get_entity_files_"
-              - _var:
-                  key: block_id
-                  default: file_manager
-        holdValue: true
+    _ref:
+      path: components/parts/list_files_actions.yaml
+      vars:
+        state_key:
+          _build.string.concat:
+            - _var:
+                key: block_id
+                default: file_manager
+            - _files
+        entity_type:
+          _var: entity_type
+        entity_id:
+          _var: entity_id
+        file_category:
+          _var:
+            key: file_category
+            default: null
+  # A refused policy fails the event: the endpoint's message shows and the
+  # upload is dropped rather than held.
+  onUploadPolicy:
+    try:
+      - id: get_upload_policy
+        type: CallAPI
+        params:
+          endpointId:
+            _module.endpointId: upload-policy
+          payload:
+            entity_type:
+              _var: entity_type
+            entity_id:
+              _var: entity_id
+            file:
+              name:
+                _event: file.name
+              type:
+                _event: file.type
+              size:
+                _event: file.size
+      - id: set_upload_policy
+        type: CallMethod
+        params:
+          blockId:
+            _var:
+              key: block_id
+              default: file_manager
+          method: setUploadPolicy
+          args:
+            - _actions: get_upload_policy.response.response
+    catch:
+      - id: drop_upload
+        type: CallMethod
+        params:
+          blockId:
+            _var:
+              key: block_id
+              default: file_manager
+          method: cancelUpload
+          args:
+            - _event: file.uid
   onSave:
     _build.array.concat:
-      - - id: save_file_metadata
+      - - id: save_file
           type: CallAPI
           params:
             endpointId:
@@ -129,8 +139,10 @@ events:
                 _var: entity_type
               entity_id:
                 _var: entity_id
-              file:
-                _event: file
+              key:
+                _event: file.key
+              thumbnail:
+                _event: file.thumbnail
               file_title:
                 _var:
                   key: file_title
@@ -146,16 +158,23 @@ events:
                         key: block_id
                         default: file_manager
                     - .form
-        - id: refresh_files
-          type: Request
-          params:
-            requestIds:
-              - _build.string.concat:
-                  - "get_entity_files_"
-                  - _var:
-                      key: block_id
-                      default: file_manager
-            holdValue: true
+      - _ref:
+          path: components/parts/list_files_actions.yaml
+          vars:
+            state_key:
+              _build.string.concat:
+                - _var:
+                    key: block_id
+                    default: file_manager
+                - _files
+            entity_type:
+              _var: entity_type
+            entity_id:
+              _var: entity_id
+            file_category:
+              _var:
+                key: file_category
+                default: null
       - _var:
           key: on_save
           default: []
@@ -169,22 +188,23 @@ events:
             payload:
               file_id:
                 _event: fileDoc._id
-              file_name:
-                _event: fileDoc.file.name
-              entity_type:
-                _var: entity_type
-              entity_id:
-                _var: entity_id
-        - id: refresh_files
-          type: Request
-          params:
-            requestIds:
-              - _build.string.concat:
-                  - "get_entity_files_"
-                  - _var:
-                      key: block_id
-                      default: file_manager
-            holdValue: true
+      - _ref:
+          path: components/parts/list_files_actions.yaml
+          vars:
+            state_key:
+              _build.string.concat:
+                - _var:
+                    key: block_id
+                    default: file_manager
+                - _files
+            entity_type:
+              _var: entity_type
+            entity_id:
+              _var: entity_id
+            file_category:
+              _var:
+                key: file_category
+                default: null
       - _var:
           key: on_delete
           default: []

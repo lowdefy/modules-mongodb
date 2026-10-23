@@ -53,7 +53,8 @@ _ref:
           params:
             - get_selected_deal
             - get_last_contact
-            - get_entity_files_detail_files_list
+        - _ref: actions/fetch_deal_files.yaml
+        - _ref: actions/set_deal_files.yaml
         # Phase view is the workflows module's workflow-progress surface, which
         # reads `entity_workflows` state. It self-fetches on mount, but this is a
         # master-detail page (deal selected via state, not URL), so refetch it
@@ -369,13 +370,8 @@ _ref:
                             - get_last_contact
                             - get-events
                             - get_activities_for_entity
-                            - get_entity_files_detail_files_list
-                        # Re-seed the panel: file-list seeds its rows into state only on its onMount.
-                        - id: reseed_deal_files_panel
-                          type: SetState
-                          params:
-                            detail_files_list_items:
-                              _request: get_entity_files_detail_files_list
+                        - _ref: actions/fetch_deal_files.yaml
+                        - _ref: actions/set_deal_files.yaml
                         - id: refetch_entity_workflows
                           type: CallAPI
                           params:

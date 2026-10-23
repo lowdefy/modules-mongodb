@@ -24,11 +24,13 @@ const TYPES = ["bug", "question", "feature_request", "feedback"].map(
 );
 const PREFIX = "support/u1/";
 
-const check = (input, ticket = true) =>
+const ORG_PREFIX = "org1/support/u1/";
+
+const check = (input, ticket = true, key_prefix = PREFIX) =>
   new Function("state", code)(() => ({
     input,
     types: TYPES,
-    key_prefix: PREFIX,
+    key_prefix,
     ticket,
   }));
 
@@ -105,4 +107,19 @@ test.each([
   expect(check({ ...report, files: [file] })).toEqual(
     refusal("Attach only files you uploaded here."),
   );
+});
+
+test("a user with an organization attaches files under its prefix", () => {
+  const files = [{ key: `${ORG_PREFIX}a/shot.png`, name: "shot.png" }];
+  expect(check({ ...report, files }, true, ORG_PREFIX)).toBeNull();
+});
+
+test.each([
+  ["another organization's prefix", "org2/support/u1/a/shot.png"],
+  ["another user's upload", "org1/support/u2/a/shot.png"],
+  ["the prefix of a user with no organization", "support/u1/a/shot.png"],
+])("for a user with an organization, %s is refused", (_, key) => {
+  expect(
+    check({ ...report, files: [{ key, name: "shot.png" }] }, true, ORG_PREFIX),
+  ).toEqual(refusal("Attach only files you uploaded here."));
 });

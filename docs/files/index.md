@@ -45,6 +45,8 @@ modules:
         _url_query: _id
 ```
 
+The `file-manager`, `file-card` and `file-list` components list, upload, save, download and delete through the module's endpoints, so a page needs no requests of its own for them. A component lists on mount, and `file-manager` lists again after each save and delete.
+
 ## Access check
 
 Listing, uploading, saving, downloading and deleting files each go through a module endpoint (see [Endpoints](reference/endpoints.md)). Every one loads what it acts on through the walled `files-collection` connection, so one organization never reaches another's files, and downloads are signed from the key stored on the record, never from a key the browser sends.

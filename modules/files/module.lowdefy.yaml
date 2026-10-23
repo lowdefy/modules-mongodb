@@ -103,9 +103,10 @@ exports:
         file-manager's vars (incl. `form_fields` and `metadata_tags`).
     - id: file-list
       description: >-
-        Lightweight read-only file list using standard Lowdefy blocks (no
-        plugin needed). Vars: block_id, entity_type, entity_id, file_category,
-        and `empty_text` (default "No files" — the empty-state message).
+        Lightweight read-only file list. Lists through list-files on mount
+        and downloads through download-file. Vars: block_id, entity_type,
+        entity_id, file_category, and `empty_text` (default "No files" — the
+        empty-state message).
 
 connections:
   - _ref: connections/files-collection.yaml

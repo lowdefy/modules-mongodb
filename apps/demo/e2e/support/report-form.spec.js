@@ -17,7 +17,7 @@ const USER = {
 };
 
 const S3_URL = "https://s3.e2e.test/support-upload";
-const KEY = `support/${USER.id}/e2e-upload/file`;
+const KEY = `${USER.organization_id}/support/${USER.id}/e2e-upload/file`;
 
 // A 1x1 PNG.
 const PNG = Buffer.from(

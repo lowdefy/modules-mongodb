@@ -501,8 +501,8 @@ _ref:
           showIcon: true
           message: file-list is deprecated
           description: >
-            A lightweight read-only list built from standard Lowdefy blocks (no
-            plugin). It is kept for backwards compatibility — prefer a read-only
+            A lightweight read-only list built from standard Lowdefy blocks and
+            the FileDownload block. It is kept for backwards compatibility — prefer a read-only
             (`view_only: true`) file-card or file-manager going forward, which
             render richer file rows (icons, thumbnails, uploader/date). Both a
             preferred read-only file-card and the deprecated file-list are shown

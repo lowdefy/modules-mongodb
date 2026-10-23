@@ -1,0 +1,22 @@
+# The caller's own support upload prefix: {organization_id}/support/{user id}/,
+# or support/{user id}/ for a user with no organization, who can still report.
+# requests/upload_policy.yaml uploads under it and check-input.yaml accepts
+# only files under it.
+_if:
+  test:
+    _eq:
+      - _if_none:
+          - _user: organization_id
+          - null
+      - null
+  then:
+    _string.concat:
+      - support/
+      - _user: id
+      - /
+  else:
+    _string.concat:
+      - _user: organization_id
+      - /support/
+      - _user: id
+      - /

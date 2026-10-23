@@ -113,9 +113,11 @@ blocks:
         _var:
           key: reverse
           default: false
-      s3GetPolicyRequestId:
+      # An endpoint that loads the file's record and signs its key, such as
+      # the files module's download-file. Unset, event files are not shown.
+      downloadEndpointId:
         _var:
-          key: s3GetPolicyRequestId
+          key: download_endpoint_id
           default: null
       contactPageId:
         _var:

@@ -1,7 +1,20 @@
 import React, { useEffect } from "react";
 import { Upload } from "antd";
 import { withBlockDefaults } from "@lowdefy/block-utils";
-import { downloadFile, registerDownloadEvent } from "./downloadFile.js";
+import {
+  downloadFile,
+  getFileId,
+  registerDownloadEvent,
+} from "./downloadFile.js";
+
+// antd keys list rows by uid and, given a file without one, renders it twice
+// after a re-render. File records carry no uid, so one is taken from the file.
+const withUids = (fileList) =>
+  (fileList ?? []).map((file, index) =>
+    file?.uid == null
+      ? { ...file, uid: String(getFileId(file) ?? index) }
+      : file,
+  );
 
 /**
  * FileDownload block.
@@ -35,7 +48,7 @@ const FileDownload = ({
       id={blockId}
       className={classNames.element}
       style={styles.element}
-      fileList={properties.fileList ?? []}
+      fileList={withUids(properties.fileList)}
       onPreview={onDownload}
       onDownload={onDownload}
       showUploadList={{ showDownloadIcon: true, showRemoveIcon: false }}
