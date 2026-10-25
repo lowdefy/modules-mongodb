@@ -1,7 +1,7 @@
 # The tickets as calm rows, filtered by support_list_filter.*: a state icon and
-# its word, the title and when it last changed. A bold title marks a ticket with
-# a team message the user has not read; a row opens its ticket page. With
-# nothing to list it says what to do instead.
+# its word, the title and when it last changed. A bold title marks a ticket that
+# waits for the user's reply or has a team message they have not read; a row
+# opens its ticket page. With nothing to list it says what to do instead.
 id: support_list_box
 type: Box
 layout:
@@ -131,12 +131,16 @@ blocks:
       data:
         _state: support_list_rows
       html: |
-        <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-          <span style="flex: none; display: inline-flex;{% if item.stage_color %} color: {{ item.stage_color }};{% else %} opacity: 0.6;{% endif %}">{% if item.stage_icon %}<i data-icon="{{ item.stage_icon }}"></i>{% endif %}</span>
-          <div data-truncate="1" style="flex: 1 1 0; min-width: 0; font-weight: {% if item.unread %}700{% else %}400{% endif %};">{{ item.title }}</div>
-          {% if item.show_organization and item.organization %}<span data-tone="secondary" data-truncate="1" style="flex: 0 1 120px; min-width: 0;">{{ item.organization.name }}</span>{% endif %}
-          <span data-tone="secondary" style="flex: none; white-space: nowrap;">{{ item.stage_label }}</span>
-          <time data-tone="secondary" datetime="{{ item.updated }}" data-time="relative" style="flex: none; min-width: 96px; text-align: right; white-space: nowrap;"></time>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; cursor: pointer;">
+          <div style="flex: 1 1 220px; min-width: 0; display: flex; align-items: center; gap: 12px;">
+            <span style="flex: none; display: inline-flex;{% if item.stage_color %} color: {{ item.stage_color }};{% else %} opacity: 0.6;{% endif %}">{% if item.stage_icon %}<i data-icon="{{ item.stage_icon }}"></i>{% endif %}</span>
+            <div data-truncate="1" style="flex: 1 1 0; min-width: 0; font-weight: {% if item.unread or item.stage == 'needs_your_reply' %}700{% else %}400{% endif %};">{{ item.title }}</div>
+          </div>
+          <div style="flex: none; margin-left: auto; padding-left: 28px; display: flex; align-items: center; gap: 12px;">
+            {% if item.show_organization and item.organization %}<span data-tone="secondary" data-truncate="1" style="max-width: 120px;">{{ item.organization.name }}</span>{% endif %}
+            <span data-tone="secondary" style="white-space: nowrap;">{{ item.stage_label }}</span>
+            <time data-tone="secondary" datetime="{{ item.updated }}" data-time="relative" style="min-width: 96px; text-align: right; white-space: nowrap;"></time>
+          </div>
         </div>
     events:
       onClick:

@@ -74,6 +74,8 @@ Pelican sends release announcements on the same webhook. A delivery whose event 
 
 Each new team message, Pelican's own included, sends the user the module's `support-reply` notification, through the notifications module: in the app's bell and by email, with a button to the ticket's page. It goes even while the user has the thread open, since the server cannot know what a browser shows. Its key is `support-reply:{message id}`, so a repeated delivery sends nothing new; that needs the notifications module's unique index on `key`.
 
+A reply on the ticket (`post-message`) marks that ticket's `support-reply` notifications read for the person, so the bell stops asking once they have answered. The update is change-stamped and matches the recipient as the notifications module's own reads do; it never fails the reply, and logs a warning when it cannot run.
+
 The email goes to the address the app's auth user record holds for the user, never one from the webhook. The notification is sent in the organisation the ticket was filed from. A ticket the team logged, or one first stored from the list, has no organisation; in an app whose notifications sit behind the tenant wall, its replies show in the thread with no notification.
 
 ### Required indexes
@@ -144,6 +146,58 @@ Each file uploads to the app's bucket as it is added. A line on the form says wh
 
 When Pelican has the ticket, the draft clears and the panel opens the new ticket's thread. Otherwise the draft stays and the form says why: Pelican's own message for something to fix, "Something went wrong, try again" (with the wait, when Pelican gives one) for a busy or failed call, or "Support is unavailable right now" for a refused key. Nothing is sent again on its own.
 
+### Reporting without the help button
+
+An app that turns the help button off (`launcher.show: false`), or whose assistant can pause, still lets people report a problem. Mount the `report-drawer` component beside the other support components, and open it from anywhere with the `open-report` action:
+
+```yaml
+# The layout entry's vars
+global_blocks:
+  - _ref:
+      module: support
+      component: report-drawer
+      vars:
+        # Optional: blocks shown under the form's composer, beside Send.
+        secondary:
+          - id: report_ask_assistant
+            type: Button
+            properties:
+              title: Ask the assistant instead
+              type: link
+              size: small
+            events:
+              onClick: [] # the app's own way to the assistant
+```
+
+```yaml
+# Any page: a button that opens the drawer with a draft filled in
+- id: report_problem
+  type: Button
+  properties:
+    title: Report a problem
+  events:
+    onClick:
+      _ref:
+        module: support
+        component: open-report
+        vars:
+          type: bug
+          title: Some files could not be read
+          body:
+            _nunjucks:
+              template: "{{ n }} files could not be read."
+              on:
+                n:
+                  _state: failed_count
+          context:
+            failed_files:
+              _state: failed_ids
+```
+
+`open-report` takes four optional vars, each a value or a runtime operator resolved when the action runs: `type` (one of the `types` var's values), `title`, `body` (the message) and `context` (an object sent in the ticket's context under `extra`, after the `context` var). It clears the draft, fills the fields it names and opens the drawer. Nothing calls a model: Send files the ticket straight to the support desk, exactly as the panel's report form does, with the same page, browser and error context. After a successful Send the drawer closes and a message says the report is sent.
+
+The drawer needs the `requests` and `on-init` components wired as for the help button; they declare its upload policy and reset its draft. Its form is a surface of its own, so it sits beside the help button's panel without sharing a draft.
+
 ### Keeping fields out of screenshots
 
 Every password input is blanked in a screenshot. To blank anything else, put a `data-support-mask` attribute on it:
@@ -171,7 +225,9 @@ mask_selectors:
 
 **My tickets** in the panel lists the user's tickets, newest first: the ones they reported and the ones the team logged for them. Each row is one line, and the whole row opens the ticket: the key, the title, the type, the stage (Received, In progress, Needs your reply or Resolved, from Pelican's codes `received`, `in_progress`, `needs_your_reply` and `resolved`) and when it last changed. Open, Resolved and All switch the list (it opens on Open), and a search box and a type filter narrow it; they filter the loaded list without fetching again. A dot marks a ticket with a team message the user has not read. When the user's tickets come from more than one organisation, each row names its organisation. Opening the view fetches the list from Pelican; when that fails, it shows the saved tickets with a notice.
 
-Opening a ticket shows its **thread**: the messages, with images inline and PDFs as file chips, and a composer for a reply with up to five images or PDFs. Opening it fetches the ticket from Pelican, which renews its file links and marks it read. A message the team removed shows as "Removed". The team's messages, Pelican's own included, sit on the left; the user's on the right. A reporter cannot close a ticket: the team resolves it. A reply that fails keeps its draft and says why, as the report form does.
+Opening a ticket shows its **thread**: the messages, with images inline and PDFs as file chips, and a composer for a reply with up to five images or PDFs, which says "Press ⌘ ↵ to send". Opening it fetches the ticket from Pelican, which renews its file links and marks it read. A message the team removed shows as "Removed". The team's messages, Pelican's own included, sit on the left; the user's, named "You", on the right, with one day pill for each day. A reporter cannot close a ticket: the team resolves it. A reply that fails keeps its draft and says why, as the report form does.
+
+When the check for replies fails, the thread (like the Support page) shows one grey line, "Couldn't check for replies.", with a Try again button, and keeps showing what the copy holds.
 
 ### The live thread
 
@@ -185,12 +241,14 @@ Module websockets need a signed-in caller by default, so `support/ticket-thread`
 
 The module ships two pages for the user, at full width.
 
-| Page id   | Path                       | Shows                                                                                                                                                                                                      |
-| --------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `support` | `/{entry id}/support`      | **My tickets**: every ticket the user has, open and resolved, newest activity first. Each row has the title, key, type, stage, when it last changed and a dot when the team replied since the user looked. |
-| `ticket`  | `/{entry id}/{ticket key}` | One ticket: its title, key, type, stage and when it opened, the conversation (images inline, the team's messages on the left, the user's on the right) and the reply composer.                             |
+| Page id   | Path                       | Shows                                                                                                                                                                                                             |
+| --------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `support` | `/{entry id}/support`      | **Support**: one crumb, a line on what the page is for and a Report a problem button. Open N and Resolved N tabs list the user's tickets as rows: the stage's icon and word, the title and when it last changed.  |
+| `ticket`  | `/{entry id}/{ticket key}` | One ticket: crumbs Support / the ticket's title, its title, one line (stage with its icon, type, when it opened, key), the conversation and the reply composer.                                                    |
 
-A search box filters the list by title or key, and two selectors by status (Open, Resolved, or one stage) and by type. With no tickets the list says so, and with filters that match none it asks the user to change them. The list reads from the copy, fetched from Pelican when the page opens; the filters change what shows, not what is fetched.
+A ticket that waits for the user's reply, or has a team message they have not read, shows its title in bold. A search box appears only once the user has more than ten tickets, and filters the loaded list by title. With no tickets the page says "Tell us what went wrong" and offers a Report a problem button; with nothing open it says "Nothing open. Show resolved N." The Report a problem button opens the report form in the page's own drawer, so it works whether or not the app mounts the help button or the report drawer. The list reads from the copy, fetched from Pelican when the page opens; the tabs change what shows, not what is fetched.
+
+The row's icon and colour come from the module's `enums/stages.yaml`, one entry per stage with its `label`, `icon`, `color` and tag colour.
 
 A ticket's address is its key in the path, such as `/support/PEL-1715`, so a link, a notification or the agent can name it. A key that is the ticket's id works too. A ticket that is not the user's shows nothing of it. Link to the pages from the app with `_module.pageId`; the ticket page takes the key as the `ticket_key` path param:
 
@@ -207,6 +265,34 @@ A ticket's address is its key in the path, such as `/support/PEL-1715`, so a lin
 ```
 
 The ticket page holds the same live thread as the panel, and the layout keeps one subscription when the app also wires `global_subscriptions`. The pages use only the layout module's `page` component vars, so they work under a fork of the layout.
+
+### Tickets waiting for a reply
+
+The `get-awaiting-reply-count` component is a request, `get_awaiting_reply_count`, that counts the signed-in person's tickets whose stage is `needs_your_reply`, in the organisation they are in (any organisation in an app without one). Declare it on a page or among the layout's `global_requests`, and read the count wherever it helps, such as a menu item or a badge:
+
+```yaml
+global_requests:
+  _build.array.concat:
+    - _ref:
+        module: support
+        component: requests
+    - - _ref:
+          module: support
+          component: get-awaiting-reply-count
+```
+
+```yaml
+content:
+  _nunjucks:
+    template: "{{ total }} waiting for you"
+    on:
+      total:
+        _if_none:
+          - _request: get_awaiting_reply_count.0.total
+          - 0
+```
+
+The request returns one row, `{ total }`, or none when no ticket waits.
 
 Add the module's `default` menu to the app's profile menu for a Support link:
 
