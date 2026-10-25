@@ -1,43 +1,30 @@
-# The person's release note email choice. The email footer links here with
-# urlQuery.section=email.
+# The person's release note email choice, one row under a rule. The email
+# footer links here with urlQuery.section=email.
 id: email_card
-type: Card
+type: Box
+class: border-0 border-t border-solid border-[var(--ant-color-border-secondary)] pt-4
+layout:
+  gap: 16
+  align: middle
+  wrap: nowrap
 blocks:
-  - id: email_row
-    type: Box
+  - id: email_label
+    type: Span
+    class: min-w-0
     layout:
-      gap: 16
-      align: middle
-      wrap: nowrap
-    blocks:
-      - id: email_text
-        type: Box
-        class: min-w-0
-        layout:
-          flex: 1 1 auto
-          direction: column
-          gap: 2
-        blocks:
-          - id: email_label
-            type: Span
-            class: font-semibold
-            properties:
-              content: Email me about new releases
-          - id: email_help
-            type: Span
-            class: text-text-secondary
-            properties:
-              content: The bell and this page still show every new release.
-      - id: email_releases
-        type: Switch
-        layout:
-          flex: 0 0 auto
-        properties:
-          title: Email me about new releases
-          label:
-            disabled: true
-        events:
-          onChange:
-            - id: save_email_preference
-              type: Request
-              params: set_email_preference
+      flex: 1 1 auto
+    properties:
+      content: Email me about new releases
+  - id: email_releases
+    type: Switch
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: Email me about new releases
+      label:
+        disabled: true
+    events:
+      onChange:
+        - id: save_email_preference
+          type: Request
+          params: set_email_preference

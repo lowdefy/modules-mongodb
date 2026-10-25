@@ -1,7 +1,8 @@
 import { test, expect } from "../fixtures.js";
 
-// What's new: the notes announced to the signed-in person, the one shown, its
-// embeds from the public bucket, the New mark and the release email switch.
+// What's new, a reading page: the notes announced to the signed-in person as
+// one-line rows, the one shown open beside them, its embeds from the public
+// bucket, the gold unread dot and the release email switch at the foot.
 
 const USER = {
   id: "e2e-release-user",
@@ -116,9 +117,10 @@ const RECIPIENTS = [
   recipient("2.15", OTHER_USER_ID),
 ];
 
-const rows = (page) => page.locator("[id^='notes.'][id$='.heading']");
-const rowFor = (page, version) =>
-  page.locator("[id^='notes.']", { hasText: `Version ${version}` }).first();
+const rows = (page) => page.locator("[id^='notes.'][id$='.headline']");
+const rowFor = (page, title) =>
+  page.locator("[id^='notes.'][id$='.headline']", { hasText: title });
+// The dot is rendered only while a note is unread.
 const newMarks = (page) => page.locator("[id^='notes.'][id$='.new_mark']");
 
 const openedAt = async (mdb, version, userId = USER.id) =>
@@ -153,14 +155,16 @@ test("lists the person's own notes once each, newest first, and shows the newest
   await ldf.goto("/release-notes/view");
   await expect(rows(page)).toHaveCount(3);
   await expect(rows(page)).toHaveText([
-    /Version 2\.15/,
-    /Version 2\.14/,
-    /Version 2\.13/,
+    /Plan a week of jobs/,
+    /Assign jobs in bulk/,
+    /Photos on every job card/,
   ]);
   await expect(page.getByText("Someone else's release")).toHaveCount(0);
-  await expect(page.locator("#note_kicker")).toHaveText(
-    "Version 2.15 · 16 October 2026",
-  );
+  await expect(page.locator("#note_date")).toHaveText("16 October 2026");
+  await expect(page.locator("#note_title")).toContainText("Plan a week");
+  // A reading page: no heading and no uppercase kicker.
+  await expect(page.locator("#notes_title")).toHaveCount(0);
+  await expect(page.locator("#note_kicker")).toHaveCount(0);
   // 2.15 and 2.14 are unopened; 2.13 was opened before.
   await expect(newMarks(page)).toHaveCount(2);
   await expect(page.locator("#note_body img")).toHaveCount(1);
@@ -205,7 +209,7 @@ test("opening a note clears its New mark, across reloads and organisations", asy
   // The note on screen keeps its mark until the person moves on.
   await expect(newMarks(page)).toHaveCount(2);
 
-  await rowFor(page, "2.14").click();
+  await rowFor(page, "Assign jobs in bulk").click();
   await expect(page.locator("#note_title")).toHaveText(
     "Assign jobs in bulk, and search that finds addresses",
   );
@@ -230,10 +234,10 @@ test("a note link opens that note; an unknown or unseen note falls back to the n
   );
 
   await ldf.goto("/release-notes/view?note=acme/field-app@9.99");
-  await expect(page.locator("#note_kicker")).toContainText("Version 2.15");
+  await expect(page.locator("#note_title")).toContainText("Plan a week");
 
   await ldf.goto("/release-notes/view?note=acme/field-app@2.12");
-  await expect(page.locator("#note_kicker")).toContainText("Version 2.15");
+  await expect(page.locator("#note_title")).toContainText("Plan a week");
   await expect(page.getByText("Someone else's release")).toHaveCount(0);
 });
 
@@ -271,17 +275,41 @@ test("someone with no notes sees the empty state and the switch", async ({
 }) => {
   await ldf.user({ ...USER, id: "e2e-release-nobody" });
   await ldf.goto("/release-notes/view");
-  await expect(page.locator("#notes_empty_text")).toHaveText(
-    "No release notes yet.",
-  );
+  await expect(page.locator("#notes_empty")).toHaveText("Nothing new yet.");
+  await expect(rows(page)).toHaveCount(0);
+  await expect(page.locator("#note_card")).toHaveCount(0);
   await expect(page.locator("#email_releases")).toBeVisible();
 });
 
-test("on a phone the list stacks above the note", async ({ ldf, page }) => {
+test("the unread count drives the What's new launcher on other pages", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  const launcher = page.locator("#whats_new_launcher");
+  await ldf.goto("/home");
+  await expect(launcher).toBeVisible();
+
+  await mdb
+    .collection("release-notes-recipients")
+    .updateMany({ user_id: USER.id }, { $set: { opened_at: new Date() } });
+  await ldf.goto("/home");
+  await expect(page.locator("main")).toBeVisible();
+  await expect(launcher).toHaveCount(0);
+});
+
+test("on a phone the rows are one line each, newest first, above the note", async ({
+  ldf,
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await ldf.goto("/release-notes/view");
   await expect(rows(page)).toHaveCount(3);
   const list = await page.locator("#notes").boundingBox();
+  const first = await rows(page).first().boundingBox();
+  const second = await rows(page).nth(1).boundingBox();
+  expect(first.y).toBeLessThan(second.y);
+  expect(first.height).toBeLessThan(30);
   const card = await page.locator("#note_card").boundingBox();
   expect(card.y).toBeGreaterThan(list.y + list.height - 1);
   expect(card.x + card.width).toBeLessThanOrEqual(390);

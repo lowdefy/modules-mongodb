@@ -1,6 +1,7 @@
-# What's new: the notes announced to the signed-in person, newest first, beside
-# the one shown (urlQuery.note, else the newest), and their release email
-# switch at the foot. On a phone the list stacks above the note.
+# What's new, as a reading page: the notes announced to the signed-in person,
+# newest first, beside the one shown (urlQuery.note, else the newest), with
+# their release email switch at the foot of the note. On a phone the list of
+# one-line rows stacks above the note.
 _ref:
   module: layout
   component: page
@@ -8,6 +9,8 @@ _ref:
     id: view
     title: What's new
     hide_title: true
+    about:
+      _module.var: about
     content_width: 1100
     requests:
       - _ref: requests/get_notes.yaml
@@ -23,57 +26,52 @@ _ref:
     blocks:
       - id: whats_new
         type: Box
+        class:
+          .block: min-w-0
         layout:
           gap: 32
         blocks:
           - id: notes_column
             type: Box
-            class: min-w-0
+            class:
+              .block: min-w-0
             layout:
               span: 24
               md:
-                span: 7
+                span: 8
               direction: column
-              gap: 4
             blocks:
-              - id: notes_title
-                type: Title
-                style:
-                  margin: 0 0 8px 12px
-                properties:
-                  level: 4
-                  content: What's new
               - id: notes
                 type: List
+                class:
+                  .block: w-full min-w-0 max-w-full
                 properties:
                   direction: column
                 layout:
-                  gap: 4
+                  gap: 2
                 blocks:
                   - _ref: components/note_row.yaml
           - id: note_column
             type: Box
-            class: min-w-0
+            class:
+              .block: min-w-0
             layout:
               span: 24
               md:
-                span: 17
+                span: 16
               direction: column
-              gap: 16
+              gap: 24
             blocks:
               - _ref: components/note_card.yaml
               - id: notes_empty
-                type: Card
+                type: Paragraph
                 visible:
                   _eq:
                     - _state: note
                     - null
-                blocks:
-                  - id: notes_empty_text
-                    type: Paragraph
-                    style:
-                      margin: 0
-                    properties:
-                      type: secondary
-                      content: No release notes yet.
+                style:
+                  margin: 0
+                properties:
+                  type: secondary
+                  content: Nothing new yet.
               - _ref: components/email_card.yaml

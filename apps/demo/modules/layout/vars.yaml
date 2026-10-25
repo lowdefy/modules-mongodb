@@ -25,6 +25,9 @@ global_events:
       type: SetState
       params:
         whats_new_dismissed: false
+    - id: fetch_unread_release_notes
+      type: Request
+      params: get_unread_release_notes_count
     - _ref:
         module: support
         component: on-init
@@ -37,6 +40,10 @@ global_requests:
     - - _ref:
           module: support
           component: get-awaiting-reply-count
+    # The unread count behind the What's new launcher below.
+    - - _ref:
+          module: release-notes
+          component: get_unread_release_notes_count
 # The support panel's live thread, opened only while a thread is open.
 global_subscriptions:
   _ref:
@@ -67,9 +74,15 @@ global_blocks:
                     pageId: home
   - id: whats_new_launcher
     type: Button
-    # Hidden on What's new itself, where it would float over the note.
+    # Shown while a release note is unread; hidden on What's new itself, where
+    # it would float over the note.
     visible:
       _and:
+        - _gt:
+            - _if_none:
+                - _request: get_unread_release_notes_count.0.total
+                - 0
+            - 0
         - _not:
             _state: whats_new_dismissed
         - _ne:

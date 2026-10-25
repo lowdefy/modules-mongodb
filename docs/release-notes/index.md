@@ -82,12 +82,25 @@ links:
 
 ## What's new
 
-The module's `view` page lists the notes announced to the signed-in person, newest first, with a New mark until they open one. Beside the list it shows one note: version and date, headline, preview and body. On a phone the list stacks above the note.
+The module's `view` page is a reading page. It has no heading and no kicker. It lists the notes announced to the signed-in person, newest first, one line each (headline and date), with a gold dot until they open one. Beside the list the shown note is open: its date in grey, the headline and the body. The email switch is one row at the foot of the note. With no notes the page says "Nothing new yet." above the email row. On a phone the one-line rows stack above the note.
+
+- **The page's `about`**: the page hands the `about` var to the layout page component as `about`. A layout that shows a page's `about` on the last crumb (the text behind the crumb's info mark) uses it in place of a heading; one that does not ignores it.
 
 - **Which note**: `urlQuery.note`, a note's `_id` (`{repository}@{version}`). An unknown note, or one the person was not announced, shows their newest. The bell notification and the email link here with `{ pageId: release-notes/view, urlQuery: { note } }`.
-- **New**: showing a note sets `opened_at` on the person's own recipient row. Its mark clears once they move to another note or come back, in every organisation.
+- **Unread**: showing a note sets `opened_at` on the person's own recipient row. Its dot clears once they move to another note or come back, in every organisation.
 - **Embeds**: each `[[file:name]]` in the body becomes the file's plain public URL (`https://{FILES_S3_BUCKET_PUB}.s3.{region}.amazonaws.com/{key}`), built on the server: an image shows inline, a video as a player and any other file as a link. A file not copied yet, or not on the note, shows a placeholder line rather than a broken image.
 - **Email me about new releases**: a switch at the foot that writes the person's `release-notes-preferences` row. `urlQuery.section=email` scrolls to it, for the email footer's link.
+
+## Marking unread notes
+
+The exported component `get_unread_release_notes_count` is a request of the same name: the signed-in person's announced notes with no `opened_at`, as `[{ total }]` (an empty list when there are none). Add it to a page's `requests`, or to the layout's `global_requests`, fire it with a `Request` action (in `global_events.onInit` for every page), and read it with `_if_none: [{ _request: get_unread_release_notes_count.0.total }, 0]` to show a New mark, a badge or a launcher while it is above zero.
+
+```yaml
+global_requests:
+  - _ref:
+      module: release-notes
+      component: get_unread_release_notes_count
+```
 
 ## Audiences
 
