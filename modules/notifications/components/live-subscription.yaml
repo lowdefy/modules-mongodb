@@ -7,7 +7,7 @@
 # Every batch refetches the bell, drops toasts whose record is now read, adds
 # new unread popup records to the toast stack (newest first, at most
 # popup_limit) and chirps for them through the page's notifications_sound
-# player. A failed feed shows nothing: the bell and toasts then update on
+# player; action_types never toast. A failed feed shows nothing: the bell and toasts then update on
 # navigation, as they do without it.
 #
 # Vars:
@@ -44,6 +44,8 @@ subscriptions:
                               - []
                           limit:
                             _module.var: popup_limit
+                          actions:
+                            _module.var: action_types
                         fn: |
                           const docs = (args.messages || [])
                             .filter((m) => m && m.fullDocument)
@@ -59,6 +61,7 @@ subscriptions:
                                 op === 'insert' &&
                                 doc.popup === true &&
                                 doc.read !== true &&
+                                !args.actions.includes(doc.type ?? doc.event_type) &&
                                 !shown.has(doc._id),
                             )
                             .map(({ doc }) => doc)

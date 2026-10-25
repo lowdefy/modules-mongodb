@@ -37,3 +37,55 @@ layout:
   _build.if_none:
     - _build.env: NOTIFICATIONS_LAYOUT
     - columns
+# Notifications a person must act on, which an app counts elsewhere: stored and
+# emailed, but kept out of the inbox, its counts, the bell and the toasts.
+action_types:
+  - action-needed
+# The list layout's own first row: one live summary with a link.
+summary_row:
+  - id: inbox_summary
+    type: Box
+    class:
+      .element: nx-lsummary
+    layout:
+      gap: 12
+      align: middle
+    blocks:
+      - id: inbox_summary_text
+        type: Html
+        layout:
+          flex: 1 1 0
+        properties:
+          html: |
+            <strong>Quotes need a decision</strong><span>Open the deals board to review them.</span>
+      - id: inbox_summary_open
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Open
+          type: link
+          size: small
+        events:
+          onClick:
+            - id: open_deals
+              type: Link
+              params:
+                pageId: deals/all
+      # Renews the demo licence: its notifications are read for everyone.
+      - id: inbox_summary_renew
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Renew licence
+          type: link
+          size: small
+        events:
+          onClick:
+            - id: renew_licence
+              type: CallAPI
+              params:
+                endpointId: notifications-resolve-licence
+# The bell's count badge colour: gold or red.
+tone: gold

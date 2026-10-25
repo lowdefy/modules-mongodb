@@ -272,6 +272,7 @@ api:
   - _ref: api/files-demo-upload-policy.yaml
   - _ref: api/assistant-file-links.yaml
   - _ref: api/release-notes-sweep.yaml
+  - _ref: api/notifications-resolve-licence.yaml
 
 agents:
   # The agent behind the ai-assistant module demo. The module brings the chat

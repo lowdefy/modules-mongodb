@@ -1,0 +1,11 @@
+# The `$expr` of "this record is not an action type": notifications whose type
+# is in the `action_types` var are stored and emailed, but stay out of the
+# inbox list, its counts, the bell, the toasts and Mark all as read. A record's
+# type is `type ?? event_type`. Taken literally, so no id is read as a field.
+$not:
+  - $in:
+      - $ifNull:
+          - $type
+          - $event_type
+      - $literal:
+          _module.var: action_types

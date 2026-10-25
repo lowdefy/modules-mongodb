@@ -115,6 +115,38 @@
   font-weight: 500;
 }
 
+/* ── summary row (the summary_row var) ────────────────────────────────── */
+
+.nx-lsummary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: var(--ant-border-radius-lg, 8px);
+  background: var(--ant-color-warning-bg);
+  color: var(--ant-color-text);
+}
+
+.nx-lsummary > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.nx-lsummary strong {
+  display: block;
+}
+
+.nx-lsummary span {
+  color: var(--ant-color-text-secondary);
+}
+
+.nx-lsummary a {
+  font-weight: 500;
+  text-decoration: underline;
+  color: var(--ant-color-text);
+}
+
 /* ── list ─────────────────────────────────────────────────────────────── */
 
 .nx-lsection {

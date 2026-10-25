@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures.js";
-import { COLLECTION, USER, record } from "./fixtures.js";
+import { COLLECTION, OTHER_USER_ID, USER, record } from "./fixtures.js";
 
 // The one-column inbox (`layout: list`). Build the server with
 // NOTIFICATIONS_LAYOUT=list to run it:
@@ -179,4 +179,48 @@ test("on a phone the toolbar and rows fit one column", async ({ ldf, page }) => 
   );
   expect(overflow).toBeLessThanOrEqual(0);
   await page.screenshot({ path: test.info().outputPath("list-phone.png") });
+});
+
+test("the summary row is the first row of the list", async ({ ldf, page }) => {
+  await ldf.goto("/notifications/all");
+  const summary = page.locator("#inbox_summary");
+  await expect(summary).toContainText("Quotes need a decision");
+  const [summaryBox, listBox] = await Promise.all([
+    summary.boundingBox(),
+    list(page).boundingBox(),
+  ]);
+  expect(summaryBox.y).toBeLessThan(listBox.y);
+});
+
+test("resolve-notifications (the summary row's Renew licence) reads the item's notifications for every recipient", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  const action = (_id, userId) => ({
+    ...record({ _id, type: "action-needed", title: "Renew the licence", userId }),
+    data: { item_id: "lic-1" },
+  });
+  await mdb
+    .collection(COLLECTION)
+    .insertMany([action("r1", USER.id), action("r2", OTHER_USER_ID)]);
+  await mdb.collection(COLLECTION).insertOne({
+    ...action("r3", USER.id),
+    data: { item_id: "lic-2" },
+  });
+
+  await ldf.goto("/notifications/all");
+  await page.locator("#inbox_summary_renew").click();
+
+  await expect
+    .poll(async () =>
+      (await mdb.collection(COLLECTION).find({ _id: { $in: ["r1", "r2"] } }).toArray())
+        .map((r) => r.read)
+        .join(),
+    )
+    .toBe("true,true");
+  const resolved = await mdb.collection(COLLECTION).findOne({ _id: "r2" });
+  expect(resolved.data.resolved.verb).toBe("renewed");
+  // Another item's notification is left alone.
+  expect((await mdb.collection(COLLECTION).findOne({ _id: "r3" })).read).toBe(false);
 });

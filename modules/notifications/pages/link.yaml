@@ -167,10 +167,24 @@ events:
           _if_none:
             - _state: link_target.pathParams
             - {}
+        # A resolved item (resolve-notifications stored data.resolved) still
+        # lands on its target; `resolved` in the URL lets the page say it.
         urlQuery:
-          _if_none:
-            - _state: link_target.urlQuery
-            - {}
+          _object.assign:
+            - _if_none:
+                - _state: link_target.urlQuery
+                - {}
+            - _if:
+                test:
+                  _ne:
+                    - _if_none:
+                        - _request: get_notification_for_link.0.data.resolved
+                        - null
+                    - null
+                then:
+                  resolved:
+                    _request: get_notification_for_link.0.data.resolved
+                else: {}
         input:
           _if_none:
             - _state: link_target.input

@@ -50,11 +50,14 @@ _ref:
                           - []
                       status:
                         _state: filter.status
+                      actions:
+                        _module.var: action_types
                     fn: |
                       if (args.status === 'read') return args.count;
                       const fresh = (args.messages || []).filter((m) => {
                         if (m.operationType !== 'insert' || !m.fullDocument) return false;
                         const type = m.fullDocument.type ?? m.fullDocument.event_type;
+                        if (args.actions.includes(type)) return false;
                         return args.types.length === 0 || args.types.includes(type);
                       });
                       return args.count + fresh.length;

@@ -48,3 +48,9 @@ sync-stopped:
   fix:
     title: Open deals
     pageId: deals/all
+# An action type (the notifications module's `action_types` var): stored and
+# emailed, but never listed in the inbox or counted by the bell.
+action-needed:
+  color: "#ff4d4f"
+  title: Needs you
+  icon: CircleAlert

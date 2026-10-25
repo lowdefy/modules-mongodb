@@ -1,0 +1,25 @@
+# The consumer of the notifications module's resolve-notifications endpoint:
+# renewing the demo licence marks its "Needs you" notifications read for every
+# recipient, and records who renewed it.
+id: notifications-resolve-licence
+type: Api
+routine:
+  - id: resolve
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: resolve-notifications
+          module: notifications
+      payload:
+        types:
+          - action-needed
+        match:
+          item_id: lic-1
+        resolution:
+          by:
+            _user: name
+          verb: renewed
+  - :return:
+      count:
+        _step: resolve.count

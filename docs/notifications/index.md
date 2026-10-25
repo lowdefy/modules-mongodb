@@ -190,6 +190,53 @@ sync-stopped:
 
 Rows load with their body, up to 20,000 characters, so a row can open in place. A body that carries an element with a `data-event` attribute cannot fire the list's events: the attribute is removed.
 
+## Action notifications
+
+Some notifications are things a person must do, such as a licence about to expire, and the app counts them somewhere else. Listing them in the inbox buries what a person should merely know. List their ids in `action_types`:
+
+```yaml
+vars:
+  layout: list
+  action_types:
+    - _module.notificationId: licence-expiring
+    - _module.notificationId: expiry-digest
+  tone: red
+  summary_row:
+    - id: needs_you
+      type: Html
+      properties:
+        html: '<div class="nx-lsummary"><i data-icon="Inbox"></i><div><strong>5 things need you</strong><span>about 1 hour 20</span></div><a data-page-id="home">Open</a></div>'
+```
+
+A notification of an action type is stored and emailed as any other, and the link page and the audit trail still reach it. It stays out of the inbox list and its counts, the bell count, the live toasts (and their chirp) and Mark all as read. A record's type is `type`, else a legacy record's `event_type`.
+
+- **`summary_row`** is a list of blocks drawn as the first row of the `list` layout, so the app can show one live row of its own, such as "5 things need you", with its own link. The `nx-lsummary` class styles a row like the one above. Put the row's requests in the layout's `global_requests` or `header_extra.requests`, which every page fetches, and read them with `_request`. Empty draws nothing, and the `columns` layout ignores it.
+- **`tone`** (`gold` or `red`) is the colour of the bell's count badge. The module's `notification-config` component, which the layout renders as the bell, carries it as the badge `color`. Unset keeps the badge as it is.
+- **`resolve-notifications`** marks notifications read when the item they are about is resolved. Call it from an app routine (an `InternalApi`):
+
+```yaml
+- id: resolve
+  type: CallApi
+  properties:
+    endpointId:
+      _module.endpointId:
+        id: resolve-notifications
+        module: notifications
+    payload:
+      types: [licence-expiring]      # optional: only these types
+      match:                         # fields of the record's `data`, scalar values
+        licence_id:
+          _payload: licence_id
+      resolution:                    # optional
+        by:
+          _user: name
+        verb: renewed
+```
+
+It marks the matching unread notifications of every recipient in the caller's organisation, not only the caller's, because the person who resolves an item is often not the one who was told about it: when a co-owner renews, the other owner's notification is read. Each record is change-stamped (`updated`) and written to the change log, and the call returns `{ count }`. With a `resolution`, each record keeps it as `data.resolved: { by, verb, at }` (`at` defaults to now). `match` is required and holds at least one field, so a call can never mark everything.
+
+When a record's `data` carries `resolved`, the `link` page still lands on the target and adds `resolved` (an object with `by`, `verb` and `at`) to the target's URL query, so the target page can say "Renewed by Naledi" instead of asking for a renewal that has been done. Read it with `_url_query: resolved`.
+
 ## Inbox
 
 The `all` page lists the signed-in user's notifications in this app, up to 1000 a page, newest first.

@@ -18,32 +18,35 @@
   layout:
     gap: 8
   blocks:
-    - _ref: components/list-toolbar.yaml
-    - id: new_rows_pill
-      type: Button
-      visible:
-        _gt:
-          - _if_none:
-              - _state: new_count
+    _build.array.concat:
+      - - _ref: components/list-toolbar.yaml
+        - id: new_rows_pill
+          type: Button
+          visible:
+            _gt:
+              - _if_none:
+                  - _state: new_count
+                  - 0
               - 0
-          - 0
-      layout:
-        span: 24
-      style:
-        .element:
-          margin: 8px auto 0
-          display: block
-      properties:
-        shape: round
-        size: small
-        icon: ArrowUp
-        title:
-          _nunjucks:
-            template: "{{ n }} new"
-            on:
-              n:
-                _state: new_count
-      events:
-        onClick:
-          _ref: actions/update-list.yaml
-    - _ref: components/list-html.yaml
+          layout:
+            span: 24
+          style:
+            .element:
+              margin: 8px auto 0
+              display: block
+          properties:
+            shape: round
+            size: small
+            icon: ArrowUp
+            title:
+              _nunjucks:
+                template: "{{ n }} new"
+                on:
+                  n:
+                    _state: new_count
+          events:
+            onClick:
+              _ref: actions/update-list.yaml
+      # The app's own first row (summary_row var), such as "5 things need you".
+      - _module.var: summary_row
+      - - _ref: components/list-html.yaml
