@@ -1,6 +1,14 @@
 # The inbox list's rows from get_notifications: appearance resolved once for
 # the page, the time as an ISO string for <time data-time>, and the preview
 # (a legacy record's description).
+#
+# For the list layout each row also carries how it opens, `mode`:
+#   link    the record has a link target; the row opens it through the link page
+#   expand  no target, and its body says more than its preview; the row opens
+#           in place
+#   none    nothing more to show; the row does not open
+# `body` is kept only on an expanding row, with any data-event attribute
+# removed so a notification body can never fire a block event.
 _js:
   args:
     records:
@@ -12,13 +20,37 @@ _js:
               - _request: get_notifications.0.notifications
               - []
   fn: |
+    const plainText = (html) =>
+      String(html || '')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
     return args.records.map((record) => {
       const at = record.created && record.created.timestamp;
+      const preview = record.preview ?? record.description ?? null;
+      const target =
+        (record.data && record.data.links && record.data.links.button) ??
+        (record.links && record.links.button) ??
+        null;
+      const plain = plainText(record.body);
+      const shown = String(preview || '').trim();
+      const fullLength = record.text_length > 0 ? record.text_length : plain.length;
+      const expands =
+        target === null &&
+        plain.length > 0 &&
+        fullLength > shown.length &&
+        plain !== shown &&
+        plain !== String(record.title || '').trim();
       return {
         _id: record._id,
         title: record.title,
         read: record.read === true,
-        preview: record.preview ?? record.description ?? null,
+        preview,
+        type: record.type ?? record.event_type ?? null,
+        mode: target !== null ? 'link' : expands ? 'expand' : 'none',
+        body: expands ? String(record.body).replace(/\sdata-event\s*=/gi, ' data-blocked=') : null,
         created_at: at ? new Date(at).toISOString() : null,
         appearance: record.appearance,
       };

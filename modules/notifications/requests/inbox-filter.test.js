@@ -39,6 +39,9 @@ function resolve(value, ctx) {
         return r(readYaml(params));
       case "_user":
         return ctx.user?.[params] ?? null;
+      case "_module.var":
+        // The module's defaults, for the vars these requests read.
+        return ({ action_types: [], ...ctx.vars })[params] ?? null;
       case "_payload":
         return getPath(ctx.payload, params) ?? null;
       case "_if_none": {
@@ -135,10 +138,11 @@ afterAll(async () => {
   await mongo.cleanup();
 });
 
-async function list(filter, user = me) {
+async function list(filter, user = me, vars = {}) {
   const request = readYaml("requests/get-notifications.yaml");
   const pipeline = resolve(request.properties.pipeline, {
     user,
+    vars,
     payload: {
       filter,
       pagination: { skip: 0, pageSize: 1000 },
@@ -154,10 +158,11 @@ async function list(filter, user = me) {
   };
 }
 
-async function markAll(filter, user = me) {
+async function markAll(filter, user = me, vars = {}) {
   const request = readYaml("requests/update-notifications.yaml");
   const props = resolve(request.properties, {
     user,
+    vars,
     payload: { filter, app_name: appName },
   });
   await collection.updateMany(props.filter, props.update);
@@ -252,5 +257,54 @@ test("rail counts group by type before event_type", async () => {
   expect(await collection.aggregate(pipeline).toArray()).toEqual([
     { _id: "quote-approved", total: 3, unread: 2 },
     { _id: "support-reply", total: 2, unread: 2 },
+  ]);
+});
+
+// Action types: stored like any notification, but out of the list, Mark all as
+// read, the rail counts and the bell.
+const actionVars = { action_types: ["support-reply"] };
+
+test("action types stay out of the list and Mark all as read", async () => {
+  const shown = await list({ status: "all" }, me, actionVars);
+  expect(shown.ids).toEqual(["a1", "a2", "a3"]);
+  expect(shown.total).toBe(3);
+  expect(await markAll({ status: "unread" }, me, actionVars)).toEqual([
+    "l1",
+    "o1",
+    "s1",
+  ]);
+});
+
+test("action types are not counted by the rail or the bell", async () => {
+  const facets = readYaml("requests/get-notification-facets.yaml");
+  const pipeline = resolve(facets.properties.pipeline, {
+    user: me,
+    vars: actionVars,
+    payload: { app_name: appName },
+  });
+  expect(await collection.aggregate(pipeline).toArray()).toEqual([
+    { _id: "quote-approved", total: 3, unread: 2 },
+  ]);
+
+  const bell = readYaml("components/unread-count-request.yaml");
+  const bellPipeline = resolve(bell.properties.pipeline, {
+    user: me,
+    vars: actionVars,
+    payload: { app_name: appName },
+  });
+  expect(await collection.aggregate(bellPipeline).toArray()).toEqual([
+    { total: 2 },
+  ]);
+});
+
+test("with no action types the bell counts every unread record", async () => {
+  const bell = readYaml("components/unread-count-request.yaml");
+  const pipeline = resolve(bell.properties.pipeline, {
+    user: me,
+    vars: { action_types: [] },
+    payload: { app_name: appName },
+  });
+  expect(await collection.aggregate(pipeline).toArray()).toEqual([
+    { total: 4 },
   ]);
 });

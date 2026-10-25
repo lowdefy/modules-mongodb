@@ -1,0 +1,125 @@
+# Marks notifications read when the item they are about is resolved, for app
+# routines to call. Marks the matching unread notifications of every recipient
+# in the caller's organisation, not only the caller's: the person who resolves
+# an item is often not the one who was told about it (a co-owner renews, the
+# other owner's notification is read).
+#
+# Payload:
+#   types: [notification id]     optional — only these types
+#   match: { <data field>: value }  required — fields of the record's `data`
+#                                the item is found by, scalar values only
+#   resolution: { by, verb, at? }  optional — stored as `data.resolved`; the
+#                                link page passes it to the target page as
+#                                `resolved` in the URL, so the page can say who
+#                                resolved the item and how. `at` defaults to now.
+#
+# Returns { count }, the notifications marked read. Records of every type, the
+# action types too, are matched.
+id: resolve-notifications
+type: InternalApi
+payloadSchema:
+  type: object
+  required:
+    - match
+  additionalProperties: false
+  properties:
+    types:
+      type: array
+      items:
+        type: string
+    match:
+      type: object
+      minProperties: 1
+      propertyNames:
+        pattern: "^[A-Za-z_][A-Za-z0-9_.]*$"
+      additionalProperties:
+        type:
+          - string
+          - number
+          - boolean
+    resolution:
+      type: object
+      additionalProperties: false
+      required:
+        - by
+        - verb
+      properties:
+        by:
+          type: string
+        verb:
+          type: string
+        at:
+          type: string
+routine:
+  - id: resolve
+    type: MongoDBUpdateMany
+    connectionId:
+      _module.connectionId: notifications-collection
+    properties:
+      filter:
+        $and:
+          _array.concat:
+            - - created.app_name:
+                  _build.app: slug
+                read: false
+            # { field: value } on `data` becomes { "data.field": value }.
+            - _js:
+                args:
+                  match:
+                    _payload: match
+                fn: |
+                  return Object.entries(args.match).map(([key, value]) => ({ [`data.${key}`]: value }));
+            - _if:
+                test:
+                  _gt:
+                    - _array.length:
+                        _if_none:
+                          - _payload: types
+                          - []
+                    - 0
+                then:
+                  - $or:
+                      - type:
+                          $in:
+                            _payload: types
+                      - event_type:
+                          $in:
+                            _payload: types
+                else: []
+      update:
+        $set:
+          _object.assign:
+            - read: true
+              # The events module's change stamp, written out so the module
+              # needs no events dependency.
+              updated:
+                timestamp:
+                  _date: now
+                user:
+                  name:
+                    _if_none:
+                      - _user: name
+                      - _user: profile.name
+                  id:
+                    _user: id
+            - _if:
+                test:
+                  _ne:
+                    - _if_none:
+                        - _payload: resolution
+                        - null
+                    - null
+                then:
+                  data.resolved:
+                    by:
+                      _payload: resolution.by
+                    verb:
+                      _payload: resolution.verb
+                    at:
+                      _if_none:
+                        - _payload: resolution.at
+                        - _date: now
+                else: {}
+  - :return:
+      count:
+        _step: resolve.modifiedCount

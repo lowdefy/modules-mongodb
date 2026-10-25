@@ -44,6 +44,58 @@ vars:
         types:
           type: array
           description: Notification type ids the view lists.
+  layout:
+    type: string
+    enum:
+      - columns
+      - list
+    default: columns
+    description: >
+      The inbox layout. `columns` is the three-column inbox: views and types
+      on the left, the list in the middle, the reading pane on the right.
+      `list` is one calm column: Unread and All tabs, a Filter button, rows
+      grouped by type and day under This week and Earlier, and a row that
+      opens what it is about instead of a reading pane. In `list` the inbox
+      page has no title and no card, and the Sound switch moves into the
+      layout's page actions (the `sound-action` component).
+  action_types:
+    type: array
+    default: []
+    description: >
+      Notification ids that are actions: things a person must do, which the
+      app counts elsewhere. They are stored, emailed and reachable through the
+      link page and the audit trail as any notification, but stay out of the
+      inbox list, its counts, the bell count, the live toasts and Mark all as
+      read. Accepts `_module.notificationId`.
+    items:
+      type: string
+  summary_row:
+    type: array
+    default: []
+    description: >
+      Blocks rendered as the first row of the list in the `list` layout, so an
+      app can show one live row of its own, such as "5 things need you", with
+      its own link. Put the row's requests in the layout's `global_requests`
+      or `header_extra.requests`, which every page fetches, and read them with
+      `_request`. Empty draws nothing. Ignored by the `columns` layout.
+  tone:
+    type: string
+    enum:
+      - gold
+      - red
+    default: null
+    description: >
+      The colour of the bell's count badge: `gold` or `red`. Unset keeps the
+      badge the layout's default (red).
+  empty:
+    type: object
+    default: {}
+    description: >
+      The line the `list` layout shows when a view has nothing to show, keyed
+      by view id (`inbox` is the view without a name). A value is a string, or
+      `{ unread, all }` to say one thing for the Unread tab and another for
+      All. A view with no entry reads "You're all caught up" under Unread and
+      "No notifications yet" under All.
   sounds:
     type: array
     default: []
@@ -256,6 +308,8 @@ exports:
       description: Renders one notification and emails it to one address, storing no record (no bell, dedup or retry) — for test sends; payload { notification_id, email, item }
     - id: dispatch-notifications
       description: Generic dispatch pipeline — render, store with dedup, send, record the result; payload { notification_id, items }
+    - id: resolve-notifications
+      description: Marks the matching unread notifications read for every recipient in the caller's organisation when the item they are about is resolved; payload { types?, match, resolution? }, returns { count } — call it from app routines (InternalApi)
     - id: drain-notifications
       description: Re-sends unsent records (sent false with at least one failed attempt) from their stored render outputs; payload { max_attempts = 5, limit = 50 } — schedule from an app-side cron endpoint
   components:
@@ -269,6 +323,8 @@ exports:
       description: Live notifications feed — `subscriptions` (the page subscription; batches refetch the bell, update the toast stack and chirp) and `actions` (its Subscribe action), both mounted by the layout page component; empty when `live` is false
     - id: notification-sound
       description: Page-wide NotificationSound player (id notifications_sound) the live feed plays the viewer's sound through, mounted by the layout page component
+    - id: sound-action
+      description: The inbox's Sound switch with its help line, as a page actions entry; the `list` layout passes it to the layout page component, and an app can place it in its own page menu
     - id: popup-notifications-requests
       description: MongoDB requests backing the popup toasts — fetch (notifications_popups) and mark-read (set_popup_read)
 
@@ -279,6 +335,7 @@ api:
   - _ref: api/dispatch-notification-item.yaml
   - _ref: api/send-notification-record.yaml
   - _ref: api/drain-notifications.yaml
+  - _ref: api/resolve-notifications.yaml
   - _ref: api/retry-notification-record.yaml
 
 components:
@@ -297,6 +354,9 @@ components:
   - id: notification-sound
     component:
       _ref: components/notification-sound.yaml
+  - id: sound-action
+    component:
+      _ref: components/sound-action.yaml
   - id: popup-notifications-requests
     component:
       _ref: components/popup-notifications-requests.yaml

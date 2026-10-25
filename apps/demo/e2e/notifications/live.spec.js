@@ -1,6 +1,12 @@
 import { test, expect } from "../fixtures.js";
 import { COLLECTION, OTHER_USER_ID, USER, record } from "./fixtures.js";
 
+// These specs drive the three-column layout; the list layout has list.spec.js.
+test.skip(
+  process.env.NOTIFICATIONS_LAYOUT === "list",
+  "built with the list layout",
+);
+
 // The live feed: a popup notification inserted while a page is open toasts
 // without a reload, reading it elsewhere takes the toast down, the bell
 // follows, and another user's notification never arrives.

@@ -1,0 +1,52 @@
+# The list layout: toolbar, then one list of rows. No title and no card; the
+# page scrolls as a whole.
+- id: inbox_styles
+  type: Html
+  properties:
+    html:
+      # A leading <style> is hoisted into <head> and dropped by the sanitiser,
+      # so the stylesheet trails an empty element.
+      _string.concat:
+        - "<span></span><style>"
+        - _ref: components/notification-list-layout.css
+        - _ref: components/notification-email.css
+        - "</style>"
+- id: inbox
+  type: Box
+  class:
+    .element: nx-inbox nx-inbox--list
+  layout:
+    gap: 8
+  blocks:
+    _build.array.concat:
+      - - _ref: components/list-toolbar.yaml
+        - id: new_rows_pill
+          type: Button
+          visible:
+            _gt:
+              - _if_none:
+                  - _state: new_count
+                  - 0
+              - 0
+          layout:
+            span: 24
+          style:
+            .element:
+              margin: 8px auto 0
+              display: block
+          properties:
+            shape: round
+            size: small
+            icon: ArrowUp
+            title:
+              _nunjucks:
+                template: "{{ n }} new"
+                on:
+                  n:
+                    _state: new_count
+          events:
+            onClick:
+              _ref: actions/update-list.yaml
+      # The app's own first row (summary_row var), such as "5 things need you".
+      - _module.var: summary_row
+      - - _ref: components/list-html.yaml
