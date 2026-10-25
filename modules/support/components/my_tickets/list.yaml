@@ -13,10 +13,12 @@ blocks:
         id: support_list_notice
         error_state: support_list_tickets_error
         retry:
-          _ref:
-            path: actions/open_tickets.yaml.njk
-            vars:
-              prefix: support_list
+          _build.array.concat:
+            - _ref:
+                path: actions/open_tickets.yaml.njk
+                vars:
+                  prefix: support_list
+            - _ref: actions/set_list_rows.yaml
   - id: support_list_empty
     type: Box
     visible:
@@ -110,10 +112,12 @@ blocks:
           size: small
         events:
           onClick:
-            - id: support_list_show_resolved
-              type: SetState
-              params:
-                support_list_filter.status: resolved
+            _build.array.concat:
+              - - id: support_list_show_resolved
+                  type: SetState
+                  params:
+                    support_list_filter.status: resolved
+              - _ref: actions/set_list_rows.yaml
   - id: support_list_tickets
     type: ListSelector
     loading:

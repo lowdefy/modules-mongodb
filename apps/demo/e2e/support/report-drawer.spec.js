@@ -104,7 +104,9 @@ test("open-report opens the drawer with the draft filled in, and Send files the 
     "Ask the assistant instead",
   );
 
-  await ldf.block("support_drawer.message").do.fill("The cards do not load.");
+  await page
+    .getByTestId("support_drawer.message_textarea")
+    .fill("The cards do not load.");
   await page.getByTestId("support_drawer.message_send").click();
 
   await expect(drawer).toBeHidden();
@@ -121,7 +123,7 @@ test("open-report opens the drawer with the draft filled in, and Send files the 
 
   // Opened again, the draft is blank except what the action fills in.
   await page.locator("#report_problem").click();
-  await expect(page.locator("#support_drawer\\.message_input")).toHaveValue("");
+  await expect(page.getByTestId("support_drawer.message_textarea")).toHaveValue("");
 });
 
 test("a refused report keeps the draft in the drawer", async ({
@@ -137,7 +139,9 @@ test("a refused report keeps the draft in the drawer", async ({
   }));
   await ldf.goto("/home");
   await page.locator("#report_problem").click();
-  await ldf.block("support_drawer.message").do.fill("Still broken.");
+  await page
+    .getByTestId("support_drawer.message_textarea")
+    .fill("Still broken.");
   await page.getByTestId("support_drawer.message_send").click();
   await expect(page.locator("#support_drawer_error")).toContainText(
     "Something went wrong, try again in 30 seconds.",
@@ -193,7 +197,7 @@ test("replying on a ticket marks its support-reply notification read", async ({
   await mdb.collection("support-tickets").insertOne(row);
   const notification = (_id, ticketKey) => ({
     _id,
-    type: "support-reply",
+    type: "support/support-reply",
     title: "The support team replied",
     contact_id: USER.id,
     user_id: USER.id,
@@ -238,7 +242,9 @@ test("replying on a ticket marks its support-reply notification read", async ({
   await expect(page.locator("#support_page_thread_messages")).toContainText(
     "Which file?",
   );
-  await ldf.block("support_page_reply.message").do.fill("This file.");
+  await page
+    .getByTestId("support_page_reply.message_textarea")
+    .fill("This file.");
   await page.getByTestId("support_page_reply.message_send").click();
   await expect(page.locator("#support_page_thread_messages")).toContainText(
     "This file.",

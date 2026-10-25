@@ -12,6 +12,10 @@ _ref:
     requests:
       _ref: modules/ai-assistant/attachment_requests.yaml
     events:
+      onMount:
+        - id: fetch_awaiting_reply_count
+          type: Request
+          params: get_awaiting_reply_count
       onInit:
         # The docked assistant's state contract — required on any page that
         # mounts the module's panel.

@@ -192,7 +192,8 @@ exports:
       description: >-
         A request, get_awaiting_reply_count: the signed-in person's tickets that
         wait for their reply, in the organisation they are in. Declare it on a
-        page or among the layout's global_requests and read
+        page or among the layout's global_requests, fire it with a Request
+        action and read
         `_request: get_awaiting_reply_count.0.total` for a menu item's count
   connections:
     - id: support_pelican

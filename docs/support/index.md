@@ -268,7 +268,7 @@ The ticket page holds the same live thread as the panel, and the layout keeps on
 
 ### Tickets waiting for a reply
 
-The `get-awaiting-reply-count` component is a request, `get_awaiting_reply_count`, that counts the signed-in person's tickets whose stage is `needs_your_reply`, in the organisation they are in (any organisation in an app without one). Declare it on a page or among the layout's `global_requests`, and read the count wherever it helps, such as a menu item or a badge:
+The `get-awaiting-reply-count` component is a request, `get_awaiting_reply_count`, that counts the signed-in person's tickets whose stage is `needs_your_reply`, in the organisation they are in (any organisation in an app without one). Declare it on a page or among the layout's `global_requests` (which are not fired on mount), run it with a `Request` action when the count should refresh, and read it wherever it helps, such as a menu item or a badge:
 
 ```yaml
 global_requests:
@@ -279,6 +279,13 @@ global_requests:
     - - _ref:
           module: support
           component: get-awaiting-reply-count
+```
+
+```yaml
+# The page's onMount
+- id: fetch_awaiting_reply_count
+  type: Request
+  params: get_awaiting_reply_count
 ```
 
 ```yaml

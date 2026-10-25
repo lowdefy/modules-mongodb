@@ -403,7 +403,7 @@ test("with nothing open, the Support page offers the resolved tickets", async ({
   );
   await ldf.goto("/support/support");
   await expect(page.locator("#support_list_none_here")).toContainText(
-    "Nothing open. Show resolved 1.",
+    /Nothing open\.\s*Show resolved 1\./,
   );
   await page.getByRole("button", { name: "Show resolved 1." }).click();
   await expect(page.locator("#support_list_tickets .ant-card")).toHaveCount(1);
