@@ -44,6 +44,29 @@ vars:
         types:
           type: array
           description: Notification type ids the view lists.
+  layout:
+    type: string
+    enum:
+      - columns
+      - list
+    default: columns
+    description: >
+      The inbox layout. `columns` is the three-column inbox: views and types
+      on the left, the list in the middle, the reading pane on the right.
+      `list` is one calm column: Unread and All tabs, a Filter button, rows
+      grouped by type and day under This week and Earlier, and a row that
+      opens what it is about instead of a reading pane. In `list` the inbox
+      page has no title and no card, and the Sound switch moves into the
+      layout's page actions (the `sound-action` component).
+  empty:
+    type: object
+    default: {}
+    description: >
+      The line the `list` layout shows when a view has nothing to show, keyed
+      by view id (`inbox` is the view without a name). A value is a string, or
+      `{ unread, all }` to say one thing for the Unread tab and another for
+      All. A view with no entry reads "You're all caught up" under Unread and
+      "No notifications yet" under All.
   sounds:
     type: array
     default: []
@@ -269,6 +292,8 @@ exports:
       description: Live notifications feed — `subscriptions` (the page subscription; batches refetch the bell, update the toast stack and chirp) and `actions` (its Subscribe action), both mounted by the layout page component; empty when `live` is false
     - id: notification-sound
       description: Page-wide NotificationSound player (id notifications_sound) the live feed plays the viewer's sound through, mounted by the layout page component
+    - id: sound-action
+      description: The inbox's Sound switch with its help line, as a page actions entry; the `list` layout passes it to the layout page component, and an app can place it in its own page menu
     - id: popup-notifications-requests
       description: MongoDB requests backing the popup toasts — fetch (notifications_popups) and mark-read (set_popup_read)
 
@@ -297,6 +322,9 @@ components:
   - id: notification-sound
     component:
       _ref: components/notification-sound.yaml
+  - id: sound-action
+    component:
+      _ref: components/sound-action.yaml
   - id: popup-notifications-requests
     component:
       _ref: components/popup-notifications-requests.yaml

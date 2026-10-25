@@ -107,7 +107,7 @@ The `page` component renders a shared title bar above the content. Key per-page 
 | `status_enum`      | object  | `null`  | Status-enum map with `{ color, borderColor, titleColor, title }` entries.                                                                      |
 | `doc`              | object  | `null`  | Change-stamp doc (`{ created, updated }`) for the subtitle line.                                                                               |
 | `loading`          | boolean | `false` | Shimmer skeletons on title/subtitle/pill while data loads.                                                                                     |
-| `page_actions`     | array   | `[]`    | Action blocks to the right of the title.                                                                                                       |
+| `page_actions`     | array   | `[]`    | Action blocks to the right of the title. On a page with `hide_title: true` they show in one slim row at the right edge, above the content.     |
 | `show_back_button` | boolean | `false` | Back button to the left of the title.                                                                                                          |
 
 The browser-tab title is `title` when it is a string at build time. A `title` that is a runtime operator (`_request`, `_state`) is not used there, because the server writes the tab title without evaluating operators; the tab shows `type` instead when that is a string at build time, and otherwise the page id. Build `type` from `_build.*` operators (for example `_build.string.concat` over a module var) so it can serve as the tab title.

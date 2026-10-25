@@ -31,3 +31,9 @@ views:
 # Notification sounds offered to the viewer.
 sounds:
   _ref: modules/notifications/sounds.yaml
+# The inbox layout. The demo shows the three-column inbox; build it with
+# NOTIFICATIONS_LAYOUT=list to see the one-column list (the list e2e spec does).
+layout:
+  _build.if_none:
+    - _build.env: NOTIFICATIONS_LAYOUT
+    - columns

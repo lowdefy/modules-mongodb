@@ -26,7 +26,25 @@ quote-approved:
   color: "#52c41a"
   title: Quote Approved
   icon: check-circle
+  # The list layout's group row for several of this type on one day.
+  group_title: "{n} quotes approved"
 user-invite:
   color: "#1890ff"
   title: User Invited
   icon: UserPlus
+# The list layout reads `group_title` ({n} is the count) and `fix` (the page
+# that fixes the problem, shown as a button when a notification with no link
+# opens in place).
+support-reply:
+  color: "#722ed1"
+  title: Support reply
+  icon: LifeBuoy
+  group_title: "{n} support replies"
+sync-stopped:
+  color: "#faad14"
+  title: Sync stopped
+  icon: FolderSync
+  group_title: "{n} folders stopped syncing"
+  fix:
+    title: Open deals
+    pageId: deals/all

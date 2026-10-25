@@ -25,6 +25,8 @@ export function record({
   popup = false,
   userId = USER.id,
   links = undefined,
+  ageHours = undefined,
+  body = undefined,
 }) {
   minutes += 1;
   return {
@@ -32,7 +34,7 @@ export function record({
     type,
     title,
     preview,
-    body: `<p>${title}</p>`,
+    body: body ?? `<p>${title}</p>`,
     contact_id: userId,
     user_id: userId,
     read,
@@ -40,7 +42,9 @@ export function record({
     ...(links ? { links } : {}),
     created: {
       app_name: "demo",
-      timestamp: new Date(Date.now() - minutes * 60_000),
+      timestamp: new Date(
+        Date.now() - (ageHours === undefined ? minutes * 60_000 : ageHours * 3_600_000),
+      ),
     },
   };
 }

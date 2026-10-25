@@ -563,7 +563,26 @@ _build.object.assign:
                                   _var:
                                     key: back_link
                                     default: null
-                else: []
+                # A page with no title still shows its page actions: one slim
+                # row at the right edge, above the content.
+                else:
+                  _build.if:
+                    test:
+                      _build.gt:
+                        - _build.array.length:
+                            _var:
+                              key: page_actions
+                              default: []
+                        - 0
+                    then:
+                      - id: page-actions-bar
+                        type: Box
+                        layout:
+                          span: 24
+                          justify: end
+                        blocks:
+                          _var: page_actions
+                    else: []
             # Consumer content
             - _var: blocks
             # App-wide widgets (floating, so position in the tree is immaterial).

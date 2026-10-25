@@ -1,6 +1,12 @@
 import { test, expect } from "../fixtures.js";
 import { COLLECTION, OTHER_USER_ID, USER, record } from "./fixtures.js";
 
+// These specs drive the three-column layout; the list layout has list.spec.js.
+test.skip(
+  process.env.NOTIFICATIONS_LAYOUT === "list",
+  "built with the list layout",
+);
+
 // The inbox: a view narrows the list, and Mark all as read then marks only the
 // signed-in user's unread records in that view.
 

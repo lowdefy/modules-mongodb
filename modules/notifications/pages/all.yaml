@@ -1,5 +1,6 @@
-# The inbox: header, then rail | list | reading pane filling the page under
-# the app header (full_bleed publishes the height left).
+# The inbox. `layout: columns` (default): header, then rail | list | reading
+# pane filling the page under the app header (full_bleed publishes the height
+# left). `layout: list`: one column of rows, tabs and a Filter button.
 _ref:
   module: layout
   component: page
@@ -7,7 +8,19 @@ _ref:
     id: all
     title: Notifications
     hide_title: true
-    full_bleed: true
+    full_bleed:
+      _build.eq:
+        - _module.var: layout
+        - columns
+    page_actions:
+      _build.if:
+        test:
+          _build.eq:
+            - _module.var: layout
+            - list
+        then:
+          - _ref: components/sound-action.yaml
+        else: []
     # The page's own live feed: the shared bell, toast and sound actions, plus a
     # count of new rows for the pill above the list and fresh rail counts. New
     # rows never insert themselves under the cursor.
@@ -82,9 +95,12 @@ _ref:
           type: SetState
           params:
             pagination:
-              pageSize: 1000
+              pageSize:
+                _ref: components/page-size.yaml
               skip: 0
               current: 1
+            expanded: {}
+            custom_dates: false
             filter:
               status: unread
               view: inbox
@@ -117,96 +133,12 @@ _ref:
                           - _state: open_id
                           - null
     blocks:
-      - id: inbox_styles
-        type: Html
-        properties:
-          html:
-            # A leading <style> is hoisted into <head> and dropped by the
-            # sanitiser, so the stylesheet trails an empty element.
-            _string.concat:
-              - "<span></span><style>"
-              - _ref: components/notification-list.css
-              - "</style>"
-      - id: inbox
-        type: Box
-        class:
-          .element: nx-inbox
-        layout:
-          gap: 16
-        blocks:
-          - id: inbox_header
-            type: Box
-            layout:
-              span: 24
-              gap: 12
-              align: bottom
-              justify: space-between
-            blocks:
-              - id: inbox_title
-                type: Html
-                layout:
-                  flex: 1 1 auto
-                properties:
-                  html:
-                    _nunjucks:
-                      template: |
-                        <div class="nx-title"><h1>Notifications</h1><p>{% if loaded %}{% if unread > 0 %}<strong>{{ unread }} unread</strong>{% else %}All caught up{% endif %} · {{ total }} in total{% else %}&nbsp;{% endif %}</p></div>
-                      on:
-                        loaded:
-                          _ne:
-                            - _request: get_notification_facets
-                            - null
-                        unread:
-                          _js:
-                            args:
-                              facets:
-                                _if_none:
-                                  - _request: get_notification_facets
-                                  - []
-                            fn: |
-                              return args.facets.reduce((sum, f) => sum + f.unread, 0);
-                        total:
-                          _js:
-                            args:
-                              facets:
-                                _if_none:
-                                  - _request: get_notification_facets
-                                  - []
-                            fn: |
-                              return args.facets.reduce((sum, f) => sum + f.total, 0);
-              - id: inbox_actions
-                type: Box
-                layout:
-                  flex: 0 0 auto
-                  gap: 16
-                  align: middle
-                blocks:
-                  - id: notifications_sound_toggle
-                    type: NotificationSound
-                    layout:
-                      flex: 0 0 auto
-                    properties:
-                      app:
-                        _build.app: slug
-                      toggle: true
-                      sounds:
-                        _module.var: sounds
-                  - _ref: components/button-mark-all.yaml
-          - id: inbox_panel
-            type: Box
-            class:
-              .element: nx-panel
-            layout:
-              span: 24
-              wrap: nowrap
-            blocks:
-              - id: rail_column
-                type: Box
-                class:
-                  .element: nx-region nx-rail
-                layout:
-                  flex: 0 0 240px
-                blocks:
-                  - _ref: components/rail.yaml
-              - _ref: components/list-column.yaml
-              - _ref: components/area-selected.yaml
+      _build.if:
+        test:
+          _build.eq:
+            - _module.var: layout
+            - list
+        then:
+          _ref: components/layout-list.yaml
+        else:
+          _ref: components/layout-columns.yaml

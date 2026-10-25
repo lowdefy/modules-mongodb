@@ -151,12 +151,52 @@ Legacy (Lambda-era) records coalesce on read: the inbox falls back `description 
 
 The inbox list shows one row per record — the resolved icon in a circle tinted with the colour, title, a two-line ellipsised `preview` (or legacy `description`), time received, an unread dot — styled from the app's Ant Design tokens. The detail panel renders `body` with the email chrome removed — the framework's canvas, card, logo header, signature and footer are hidden and the remaining content (message, metadata, quote, actions, button) takes the app's typography — so a stored email reads as an in-app message under the title and date the panel already shows. The email itself is unchanged.
 
+## The list layout
+
+The three-column inbox is the default. Set `layout: list` for one calm column in place of it: no card and no reading pane, a row opens what it is about. It suits an inbox that fills with a year of rows, where three columns bury the few that matter.
+
+```yaml
+vars:
+  layout: list
+  empty:
+    inbox:
+      unread: Nothing needs your attention.
+    mentions: No one has mentioned you.
+```
+
+What the page shows:
+
+- **Tabs.** `Unread N` and `All N` replace the page title, the "N in total" line and the count line. The counts cover all of the user's notifications, whatever the filter. There is no Read tab.
+- **Filter.** One button holds the views (one list, with no separate Types), the date presets (Today, Last 7 days, Last 30 days, This year) with "Choose dates" behind, and, past about ten notifications, search. It shows how many of the three are set.
+- **Mark all as read** is a text link, hidden when nothing is unread. With a view, search or date set, it names the count it will mark.
+- **Sound** is not in the page. It is the `sound-action` component, passed to the layout page component as a `page_actions` entry. The layout draws a page's actions in a slim row at the right edge when the page hides its title. An app that builds its own page menu can place `_ref: { module: notifications, component: sound-action }` in it.
+- **Rows.** A grey icon from the app's `enums.event_types` entry for the type (a plain bell when it has none), a gold dot at the far left while unread, the title, one preview line, and the date: relative under 7 days ("3 days ago"), "6 May" after. There is no type tag.
+- **Sections.** This week (the last 7 days) and Earlier, each with the true count, newest first. The page loads 25 rows; "Show 25 more of N" adds up to 25 and N is how many are left. Nothing is cut without saying so.
+- **Groups.** Notifications of the same type on the same day become one row ("3 folders stopped syncing") that opens in place and lists them. Give the type a `group_title` in `enums.event_types`, with `{n}` for the count; without one the row reads "<type title> (n)".
+- **Opening a row.** A row with a link target (`data.links.button`, or a legacy record's `links.button`) opens it through the `link` page, as the email link does, which marks it read. A row with no target opens in place only when its body says more than its preview; it shows the body, marks the notification read, and shows one button to the page that fixes it when the type's `enums.event_types` entry has `fix: { title, pageId, query }`. Otherwise the row does not open. **Mark as read** on an unread row reads it without opening.
+- **Empty.** One line per view and tab, from the `empty` var. A view with no entry reads "You're all caught up" under Unread and "No notifications yet" under All.
+- **Phone.** The tabs, the Filter button and the link share the top; rows are one column.
+
+```yaml
+# enums.event_types (the events module's event_types component)
+sync-stopped:
+  title: Folder not syncing
+  icon: FolderSync
+  group_title: "{n} folders stopped syncing"
+  fix:
+    title: Reconnect
+    pageId: connections/all
+```
+
+Rows load with their body, up to 20,000 characters, so a row can open in place. A body that carries an element with a `data-event` attribute cannot fire the list's events: the attribute is removed.
+
 ## Inbox
 
 The `all` page lists the signed-in user's notifications in this app, up to 1000 a page, newest first.
 
 - **Filters.** Unread / All / Read, a date range with presets, a search over title and preview (matched on the server so it covers every page; case-insensitive for ASCII letters, since MongoDB's `$toLower` leaves accented letters as they are), and a view or a single type from the rail.
 - **Mark all as read** marks every unread notification the filters match, across all pages, not only the loaded ones. With a view, type, search or date set, the button names the count it will mark. **Mark as unread** on an open notification sets it back.
+- **Layouts.** This section describes the default three-column layout; [the list layout](#the-list-layout) is the one-column alternative.
 - **Views** group notification types at the top of the rail, such as Mentions. Set them in the `views` var; each lists the type ids it shows, and its count is the sum of their unread counts. With no views the rail shows Inbox and the types the user has.
 
 ```yaml

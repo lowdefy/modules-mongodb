@@ -1,0 +1,19 @@
+# Show 25 more rows: ask for a longer first page of the same filter.
+- id: set_longer_page
+  type: SetState
+  params:
+    pagination:
+      pageSize:
+        _sum:
+          - _state: pagination.pageSize
+          - 25
+      skip: 0
+      current: 1
+- id: fetch_more
+  type: Request
+  params: get_notifications
+- id: set_more_rows
+  type: SetState
+  params:
+    list:
+      _ref: components/list-rows.yaml
