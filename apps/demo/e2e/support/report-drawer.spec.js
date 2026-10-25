@@ -123,7 +123,9 @@ test("open-report opens the drawer with the draft filled in, and Send files the 
 
   // Opened again, the draft is blank except what the action fills in.
   await page.locator("#report_problem").click();
-  await expect(page.getByTestId("support_drawer.message_textarea")).toHaveValue("");
+  await expect(page.getByTestId("support_drawer.message_textarea")).toHaveValue(
+    "",
+  );
 });
 
 test("a refused report keeps the draft in the drawer", async ({
