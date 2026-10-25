@@ -204,7 +204,7 @@ test.describe("user-admin re-invite from an expired invitation", () => {
     await page.getByRole("tab", { name: /Invitations/ }).click();
     await ldf.request("get_all_invitations").expect.toFinish();
     await Promise.all([
-      ldf.waitForPage(/\/user-admin\/invite\?/),
+      page.waitForURL(/\/user-admin\/invite\?/),
       page
         .getByRole("button", { name: "Re-invite" })
         .first()
@@ -216,7 +216,10 @@ test.describe("user-admin re-invite from an expired invitation", () => {
     await page.waitForFunction(
       () => window.lowdefy?.pageId === "user-admin/invite",
     );
-    await ldf.waitForPage(/\/user-admin\/invite\?/);
+    await ldf.waitForPage({
+      pageId: "user-admin/invite",
+      urlQuery: { email },
+    });
     await ldf.block("state_form").expect.visible();
     await ldf.state("roles").expect.toBe(["manager"]);
     await ldf.state("member_attributes").expect.toBe({ team: "gamma" });
