@@ -14,9 +14,6 @@ properties:
           _ref: requests/match-recipient.yaml
         created.app_name:
           _payload: app_name
-    - $match:
-        $expr:
-          _ref: requests/stages/not-action-expr.yaml
     - $group:
         _id:
           $ifNull:

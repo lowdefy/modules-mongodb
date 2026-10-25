@@ -13,6 +13,4 @@ properties:
           _ref: requests/match-recipient.yaml
         created.app_name:
           _payload: app_name
-        $expr:
-          _ref: requests/stages/not-action-expr.yaml
     - $count: total

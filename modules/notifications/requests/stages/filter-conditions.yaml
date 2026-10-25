@@ -1,18 +1,15 @@
 # The inbox filter's conditions on the signed-in user's records: dates, types
 # (a view or a single type, resolved on the client to filter.types) and search.
 # The list matches on them and Mark all as read updates through them, so the
-# two always see the same records, and neither ever sees an action type. Status (read / unread) is not here: the
+# two always see the same records. Status (read / unread) is not here: the
 # list applies it on its own, and mark-all always targets unread.
 #
 # A record's type is `type ?? event_type`: pipeline records store the
 # notification id in `type`, legacy records only `event_type`.
 $and:
   _array.concat:
-    # $and needs at least one clause. The second keeps action types out of
-    # the list and out of Mark all as read.
+    # $and needs at least one clause.
     - - {}
-      - $expr:
-          _ref: requests/stages/not-action-expr.yaml
     - _if:
         test:
           _gt:

@@ -17,8 +17,6 @@
             _ref: requests/match-recipient.yaml
           created.app_name:
             _payload: app_name
-          $expr:
-            _ref: requests/stages/not-action-expr.yaml
       - $sort:
           created.timestamp: -1
       - $limit:

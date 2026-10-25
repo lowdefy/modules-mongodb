@@ -6,9 +6,6 @@
 # deterministically from the type, so types nobody configured still tell apart.
 # Palette entries are Ant Design preset tokens with the default hex as fallback,
 # so they follow the app theme and dark mode.
-# `group_title` ("{n} folders stopped syncing") and `fix` ({ pageId, query,
-# title }, the page that fixes it) are read from the same entry by the list
-# layout.
 # Vars: records — operator resolving to an array of records.
 _js:
   args:
@@ -41,8 +38,6 @@ _js:
           icon: entry.icon ?? 'Bell',
           color: entry.color ?? palette[hash % palette.length],
           title: entry.title ?? null,
-          group_title: entry.group_title ?? null,
-          fix: entry.fix ?? null,
           label:
             entry.title ??
             (String(type).replace(/[-_]+/g, ' ').replace(/^./, (c) => c.toUpperCase()) || 'Notification'),

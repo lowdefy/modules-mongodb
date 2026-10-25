@@ -9,20 +9,6 @@ payload:
     _state: pagination
   app_name:
     _build.app: slug
-  # The list layout shows a row's body in place and groups by day, so it
-  # fetches the body; the columns layout opens it in the pane instead.
-  with_body:
-    _eq:
-      - _module.var: layout
-      - list
-  # Start of "This week": the list layout's section count.
-  week_start:
-    _dayjs:
-      - now
-      - subtract:
-          - 7
-          - days
-      - format: "YYYY-MM-DDTHH:mm:ssZ"
 properties:
   pipeline:
     - $match:
@@ -50,25 +36,6 @@ properties:
               event_type: 1
               read: 1
               created.timestamp: 1
-              data.links.button: 1
-              links.button: 1
-              text_length:
-                $strLenCP:
-                  $ifNull:
-                    - $text
-                    - ""
-              body:
-                $cond:
-                  - $eq:
-                      - _payload: with_body
-                      - true
-                  - $substrCP:
-                      - $ifNull:
-                          - $body
-                          - ""
-                      - 0
-                      - 20000
-                  - $$REMOVE
         total_count:
           - _ref: requests/stages/match-filter-read-status.yaml
           - $count: total
@@ -77,15 +44,4 @@ properties:
         unread_count:
           - $match:
               read: false
-          - $count: total
-        # Rows inside the last 7 days under the same filter, for the list
-        # layout's This week count.
-        week_count:
-          - _ref: requests/stages/match-filter-read-status.yaml
-          - $match:
-              $expr:
-                $gte:
-                  - $created.timestamp
-                  - $toDate:
-                      _payload: week_start
           - $count: total
