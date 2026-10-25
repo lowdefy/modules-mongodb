@@ -65,3 +65,5 @@ _ref:
           path: components/report/report_drawer.yaml.njk
           vars:
             prefix: support_page_report
+            secondary:
+              _module.var: report_secondary
