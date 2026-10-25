@@ -203,9 +203,9 @@ test("resolve-notifications (the summary row's Renew licence) reads the item's n
   });
   await mdb
     .collection(COLLECTION)
-    .insertMany([action("r1", USER.id), action("r2", OTHER_USER_ID)]);
+    .insertMany([action("x1", USER.id), action("x2", OTHER_USER_ID)]);
   await mdb.collection(COLLECTION).insertOne({
-    ...action("r3", USER.id),
+    ...action("x3", USER.id),
     data: { item_id: "lic-2" },
   });
 
@@ -214,13 +214,13 @@ test("resolve-notifications (the summary row's Renew licence) reads the item's n
 
   await expect
     .poll(async () =>
-      (await mdb.collection(COLLECTION).find({ _id: { $in: ["r1", "r2"] } }).toArray())
+      (await mdb.collection(COLLECTION).find({ _id: { $in: ["x1", "x2"] } }).toArray())
         .map((r) => r.read)
         .join(),
     )
     .toBe("true,true");
-  const resolved = await mdb.collection(COLLECTION).findOne({ _id: "r2" });
+  const resolved = await mdb.collection(COLLECTION).findOne({ _id: "x2" });
   expect(resolved.data.resolved.verb).toBe("renewed");
   // Another item's notification is left alone.
-  expect((await mdb.collection(COLLECTION).findOne({ _id: "r3" })).read).toBe(false);
+  expect((await mdb.collection(COLLECTION).findOne({ _id: "x3" })).read).toBe(false);
 });
