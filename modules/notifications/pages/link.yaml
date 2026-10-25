@@ -1,5 +1,58 @@
 id: link
 type: Box
+blocks:
+  # A signed-out recipient whose link carries a sign-in token (sign_in_token
+  # var): one tap trades it for a session and lands on the token's target.
+  - id: token_sign_in
+    type: Box
+    visible:
+      _and:
+        - _eq:
+            - _user: true
+            - null
+        - _module.var: sign_in_token
+        - _ne:
+            - _if_none:
+                - _url_query: token
+                - null
+            - null
+    layout:
+      gap: 16
+    style:
+      maxWidth: 420
+      margin: 64px auto
+      textAlign: center
+    blocks:
+      - id: token_sign_in_button
+        type: Button
+        properties:
+          title:
+            _module.var: sign_in_token_label
+          type: primary
+          size: large
+          block: true
+        events:
+          onClick:
+            try:
+              - id: token_exchange
+                type: SignInWithToken
+                params:
+                  token:
+                    _url_query: token
+            catch:
+              - id: token_fallback_login
+                type: Link
+                params:
+                  pageId: user-account/login
+                  input:
+                    callbackUrl:
+                      pageId:
+                        _module.pageId: link
+                      urlQuery:
+                        _id:
+                          _url_query: _id
+                        option:
+                          _url_query: option
 requests:
   - _ref: requests/get-notification-for-link.yaml
   - _ref: requests/update-selected-notification.yaml
@@ -65,6 +118,24 @@ events:
         error: false
       params:
         throw: true
+    # Signed out with a sign-in token (sign_in_token var): wait for a tap on
+    # the button below. Nothing is exchanged on load.
+    - id: break_token_wait
+      type: Throw
+      messages:
+        error: false
+      params:
+        throw:
+          _and:
+            - _eq:
+                - _user: true
+                - null
+            - _module.var: sign_in_token
+            - _ne:
+                - _if_none:
+                    - _url_query: token
+                    - null
+                - null
     # If unauthenticated + not found, redirect to login with callback
     - id: link_to_login
       type: Link
