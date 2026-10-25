@@ -545,5 +545,5 @@ _ref:
           html:
             _string.concat:
               - 'Already have an account? <a data-page-id="'
-              - _module.pageId: login
+              - _ref: components/sign_in_page_id.yaml
               - '">Sign in</a>'

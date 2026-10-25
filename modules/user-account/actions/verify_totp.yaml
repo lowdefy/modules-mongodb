@@ -48,7 +48,7 @@ catch:
         - INVALID_TWO_FACTOR_COOKIE
     params:
       pageId:
-        _module.pageId: login
+        _ref: components/sign_in_page_id.yaml
   - id: tf_totp_error
     type: DisplayMessage
     skip:

@@ -13,6 +13,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
+| `sign_in_page_id` | string |  |  | Page id of the app's own sign-in page, for an app that points `auth.authPages.signIn` at a page of its own. The module's links back to sign-in (invitation accept, logout, the magic-link landing, verify email, forgot and reset password, signup, the two-factor challenge) go there instead of this module's login page, carrying the same `email` and `callbackUrl` query. Unset, they go to this module's login page. |
 | `login_message` |  | `<p>Welcome. Please sign in to continue.</p>` |  | HTML message shown on the login page. |
 | `signup_message` |  | `<p>Create your account to get started.</p>` |  | HTML message shown on the signup page. |
 | `verify_email_message` |  | `A verification link has been sent to your email. Follow the link to verify your address.` |  | Message shown on the verify-email page (post-signup "check your email" state). |

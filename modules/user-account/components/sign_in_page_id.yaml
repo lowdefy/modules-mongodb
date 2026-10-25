@@ -1,0 +1,12 @@
+# The page every link back to sign-in in this module goes to: the app's own
+# sign-in page when the `sign_in_page_id` var names one, else this module's
+# login page.
+_build.if:
+  test:
+    _build.eq:
+      - _module.var: sign_in_page_id
+      - null
+  then:
+    _module.pageId: login
+  else:
+    _module.var: sign_in_page_id

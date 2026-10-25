@@ -47,7 +47,11 @@ organization, org = app) or `tenant` (the caller's active organization).
   `authPages.error` role: OAuth / magic-link failures redirect here and render as
   a login-page error state (an expired link as a retryable `INVALID_TOKEN`
   notice). A 2FA-enrolled sign-in routes to the `two-factor` page. See
-  [Auth methods](concepts/auth-methods.md).
+  [Auth methods](concepts/auth-methods.md). An app with a sign-in page of its
+  own points `auth.authPages.signIn` (and `signUp`, `error`) at it, the app
+  winning per role, and sets the `sign_in_page_id` var to that page's id so the
+  module's own links back to sign-in (accept, logout, magic-link, verify email,
+  password reset, two-factor) go there too.
 - **Signup** (`signup` page) — built only when `emailAndPassword.enabled`; it
   ships unconditionally under `invite-only` (admission is engine policy, not the
   page's) and with `requireEmailVerification` shows the check-your-email state. It
