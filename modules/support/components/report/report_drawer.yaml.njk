@@ -1,0 +1,24 @@
+# A drawer holding the report form, opened with open-report (or by a button that
+# sets its state and calls setOpen). Its form is a surface of its own, with
+# every id and state key under {{ prefix }}, so it sits beside the panel's.
+#
+# Vars:
+#   prefix     the state and block id prefix of the surface
+#   secondary  blocks the form shows under its composer
+id: {{ prefix }}_drawer
+type: Drawer
+properties:
+  title: Report a problem
+  size: 460
+  destroyOnHidden: false
+blocks:
+  - _ref:
+      path: components/report/report_form.yaml.njk
+      vars:
+        prefix: {{ prefix }}
+        sending: {{ prefix }}_sending
+        drawer: {{ prefix }}_drawer
+        secondary:
+          _var:
+            key: secondary
+            default: []

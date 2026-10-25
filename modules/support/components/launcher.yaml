@@ -86,9 +86,12 @@ slots:
                     view_state: support_view
   content:
     blocks:
-      - id: support_report_context
-        type: SupportContext
-      - _ref: components/report/report_form.yaml
+      - _ref:
+          path: components/report/report_form.yaml.njk
+          vars:
+            prefix: support_report
+            sending: support_sending
+            view_state: support_view
       - id: support_tickets_view
         type: Box
         visible:

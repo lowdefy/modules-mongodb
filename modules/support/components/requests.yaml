@@ -1,5 +1,6 @@
 # For the layout's global_requests: the requests the support panel calls on
-# demand. None runs on page load.
+# demand. None runs on page load. One upload policy for each surface that holds
+# the report form (the panel, the report drawer) and for the panel's replies.
 - _ref:
     path: requests/upload_policy.yaml
     vars:
@@ -8,3 +9,7 @@
     path: requests/upload_policy.yaml
     vars:
       block_id: support_reply_files
+- _ref:
+    path: requests/upload_policy.yaml
+    vars:
+      block_id: support_drawer_files

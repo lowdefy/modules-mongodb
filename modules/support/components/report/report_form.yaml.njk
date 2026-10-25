@@ -1,16 +1,28 @@
-# The New report view: type, title, then the message box with its files and
-# Send. The inputs write under support_report, which Send validates and the
-# module's on-init resets.
-id: support_report_view
+# The report form: type, title, then the message box with its files and Send,
+# and under it the app's own blocks (the `secondary` var). The inputs write under
+# {{ prefix }}, which Send validates and the surface's onInit resets.
+#
+# Vars:
+#   prefix     the state and block id prefix of the surface
+#   sending    the state key that is true while Send runs
+#   drawer     the id of the drawer the form sits in, which Send closes; empty for
+#              the panel
+#   view_state a state key; the form shows only while it is "report" (the panel)
+#   secondary  blocks shown in a row under the composer
+id: {{ prefix }}_view
 type: Box
+{% if view_state %}
 visible:
   _eq:
-    - _state: support_view
+    - _state: {{ view_state }}
     - report
+{% endif %}
 layout:
   gap: 12
 blocks:
-  - id: support_report.type
+  - id: {{ prefix }}_context
+    type: SupportContext
+  - id: {{ prefix }}.type
     type: Selector
     required: true
     properties:
@@ -27,11 +39,11 @@ blocks:
                 __args: 0.label
               value:
                 __args: 0.value
-  - id: support_report_type_description
+  - id: {{ prefix }}_type_description
     type: Paragraph
     visible:
       _ne:
-        - _state: support_report.type
+        - _state: {{ prefix }}.type
         - null
     style:
       marginTop: -8
@@ -49,8 +61,8 @@ blocks:
                 _function:
                   __eq:
                     - __args: 0.value
-                    - _state: support_report.type
-  - id: support_report.title
+                    - _state: {{ prefix }}.type
+  - id: {{ prefix }}.title
     type: TextInput
     required: true
     validate:
@@ -58,7 +70,7 @@ blocks:
           _lte:
             - _string.length:
                 _if_none:
-                  - _state: support_report.title
+                  - _state: {{ prefix }}.title
                   - ""
             - 120
         status: error
@@ -66,8 +78,11 @@ blocks:
     properties:
       title: Title
       placeholder: A short summary
-  - _ref: components/report/report_files.yaml
-  - id: support_report_sends
+  - _ref:
+      path: components/report/report_files.yaml.njk
+      vars:
+        prefix: {{ prefix }}
+  - id: {{ prefix }}_sends
     type: Paragraph
     style:
       marginBottom: 0
@@ -76,7 +91,7 @@ blocks:
       content: >-
         Sending also shares this page's address, your browser details and the
         errors this tab recorded, with the files you attach.
-  - id: support_report.message
+  - id: {{ prefix }}.message
     type: MessageComposer
     required: true
     properties:
@@ -85,44 +100,59 @@ blocks:
       minRows: 4
       maxRows: 10
       submitLabel: Send report
-      s3PostPolicyRequestId: upload_policy_support_report_files
+      s3PostPolicyRequestId: upload_policy_{{ prefix }}_files
       files:
         _if_none:
-          - _state: support_report.files
+          - _state: {{ prefix }}.files
           - []
       loading:
-        _state: support_sending
+        _state: {{ sending }}
     events:
       onUploaded:
-        - id: support_add_file
+        - id: {{ prefix }}_add_file
           type: SetState
           params:
-            support_report.files:
+            {{ prefix }}.files:
               _event: files
-            support_report_error: null
+            {{ prefix }}_error: null
       onRemove:
-        - id: support_remove_file
+        - id: {{ prefix }}_remove_file
           type: SetState
           params:
-            support_report.files:
+            {{ prefix }}.files:
               _event: files
-            support_report_error: null
+            {{ prefix }}_error: null
       onError:
-        - id: support_file_refused
+        - id: {{ prefix }}_file_refused
           type: SetState
           params:
-            support_report_error:
+            {{ prefix }}_error:
               _event: message
       onSubmit:
-        _ref: actions/send_report.yaml
-  - id: support_report_error
+        _ref:
+          path: actions/send_report.yaml.njk
+          vars:
+            prefix: {{ prefix }}
+            sending: {{ sending }}
+            drawer: {{ drawer }}
+  - id: {{ prefix }}_secondary
+    type: Box
+    layout:
+      direction: row
+      align: middle
+      gap: 12
+    blocks:
+      _var:
+        key: secondary
+        default: []
+  - id: {{ prefix }}_error
     type: Alert
     visible:
       _ne:
-        - _state: support_report_error
+        - _state: {{ prefix }}_error
         - null
     properties:
       type: error
       showIcon: true
       message:
-        _state: support_report_error
+        _state: {{ prefix }}_error

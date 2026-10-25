@@ -1,0 +1,20 @@
+# The rows the Support page lists: the loaded tickets of the chosen tab, narrowed
+# by the search when there is one.
+- id: support_list_set_rows
+  type: SetState
+  params:
+    support_list_rows:
+      _js:
+        fn: |
+          const filter = args.filter || {};
+          const search = (filter.search || '').trim().toLowerCase();
+          return (args.tickets || []).filter((ticket) => {
+            const resolved = ticket.stage === 'resolved';
+            if (filter.status === 'resolved' ? !resolved : resolved) return false;
+            return !search || (ticket.title || '').toLowerCase().includes(search);
+          });
+        args:
+          tickets:
+            _state: support_list_tickets
+          filter:
+            _state: support_list_filter

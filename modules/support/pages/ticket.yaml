@@ -11,11 +11,13 @@ _ref:
     title: Ticket
     hide_title: true
     breadcrumbs:
-      - label: My tickets
+      - label: Support
         pageId:
           _module.pageId: support
       - label:
-          _path_params: ticket_key
+          _if_none:
+            - _state: support_page_thread.view.title
+            - _path_params: ticket_key
     # The same live thread the panel uses; the layout keeps one when the app
     # also wires it in global_subscriptions.
     subscriptions:

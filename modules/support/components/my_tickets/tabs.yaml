@@ -1,0 +1,74 @@
+# Open N and Resolved N, and the search once the list is long enough to need
+# one. They set support_list_filter.*, which the rows follow; nothing is fetched
+# again.
+id: support_list_filters
+type: Box
+layout:
+  direction: row
+  align: middle
+  wrap: wrap
+  justify: space-between
+  gap: 8
+style:
+  borderBottom: 1px solid var(--ant-color-border-secondary)
+blocks:
+  - id: support_list_tabs
+    type: ClickableHtml
+    layout:
+      flex: 0 0 auto
+    properties:
+      dataEvents:
+        - onSelect
+      html:
+        _nunjucks:
+          template: |
+            <div role="tablist" style="display: flex; gap: 24px;">
+              {% for tab in tabs %}
+              <button type="button" role="tab" aria-selected="{{ 'true' if tab.key == status else 'false' }}" data-event="onSelect" data-key="{{ tab.key }}" style="cursor: pointer; background: none; border: 0; border-bottom: 2px solid {{ 'var(--ant-color-primary)' if tab.key == status else 'transparent' }}; padding: 8px 0 10px; margin-bottom: -1px; font-weight: {{ 500 if tab.key == status else 400 }}; color: {{ 'inherit' if tab.key == status else 'var(--ant-color-text-secondary)' }};">{{ tab.label }} <span data-tone="secondary">{{ tab.count }}</span></button>
+              {% endfor %}
+            </div>
+          on:
+            status:
+              _state: support_list_filter.status
+            tabs:
+              - key: open
+                label: Open
+                count:
+                  _if_none:
+                    - _state: support_list_counts.open
+                    - 0
+              - key: resolved
+                label: Resolved
+                count:
+                  _if_none:
+                    - _state: support_list_counts.resolved
+                    - 0
+    events:
+      onSelect:
+        _build.array.concat:
+          - - id: support_list_select_tab
+              type: SetState
+              params:
+                support_list_filter.status:
+                  _event: key
+          - _ref: actions/set_list_rows.yaml
+  - id: support_list_filter.search
+    type: TextInput
+    layout:
+      flex: 0 1 240px
+    class:
+      .block: min-w-0
+    visible:
+      _gt:
+        - _array.length:
+            _state: support_list_tickets
+        - 10
+    properties:
+      label:
+        disabled: true
+      placeholder: Search by title
+      prefixIcon: Search
+      allowClear: true
+    events:
+      onChange:
+        _ref: actions/set_list_rows.yaml

@@ -1,0 +1,5 @@
+# Opens the Support page's own report drawer on an empty draft.
+_ref:
+  path: actions/open_report.yaml.njk
+  vars:
+    prefix: support_page_report
