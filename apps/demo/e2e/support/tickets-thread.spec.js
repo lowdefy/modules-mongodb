@@ -247,7 +247,7 @@ test("a reply with an image and a PDF posts and shows its files", async ({
   await expect(page.locator("#support_reply\\.files")).toContainText(
     "export.pdf",
   );
-  await ldf.block("support_reply_send").do.click();
+  await ldf.block("support_reply.message").do.send();
 
   await expect(page.locator("#support_thread_messages")).toContainText(
     "This one, attached.",
@@ -278,7 +278,7 @@ test("a retry answer to a reply keeps the draft", async ({ ldf, page }) => {
   await openMyTickets({ ldf, page });
   await rows(page, "support").first().click();
   await ldf.block("support_reply.message").do.fill("Still failing.");
-  await ldf.block("support_reply_send").do.click();
+  await ldf.block("support_reply.message").do.send();
   await expect(page.locator("#support_reply_error")).toContainText(
     "Something went wrong, try again.",
   );
@@ -508,7 +508,7 @@ test("sending a report opens its thread in the panel", async ({
   await ldf.block("support_report.type").do.select("Bug");
   await ldf.block("support_report.title").do.fill("The export fails");
   await ldf.block("support_report.message").do.fill("Export shows an error.");
-  await ldf.block("support_report_send").do.click();
+  await ldf.block("support_report.message").do.send();
 
   await expect(page.locator("#support_thread_title")).toContainText(
     "Ticket ENC-40",

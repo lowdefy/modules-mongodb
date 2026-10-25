@@ -100,7 +100,7 @@ test("Help files a report with a screenshot, an attached image and the page's co
     "pasted.png",
   );
 
-  await ldf.block("support_report_send").do.click();
+  await ldf.block("support_report.message").do.send();
   // The panel opens the new ticket's thread.
   await expect(page.locator("#support_thread_title")).toContainText(
     "The export fails",
@@ -167,7 +167,7 @@ test("a retry or unavailable answer keeps the draft and sends nothing again", as
     "kept.png",
   );
 
-  await ldf.block("support_report_send").do.click();
+  await ldf.block("support_report.message").do.send();
   await expect(page.locator("#support_report_error")).toContainText(
     "Something went wrong, try again in 30 seconds.",
   );
@@ -187,7 +187,7 @@ test("a retry or unavailable answer keeps the draft and sends nothing again", as
     status: 401,
     body: { error: { code: "unauthorized", message: "Unknown key." } },
   }));
-  await ldf.block("support_report_send").do.click();
+  await ldf.block("support_report.message").do.send();
   await expect(page.locator("#support_report_error")).toContainText(
     "Support is unavailable right now.",
   );
@@ -204,7 +204,7 @@ test("a fix answer shows Pelican's message", async ({ ldf, page }) => {
   }));
   await openForm({ ldf, page });
   await fillDraft({ ldf });
-  await ldf.block("support_report_send").do.click();
+  await ldf.block("support_report.message").do.send();
   await expect(page.locator("#support_report_error")).toContainText(
     "Send images or PDFs only.",
   );
@@ -215,7 +215,7 @@ test("an incomplete draft is not sent", async ({ ldf, page }) => {
   await ldf.user(USER);
   await openForm({ ldf, page });
   await ldf.block("support_report.title").do.fill("No type or description");
-  await ldf.block("support_report_send").do.click();
+  await ldf.block("support_report.message").do.send();
   await expect(
     page.getByText("Your input has 2 validation errors"),
   ).toBeVisible();
@@ -251,7 +251,7 @@ test("a user with no organisation sees Help and files with organization null", a
   pelican.answer(() => ({ status: 200, body: createdView }));
   await openForm({ ldf, page });
   await fillDraft({ ldf });
-  await ldf.block("support_report_send").do.click();
+  await ldf.block("support_report.message").do.send();
   await expect(page.locator("#support_thread_title")).toContainText(
     "The export fails",
   );
