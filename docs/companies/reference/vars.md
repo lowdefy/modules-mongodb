@@ -66,7 +66,7 @@ Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `table_columns` |  | `[]` |  | Extra column definitions appended to the companies list table. |
+| `table_columns` |  | `[]` |  | Extra `Table` block columns (`{ key, title, type?, cell?, options?, width? }`) appended to the companies list table. |
 | `filters` |  | `[]` |  | Extra filter blocks rendered below the built-in search bar on the companies list page. Pair with `filter_requests` for custom data sources. |
 | `main_slots` |  | `[]` |  | Extra blocks appended to the main column on the company-detail page. |
 | `sidebar_slots` |  | `[]` |  | Extra blocks appended to the sidebar column on the company-detail page. |

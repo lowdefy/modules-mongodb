@@ -206,7 +206,7 @@ test.describe("user-admin re-invite from an expired invitation", () => {
     await Promise.all([
       ldf.waitForPage(/\/user-admin\/invite\?/),
       page
-        .locator('.ag-row [col-id="action_reinvite"]', { hasText: "Re-invite" })
+        .getByRole("button", { name: "Re-invite" })
         .first()
         .click(),
     ]);
