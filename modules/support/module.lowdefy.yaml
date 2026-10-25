@@ -133,6 +133,14 @@ vars:
       The agent tools send a file the user attached in the chat only when its
       key starts with it, since the browser builds the chat request. Null (the
       default) sends no chat files.
+  report_secondary:
+    type: array
+    default: []
+    description: >-
+      Blocks shown under the report form's composer in the Support page's
+      report drawer, such as a way to the app's own assistant or a line on
+      when it is unavailable. The report-drawer component takes its own
+      `secondary` var.
 
 exports:
   pages:
