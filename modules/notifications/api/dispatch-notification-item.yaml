@@ -9,8 +9,6 @@
 #   cc, bcc: [string]              optional
 #   popup: boolean                 optional — default false; true also toasts
 #   links.*, <template dataKeys>   optional — { pageId, pathParams?, urlQuery?, input? } page links
-#   sign_in_tokens: { name: token } optional — sign-in tokens the template puts on its
-#                                  links; in the email only, never stored (below)
 #   ...everything else is template data
 id: dispatch-notification-item
 type: InternalApi
@@ -64,38 +62,6 @@ routine:
       recordId:
         _state: record_id
 
-  # A sign-in token is a credential: it goes out in the email and nowhere
-  # else. The stored record keeps the item without `sign_in_tokens`, and a
-  # body and text with every token cut out of their links, so reading the
-  # collection (or the inbox) never yields a usable token. A drain retry
-  # sends the stored body, whose links then go through the ordinary sign-in.
-  - :set_state:
-      stored:
-        _js:
-          fn: |
-            const tokens = Object.values(args.tokens || {}).filter((t) => typeof t === 'string' && t !== '');
-            const redact = (value) => {
-              if (typeof value !== 'string') return value;
-              let out = value;
-              tokens.forEach((t) => {
-                out = out.split(`&amp;token=${t}`).join('').split(`&token=${t}`).join('').split(t).join('');
-              });
-              return out;
-            };
-            const { sign_in_tokens: _tokens, ...data } = args.item || {};
-            return { data, body: redact(args.html), text: redact(args.text), preview: redact(args.preview) };
-          args:
-            tokens:
-              _payload: item.sign_in_tokens
-            item:
-              _payload: item
-            html:
-              _step: render.html
-            text:
-              _step: render.text
-            preview:
-              _step: render.preview
-
   # Insert BEFORE sending — claims the dedup key so concurrent dispatches
   # cannot double-send. Requires the app-managed unique partial index on
   # `key` (see the module docs, Required indexes) — without it duplicate
@@ -141,17 +107,16 @@ routine:
             title:
               _step: render.title
             preview:
-              _state: stored.preview
+              _step: render.preview
             body:
-              _state: stored.body
+              _step: render.html
             text:
-              _state: stored.text
-            # Store the ORIGINAL item (less its sign-in tokens) — the link page reads
-            # { pageId, pathParams, urlQuery } targets back out of data at the
-            # ?option dot-path. Never store the render result's data (its links
-            # point back at the landing page).
+              _step: render.text
+            # Store the ORIGINAL item — the link page reads { pageId, pathParams, urlQuery }
+            # targets back out of data at the ?option dot-path. Never store the
+            # render result's data (its links point back at the landing page).
             data:
-              _state: stored.data
+              _payload: item
             send_email:
               _if_none:
                 - _payload: item.send_email
