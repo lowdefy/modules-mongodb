@@ -149,7 +149,7 @@ _ref:
                 id: release_notes
                 icon: document
                 title: Release Notes
-                description: Changelog rendered from CHANGELOG.md.
+                description: The notes the team announces from Pelican, with an unread launcher.
                 pageId:
                   _module.pageId:
                     module: release-notes
