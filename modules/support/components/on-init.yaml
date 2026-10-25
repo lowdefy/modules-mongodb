@@ -16,6 +16,7 @@ params:
   support_reply.files: []
   support_sending: false
   support_report_error: null
+  support_report_open: false
   support_report.type: null
   support_report.title: null
   support_report.message: null
@@ -30,4 +31,5 @@ params:
   support_drawer.files: []
   support_drawer_extra: null
   support_drawer_error: null
+  support_drawer_open: false
   support_drawer_sending: false

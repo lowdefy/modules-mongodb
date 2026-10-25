@@ -35,6 +35,7 @@ _ref:
             support_page_report.files: []
             support_page_report_extra: null
             support_page_report_error: null
+            support_page_report_open: false
             support_page_report_sending: false
       onMount:
         _build.array.concat:

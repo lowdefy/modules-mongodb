@@ -33,9 +33,14 @@ properties:
   width: 420
   expandable: false
 events:
-  # Opening the panel on My tickets refreshes what it shows.
+  # Opening the panel on My tickets refreshes what it shows. The report form's
+  # checks hold only while the panel is open.
   onOpen:
     _build.array.concat:
+      - - id: support_report_opened
+          type: SetState
+          params:
+            support_report_open: true
       - _ref:
           path: actions/open_tickets.yaml.njk
           vars:
@@ -45,12 +50,17 @@ events:
           path: actions/open_thread.yaml.njk
           vars:
             prefix: support
-  # A closed panel holds no change stream.
+  # A closed panel holds no change stream, and its report form checks nothing.
   onClose:
-    _ref:
-      path: actions/leave_live_thread.yaml.njk
-      vars:
-        prefix: support
+    _build.array.concat:
+      - - id: support_report_closed
+          type: SetState
+          params:
+            support_report_open: false
+      - _ref:
+          path: actions/leave_live_thread.yaml.njk
+          vars:
+            prefix: support
 slots:
   toolbar:
     blocks:

@@ -196,6 +196,8 @@ global_blocks:
 
 `open-report` takes four optional vars, each a value or a runtime operator resolved when the action runs: `type` (one of the `types` var's values), `title`, `body` (the message) and `context` (an object sent in the ticket's context under `extra`, after the `context` var). It clears the draft, fills the fields it names and opens the drawer. Nothing calls a model: Send files the ticket straight to the support desk, exactly as the panel's report form does, with the same page, browser and error context. After a successful Send the drawer closes and a message says the report is sent.
 
+The report form's fields are required only while its drawer or panel is open. A page's own `Validate` with no `params` therefore passes over the closed form, so mounting the drawer on every page leaves the page's Save and Create buttons working.
+
 The Support page's own report drawer shows the blocks of the `report_secondary` var under its composer, in the same place.
 
 The drawer needs the `requests` and `on-init` components wired as for the help button; they declare its upload policy and reset its draft. Its form is a surface of its own, so it sits beside the help button's panel without sharing a draft.

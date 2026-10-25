@@ -11,6 +11,18 @@ properties:
   title: Report a problem
   size: 460
   destroyOnHidden: false
+# The form's checks hold only while the drawer is open.
+events:
+  onOpen:
+    - id: {{ prefix }}_opened
+      type: SetState
+      params:
+        {{ prefix }}_open: true
+  onClose:
+    - id: {{ prefix }}_closed
+      type: SetState
+      params:
+        {{ prefix }}_open: false
 blocks:
   - _ref:
       path: components/report/report_form.yaml.njk

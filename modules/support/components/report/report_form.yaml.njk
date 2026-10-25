@@ -2,6 +2,11 @@
 # and under it the app's own blocks (the `secondary` var). The inputs write under
 # {{ prefix }}, which Send validates and the surface's onInit resets.
 #
+# The form sits in a drawer or panel mounted on every page, closed most of the
+# time. Its checks hold only while the surface is open ({{ prefix }}_open, which
+# the surface sets on open and close), so a page's own Validate with no params
+# passes over a closed form instead of failing on its empty fields.
+#
 # Vars:
 #   prefix     the state and block id prefix of the surface
 #   sending    the state key that is true while Send runs
@@ -24,7 +29,10 @@ blocks:
     type: SupportContext
   - id: {{ prefix }}.type
     type: Selector
-    required: true
+    required:
+      _eq:
+        - _state: {{ prefix }}_open
+        - true
     properties:
       title: Type
       placeholder: What is this about?
@@ -64,15 +72,22 @@ blocks:
                     - _state: {{ prefix }}.type
   - id: {{ prefix }}.title
     type: TextInput
-    required: true
+    required:
+      _eq:
+        - _state: {{ prefix }}_open
+        - true
     validate:
       - pass:
-          _lte:
-            - _string.length:
-                _if_none:
-                  - _state: {{ prefix }}.title
-                  - ""
-            - 120
+          _or:
+            - _ne:
+                - _state: {{ prefix }}_open
+                - true
+            - _lte:
+                - _string.length:
+                    _if_none:
+                      - _state: {{ prefix }}.title
+                      - ""
+                - 120
         status: error
         message: Keep the title to 120 characters.
     properties:
@@ -93,7 +108,10 @@ blocks:
         errors this tab recorded, with the files you attach.
   - id: {{ prefix }}.message
     type: MessageComposer
-    required: true
+    required:
+      _eq:
+        - _state: {{ prefix }}_open
+        - true
     properties:
       placeholder: What happened, and what did you expect?
       maxLength: 4000
