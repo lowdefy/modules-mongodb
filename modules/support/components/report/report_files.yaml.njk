@@ -1,39 +1,41 @@
 # The report's screenshot: a picture of the page behind the panel, uploaded
-# through the module's upload policy and added to support_report.files, which
+# through the module's upload policy and added to {{ prefix }}.files, which
 # the report's message box lists with the images and PDFs dropped or pasted
-# into it. Five files in all.
-id: support_report_files_box
+# into it. Five files in all. The panel and any open drawer are left out of the
+# picture.
+id: {{ prefix }}_files_box
 type: Box
 blocks:
-  - id: support_report_screenshot
+  - id: {{ prefix }}_screenshot
     type: SupportScreenshot
     properties:
-      s3PostPolicyRequestId: upload_policy_support_report_files
+      s3PostPolicyRequestId: upload_policy_{{ prefix }}_files
       hideSelectors:
         - "#support_panel"
+        - ".ant-drawer-root"
       maskSelectors:
         _module.var: mask_selectors
       disabled:
         _gte:
           - _array.length:
               _if_none:
-                - _state: support_report.files
+                - _state: {{ prefix }}.files
                 - []
           - 5
     events:
       onUse:
-        - id: support_add_screenshot
+        - id: {{ prefix }}_add_screenshot
           type: SetState
           params:
-            support_report.files:
+            {{ prefix }}.files:
               _array.concat:
                 - _if_none:
-                    - _state: support_report.files
+                    - _state: {{ prefix }}.files
                     - []
                 - - _event: file
       onError:
-        - id: support_screenshot_failed
+        - id: {{ prefix }}_screenshot_failed
           type: SetState
           params:
-            support_report_error:
+            {{ prefix }}_error:
               _event: message

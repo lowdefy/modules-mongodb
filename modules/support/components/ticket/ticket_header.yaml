@@ -1,5 +1,6 @@
-# The ticket page's header: the title, and under it the key, type and stage with
-# when the ticket was opened and last changed. Shown once the ticket has loaded.
+# The ticket page's header: the title, and under it one line: the stage with its
+# icon, the type, when the ticket was opened and its key. Shown once the ticket
+# has loaded.
 id: support_page_thread_header
 type: Box
 visible:
@@ -7,7 +8,7 @@ visible:
     - _state: support_page_thread
     - null
 layout:
-  gap: 8
+  gap: 4
 blocks:
   - id: support_page_thread_title
     type: Title
@@ -23,23 +24,18 @@ blocks:
       html:
         _nunjucks:
           template: |
-            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px;">
-              <strong>{{ key }}</strong>
-              {% if stage %}<span data-tag="{{ stage.tag }}">{{ stage.label }}</span>{% endif %}
-              {% if type_label %}<span data-tag="default">{{ type_label }}</span>{% endif %}
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px 16px;">
+              {% if stage %}<span style="display: inline-flex; align-items: center; gap: 6px;{% if stage.color %} color: {{ stage.color }};{% endif %}"><i data-icon="{{ stage.icon }}"></i><span{% if not stage.color %} data-tone="secondary"{% endif %}>{{ stage.label }}</span></span>{% endif %}
+              {% if type_label %}<span data-tone="secondary">{{ type_label }}</span>{% endif %}
+              {% if created %}<span data-tone="secondary">Opened {{ created | date('D MMM') }}</span>{% endif %}
               {% if organization %}<span data-tone="secondary">{{ organization }}</span>{% endif %}
-            </div>
-            <div data-tone="secondary" style="margin-top: 4px;">
-              {% if created %}Opened {{ created | date('D MMM YYYY, HH:mm') }}{% endif %}
-              {%- if updated %}, last activity <time datetime="{{ updated }}" data-time="relative"></time>{% endif %}
+              <span data-tone="secondary">{{ key }}</span>
             </div>
           on:
             key:
               _state: support_page_thread.view.key
             created:
               _state: support_page_thread.view.created
-            updated:
-              _state: support_page_thread.view.updated
             organization:
               _state: support_page_thread.organization.name
             stage:

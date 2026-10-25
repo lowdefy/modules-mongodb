@@ -12,6 +12,10 @@ _ref:
     requests:
       _ref: modules/ai-assistant/attachment_requests.yaml
     events:
+      onMount:
+        - id: fetch_awaiting_reply_count
+          type: Request
+          params: get_awaiting_reply_count
       onInit:
         # The docked assistant's state contract — required on any page that
         # mounts the module's panel.
@@ -41,6 +45,37 @@ _ref:
               component: open-with-prompt
               vars:
                 prompt: Give me a short tour of the modules in this demo app, and say which one to open first.
+
+      # The support module's open-report: opens the report form in a drawer
+      # with a draft filled in, and shows how many tickets wait for a reply.
+      - id: report_problem
+        type: Button
+        properties:
+          title: Report a problem
+          icon: LifeBuoy
+          type: default
+        events:
+          onClick:
+            _ref:
+              module: support
+              component: open-report
+              vars:
+                type: bug
+                title: Something is wrong on the home page
+                context:
+                  opened_from: home
+      - id: awaiting_reply
+        type: Paragraph
+        properties:
+          type: secondary
+          content:
+            _nunjucks:
+              template: "Tickets waiting for your reply: {{ total }}"
+              on:
+                total:
+                  _if_none:
+                    - _request: get_awaiting_reply_count.0.total
+                    - 0
 
       - id: module_cards
         type: Masonry

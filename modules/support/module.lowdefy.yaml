@@ -138,8 +138,9 @@ exports:
   pages:
     - id: support
       description: >-
-        My tickets: every ticket the user has, open and resolved, with a search
-        box and status and type filters, at /{entry id}/support
+        Support: every ticket the user has, as Open and Resolved tabs of rows
+        with a state icon and word, and a Report a problem button that opens the
+        report form in a drawer, at /{entry id}/support
     - id: ticket
       description: >-
         One ticket, its conversation and the reply composer, at
@@ -173,6 +174,27 @@ exports:
         The browser's details and the tab's recent errors, for the app's agent's
         shared state under the key support_context, so a ticket the agent files
         carries what the report form sends
+    - id: report-drawer
+      description: >-
+        The report form in a drawer, for the layout's global_blocks. open-report
+        opens it; it needs no help button and no model, so a person can report a
+        problem while the app's assistant is unavailable. Takes an optional
+        `secondary` var: blocks shown under the form's composer, such as a link
+        to the app's own assistant
+    - id: open-report
+      description: >-
+        An action list that opens the report drawer with a draft filled in, for
+        a button's onClick on a page that mounts report-drawer. Takes the vars
+        `type`, `title`, `body` and `context`, each a value or a runtime
+        operator resolved when the action runs; `context` is an object sent in
+        the ticket's context under `extra`
+    - id: get-awaiting-reply-count
+      description: >-
+        A request, get_awaiting_reply_count: the signed-in person's tickets that
+        wait for their reply, in the organisation they are in. Declare it on a
+        page or among the layout's global_requests, fire it with a Request
+        action and read
+        `_request: get_awaiting_reply_count.0.total` for a menu item's count
   connections:
     - id: support_pelican
       description: Pelican's support API, authorised with the support app's key
@@ -198,7 +220,9 @@ exports:
         File a ticket for the session user from the report form, with files
         they uploaded
     - id: post-message
-      description: Post the session user's message, with files, on one of their tickets
+      description: >-
+        Post the session user's message, with files, on one of their tickets,
+        and mark the ticket's support-reply notifications read
     - id: send-ticket
       description: >-
         Internal: file a ticket with checked input; the core of create-ticket
@@ -256,6 +280,15 @@ components:
   - id: agent-context
     component:
       _ref: components/agent-context.yaml
+  - id: report-drawer
+    component:
+      _ref: components/report-drawer.yaml
+  - id: open-report
+    component:
+      _ref: components/open-report.yaml
+  - id: get-awaiting-reply-count
+    component:
+      _ref: components/get-awaiting-reply-count.yaml
 
 pages:
   - _ref: pages/support.yaml

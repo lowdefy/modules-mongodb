@@ -1,0 +1,16 @@
+# For the layout's global_blocks: the report drawer that open-report opens. It
+# holds the report form and needs no help button, so an app that sets
+# launcher.show to false still lets people report a problem. Pair with the
+# requests and on-init components.
+#
+# Vars:
+#   secondary  blocks shown under the form's composer, such as a link to the
+#              app's own assistant
+_ref:
+  path: components/report/report_drawer.yaml.njk
+  vars:
+    prefix: support_drawer
+    secondary:
+      _var:
+        key: secondary
+        default: []

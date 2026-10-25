@@ -1,8 +1,9 @@
 # Opening My tickets: fetch the user's tickets from Pelican into the copy and
 # list them. A failed fetch still lists the stored tickets, with a notice. The
 # organisation shows on each row only when the rows carry more than one. Each
-# row gets its stage's label and tag from enums/stages.yaml and its type's label
-# from the types var.
+# row gets its stage's label, tag, icon and colour from enums/stages.yaml and its
+# type's label from the types var. {{ prefix }}_counts holds how many are open
+# and how many resolved.
 #
 # Vars:
 #   prefix      the state and block id prefix of the surface
@@ -42,6 +43,8 @@
               ...ticket,
               stage_label: stage ? stage.label : null,
               stage_tag: stage ? stage.tag : null,
+              stage_icon: stage ? stage.icon : null,
+              stage_color: stage ? stage.color : null,
               type_label: type ? type.label : ticket.type || null,
               show_organization: organizations.size > 1,
             };
@@ -53,6 +56,15 @@
             _ref: enums/stages.yaml
           types:
             _module.var: types
+    {{ prefix }}_counts:
+      _js:
+        fn: |
+          const tickets = args.tickets || [];
+          const resolved = tickets.filter((ticket) => ticket.stage === 'resolved').length;
+          return { open: tickets.length - resolved, resolved };
+        args:
+          tickets:
+            _actions: {{ prefix }}_sync_tickets.response.response.tickets
     {{ prefix }}_tickets_error:
       _if:
         test:

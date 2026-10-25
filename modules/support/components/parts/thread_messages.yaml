@@ -1,4 +1,5 @@
-# A stored view's messages as ChatThread takes them. A removed message keeps
+# A stored view's messages as ChatThread takes them. The signed-in person wrote
+# every reporter message, so their name shows as "You". A removed message keeps
 # its place as "Removed", with no files. Pelican names no file type, so a file
 # is an image unless its name ends in .pdf.
 #
@@ -11,7 +12,14 @@ _js:
     return (args.messages || []).map((message) => ({
       _id: message.id,
       author_type: message.from,
-      author: { name: message.author ? message.author.name : null },
+      author: {
+        name:
+          message.from === 'reporter'
+            ? 'You'
+            : message.author
+              ? message.author.name
+              : null,
+      },
       body: message.deleted ? 'Removed' : message.text,
       attachments: message.deleted
         ? []

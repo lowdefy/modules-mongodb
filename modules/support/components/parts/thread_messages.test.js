@@ -70,6 +70,21 @@ test("a removed message keeps its place as Removed, with no files", () => {
   expect(message.seq).toBe("2026-10-07T09:05:00.000Z");
 });
 
+test("the signed-in person's own messages are named You", () => {
+  const [message] = map([
+    {
+      id: "m3",
+      from: "reporter",
+      author: { name: "Ann" },
+      at: "2026-10-07T09:10:00.000Z",
+      text: "Thanks",
+      files: [],
+      deleted: false,
+    },
+  ]);
+  expect(message.author).toEqual({ name: "You" });
+});
+
 test("no messages map to none", () => {
   expect(map(null)).toEqual([]);
 });

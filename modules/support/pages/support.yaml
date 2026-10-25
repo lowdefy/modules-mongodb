@@ -1,26 +1,41 @@
-# My tickets: every ticket the user has, open and resolved, newest activity
-# first, with a search box and filters. A row opens the ticket page (ticket.yaml).
+# Support: every ticket the user has, newest activity first, as Open and
+# Resolved tabs of calm rows. A row opens the ticket page (ticket.yaml); the
+# page's own drawer holds the report form, so a person can report a problem
+# from here whether or not the app has a help button or an assistant.
 _ref:
   module: layout
   component: page
   vars:
     id: support
-    title: My tickets
+    title: Support
+    hide_title: true
     content_width: 960
     breadcrumbs:
       - label: Support
-      - label: My tickets
+    requests:
+      - _ref:
+          path: requests/upload_policy.yaml
+          vars:
+            block_id: support_page_report_files
     events:
       onInit:
         - id: support_list_init
           type: SetState
           params:
             support_list_tickets: []
+            support_list_rows: []
+            support_list_counts: null
             support_list_tickets_error: null
             support_list_loaded: false
             support_list_filter.search: null
             support_list_filter.status: open
-            support_list_filter.type: null
+            support_page_report.type: null
+            support_page_report.title: null
+            support_page_report.message: null
+            support_page_report.files: []
+            support_page_report_extra: null
+            support_page_report_error: null
+            support_page_report_sending: false
       onMount:
         _build.array.concat:
           # The ticket page may have left its live thread open.
@@ -36,11 +51,17 @@ _ref:
               type: SetState
               params:
                 support_list_loaded: true
+          - _ref: actions/set_list_rows.yaml
     blocks:
       - id: support_list_column
         type: Box
         layout:
           gap: 16
         blocks:
-          - _ref: components/my_tickets/filters.yaml
+          - _ref: components/my_tickets/header.yaml
+          - _ref: components/my_tickets/tabs.yaml
           - _ref: components/my_tickets/list.yaml
+      - _ref:
+          path: components/report/report_drawer.yaml.njk
+          vars:
+            prefix: support_page_report

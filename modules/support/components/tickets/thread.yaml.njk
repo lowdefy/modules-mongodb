@@ -105,17 +105,16 @@ blocks:
     properties:
       type: secondary
       content: Loading the conversation…
-  - id: {{ prefix }}_thread_notice
-    type: Alert
-    visible:
-      _ne:
-        - _state: {{ prefix }}_thread_error
-        - null
-    properties:
-      type: warning
-      showIcon: true
-      message:
-        _state: {{ prefix }}_thread_error
+  - _ref:
+      path: components/parts/sync_notice.yaml.njk
+      vars:
+        id: {{ prefix }}_thread_notice
+        error_state: {{ prefix }}_thread_error
+        retry:
+          _ref:
+            path: actions/open_thread.yaml.njk
+            vars:
+              prefix: {{ prefix }}
   - id: {{ prefix }}_thread_messages
     type: ChatThread
     visible:

@@ -1,24 +1,123 @@
-# The tickets as dense rows, filtered by support_list_filter.*. A dot and a bold
-# title mark a ticket with a team message the user has not read; a row opens its
-# ticket page.
+# The tickets as calm rows, filtered by support_list_filter.*: a state icon and
+# its word, the title and when it last changed. A bold title marks a ticket that
+# waits for the user's reply or has a team message they have not read; a row
+# opens its ticket page. With nothing to list it says what to do instead.
 id: support_list_box
 type: Box
 layout:
   gap: 12
 blocks:
-  - id: support_list_notice
-    type: Alert
+  - _ref:
+      path: components/parts/sync_notice.yaml.njk
+      vars:
+        id: support_list_notice
+        error_state: support_list_tickets_error
+        retry:
+          _build.array.concat:
+            - _ref:
+                path: actions/open_tickets.yaml.njk
+                vars:
+                  prefix: support_list
+            - _ref: actions/set_list_rows.yaml
+  - id: support_list_empty
+    type: Box
     visible:
-      _ne:
-        - _state: support_list_tickets_error
-        - null
-    properties:
-      type: warning
-      showIcon: true
-      message:
-        _string.concat:
-          - "Showing your saved tickets. "
-          - _state: support_list_tickets_error
+      _and:
+        - _eq:
+            - _state: support_list_loaded
+            - true
+        - _eq:
+            - _array.length:
+                _state: support_list_tickets
+            - 0
+    layout:
+      gap: 12
+    style:
+      padding: 32px 0
+    blocks:
+      - id: support_list_empty_title
+        type: Title
+        style:
+          marginBottom: 0
+        properties:
+          level: 4
+          content: Tell us what went wrong
+      - id: support_list_empty_text
+        type: Paragraph
+        style:
+          marginBottom: 0
+        properties:
+          type: secondary
+          content: Reports and the replies to them show here.
+      - id: support_list_empty_report
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Report a problem
+          type: primary
+        events:
+          onClick:
+            _ref: actions/open_page_report.yaml
+  - id: support_list_none_here
+    type: Box
+    visible:
+      _and:
+        - _gt:
+            - _array.length:
+                _state: support_list_tickets
+            - 0
+        - _eq:
+            - _array.length:
+                _state: support_list_rows
+            - 0
+    layout:
+      direction: row
+      align: middle
+      wrap: wrap
+      gap: 4
+    blocks:
+      - id: support_list_none_text
+        type: Paragraph
+        layout:
+          flex: 0 0 auto
+        style:
+          marginBottom: 0
+        properties:
+          type: secondary
+          content:
+            _if:
+              test:
+                _eq:
+                  - _state: support_list_filter.status
+                  - open
+              then: Nothing open.
+              else: Nothing resolved yet.
+      - id: support_list_show_other
+        type: Button
+        layout:
+          flex: 0 0 auto
+        visible:
+          _eq:
+            - _state: support_list_filter.status
+            - open
+        properties:
+          title:
+            _nunjucks:
+              template: "Show resolved {{ n }}."
+              on:
+                n:
+                  _state: support_list_counts.resolved
+          type: link
+          size: small
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: support_list_show_resolved
+                  type: SetState
+                  params:
+                    support_list_filter.status: resolved
+              - _ref: actions/set_list_rows.yaml
   - id: support_list_tickets
     type: ListSelector
     loading:
@@ -32,61 +131,19 @@ blocks:
       theme:
         bodyPaddingSM: 10
         borderRadiusLG: 8
-      noData:
-        _js:
-          fn: |
-            if (!args.total) {
-              return args.help_button
-                ? 'No tickets yet. Report a problem with the Help button and it shows here.'
-                : 'No tickets yet.';
-            }
-            if (args.status === 'open' && !args.search && !args.type) return 'No open tickets. Choose All to see resolved ones.';
-            return 'No tickets match. Change the search or the filters.';
-          args:
-            # An app with the help button off (launcher.show: false) has its
-            # own way in, so the empty list does not point at the button.
-            help_button:
-              _module.var: launcher.show
-            total:
-              _array.length:
-                _state: support_list_tickets
-            status:
-              _state: support_list_filter.status
-            search:
-              _state: support_list_filter.search
-            type:
-              _state: support_list_filter.type
+      noData: ""
       data:
-        _js:
-          fn: |
-            const filter = args.filter || {};
-            const search = (filter.search || '').trim().toLowerCase();
-            return (args.tickets || []).filter((ticket) => {
-              if (filter.type && ticket.type !== filter.type) return false;
-              if (filter.status === 'open' && ticket.stage === 'resolved') return false;
-              if (filter.status === 'resolved' && ticket.stage !== 'resolved') return false;
-              if (!search) return true;
-              return [ticket.title, ticket.key].some(
-                (text) => (text || '').toLowerCase().includes(search),
-              );
-            });
-          args:
-            tickets:
-              _state: support_list_tickets
-            filter:
-              _state: support_list_filter
+        _state: support_list_rows
       html: |
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; cursor: pointer;">
-          <div style="flex: 1 1 260px; min-width: 0; display: flex; align-items: center; gap: 10px;">
-            <span style="flex: 0 0 8px;">{% if item.unread %}<span data-status="processing" data-tooltip="New reply from the team" aria-label="New reply from the team"></span>{% endif %}</span>
-            <span data-tone="secondary" style="flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;">{{ item.key }}</span>
-            <div data-truncate="1" style="flex: 1 1 0; min-width: 0; font-weight: {% if item.unread %}700{% else %}500{% endif %};">{{ item.title }}</div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; cursor: pointer;">
+          <div style="flex: 1 1 220px; min-width: 0; display: flex; align-items: center; gap: 12px;">
+            <span style="flex: none; display: inline-flex;{% if item.stage_color %} color: {{ item.stage_color }};{% else %} opacity: 0.6;{% endif %}">{% if item.stage_icon %}<i data-icon="{{ item.stage_icon }}"></i>{% endif %}</span>
+            <div data-truncate="1" style="flex: 1 1 0; min-width: 0; font-weight: {% if item.unread or item.stage == 'needs_your_reply' %}700{% else %}400{% endif %};">{{ item.title }}</div>
           </div>
-          <div style="flex: 0 1 auto; min-width: 0; margin-left: auto; display: flex; align-items: center; gap: 12px; padding-left: 18px;">
-            {% if item.show_organization and item.organization %}<span data-tone="secondary" data-truncate="1" style="flex: 0 1 120px; width: 120px; min-width: 0;">{{ item.organization.name }}</span>{% endif %}
-            <span data-tone="secondary" data-truncate="1" style="flex: 0 1 104px; width: 104px; min-width: 0;">{{ item.type_label }}</span>
-            <span style="flex: 0 1 112px; width: 112px; min-width: max-content;">{% if item.stage_label %}<span data-tag="{{ item.stage_tag }}">{{ item.stage_label }}</span>{% endif %}</span>
-            <time data-tone="secondary" datetime="{{ item.updated }}" data-time="relative" style="flex: none; width: 128px; overflow: hidden; text-overflow: ellipsis; text-align: right; white-space: nowrap;"></time>
+          <div style="flex: none; margin-left: auto; padding-left: 28px; display: flex; align-items: center; gap: 12px;">
+            {% if item.show_organization and item.organization %}<span data-tone="secondary" data-truncate="1" style="max-width: 120px;">{{ item.organization.name }}</span>{% endif %}
+            <span data-tone="secondary" style="white-space: nowrap;">{{ item.stage_label }}</span>
+            <time data-tone="secondary" datetime="{{ item.updated }}" data-time="relative" style="min-width: 96px; text-align: right; white-space: nowrap;"></time>
           </div>
         </div>
     events:
