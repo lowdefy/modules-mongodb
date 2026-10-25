@@ -1,0 +1,1 @@
+{% for r in value %}<span data-tag="{{ 'warning' if r.orphan else 'default' }}"{% if r.orphan %} data-tooltip="Role no longer in the app's role catalogue"{% endif %}>{% if r.orphan %}⚑ {% endif %}{{ r.label }}</span> {% endfor %}

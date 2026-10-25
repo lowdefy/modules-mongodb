@@ -132,7 +132,7 @@ vars:
     properties:
       table_columns:
         default: []
-        description: Extra column definitions appended to the companies list table.
+        description: Extra `Table` block columns (`{ key, title, type?, cell?, options?, width? }`) appended to the companies list table.
       filters:
         default: []
         description: >-

@@ -45,14 +45,15 @@ that collects the field:
 
 One vocabulary across manifest var, form state path, row key, table column and
 export column — nothing to opt into and nothing to remember. Dotted paths work in
-both places: AgGrid resolves a `field:` path natively, and `DownloadXlsx` resolves
+both places: the `Table` block resolves a column `field:` path natively, and `DownloadXlsx` resolves
 each `value:` through `get(row, value)`.
 
 ```yaml
 components:
   table_columns:
-    - headerName: Department
+    - key: department
       field: profile.department
+      title: Department
       width: 140
   download_columns:
     - column: department
@@ -150,8 +151,9 @@ request_stages:
         email_verified: "$user.email_verified"
 components:
   table_columns:
-    - headerName: Verified
-      field: email_verified
+    - key: email_verified
+      title: Verified
+      type: boolean
       width: 110
 ```
 

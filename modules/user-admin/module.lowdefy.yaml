@@ -169,8 +169,9 @@ vars:
         type: array
         default: []
         description: >-
-          Extra AgGrid column definitions appended to the Members list table. A
-          column's `field:` binds a key on the shared members row. The three
+          Extra `Table` columns appended to the Members list table. A column is
+          `{ key, title, type?, cell?, options?, width? }` as the `Table` block
+          defines it. A column's `field:` (default: its `key`) binds a key on the shared members row. The three
           configurable bags ride under the same names as the `fields.*` vars, so
           `field: profile.department` is the same path as the form block id that
           collects it. See the row contract reference for the full bindable key
