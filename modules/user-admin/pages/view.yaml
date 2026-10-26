@@ -127,6 +127,7 @@ _ref:
           - _ref: components/view/modal_access.yaml
           - _ref: components/view/modal_global.yaml
           - _ref: components/view/modal_suspend.yaml
+          - _ref: components/view/modal_reinstate.yaml
         - _build.if:
             test:
               _module.var: remove_member

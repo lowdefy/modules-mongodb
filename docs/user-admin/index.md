@@ -87,7 +87,10 @@ cancel / expire       │
 confirm dialog enumerates the user's other memberships so the admin sees the
 blast radius. This rests on the deployment premise that the pinned suite is
 administered by one trusted operator group; it sits behind the `suspension` var
-(default on). **Remove from app** (`RemoveMember`) is the app-scoped alternative.
+(default on). Once a user is suspended, the Security tile offers **Reinstate access**
+in place of Suspend. It lifts the ban (`UnbanUser`), so the user can sign in to every
+app they belong to again, with their roles as they were.
+**Remove from app** (`RemoveMember`) is the app-scoped alternative.
 **Delete login identity** is offered only when the user holds no other memberships.
 
 Remove from app deletes the member row, so the person's roles and member
