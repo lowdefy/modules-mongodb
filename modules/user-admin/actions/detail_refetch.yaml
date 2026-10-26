@@ -1,6 +1,7 @@
 # Re-hydrate the user detail page after a tile edit or security action succeeds.
-# Refetches every read so title/status, tiles, sessions, providers and the
-# cross-app membership count all reflect the write.
+# Refetches every read so title/status, tiles, sessions, providers, the
+# cross-app membership count and the Activity timeline (the events module's
+# `get-events`) all reflect the write.
 - id: refetch_detail
   type: Request
   params:
@@ -8,3 +9,4 @@
     - get_user_sessions
     - get_user_accounts
     - get_user_memberships
+    - get-events

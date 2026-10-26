@@ -1,0 +1,47 @@
+# Reinstate confirm modal. UnbanUser (Decision 4), the reversible counterpart to
+# modal_suspend. The ban is on the whole account, so lifting it restores sign-in
+# to every app the person belongs to, not just this one.
+id: modal_reinstate
+type: Modal
+properties:
+  title:
+    _nunjucks:
+      template: "Reinstate {{ name }}?"
+      on:
+        name:
+          _request: get_user_detail.0.name
+  width: 480
+  okText: Reinstate access
+  cancelText: Cancel
+events:
+  onOk:
+    _build.array.concat:
+      - - id: reinstate_user
+          type: CallAPI
+          messages:
+            loading: Reinstating…
+            success: Access reinstated.
+          params:
+            endpointId:
+              _module.endpointId: reinstate
+            payload:
+              user_id:
+                _request: get_user_detail.0.user_id
+              target_name:
+                _request: get_user_detail.0.name
+              target_email:
+                _request: get_user_detail.0.email
+      - _ref: actions/detail_refetch.yaml
+blocks:
+  - id: reinstate_message
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            <div style="font-size:13.5px; color:var(--ant-color-text-secondary);">
+              Reinstating lets <b>{{ name }}</b> sign in again. The suspension was on their whole account, so this restores sign-in to <b>every app they belong to</b>. Their roles were kept while they were suspended. They need to sign in again.
+            </div>
+          on:
+            name:
+              _request: get_user_detail.0.name

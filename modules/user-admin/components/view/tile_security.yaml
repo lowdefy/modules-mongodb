@@ -33,8 +33,10 @@ _ref:
               gap: 8
             blocks:
               _build.array.concat:
-                # Suspend. Behind the suspension var (Decision 4). Permanent,
-                # suite-wide ban; opens the blast-radius confirm (modal_suspend).
+                # Suspend, or Reinstate once the user is banned. Behind the
+                # suspension var (Decision 4). Suspend is a permanent, suite-wide
+                # ban that opens the blast-radius confirm (modal_suspend);
+                # Reinstate lifts it (modal_reinstate).
                 - _build.if:
                     test:
                       _module.var: suspension
@@ -43,6 +45,10 @@ _ref:
                         type: Tooltip
                         layout:
                           flex: 0 0 auto
+                        visible:
+                          _ne:
+                            - _request: get_user_detail.0.banned
+                            - true
                         properties:
                           title:
                             _if:
@@ -70,6 +76,41 @@ _ref:
                                   type: CallMethod
                                   params:
                                     blockId: modal_suspend
+                                    method: toggleOpen
+                      - id: reinstate_tooltip
+                        type: Tooltip
+                        layout:
+                          flex: 0 0 auto
+                        visible:
+                          _eq:
+                            - _request: get_user_detail.0.banned
+                            - true
+                        properties:
+                          title:
+                            _if:
+                              test:
+                                _gt:
+                                  - _array.length:
+                                      _if_none:
+                                        - _request: get_user_memberships
+                                        - []
+                                  - 0
+                              then: Lets this user sign in to every app they belong to again.
+                              else: Lets this user sign in again.
+                        blocks:
+                          - id: reinstate_btn
+                            type: Button
+                            layout:
+                              flex: 0 0 auto
+                            properties:
+                              title: Reinstate access
+                              variant: outlined
+                            events:
+                              onClick:
+                                - id: open_reinstate_modal
+                                  type: CallMethod
+                                  params:
+                                    blockId: modal_reinstate
                                     method: toggleOpen
                     else: []
                 # Remove from app. Behind the remove_member var.
