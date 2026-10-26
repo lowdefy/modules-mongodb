@@ -45,10 +45,13 @@ _ref:
                         type: Tooltip
                         layout:
                           flex: 0 0 auto
+                        # `_eq false`, not `_ne true`: neither button shows
+                        # until the detail read lands, so a banned user's page
+                        # never offers Suspend while loading.
                         visible:
-                          _ne:
+                          _eq:
                             - _request: get_user_detail.0.banned
-                            - true
+                            - false
                         properties:
                           title:
                             _if:
