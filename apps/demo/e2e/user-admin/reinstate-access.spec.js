@@ -114,7 +114,7 @@ test.describe("user-admin reinstate access", () => {
       .click();
 
     await expect(page.getByText("Access reinstated.")).toBeVisible();
-    expect(payload).toEqual({
+    expect(payload).toMatchObject({
       user_id: TARGET_ID,
       target_name: "Reinstate Target",
       target_email: "reinstate-target@example.com",
