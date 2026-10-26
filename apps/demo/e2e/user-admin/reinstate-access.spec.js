@@ -80,21 +80,33 @@ test.describe("user-admin reinstate access", () => {
     ).toBeVisible();
   });
 
-  test("confirming calls reinstate and the page switches back to Active", async ({
+  test("confirming calls reinstate and the page and Activity update without a reload", async ({
     ldf,
     mdb,
     page,
   }) => {
     await seedTarget(mdb, true);
 
-    // Stand in for the endpoint: record its payload and lift the ban the way
-    // UnbanUser would, so the page's refetch reads the reinstated user.
+    // Stand in for the endpoint: record its payload, lift the ban the way
+    // UnbanUser would and log the audit event the routine writes, so the
+    // page's refetch reads the reinstated user and the new event.
+    const eventTitle = "Reinstate Admin reinstated Reinstate Target";
     let payload = null;
     await page.route("**/api/endpoints/user-admin/reinstate", async (route) => {
       payload = JSON.parse(route.request().postData()).payload;
       await mdb
         .collection("users")
         .updateOne({ _id: TARGET_ID }, { $set: { banned: false } });
+      await mdb.collection("log-events").insertOne({
+        _id: "e2e-reinstate-event",
+        type: "user-reinstated",
+        user_ids: [TARGET_ID],
+        created: {
+          timestamp: new Date(),
+          user: { id: ADMIN.id, name: ADMIN.name },
+        },
+        demo: { title: eventTitle, description: null },
+      });
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -106,6 +118,8 @@ test.describe("user-admin reinstate access", () => {
     await ldf.request("get_user_detail").expect.toFinish();
     const pill = blockLocator(page, "title-status-pill").first();
     await expect(pill).toHaveText("Suspended");
+    await ldf.request("get-events").expect.toFinish();
+    await expect(page.getByText(eventTitle)).toHaveCount(0);
 
     await ldf.block("reinstate_btn").do.click();
     await page
@@ -122,5 +136,6 @@ test.describe("user-admin reinstate access", () => {
     await ldf.block("suspend_btn").expect.visible();
     await expect(blockLocator(page, "reinstate_btn").first()).toBeHidden();
     await expect(pill).toHaveText("Active");
+    await expect(page.getByText(eventTitle)).toBeVisible();
   });
 });
