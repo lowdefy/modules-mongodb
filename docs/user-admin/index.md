@@ -244,7 +244,7 @@ contributes. Neither has a default.
 # lowdefy.yaml
 modules:
   - id: user-admin
-    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1.3.0"
     vars:
       # Required. The organization this surface administers — the same slug as this
       # app's own `auth.organizations.org` for the app's own users.
@@ -263,7 +263,7 @@ modules:
   # source, two entries, two `org_slug` values. Auto-scoping keeps them apart —
   # `customer-user-admin/all` beside `user-admin/all`.
   - id: customer-user-admin
-    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1.3.0"
     vars:
       org_slug: customer-portal
       app_title: Customer

@@ -22,9 +22,9 @@ slug: ops-app
 
 modules:
   - id: contacts
-    source: "github:lowdefy/modules-mongodb/modules/contacts@v1.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/contacts@v1.3.0"
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v1.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v1.3.0"
 ```
 
 Modules read it directly with the `_build.app: slug` operator. No module takes an app-name var — `activities`, `companies`, `contacts`, `deals`, `notifications`, and `workflows` all scope themselves off the app's own slug.

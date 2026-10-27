@@ -1,5 +1,5 @@
 name: Support
-version: 1.2.0
+version: 1.3.0
 description: >-
   The reporter's side of the Pelican support desk: a signed-in user reports a
   problem and chats with the team. Tickets live in Pelican; the app keeps a copy
@@ -318,4 +318,4 @@ secrets:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.2.0"
+    version: "^1.3.0"
