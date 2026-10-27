@@ -47,7 +47,7 @@ To extend the stamp (e.g. add `app_name` to track which app produced the write),
 
 ```yaml
 - id: events
-  source: "github:lowdefy/modules-mongodb/modules/events@v1.3.0"
+  source: "github:lowdefy/modules-mongodb/modules/events@v1.4.0"
   vars:
     change_stamp:
       timestamp:
