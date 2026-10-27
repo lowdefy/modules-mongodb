@@ -8,7 +8,8 @@ import buildCsv from "../analytics/buildCsv.js";
  * Params:
  *   data     — array of row objects (typically { _api: '<endpoint>.response' }).
  *   filename — download filename; defaults to export.csv.
- *   columns  — optional column order; defaults to the first row's keys.
+ *   columns  — optional column order; defaults to every row's keys, in the
+ *              order they first appear.
  */
 async function DownloadAnalyticsCsv({ params }) {
   const { data, filename = "export.csv", columns } = params ?? {};
