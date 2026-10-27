@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## 1.3.0
+
 ## 1.2.0
 
 ### Patch Changes
