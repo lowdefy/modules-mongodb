@@ -1,4 +1,4 @@
-# The inbox: header, then rail | list | reading pane filling the page under
+# The inbox: an actions row, then rail | list | reading pane filling the page under
 # the app header (full_bleed publishes the height left).
 _ref:
   module: layout
@@ -134,46 +134,16 @@ _ref:
         layout:
           gap: 16
         blocks:
+          # The crumb names the page and the rail counts unread, so the
+          # header row carries only the page's actions.
           - id: inbox_header
             type: Box
             layout:
               span: 24
               gap: 12
-              align: bottom
-              justify: space-between
+              align: middle
+              justify: end
             blocks:
-              - id: inbox_title
-                type: Html
-                layout:
-                  flex: 1 1 auto
-                properties:
-                  html:
-                    _nunjucks:
-                      template: |
-                        <div class="nx-title"><h1>Notifications</h1><p>{% if loaded %}{% if unread > 0 %}<strong>{{ unread }} unread</strong>{% else %}All caught up{% endif %} · {{ total }} in total{% else %}&nbsp;{% endif %}</p></div>
-                      on:
-                        loaded:
-                          _ne:
-                            - _request: get_notification_facets
-                            - null
-                        unread:
-                          _js:
-                            args:
-                              facets:
-                                _if_none:
-                                  - _request: get_notification_facets
-                                  - []
-                            fn: |
-                              return args.facets.reduce((sum, f) => sum + f.unread, 0);
-                        total:
-                          _js:
-                            args:
-                              facets:
-                                _if_none:
-                                  - _request: get_notification_facets
-                                  - []
-                            fn: |
-                              return args.facets.reduce((sum, f) => sum + f.total, 0);
               - id: inbox_actions
                 type: Box
                 layout:
@@ -205,7 +175,7 @@ _ref:
                 class:
                   .element: nx-region nx-rail
                 layout:
-                  flex: 0 0 240px
+                  flex: 0 0 216px
                 blocks:
                   - _ref: components/rail.yaml
               - _ref: components/list-column.yaml

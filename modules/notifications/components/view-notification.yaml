@@ -7,17 +7,11 @@ blocks:
       .element: nx-pane-header
     layout:
       gap: 12
+      align: top
     blocks:
+      # Shown by the stylesheet only while the list and pane take turns.
       - id: pane_back
         type: Button
-        visible:
-          _or:
-            - _eq:
-                - _media: size
-                - xs
-            - _eq:
-                - _media: size
-                - sm
         layout:
           span: 24
         properties:
@@ -33,8 +27,9 @@ blocks:
                 pane_open: false
       - id: pane_title
         type: Html
+        # Mark as unread wraps under the title rather than squeeze it.
         layout:
-          flex: 1 1 0
+          flex: 1 1 280px
         style:
           minWidth: 0
         properties:
@@ -43,9 +38,10 @@ blocks:
               template: |
                 <div class="nx-pane-head">
                   <span class="nx-icon nx-icon--lg" style="--c: {{ appearance.color }}"><i data-icon="{{ appearance.icon }}"></i></span>
-                  <div>
+                  <div class="nx-pane-titles">
                     <h2>{{ notification.title }}</h2>
-                    <div class="nx-pane-meta"><span data-tag="{{ appearance.color }}">{{ appearance.label }}</span><time datetime="{{ received }}" data-time="D MMM YYYY, HH:mm"></time><span>·</span><time datetime="{{ received }}" data-time="relative"></time></div>
+                    {% if appearance.label and appearance.label != notification.title %}<div class="nx-pane-tag"><span data-tag="{{ appearance.color }}">{{ appearance.label }}</span></div>{% endif %}
+                    {% if received %}<div class="nx-pane-meta"><time datetime="{{ received }}" data-time="D MMM YYYY, HH:mm"></time> · <time datetime="{{ received }}" data-time="relative"></time></div>{% endif %}
                   </div>
                 </div>
               on:
