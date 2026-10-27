@@ -2,6 +2,16 @@
 # (user row + its member/invitation/session/account rows); the contact ALWAYS
 # survives (contact soft-delete stays the contacts-side convention).
 #
+# The surviving contact is unlinked from the deleted user (`user_id` unset), the
+# way a foreign key with ON DELETE SET NULL would: DeleteUser leaves app-owned
+# data alone, and a contact still naming a deleted user can never be claimed, so
+# a re-invited person could sign in but never save their profile. The unlink
+# runs before the delete, so a delete that fails or is refused leaves a contact
+# the existing user claims again on their next sign-in, never a link to a
+# missing user.
+# Under `policy: tenant` the walled connection reaches only this organization's
+# contact.
+#
 # GUARDED: offered only when the user holds NO OTHER memberships, and the routine
 # RE-CHECKS server-side before deleting. App A's admin must not destroy an
 # identity app B depends on. The check counts member rows in any organization
@@ -65,6 +75,26 @@ routine:
             match:
               user_id:
                 _payload: user_id
+      # `$unset`, not null: the `user_id` index is unique and partial on
+      # `$exists`, so a stored null would collide with the next unlinked contact.
+      # No match is legitimate: a contact that was never claimed has no link.
+      - id: unlink_contact
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: user-contacts-collection
+        properties:
+          filter:
+            user_id:
+              _payload: user_id
+          update:
+            $unset:
+              user_id: ""
+            $set:
+              updated:
+                _ref:
+                  module: events
+                  component: change_stamp
+          disableNoMatchError: true
       - id: delete
         type: DeleteUser
         properties:
