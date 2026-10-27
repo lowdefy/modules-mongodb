@@ -96,9 +96,9 @@ app they belong to again, with their roles as they were.
 Remove from app deletes the member row, so the person's roles and member
 attributes go with it. Delete login removes the user id that other records may be
 keyed on, and a re-invite creates a new one. The person's contact stays, with its
-`user_id` unset, so after a re-invite their first sign-in claims it by address,
-as it does for any invitee. Under `policy: tenant` only the contact in the
-organization the instance administers is unlinked. In an app whose people carry history
+`user_id` unset, so after a re-invite their onboarding profile save claims it by
+address, as it does for any invitee. A delete that is refused leaves the contact
+linked. In an app whose people carry history
 or settings on those rows, set `remove_member: false` and `delete_user: false`:
 each hides its button and confirm modal and makes its endpoint (`remove-member`,
 `delete-user`) reject, the same shape as `suspension: false` on `suspend` /

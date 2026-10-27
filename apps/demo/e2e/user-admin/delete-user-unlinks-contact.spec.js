@@ -3,12 +3,14 @@ import { test, expect } from "../fixtures.js";
 // Delete login identity keeps the person's contact. A contact still naming the
 // deleted user can never be claimed, so when the person is re-invited they sign
 // in under a new user id and onboarding finds no contact to save. delete-user
-// therefore unsets the contact's `user_id`, and the re-invited person's first
-// profile save claims the contact by address.
+// therefore unsets the contact's `user_id` once DeleteUser has run, and the
+// re-invited person's profile save claims the contact by address.
 //
-// Both routines then run an auth step (`DeleteUser`, and the profile re-denorm
-// onto the user row) that the e2e server does not run, so the endpoints answer
-// with an error and these specs check the contact, which is written first.
+// DeleteUser, and the profile re-denorm onto the user row, are auth steps the
+// e2e server does not run, so those endpoints answer with an error at that step.
+// That makes a failed delete observable here, but not a successful one: the
+// first spec checks a delete that fails leaves the contact linked, and the
+// second starts from the unlinked contact a successful delete leaves behind.
 
 const DELETED_ID = "e2e-deleted-login";
 const REINVITED_ID = "e2e-reinvited-login";
@@ -30,14 +32,29 @@ const REINVITED = {
   roles: [],
 };
 
-async function callEndpoint(page, entryId, endpointId, payload) {
-  await page.request.post(`/api/endpoints/${entryId}/${endpointId}`, {
+const CONTACT = {
+  _id: CONTACT_ID,
+  email: EMAIL,
+  lowercase_email: EMAIL,
+  profile: {
+    given_name: "Deleted",
+    family_name: "Login",
+    name: "Deleted Login",
+  },
+};
+
+function callEndpoint(page, entryId, endpointId, payload) {
+  return page.request.post(`/api/endpoints/${entryId}/${endpointId}`, {
     data: { payload },
   });
 }
 
 test.describe("user-admin delete login identity", () => {
-  test.beforeEach(async ({ ldf, mdb }) => {
+  test("a delete that fails leaves the contact linked", async ({
+    page,
+    ldf,
+    mdb,
+  }) => {
     await mdb.seed("users", [
       {
         _id: DELETED_ID,
@@ -56,50 +73,30 @@ test.describe("user-admin delete login identity", () => {
         created_at: new Date(),
       },
     ]);
-    await mdb.seed("user-contacts", [
-      {
-        _id: CONTACT_ID,
-        email: EMAIL,
-        lowercase_email: EMAIL,
-        user_id: DELETED_ID,
-        profile: {
-          given_name: "Deleted",
-          family_name: "Login",
-          name: "Deleted Login",
-        },
-      },
-    ]);
+    await mdb.seed("user-contacts", [{ ...CONTACT, user_id: DELETED_ID }]);
     await ldf.user(ADMIN);
-  });
 
-  test("delete-user unsets the contact's user_id and stamps the change", async ({
-    page,
-    mdb,
-  }) => {
-    await callEndpoint(page, "user-admin", "delete-user", {
+    const response = await callEndpoint(page, "user-admin", "delete-user", {
       user_id: DELETED_ID,
       target_name: "Deleted Login",
       target_email: EMAIL,
     });
+    const body = await response.json().catch(() => null);
+    expect(body?.success).toBe(false);
 
     const contact = await mdb
       .collection("user-contacts")
       .findOne({ _id: CONTACT_ID });
-    expect(contact).not.toHaveProperty("user_id");
-    expect(contact.updated.user.id).toBe(ADMIN.id);
+    expect(contact.user_id).toBe(DELETED_ID);
+    expect(contact).not.toHaveProperty("updated");
   });
 
-  test("a re-invited person can save their profile after their login was deleted", async ({
+  test("a re-invited person claims the contact a deleted login left unlinked", async ({
     page,
     ldf,
     mdb,
   }) => {
-    await callEndpoint(page, "user-admin", "delete-user", {
-      user_id: DELETED_ID,
-      target_name: "Deleted Login",
-      target_email: EMAIL,
-    });
-
+    await mdb.seed("user-contacts", [CONTACT]);
     await mdb.seed("users", [{ _id: REINVITED_ID, email: EMAIL, name: "" }]);
     await ldf.user(REINVITED);
 

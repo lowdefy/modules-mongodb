@@ -2,7 +2,7 @@
 "@lowdefy/modules-mongodb-user-admin": patch
 ---
 
-**A person whose login identity was deleted can now be re-invited and save their profile.** user-admin's Delete login identity hard-deleted the user row but left the person's contact pointing at the deleted user id. When an admin re-invited the person, they signed in under a new user id, and onboarding stopped with "We couldn't save your profile": the contact could not be claimed, because the claim only takes a contact with no `user_id`. `delete-user` now unsets `user_id` on the person's contact, stamped with `updated`, before it deletes the login, so the re-invited person's first sign-in claims the contact by address. Under `policy: tenant` it unlinks only the contact in the organization the instance administers.
+**A person whose login identity was deleted can now be re-invited and save their profile.** user-admin's Delete login identity hard-deleted the user row but left the person's contact pointing at the deleted user id. When an admin re-invited the person, they signed in under a new user id, and onboarding stopped with "We couldn't save your profile": the contact could not be claimed, because the claim only takes a contact with no `user_id`. Once the login is deleted, `delete-user` now unsets `user_id` on the person's contact, stamped with `updated`, so the re-invited person's onboarding profile save claims the contact by address. A delete that is refused leaves the contact linked.
 
 Nothing to change in config to upgrade; upgrade every module and `@lowdefy/modules-mongodb-plugins` together, as always. Contacts that an earlier delete left linked stay stuck until their `user_id` is unset. To find them, list the contacts whose `user_id` names no user:
 

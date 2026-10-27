@@ -6,11 +6,8 @@
 # way a foreign key with ON DELETE SET NULL would: DeleteUser leaves app-owned
 # data alone, and a contact still naming a deleted user can never be claimed, so
 # a re-invited person could sign in but never save their profile. The unlink
-# runs before the delete, so a delete that fails or is refused leaves a contact
-# the existing user claims again on their next sign-in, never a link to a
-# missing user.
-# Under `policy: tenant` the walled connection reaches only this organization's
-# contact.
+# runs after the delete: DeleteUser is where the engine authorizes the caller
+# and the target, so a delete it refuses must leave the contact untouched.
 #
 # GUARDED: offered only when the user holds NO OTHER memberships, and the routine
 # RE-CHECKS server-side before deleting. App A's admin must not destroy an
@@ -75,6 +72,13 @@ routine:
             match:
               user_id:
                 _payload: user_id
+      - id: delete
+        type: DeleteUser
+        properties:
+          userId:
+            _payload: user_id
+          organizationId:
+            _module.var: org_slug
       # `$unset`, not null: the `user_id` index is unique and partial on
       # `$exists`, so a stored null would collide with the next unlinked contact.
       # No match is legitimate: a contact that was never claimed has no link.
@@ -95,13 +99,6 @@ routine:
                   module: events
                   component: change_stamp
           disableNoMatchError: true
-      - id: delete
-        type: DeleteUser
-        properties:
-          userId:
-            _payload: user_id
-          organizationId:
-            _module.var: org_slug
       - id: audit
         type: CallApi
         properties:
