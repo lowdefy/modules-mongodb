@@ -96,7 +96,8 @@ vars:
         description: >-
           'dark' gives the header the public folder's dark logo variants
           (`logo-dark-theme.png`, `logo-square-dark-theme.png`) unless the page
-          passes its own `logo`, a dark menu, and light header icons. Set the
+          passes its own `logo`, a dark menu, and light header text and
+          icons. Set the
           header background with `style`, and antd's `Menu` `darkItemBg` and
           `darkPopupBg` tokens in the app theme to match it.
       style:

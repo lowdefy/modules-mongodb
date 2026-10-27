@@ -176,24 +176,19 @@ _build.object.assign:
                     _module.var: page_type
               - header-menu
           then:
-            _module.var: header.style
-          else: null
-      # The bell and the other header icons take their colour from this container.
-      .headerActions:
-        _build.if:
-          test:
-            _build.and:
-              - _build.eq:
-                  - _module.var: header.theme
-                  - dark
-              - _build.eq:
-                  - _var:
-                      key: page_type
-                      default:
-                        _module.var: page_type
-                  - header-menu
-          then:
-            color: var(--ant-color-text-light-solid)
+            # The header icons and header blocks inherit this colour.
+            _build.object.assign:
+              - _build.if:
+                  test:
+                    _build.eq:
+                      - _module.var: header.theme
+                      - dark
+                  then:
+                    color: var(--ant-color-text-light-solid)
+                  else: {}
+              - _build.if_none:
+                  - _module.var: header.style
+                  - {}
           else: null
       # Override the content area's own style — the page block defaults it to
       # `padding: 0 40px 40px 40px`. Merged over that default, so `{}` (the default)

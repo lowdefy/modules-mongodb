@@ -64,7 +64,7 @@ Header look for every page with page_type 'header-menu'. Ignored for 'sider-menu
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `theme` | string | `light` |  | 'dark' gives the header the public folder's dark logo variants (`logo-dark-theme.png`, `logo-square-dark-theme.png`) unless the page passes its own `logo`, a dark menu, and light header icons. Set the header background with `style`, and antd's `Menu` `darkItemBg` and `darkPopupBg` tokens in the app theme to match it. Enum: `light`, `dark` |
+| `theme` | string | `light` |  | 'dark' gives the header the public folder's dark logo variants (`logo-dark-theme.png`, `logo-square-dark-theme.png`) unless the page passes its own `logo`, a dark menu, and light header text and icons. Set the header background with `style`, and antd's `Menu` `darkItemBg` and `darkPopupBg` tokens in the app theme to match it. Enum: `light`, `dark` |
 | `style` | object |  |  | Inline style object applied to the header (mapped to the `.header` cssKey on the page block), such as its background. |
 
 ### `global_events`
