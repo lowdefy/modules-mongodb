@@ -18,7 +18,6 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `sider_closed_blocks` | array | `[]` |  | Blocks rendered in the PageSidebarLayout siderClosed slot (shown when collapsed). Only used when page_type is 'sidebar'. |
 | `sider_storage_key` | string | `layout-sider` |  | localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist). |
 | `menu` | object |  |  | Menu config passed to the page block. When unset, the page falls back to the app's "default" menu (resolved client-side via `_menu`). |
-| `header` | object | `{}` |  | Page block header properties: { theme, contentStyle } |
 | `global_blocks` | array | `[]` |  | Blocks appended after the consumer content on EVERY page that uses the page component — for app-wide floating widgets (an assistant launcher, a help beacon). Pair with `global_requests` for any requests they need and `global_events.onInit` for their state contract. |
 | `global_requests` | array | `[]` |  | Requests declared on every page for `global_blocks` to use. Unlike `header_extra.requests` these are NOT auto-fired on mount — they are on-demand (e.g. upload/download policies a block calls itself). |
 | `global_subscriptions` | array | `[]` |  | Websocket subscriptions declared on every page for `global_blocks` to use, such as a widget's live channel. A page that declares a subscription to the same websocket through the page component's `subscriptions` var keeps its own, so the page holds one. |
@@ -30,6 +29,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `profile_menu_id` | string | `profile` |  | Id of the app-level menu used for the profile dropdown. Menu links are filtered server-side by page access (auth.pages.roles). The app must register a menu with this id in its menus list.  |
 | `sider` | object | `{}` |  | Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only. Ignored for page_type 'header-menu' (PageHeaderMenu has no sider). |
 | `logo` | object |  |  | Logo config for the auth page and header logo style override. The page header logo follows the Lowdefy public-folder convention — drop `logo-light-theme.png` / `logo-dark-theme.png` (and the `logo-square-*-theme.png` variants for mobile) into the app's `public/` folder and the page block auto-swaps between light/dark variants based on dark mode. |
+| `header` | object | `{}` |  | Header look for every page with page_type 'header-menu'. Ignored for 'sider-menu' and 'sidebar'. |
 | `global_events` | object | `{}` |  | Module-entry actions spliced into EVERY page that uses the page component — the module-level counterpart of the per-page `events` var. Use for app-wide guards (e.g. an onboarding gate that redirects until the caller's org is set up) so no page has to opt in. |
 | `header_extra` | object |  |  | Header customization: { blocks, requests } |
 | `auth_page` | object |  |  | Auth page overrides: { cover_background, card_style, max_width, logo_max_width } |
@@ -57,6 +57,15 @@ Logo config for the auth page and header logo style override. The page header lo
 | `primary_dark` |  | `/logo-dark-theme.png` |  | Logo rendered on the auth-page cover (always-dark background). |
 | `primary` |  | `/logo-light-theme.png` |  | Logo rendered in the auth-page brand panel and mobile auth view. |
 | `style` |  |  |  | Inline style object applied to the header logo (mapped to the `.logo` cssKey on the page block). |
+
+### `header`
+
+Header look for every page with page_type 'header-menu'. Ignored for 'sider-menu' and 'sidebar'.
+
+| Name | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `theme` | string | `light` |  | 'dark' gives the header the public folder's dark logo variants (`logo-dark-theme.png`, `logo-square-dark-theme.png`) unless the page passes its own `logo`, a dark menu, and light header icons. Set the header background with `style`, and antd's `Menu` `darkItemBg` and `darkPopupBg` tokens in the app theme to match it. Enum: `light`, `dark` |
+| `style` | object |  |  | Inline style object applied to the header (mapped to the `.header` cssKey on the page block), such as its background. |
 
 ### `global_events`
 

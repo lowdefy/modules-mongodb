@@ -113,6 +113,27 @@ _build.object.assign:
                     key: breadcrumbs
                     default: []
             else: {}
+        # Assigned before the per-page logo below, so a page's own logo wins over the dark
+        # variants.
+        - _build.if:
+            test:
+              _build.and:
+                - _build.eq:
+                    - _module.var: header.theme
+                    - dark
+                - _build.eq:
+                    - _var:
+                        key: page_type
+                        default:
+                          _module.var: page_type
+                    - header-menu
+            then:
+              logo:
+                src: /logo-dark-theme.png
+                srcMobile: /logo-square-dark-theme.png
+              menuLg:
+                theme: dark
+            else: {}
         # A per-page logo replaces the public-folder logo on this page only. Omitted when
         # unset, since an explicit null fails the page block's object schema.
         - _build.if:
@@ -145,6 +166,35 @@ _build.object.assign:
     style:
       .logo:
         _module.var: logo.style
+      .header:
+        _build.if:
+          test:
+            _build.eq:
+              - _var:
+                  key: page_type
+                  default:
+                    _module.var: page_type
+              - header-menu
+          then:
+            _module.var: header.style
+          else: null
+      # The bell and the other header icons take their colour from this container.
+      .headerActions:
+        _build.if:
+          test:
+            _build.and:
+              - _build.eq:
+                  - _module.var: header.theme
+                  - dark
+              - _build.eq:
+                  - _var:
+                      key: page_type
+                      default:
+                        _module.var: page_type
+                  - header-menu
+          then:
+            color: var(--ant-color-text-light-solid)
+          else: null
       # Override the content area's own style — the page block defaults it to
       # `padding: 0 40px 40px 40px`. Merged over that default, so `{}` (the default)
       # is a no-op. Dot-prefixed to target the `content` CSS slot key (a bare
