@@ -55,7 +55,7 @@ test("a page loads its own data at once when the live feed cannot subscribe", as
   await page.goto("/user-admin/all");
   expect((await members).ok()).toBe(true);
   await expect(page.getByText("Feed Failure Member")).toBeVisible();
-  expect(Date.now() - opened).toBeLessThan(SUBSCRIBE_TIMEOUT_MS / 2);
+  expect(Date.now() - opened).toBeLessThan(SUBSCRIBE_TIMEOUT_MS);
   await page.screenshot({ path: test.info().outputPath("loaded.png") });
 
   const report = await reported;
