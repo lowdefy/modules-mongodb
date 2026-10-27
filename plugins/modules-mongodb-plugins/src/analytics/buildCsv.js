@@ -1,5 +1,5 @@
 /**
- * Builds a CSV string from result rows — shared by the DownloadCsv client
+ * Builds a CSV string from result rows — shared by the DownloadAnalyticsCsv client
  * action. Columns default to the UNION of keys across all rows, first-seen
  * order; pass `columns` to fix a specific order or subset. RFC-4180 quoting;
  * string cells starting with a formula trigger are prefixed with a single

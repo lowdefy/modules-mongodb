@@ -43,7 +43,7 @@ blocks:
 actions:
   - CallAPI
   - SetState
-  - DownloadCsv
+  - DownloadAnalyticsCsv
   # Continue-in-chat and Fix-in-chat open the source conversation; publish,
   # unpublish, duplicate and Drop re-open a report.
   - Link

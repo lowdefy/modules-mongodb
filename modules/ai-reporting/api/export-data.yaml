@@ -1,7 +1,7 @@
 # Export tool: validates the export spec (pipeline only — no presentation
 # contract) and acks. The emit-data-parts hook turns it into a download
 # dataPart; the panel button runs the pipeline and builds the CSV client-side
-# (DownloadCsv action), taking its headers from the row keys.
+# (DownloadAnalyticsCsv action), taking its headers from the row keys.
 id: export-data
 type: Api
 description: >
