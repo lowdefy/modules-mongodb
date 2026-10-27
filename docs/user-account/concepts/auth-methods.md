@@ -229,6 +229,7 @@ Mapped codes:
 | --------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `MEMBERSHIP_REQUIRED`       | The hard wall — the account exists but has no access to this app | **Terminal** — form-hiding "no access" wall                             |
 | `EMAIL_NOT_VERIFIED`        | Sign-in blocked pending email verification                       | **Terminal** — form-hiding wall                                         |
+| `BANNED_USER`               | An admin removed the user's access (banned them)                 | **Terminal** — form-hiding "no access" wall                             |
 | `INVALID_EMAIL_OR_PASSWORD` | Bad email or password                                            | Inline toast (password path only)                                       |
 | `INVALID_TOKEN`             | Magic link expired or already used                               | **Retryable** — stays on the login form, warning notice, send reachable |
 
@@ -239,6 +240,10 @@ notice ("this link has expired or was already used — request a new one") so th
 user can send a fresh link without leaving the page. With `auth.emailOTP` on, the
 notice points at the code instead, and the form offers code entry above the new
 link send (see [Email codes](#email-codes-authemailotpenabled)).
+
+An emailed code that is right but refused at sign-in (`BANNED_USER` or
+`MEMBERSHIP_REQUIRED`) toasts that code's message in place of the wrong-code
+toast, on the login and signup pages alike.
 
 The table keeps a **catch-all `default` branch**, so any unmapped code (a provider
 error, a rate limit / 429) degrades to a generic "an error occurred" message
