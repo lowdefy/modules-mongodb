@@ -1,7 +1,10 @@
 # The live notifications feed for a page (websockets/notifications-live.yaml).
 #   subscriptions  the page subscription, for the page root
 #   actions        the Subscribe action for onMountAsync, skipped without a
-#                  signed-in user so public pages never open the stream
+#                  signed-in user so public pages never open the stream. It runs
+#                  async, so the rest of the chain does not wait for it and a
+#                  failed subscribe cannot end it; the failure still reaches the
+#                  console and the client-error report, with no toast.
 # Both are empty when the module's `live` var is false.
 #
 # Every batch refetches the bell, drops toasts whose record is now read, adds
@@ -99,6 +102,9 @@ actions:
     then:
       - id: __subscribe_notifications_live
         type: Subscribe
+        async: true
+        messages:
+          error: false
         skip:
           _eq:
             - _user: id
