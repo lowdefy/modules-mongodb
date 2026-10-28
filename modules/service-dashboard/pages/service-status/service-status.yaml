@@ -92,6 +92,8 @@ _ref:
                         _ref: pages/service-status/actions/load_report.yaml
           - id: report_box
             type: Box
+            loading:
+              _state: report_loading
             visible:
               _and:
                 - _eq:

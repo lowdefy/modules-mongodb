@@ -29,7 +29,7 @@ try:
           fn: |
             const report = args.report;
             if (!report || !report.ok) return report;
-            const titles = {};
+            const titles = Object.create(null);
             const walk = (links) => {
               for (const link of links || []) {
                 const title = link.properties && link.properties.title;

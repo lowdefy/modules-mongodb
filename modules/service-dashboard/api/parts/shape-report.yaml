@@ -161,7 +161,12 @@
           const counted = days.filter((d) => d.kind !== 'none');
           const totals = app.totals || {};
           const requests = totals.requests || {};
-          const incidents = (app.incidents || []).filter((incident) => incident.kind === 'down' || incident.kind === 'degraded');
+          // An incident still open when the day was rolled up has no end yet; it
+          // counts up to the end of the period.
+          const periodEnd = new Date(time(range.to) + DAY - SAST_OFFSET).toISOString();
+          const incidents = (app.incidents || [])
+            .filter((incident) => incident.kind === 'down' || incident.kind === 'degraded')
+            .map((incident) => ({ ...incident, ongoing: !incident.end, end: incident.end || periodEnd }));
           const target = typeof app.target === 'number' ? app.target : null;
           const availability = typeof totals.availability === 'number' ? totals.availability : null;
           const calendar = range.period === 'this_month' || range.period === 'last_month';
@@ -173,7 +178,9 @@
           let availabilityTone = null;
           let availabilitySub = 'No target set';
           if (target !== null) {
-            const met = availability !== null && availability * 100 >= target;
+            // Compared in hundredths of a percent, as shown, so float error never
+            // misses a target the card says was met.
+            const met = availability !== null && Math.round(availability * 10000) >= Math.round(target * 100);
             availabilityTone = availability === null ? null : met ? 'success' : 'error';
             availabilitySub = availability === null ? `Target ${target}%` : `Target ${target}% · ${met ? 'met' : 'missed'}`;
           }
@@ -355,7 +362,9 @@
               .sort((a, b) => Date.parse(b.start) - Date.parse(a.start))
               .map((incident) => ({
                 when: whenLabel(incident.start),
-                duration: span(Date.parse(incident.end) - Date.parse(incident.start)),
+                duration: incident.ongoing
+                  ? `${span(Date.parse(incident.end) - Date.parse(incident.start))}, ongoing`
+                  : span(Date.parse(incident.end) - Date.parse(incident.start)),
                 kind: incident.kind === 'down' ? 'Down' : 'Degraded',
                 seen: incident.seen || '',
               })),

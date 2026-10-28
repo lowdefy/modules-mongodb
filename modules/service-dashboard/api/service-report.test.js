@@ -267,6 +267,35 @@ describe("shaping the report", () => {
     ]);
   });
 
+  test("an incident still open counts to the end of the period", () => {
+    const [app] = shape(
+      [
+        {
+          ...APP,
+          incidents: [
+            {
+              start: "2026-10-27T21:00:00.000Z",
+              end: null,
+              kind: "down",
+              seen: "Health checks failing",
+            },
+          ],
+        },
+      ],
+      RANGE,
+    ).apps;
+    expect(app.incidents[0].duration).toBe("1 h, ongoing");
+    expect(app.cards.incidents.sub).toBe("1 h down");
+  });
+
+  test("availability exactly at target is met", () => {
+    const [app] = shape(
+      [{ ...APP, target: 57, totals: { ...APP.totals, availability: 0.57 } }],
+      RANGE,
+    ).apps;
+    expect(app.cards.availability.tone).toBe("success");
+  });
+
   test("ticket medians read in minutes and days", () => {
     const [app] = shape([APP], RANGE).apps;
     expect(app.tickets_summary).toEqual([
