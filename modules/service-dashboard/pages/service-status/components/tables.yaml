@@ -1,0 +1,156 @@
+# Incidents, most-used pages and, with top_users, top users.
+id: tables_row
+type: Box
+layout:
+  gap: 16
+blocks:
+  _build.array.concat:
+    - - id: incidents_card
+        type: Card
+        layout:
+          span: 24
+          lg:
+            span: 12
+        properties:
+          size: small
+          title: Incidents
+        blocks:
+          - id: incidents_table
+            type: AgGridBalham
+            properties:
+              domLayout: autoHeight
+              size: small
+              overlayNoRowsTemplate: No incidents in this period
+              defaultColDef:
+                sortable: false
+                resizable: true
+              columnDefs:
+                - headerName: When
+                  field: when
+                  width: 120
+                - headerName: Duration
+                  field: duration
+                  width: 100
+                - headerName: ""
+                  field: kind
+                  width: 110
+                  cell:
+                    type: tag
+                    colorMap:
+                      Down: error
+                      Degraded: warning
+                - headerName: What was seen
+                  field: seen
+                  flex: 1
+                  minWidth: 200
+                  ellipsis: 2
+              rowData:
+                _if_none:
+                  - _state: app.incidents
+                  - []
+      - id: pages_card
+        type: Card
+        layout:
+          span: 24
+          lg:
+            span: 12
+        properties:
+          size: small
+          title: Most-used pages
+        blocks:
+          - id: pages_table
+            type: AgGridBalham
+            properties:
+              domLayout: autoHeight
+              size: small
+              overlayNoRowsTemplate: No page loads in this period
+              defaultColDef:
+                sortable: false
+                resizable: true
+              columnDefs:
+                - headerName: Page
+                  field: page
+                  flex: 1
+                  minWidth: 160
+                - headerName: Users
+                  field: users
+                  width: 90
+                  cell:
+                    type: number
+                - headerName: Page loads
+                  field: loads
+                  width: 110
+                  cell:
+                    type: number
+              rowData:
+                _if_none:
+                  - _state: app.pages
+                  - []
+    - _build.if:
+        test:
+          _module.var: top_users
+        then:
+          - id: top_users_card
+            type: Card
+            layout:
+              span: 24
+              lg:
+                span: 12
+            properties:
+              size: small
+              title: Top users <span data-tone="secondary">by active days</span>
+            blocks:
+              - id: top_users_table
+                type: AgGridBalham
+                properties:
+                  domLayout: autoHeight
+                  size: small
+                  overlayNoRowsTemplate: No signed-in users in this period
+                  defaultColDef:
+                    sortable: false
+                    resizable: true
+                  columnDefs:
+                    _build.array.concat:
+                      - - headerName: User
+                          field: name
+                          flex: 1
+                          minWidth: 150
+                      - _build.if:
+                          test:
+                            _build.eq:
+                              - _module.var: users.company_field
+                              - null
+                          then: []
+                          else:
+                            - headerName: Company
+                              field: company
+                              flex: 1
+                              minWidth: 140
+                      - - headerName: Active days
+                          field: active_days
+                          width: 110
+                          cell:
+                            type: number
+                        - headerName: Page loads
+                          field: page_loads
+                          width: 110
+                          cell:
+                            type: number
+                        - headerName: Last seen
+                          field: last_seen
+                          width: 110
+                  rowData:
+                    _if_none:
+                      - _state: app.top_users
+                      - []
+              - id: top_users_help
+                type: Paragraph
+                properties:
+                  type: secondary
+                  content: Names come from this app's own users. Shown because the app turned on top users.
+                style:
+                  .element:
+                    marginBottom: 0
+                    marginTop: 8
+                    fontSize: 12
+        else: []

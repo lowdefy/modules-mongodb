@@ -1,0 +1,95 @@
+# Loads the report for the period in state.period into state.report, and the
+# app on the open tab into state.app. Page ids show as the app's menu titles
+# where a menu links to the page. The report stays on screen while the next
+# one loads. Nothing loads for a user without one of the module's roles.
+try:
+  - id: set_report_loading
+    type: SetState
+    skip: &no_role
+      _not:
+        _state: has_role
+    params:
+      report_loading: true
+  - id: load_service_report
+    skip: *no_role
+    type: CallAPI
+    params:
+      endpointId:
+        _module.endpointId: service-report
+      payload:
+        period:
+          _state: period
+  - id: set_report
+    skip: *no_role
+    type: SetState
+    params:
+      report_loading: false
+      report:
+        _js:
+          fn: |
+            const report = args.report;
+            if (!report || !report.ok) return report;
+            const titles = {};
+            const walk = (links) => {
+              for (const link of links || []) {
+                const title = link.properties && link.properties.title;
+                if (link.pageId && typeof title === 'string' && !titles[link.pageId]) titles[link.pageId] = title;
+                walk(link.links);
+              }
+            };
+            for (const menu of args.menus || []) walk(menu.links);
+            return {
+              ...report,
+              apps: report.apps.map((app) => ({
+                ...app,
+                pages: app.pages.map((page) => ({ ...page, page: titles[page.page_id] || page.page_id })),
+              })),
+            };
+          args:
+            report:
+              _actions: load_service_report.response.response
+            menus:
+              _menu: true
+  # The open tab stays open across periods, back to the first app when the new
+  # report has fewer apps.
+  - id: set_report_app
+    skip: *no_role
+    type: SetState
+    params:
+      app_index:
+        _if:
+          test:
+            _eq:
+              - _get:
+                  from:
+                    _if_none:
+                      - _state: report.apps
+                      - []
+                  key:
+                    _state: app_index
+                  default: null
+              - null
+          then: "0"
+          else:
+            _state: app_index
+  - id: set_app
+    skip: *no_role
+    type: SetState
+    params:
+      app:
+        _get:
+          from:
+            _if_none:
+              - _state: report.apps
+              - []
+          key:
+            _state: app_index
+          default: null
+catch:
+  - id: set_report_failed
+    type: SetState
+    params:
+      report_loading: false
+      report:
+        ok: false
+        message: Service status can't be loaded right now. Try again in a few minutes.

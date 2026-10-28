@@ -1,0 +1,216 @@
+# Service status: Pelican's daily report on this app and the apps its support
+# app reports on, one tab per app, for a chosen period. The service-report
+# endpoint shapes everything; the page binds it. A user without one of the
+# module's roles is refused the data there, and sees a notice here rather than
+# an empty page.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: service-status
+    title:
+      _module.var: title
+    content_width: 1220
+    breadcrumbs:
+      - label:
+          _module.var: title
+    events:
+      onInit:
+        - id: service_status_init
+          type: SetState
+          params:
+            period: last_30_days
+            app_index: "0"
+            app: null
+            report: null
+            report_loading: false
+            has_role:
+              _js:
+                fn: |
+                  const allowed = args.allowed || [];
+                  return (args.roles || []).some((role) => allowed.includes(role));
+                args:
+                  roles:
+                    _user: roles
+                  allowed:
+                    _module.var: roles
+      onMount:
+        _ref: pages/service-status/actions/load_report.yaml
+    blocks:
+      - id: service_status_column
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: service_status_intro
+            type: Paragraph
+            properties:
+              type: secondary
+              content: Availability, performance, usage and support for the apps behind this one. Updated daily.
+            style:
+              .element:
+                marginBottom: 0
+          - id: no_role_card
+            type: Card
+            visible:
+              _not:
+                _state: has_role
+            layout:
+              span: 24
+            blocks:
+              - id: no_role_text
+                type: Paragraph
+                properties:
+                  type: secondary
+                  content: You don't have access to service status. Ask an administrator of this app for a role that includes it.
+                style:
+                  .element:
+                    textAlign: center
+                    margin: 32px 0
+          - _ref: pages/service-status/components/toolbar.yaml
+          - id: unavailable_alert
+            type: Alert
+            visible:
+              _eq:
+                - _state: report.ok
+                - false
+            properties:
+              type: info
+              showIcon: true
+              message:
+                _state: report.message
+            slots:
+              action:
+                blocks:
+                  - id: retry_button
+                    type: Button
+                    properties:
+                      title: Try again
+                      size: small
+                    events:
+                      onClick:
+                        _ref: pages/service-status/actions/load_report.yaml
+          - id: report_box
+            type: Box
+            visible:
+              _and:
+                - _eq:
+                    - _state: report.ok
+                    - true
+                - _ne:
+                    - _state: app
+                    - null
+            layout:
+              gap: 16
+            blocks:
+              - id: stale_alert
+                type: Alert
+                visible:
+                  _ne:
+                    - _if_none:
+                        - _state: app.stale
+                        - null
+                    - null
+                properties:
+                  type: warning
+                  showIcon: true
+                  message:
+                    _state: app.stale
+              - id: empty_card
+                type: Card
+                visible:
+                  _ne:
+                    - _if_none:
+                        - _state: app.empty
+                        - null
+                    - null
+                layout:
+                  span: 24
+                blocks:
+                  - id: empty_text
+                    type: Paragraph
+                    properties:
+                      type: secondary
+                      content:
+                        _state: app.empty
+                    style:
+                      .element:
+                        textAlign: center
+                        margin: 32px 0
+              - id: figures_box
+                type: Box
+                visible:
+                  _eq:
+                    - _if_none:
+                        - _state: app.empty
+                        - null
+                    - null
+                layout:
+                  gap: 16
+                blocks:
+                  - _ref:
+                      path: pages/service-status/components/stat_card.yaml
+                      vars:
+                        id: availability
+                        title: Availability
+                  - _ref:
+                      path: pages/service-status/components/stat_card.yaml
+                      vars:
+                        id: incidents
+                        title: Incidents
+                  - _ref:
+                      path: pages/service-status/components/stat_card.yaml
+                      vars:
+                        id: response
+                        title: Response time (p95)
+                  - _ref:
+                      path: pages/service-status/components/stat_card.yaml
+                      vars:
+                        id: users
+                        title: Active users
+                  - _ref: pages/service-status/components/strip_card.yaml
+                  - _ref:
+                      path: pages/service-status/components/chart_card.yaml
+                      vars:
+                        id: requests_chart
+                        title: Requests and errors <span data-tone="secondary">per day</span>
+                  - _ref:
+                      path: pages/service-status/components/chart_card.yaml
+                      vars:
+                        id: response_chart
+                        title: Response time <span data-tone="secondary">p95 and median, per day</span>
+                  - _ref:
+                      path: pages/service-status/components/chart_card.yaml
+                      vars:
+                        id: users_chart
+                        title: Active users <span data-tone="secondary">per day</span>
+                  - _ref:
+                      path: pages/service-status/components/chart_card.yaml
+                      vars:
+                        id: tickets_chart
+                        title: Support tickets <span data-tone="secondary">opened and resolved, per week</span>
+                        height: 180
+                        above:
+                          - id: tickets_summary
+                            type: Html
+                            properties:
+                              html:
+                                _nunjucks:
+                                  template: >-
+                                    <div style="display:flex;flex-wrap:wrap;gap:4px 20px;font-size:13px">{% for item in items %}<span><b>{{ item.value }}</b> {{ item.label }}</span>{% endfor %}</div>
+                                  on:
+                                    items:
+                                      _if_none:
+                                        - _state: app.tickets_summary
+                                        - []
+                  - _ref: pages/service-status/components/tables.yaml
+              - id: foot_text
+                type: Paragraph
+                properties:
+                  type: secondary
+                  content:
+                    _state: app.foot
+                style:
+                  .element:
+                    marginBottom: 0
+                    fontSize: 12

@@ -1,0 +1,376 @@
+# Shapes Pelican's service report into what the page shows, returned as
+# { ok: true, range, tabs, apps }: per app its cards, banners, chart options,
+# tables and footnote, so the page binds values and computes nothing.
+#
+# Pelican's service-report answers { apps: [...] }, one per app in the report:
+#   { id, name, url, target, since, as_of, stale,
+#     totals: { availability, requests: { total, server_errors, p50_ms, p95_ms },
+#               active_users },
+#     days: [{ day, availability, windows: { up, degraded, down, no_data },
+#              requests: { total, server_errors, p50_ms, p95_ms }, active_users,
+#              tickets: { opened, resolved } }],
+#     incidents: [{ start, end, kind: down | degraded, seen }],
+#     pages: [{ page_id, users, loads }],
+#     tickets: { opened, resolved, open_at_end, first_reply_median_ms, resolve_median_ms },
+#     top_users?: [{ user_id, active_days, page_loads, last_seen }] }
+# Days are YYYY-MM-DD in South African time; a day with no row has no data.
+#
+# Vars:
+#   apps   Pelican's apps
+#   range  state.range from report-range.yaml
+#   names  { [user id]: { name, company } } for top users, or null when off
+- :return:
+    _js:
+      fn: |
+        const { apps, range, names } = args;
+        const DAY = 86400000;
+        const SAST_OFFSET = 2 * 3600000;
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+        const COLORS = {
+          up: '#2e9e5b',
+          degraded: '#e3a008',
+          down: '#d64545',
+          none: '#d0d5dd',
+          requests: '#9db8ef',
+          errors: '#d64545',
+          p95: '#2f6fde',
+          median: '#9db8ef',
+          users: '#8fd1a8',
+          opened: '#2f6fde',
+          resolved: '#2e9e5b',
+          slow_line: '#e3a008',
+        };
+        const PERIOD_NONE = {
+          last_30_days: 'None in the last 30 days',
+          last_90_days: 'None in the last 90 days',
+          this_month: 'None this month',
+          last_month: 'None last month',
+        };
+
+        const time = (day) => Date.parse(`${day}T00:00:00Z`);
+        const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+        const dayLabel = (day) => {
+          const date = new Date(time(day));
+          return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+        };
+        const fullDayLabel = (day) => `${dayLabel(day)} ${day.slice(0, 4)}`;
+        const local = (stamp) => new Date(Date.parse(stamp) + SAST_OFFSET);
+        const pad = (n) => String(n).padStart(2, '0');
+        const whenLabel = (stamp) => {
+          const date = local(stamp);
+          return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}, ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+        };
+        const thousands = (n) =>
+          n === null || n === undefined ? '–' : String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        // Floored, so 99.999% never reads as 100%.
+        const percent = (ratio) =>
+          ratio === null || ratio === undefined ? '–' : `${Math.floor(ratio * 10000) / 100}%`;
+        const seconds = (ms) => {
+          if (ms === null || ms === undefined) return '–';
+          if (ms < 1000) return `${Math.round(ms)} ms`;
+          return `${(ms / 1000).toFixed(1)} s`;
+        };
+        const span = (ms) => {
+          if (ms === null || ms === undefined) return '–';
+          const minutes = Math.round(ms / 60000);
+          if (minutes < 60) return `${minutes} min`;
+          if (minutes < 24 * 60) {
+            const hours = Math.floor(minutes / 60);
+            const rest = minutes % 60;
+            return rest ? `${hours} h ${rest} min` : `${hours} h`;
+          }
+          return `${(ms / DAY).toFixed(1)} days`;
+        };
+        const host = (url) => (typeof url === 'string' ? url.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : '');
+
+        const rangeDays = [];
+        for (let t = time(range.from); t <= time(range.to); t += DAY) rangeDays.push(isoDay(t));
+        const yesterday = isoDay(time(range.today) - DAY);
+        const categoryAxis = (labels) => ({
+          type: 'category',
+          data: labels,
+          axisTick: { show: false },
+          axisLabel: { interval: labels.length > 2 ? labels.length - 2 : 0 },
+        });
+        const grid = { left: 8, right: 8, top: 36, bottom: 8, containLabel: true };
+        const legend = (names) => ({ data: names, top: 0, right: 0, itemWidth: 10, itemHeight: 10, selectedMode: false });
+
+        function dayKind(day, row, since) {
+          if (since && day < since) return 'none';
+          if (!row || row.availability === null || row.availability === undefined) return 'none';
+          const windows = row.windows || {};
+          if (windows.down > 0) return 'down';
+          if (windows.degraded > 0) return 'degraded';
+          return 'up';
+        }
+
+        function stripOption(days) {
+          const kinds = [
+            ['up', 'Up'],
+            ['degraded', 'Degraded'],
+            ['down', 'Down'],
+            ['none', 'No data'],
+          ];
+          const labels = days.map((d) => dayLabel(d.day));
+          return {
+            grid: { left: 0, right: 0, top: 0, bottom: 28, containLabel: true },
+            tooltip: { trigger: 'item', formatter: '{b}: {a}' },
+            legend: { bottom: 0, itemWidth: 10, itemHeight: 10, selectedMode: false, data: kinds.map(([, name]) => name) },
+            xAxis: { ...categoryAxis(labels), axisLine: { show: false } },
+            yAxis: { type: 'value', show: false, max: 1 },
+            series: kinds.map(([kind, name]) => ({
+              name,
+              type: 'bar',
+              stack: 'day',
+              barCategoryGap: '12%',
+              itemStyle: { color: COLORS[kind], borderRadius: 3 },
+              data: days.map((d) => (d.kind === kind ? 1 : '-')),
+            })),
+          };
+        }
+
+        function weeks(days) {
+          const buckets = [];
+          days.forEach((d, i) => {
+            if (i % 7 === 0) buckets.push({ label: dayLabel(d.day), opened: 0, resolved: 0 });
+            const bucket = buckets[buckets.length - 1];
+            const tickets = (d.row && d.row.tickets) || {};
+            bucket.opened += tickets.opened || 0;
+            bucket.resolved += tickets.resolved || 0;
+          });
+          return buckets;
+        }
+
+        function shapeApp(app) {
+          const byDay = {};
+          for (const row of app.days || []) byDay[row.day] = row;
+          const since = app.since || null;
+          const days = rangeDays.map((day) => {
+            const row = since && day < since ? null : byDay[day] || null;
+            return { day, row, kind: dayKind(day, row, since) };
+          });
+          const counted = days.filter((d) => d.kind !== 'none');
+          const totals = app.totals || {};
+          const requests = totals.requests || {};
+          const incidents = (app.incidents || []).filter((incident) => incident.kind === 'down' || incident.kind === 'degraded');
+          const target = typeof app.target === 'number' ? app.target : null;
+          const availability = typeof totals.availability === 'number' ? totals.availability : null;
+          const calendar = range.period === 'this_month' || range.period === 'last_month';
+          const rangeText =
+            range.from.slice(0, 7) === range.to.slice(0, 7)
+              ? `${Number(range.from.slice(8))}–${dayLabel(range.to)}`
+              : `${dayLabel(range.from)} – ${dayLabel(range.to)}`;
+
+          let availabilityTone = null;
+          let availabilitySub = 'No target set';
+          if (target !== null) {
+            const met = availability !== null && availability * 100 >= target;
+            availabilityTone = availability === null ? null : met ? 'success' : 'error';
+            availabilitySub = availability === null ? `Target ${target}%` : `Target ${target}% · ${met ? 'met' : 'missed'}`;
+          }
+          if (calendar) availabilitySub = `${availabilitySub} · ${rangeText}`;
+
+          const minutesBy = { down: 0, degraded: 0 };
+          for (const incident of incidents) {
+            minutesBy[incident.kind] += Date.parse(incident.end) - Date.parse(incident.start);
+          }
+          const incidentParts = [];
+          if (minutesBy.down) incidentParts.push(`${span(minutesBy.down)} down`);
+          if (minutesBy.degraded) incidentParts.push(`${span(minutesBy.degraded)} degraded`);
+
+          const errorRate = requests.total ? (requests.server_errors || 0) / requests.total : null;
+          const weekdays = counted.filter((d) => {
+            const weekday = new Date(time(d.day)).getUTCDay();
+            return weekday > 0 && weekday < 6 && typeof d.row.active_users === 'number';
+          });
+          const weekdayAverage = weekdays.length
+            ? Math.round(weekdays.reduce((sum, d) => sum + d.row.active_users, 0) / weekdays.length)
+            : null;
+
+          const labels = days.map((d) => dayLabel(d.day));
+          const value = (pick) => days.map((d) => (d.row ? pick(d.row) : null));
+          const ticketWeeks = weeks(days);
+          const slowest = Math.max(0, ...days.map((d) => (d.row && d.row.requests && d.row.requests.p95_ms) || 0));
+          const slowestAxis = Math.max(10, Math.ceil(slowest / 1000));
+          const tickets = app.tickets || {};
+
+          let stale = null;
+          if (app.stale && app.as_of) {
+            const missing = [];
+            for (let t = time(app.as_of) + DAY; t <= time(yesterday); t += DAY) missing.push(isoDay(t));
+            const count = COUNT_WORDS[missing.length] || String(missing.length);
+            const updates = missing.length === 1 ? 'The last daily update' : `The last ${count} daily updates`;
+            let figures = 'later days';
+            if (missing.length === 1) figures = dayLabel(missing[0]);
+            if (missing.length === 2) {
+              figures =
+                missing[0].slice(0, 7) === missing[1].slice(0, 7)
+                  ? `${Number(missing[0].slice(8))} and ${dayLabel(missing[1])}`
+                  : `${dayLabel(missing[0])} and ${dayLabel(missing[1])}`;
+            }
+            if (missing.length > 2) figures = `${dayLabel(missing[0])} to ${dayLabel(missing[missing.length - 1])}`;
+            stale = `Data is up to ${fullDayLabel(app.as_of)}. ${updates} didn't finish; the support team has been told. Figures for ${figures} will appear once it runs.`;
+          }
+
+          let empty = null;
+          if (!app.as_of) {
+            empty = `No service data yet for ${app.name}. The first day appears after 03:30 tomorrow.`;
+          } else if (counted.length === 0) {
+            empty = `No service data for ${app.name} in this period.`;
+          }
+
+          const beforeSince = since && since > range.from && since <= range.to;
+          const asOfNote = app.as_of
+            ? `Data up to ${fullDayLabel(app.as_of)}${app.as_of === yesterday ? ' (yesterday)' : ''}. `
+            : '';
+
+          const topUsers = Array.isArray(app.top_users) && names
+            ? app.top_users.map((user) => {
+                const named = names[user.user_id];
+                const seen = user.last_seen ? isoDay(local(user.last_seen).getTime()) : null;
+                return {
+                  user_id: user.user_id,
+                  name: named && named.name ? named.name : 'Unknown user',
+                  company: (named && named.company) || null,
+                  active_days: user.active_days,
+                  page_loads: user.page_loads,
+                  last_seen: !seen ? '–' : seen === range.today ? 'Today' : seen === yesterday ? 'Yesterday' : dayLabel(seen),
+                };
+              })
+            : null;
+
+          return {
+            id: app.id,
+            name: app.name,
+            url: app.url || null,
+            stale,
+            empty,
+            cards: {
+              availability: { value: percent(availability), tone: availabilityTone, sub: availabilitySub },
+              incidents: {
+                value: String(incidents.length),
+                sub: incidents.length ? incidentParts.join(', ') : PERIOD_NONE[range.period],
+              },
+              response: {
+                value: seconds(requests.p95_ms),
+                sub:
+                  errorRate === null
+                    ? 'No requests'
+                    : `Error rate ${(errorRate * 100).toFixed(2)}% of ${thousands(requests.total)} requests`,
+              },
+              users: {
+                value: thousands(totals.active_users),
+                sub: weekdayAverage === null ? 'No weekday data' : `${thousands(weekdayAverage)} on an average weekday`,
+              },
+            },
+            strip: stripOption(days),
+            strip_note: beforeSince
+              ? `Grey days are before monitoring started (${dayLabel(since)}) and don't count towards availability.`
+              : null,
+            requests_chart: {
+              grid,
+              tooltip: { trigger: 'axis' },
+              legend: legend(['Requests', 'Server errors']),
+              xAxis: categoryAxis(labels),
+              yAxis: [{ type: 'value' }, { type: 'value', splitLine: { show: false } }],
+              series: [
+                { name: 'Requests', type: 'bar', itemStyle: { color: COLORS.requests }, data: value((r) => (r.requests ? r.requests.total : null)) },
+                {
+                  name: 'Server errors',
+                  type: 'line',
+                  yAxisIndex: 1,
+                  symbol: 'none',
+                  itemStyle: { color: COLORS.errors },
+                  data: value((r) => (r.requests ? r.requests.server_errors : null)),
+                },
+              ],
+            },
+            response_chart: {
+              grid,
+              tooltip: { trigger: 'axis' },
+              legend: legend(['p95', 'Median']),
+              xAxis: categoryAxis(labels),
+              // The 8-second line stays in view however fast the app was.
+              yAxis: { type: 'value', name: 's', nameGap: 8, max: slowestAxis },
+              series: [
+                {
+                  name: 'p95',
+                  type: 'line',
+                  symbol: 'none',
+                  itemStyle: { color: COLORS.p95 },
+                  data: value((r) => (r.requests && r.requests.p95_ms != null ? r.requests.p95_ms / 1000 : null)),
+                  markLine: {
+                    silent: true,
+                    symbol: 'none',
+                    lineStyle: { type: 'dashed', color: COLORS.slow_line },
+                    label: { formatter: '8 s degraded line', position: 'insideEndTop' },
+                    data: [{ yAxis: 8 }],
+                  },
+                },
+                {
+                  name: 'Median',
+                  type: 'line',
+                  symbol: 'none',
+                  itemStyle: { color: COLORS.median },
+                  data: value((r) => (r.requests && r.requests.p50_ms != null ? r.requests.p50_ms / 1000 : null)),
+                },
+              ],
+            },
+            users_chart: {
+              grid,
+              tooltip: { trigger: 'axis' },
+              xAxis: categoryAxis(labels),
+              yAxis: { type: 'value', minInterval: 1 },
+              series: [{ name: 'Active users', type: 'bar', itemStyle: { color: COLORS.users }, data: value((r) => (typeof r.active_users === 'number' ? r.active_users : null)) }],
+            },
+            tickets_summary: [
+              { label: 'opened', value: thousands(tickets.opened) },
+              { label: 'resolved', value: thousands(tickets.resolved) },
+              { label: 'open now', value: thousands(tickets.open_at_end) },
+              { label: 'first reply, median', value: span(tickets.first_reply_median_ms) },
+              { label: 'to resolve, median', value: span(tickets.resolve_median_ms) },
+            ],
+            tickets_chart: {
+              grid,
+              tooltip: { trigger: 'axis' },
+              legend: legend(['Opened', 'Resolved']),
+              xAxis: { type: 'category', data: ticketWeeks.map((w) => w.label), axisTick: { show: false } },
+              yAxis: { type: 'value', minInterval: 1 },
+              series: [
+                { name: 'Opened', type: 'bar', itemStyle: { color: COLORS.opened }, data: ticketWeeks.map((w) => w.opened) },
+                { name: 'Resolved', type: 'bar', itemStyle: { color: COLORS.resolved }, data: ticketWeeks.map((w) => w.resolved) },
+              ],
+            },
+            incidents: incidents
+              .slice()
+              .sort((a, b) => Date.parse(b.start) - Date.parse(a.start))
+              .map((incident) => ({
+                when: whenLabel(incident.start),
+                duration: span(Date.parse(incident.end) - Date.parse(incident.start)),
+                kind: incident.kind === 'down' ? 'Down' : 'Degraded',
+                seen: incident.seen || '',
+              })),
+            pages: (app.pages || []).map((page) => ({ page_id: page.page_id, page: page.page_id, users: page.users, loads: page.loads })),
+            top_users: topUsers,
+            foot: `${asOfNote}Updated daily at 03:30. Availability counts each 5-minute window: up when the health check passed, degraded when responses were slow or 5% or more failed, down when the check failed twice in a row. Times are South African.`,
+          };
+        }
+
+        const shaped = (apps || []).map(shapeApp);
+        return {
+          ok: true,
+          range,
+          tabs: shaped.map((app, index) => ({
+            key: String(index),
+            title: app.url ? `${app.name} · ${host(app.url)}` : app.name,
+          })),
+          apps: shaped,
+        };
+      args:
+        apps:
+          _var: apps
+        range:
+          _var: range
+        names:
+          _var: names

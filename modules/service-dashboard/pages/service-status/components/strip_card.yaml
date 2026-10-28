@@ -1,0 +1,35 @@
+# Daily availability: one bar per day of the period, coloured by its worst
+# window (down, then degraded, else up; grey for no data or before
+# monitoring started).
+id: strip_card
+type: Card
+layout:
+  span: 24
+properties:
+  size: small
+  title: Daily availability <span data-tone="secondary">health check every 5 minutes, and the app's own requests</span>
+blocks:
+  - id: strip_chart
+    type: EChart
+    properties:
+      height: 78
+      option:
+        _state: app.strip
+      theme:
+        _ref: defaults/chart_theme_current.yaml
+  - id: strip_note
+    type: Paragraph
+    visible:
+      _ne:
+        - _if_none:
+            - _state: app.strip_note
+            - null
+        - null
+    properties:
+      type: secondary
+      content:
+        _state: app.strip_note
+    style:
+      .element:
+        marginBottom: 0
+        fontSize: 12

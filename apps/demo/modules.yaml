@@ -64,6 +64,13 @@
   vars:
     _ref: modules/support/vars.yaml
 
+# service-dashboard reads Pelican through the support module's connection, so it
+# is listed after support.
+- id: service-dashboard
+  source: "file:../../modules/service-dashboard"
+  vars:
+    _ref: modules/service-dashboard/vars.yaml
+
 - id: user-account
   source: "file:../../modules/user-account"
   vars:

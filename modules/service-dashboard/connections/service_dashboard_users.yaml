@@ -1,0 +1,13 @@
+# The app's users, read by id for the names of top users. Read-only. Without
+# `users.collection` (top users off) nothing reads it, so it points at `users`.
+id: service-dashboard-users
+type: MongoDBCollection
+tenant: shared # a user is one person across organisations
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection:
+    _build.if_none:
+      - _module.var: users.collection
+      - users
+  write: false
