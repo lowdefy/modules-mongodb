@@ -2,17 +2,23 @@
 # { ok: true, range, tabs, apps }: per app its cards, banners, chart options,
 # tables and footnote, so the page binds values and computes nothing.
 #
-# Pelican's service-report answers { apps: [...] }, one per app in the report:
+# Pelican's service-report answers { apps: [...] }, one per app in the report
+# (Pelican's lib/serviceTotals.js):
 #   { id, name, url, target, since, as_of, stale,
-#     totals: { availability, requests: { total, server_errors, p50_ms, p95_ms },
-#               active_users },
-#     days: [{ day, availability, windows: { up, degraded, down, no_data },
+#     totals: { availability, windows, incidents, active_users, page_loads,
+#               requests: { total, server_errors, error_rate, p95_weighted_ms } },
+#     days: [{ day, counted, state, availability,
+#              windows: { up, degraded, down, no_data },
 #              requests: { total, server_errors, p50_ms, p95_ms }, active_users,
-#              tickets: { opened, resolved } }],
-#     incidents: [{ start, end, kind: down | degraded, seen }],
-#     pages: [{ page_id, users, loads }],
-#     tickets: { opened, resolved, open_at_end, first_reply_median_ms, resolve_median_ms },
+#              page_loads, tickets: { opened, resolved, open_at_end, ... } }],
+#     incidents: [{ day, start, end, kind: down | degraded, seen }],
+#     pages: [{ page_id, loads, user_days }],
+#     tickets: { opened, resolved, open_at_end, median_first_reply_ms, median_resolve_ms },
 #     top_users?: [{ user_id, active_days, page_loads, last_seen }] }
+# totals.requests.p95_weighted_ms is the mean of the daily p95s weighted by
+# requests, not a p95 of the range. A page's user_days sums its daily users,
+# since distinct users per page can't be rebuilt from daily rows. Parts a day
+# lacks are null.
 # Days are YYYY-MM-DD in South African time; a day with no row has no data.
 #
 # Vars:
@@ -194,7 +200,7 @@
           if (minutesBy.down) incidentParts.push(`${span(minutesBy.down)} down`);
           if (minutesBy.degraded) incidentParts.push(`${span(minutesBy.degraded)} degraded`);
 
-          const errorRate = requests.total ? (requests.server_errors || 0) / requests.total : null;
+          const errorRate = typeof requests.error_rate === 'number' ? requests.error_rate : null;
           const weekdays = counted.filter((d) => {
             const weekday = new Date(time(d.day)).getUTCDay();
             return weekday > 0 && weekday < 6 && typeof d.row.active_users === 'number';
@@ -268,7 +274,7 @@
                 sub: incidents.length ? incidentParts.join(', ') : PERIOD_NONE[range.period],
               },
               response: {
-                value: seconds(requests.p95_ms),
+                value: seconds(requests.p95_weighted_ms),
                 sub:
                   errorRate === null
                     ? 'No requests'
@@ -343,8 +349,8 @@
               { label: 'opened', value: thousands(tickets.opened) },
               { label: 'resolved', value: thousands(tickets.resolved) },
               { label: 'open now', value: thousands(tickets.open_at_end) },
-              { label: 'first reply, median', value: span(tickets.first_reply_median_ms) },
-              { label: 'to resolve, median', value: span(tickets.resolve_median_ms) },
+              { label: 'first reply, median', value: span(tickets.median_first_reply_ms) },
+              { label: 'to resolve, median', value: span(tickets.median_resolve_ms) },
             ],
             tickets_chart: {
               grid,
@@ -368,7 +374,7 @@
                 kind: incident.kind === 'down' ? 'Down' : 'Degraded',
                 seen: incident.seen || '',
               })),
-            pages: (app.pages || []).map((page) => ({ page_id: page.page_id, page: page.page_id, users: page.users, loads: page.loads })),
+            pages: (app.pages || []).map((page) => ({ page_id: page.page_id, page: page.page_id, user_days: page.user_days, loads: page.loads })),
             top_users: topUsers,
             table_heights: {
               incidents: tableHeight(incidents.length, 56),

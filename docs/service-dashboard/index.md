@@ -69,10 +69,10 @@ links:
 
 `/{entry id}/service-status` shows, for the period picked (last 30 days, the default; last 90 days; this month; last month), per app:
 
-- Cards: availability against the target, incidents with their time down and degraded, response time (p95) with the error rate, and active users with the weekday average.
+- Cards: availability against the target, incidents with their time down and degraded, response time (the daily p95s averaged, weighted by requests) with the error rate, and active users with the weekday average.
 - The daily availability strip: each day coloured by its worst 5-minute window. Days before the app's monitoring started, and days with no data, are grey and don't count towards availability.
 - Charts of requests and server errors, response time (p95 and median, with the 8-second line past which a window counts as degraded), active users, and support tickets opened and resolved per week with the median time to first reply and to resolve.
-- The incidents, newest first, and the most-used pages. A page shows as the title of a menu link to it in the app's menus, else as its page id.
+- The incidents, newest first, and the most-used pages with their page loads and user-days (each day's users of the page, added up). A page shows as the title of a menu link to it in the app's menus, else as its page id.
 - Top users, with `top_users` on.
 
 A period ends yesterday, the last day Pelican has rolled up. Days run midnight to midnight South African time. "Last month" in January is December of the year before.

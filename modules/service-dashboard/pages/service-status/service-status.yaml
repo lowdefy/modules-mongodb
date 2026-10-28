@@ -164,7 +164,7 @@ _ref:
                       path: pages/service-status/components/stat_card.yaml
                       vars:
                         id: response
-                        title: Response time (p95)
+                        title: Response time (daily p95)
                   - _ref:
                       path: pages/service-status/components/stat_card.yaml
                       vars:

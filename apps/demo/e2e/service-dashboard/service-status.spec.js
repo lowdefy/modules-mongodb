@@ -37,13 +37,16 @@ const daysBetween = (from, to) => {
   return days;
 };
 
-// A day the way Pelican's report carries it, busier on weekdays.
+// A day the way Pelican's report carries it (lib/serviceTotals.js dayEntry),
+// busier on weekdays.
 function day(date, overrides = {}) {
   const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
   const busy = weekday > 0 && weekday < 6;
   const total = busy ? 14200 + (date.charCodeAt(9) % 7) * 310 : 4300;
   return {
     day: date,
+    counted: true,
+    state: "ok",
     availability: 1,
     windows: { up: 288, degraded: 0, down: 0, no_data: 0 },
     requests: {
@@ -53,7 +56,14 @@ function day(date, overrides = {}) {
       p95_ms: 1300 + (date.charCodeAt(9) % 4) * 60,
     },
     active_users: busy ? 92 + (date.charCodeAt(9) % 6) : 18,
-    tickets: { opened: busy ? 2 : 0, resolved: busy ? 2 : 1 },
+    page_loads: busy ? 2100 : 400,
+    tickets: {
+      opened: busy ? 2 : 0,
+      resolved: busy ? 2 : 1,
+      open_at_end: 12,
+      first_reply_ms: [],
+      resolve_ms: [],
+    },
     ...overrides,
   };
 }
@@ -93,14 +103,28 @@ function report({ from, to, top_users }) {
   });
   const since = days[Math.min(days.length - 1, 9)];
   const helpAsOf = days[Math.max(0, days.length - 3)];
-  const helpDays = days
-    .filter((date) => date >= since && date <= helpAsOf)
-    .map((date) =>
-      day(date, {
-        requests: { total: 3100, server_errors: 1, p50_ms: 240, p95_ms: 880 },
-        active_users: 40,
-      }),
-    );
+  // Pelican lists every day of the range; one before since or with no row
+  // carries only its day.
+  const blank = (date) => ({
+    day: date,
+    counted: date >= since,
+    state: null,
+    availability: null,
+    windows: null,
+    requests: null,
+    active_users: null,
+    page_loads: null,
+    tickets: null,
+  });
+  const helpDays = days.map((date) =>
+    date >= since && date <= helpAsOf
+      ? day(date, {
+          requests: { total: 3100, server_errors: 1, p50_ms: 240, p95_ms: 880 },
+          active_users: 40,
+        })
+      : blank(date),
+  );
+  const helpCounted = helpDays.filter((d) => d.requests);
   const sum = (rows, pick) => rows.reduce((total, row) => total + pick(row), 0);
   const orders = {
     id: "app-orders",
@@ -112,23 +136,30 @@ function report({ from, to, top_users }) {
     stale: false,
     totals: {
       availability: 0.99931,
+      windows: { up: 8622, degraded: 9, down: 6, no_data: 3 },
       requests: {
         total: sum(ordersDays, (d) => d.requests.total),
         server_errors: sum(ordersDays, (d) => d.requests.server_errors),
-        p50_ms: 310,
-        p95_ms: 1420,
+        error_rate:
+          sum(ordersDays, (d) => d.requests.server_errors) /
+          sum(ordersDays, (d) => d.requests.total),
+        p95_weighted_ms: 1420,
       },
+      incidents: 2,
       active_users: 214,
+      page_loads: sum(ordersDays, (d) => d.page_loads),
     },
     days: ordersDays,
     incidents: [
       {
+        day: degradedDay,
         start: `${degradedDay}T12:10:00.000Z`,
         end: `${degradedDay}T12:55:00.000Z`,
         kind: "degraded",
         seen: "Response time over 8 s (p95 11.2 s)",
       },
       {
+        day: downDay,
         start: `${downDay}T07:35:00.000Z`,
         end: `${downDay}T08:05:00.000Z`,
         kind: "down",
@@ -136,18 +167,18 @@ function report({ from, to, top_users }) {
       },
     ],
     pages: [
-      { page_id: "contacts/all", users: 188, loads: 21904 },
-      { page_id: "contacts/view", users: 176, loads: 18232 },
-      { page_id: "companies/all", users: 91, loads: 6410 },
-      { page_id: "reporting-demo", users: 44, loads: 2118 },
-      { page_id: "old-page", users: 3, loads: 12 },
+      { page_id: "contacts/all", loads: 21904, user_days: 1880 },
+      { page_id: "contacts/view", loads: 18232, user_days: 1760 },
+      { page_id: "companies/all", loads: 6410, user_days: 910 },
+      { page_id: "reporting-demo", loads: 2118, user_days: 440 },
+      { page_id: "old-page", loads: 12, user_days: 3 },
     ],
     tickets: {
       opened: sum(ordersDays, (d) => d.tickets.opened),
       resolved: sum(ordersDays, (d) => d.tickets.resolved),
       open_at_end: 12,
-      first_reply_median_ms: 22 * 60000,
-      resolve_median_ms: 1.6 * DAY,
+      median_first_reply_ms: 22 * 60000,
+      median_resolve_ms: 1.6 * DAY,
     },
     ...(top_users
       ? {
@@ -184,23 +215,32 @@ function report({ from, to, top_users }) {
     stale: true,
     totals: {
       availability: 1,
-      requests: {
-        total: sum(helpDays, (d) => d.requests.total),
-        server_errors: helpDays.length,
-        p50_ms: 240,
-        p95_ms: 880,
+      windows: {
+        up: 288 * helpCounted.length,
+        degraded: 0,
+        down: 0,
+        no_data: 0,
       },
+      requests: {
+        total: sum(helpCounted, (d) => d.requests.total),
+        server_errors: helpCounted.length,
+        error_rate:
+          helpCounted.length / sum(helpCounted, (d) => d.requests.total),
+        p95_weighted_ms: 880,
+      },
+      incidents: 0,
       active_users: 63,
+      page_loads: sum(helpCounted, (d) => d.page_loads),
     },
     days: helpDays,
     incidents: [],
-    pages: [{ page_id: "support/support", users: 41, loads: 980 }],
+    pages: [{ page_id: "support/support", loads: 980, user_days: 410 }],
     tickets: {
       opened: 9,
       resolved: 8,
       open_at_end: 2,
-      first_reply_median_ms: 35 * 60000,
-      resolve_median_ms: 0.9 * DAY,
+      median_first_reply_ms: 35 * 60000,
+      median_resolve_ms: 0.9 * DAY,
     },
     ...(top_users ? { top_users: [] } : {}),
   };
@@ -257,6 +297,8 @@ test("the endpoint asks Pelican for the period with the support key and names to
   const [sent] = pelican.calls;
   expect(sent.endpoint).toBe("service-report");
   expect(sent.authorization).toBe("Bearer e2e-support-key");
+  // Pelican's body schema allows no other keys.
+  expect(Object.keys(sent.body).sort()).toEqual(["from", "to", "top_users"]);
   expect(sent.body.top_users).toBe(true);
   expect(sent.body.from.slice(8)).toBe("01");
   expect(answer.range).toMatchObject({
@@ -277,6 +319,30 @@ test("the endpoint asks Pelican for the period with the support key and names to
 });
 
 for (const [name, reply] of [
+  [
+    "a 400 app_not_in_report",
+    {
+      status: 400,
+      body: {
+        error: {
+          code: "app_not_in_report",
+          message: "Not in this app's report: app-x.",
+        },
+      },
+    },
+  ],
+  [
+    "a 400 invalid_request range",
+    {
+      status: 400,
+      body: {
+        error: {
+          code: "invalid_request",
+          message: "to: must be at most 400 days after from.",
+        },
+      },
+    },
+  ],
   [
     "a 401",
     {
@@ -310,7 +376,7 @@ for (const [name, reply] of [
         "Service status can't be loaded right now. Try again in a few minutes.",
     });
     expect(JSON.stringify(result.body)).not.toMatch(
-      /Stack trace|Bad key|e2e-support-key/,
+      /Stack trace|Bad key|e2e-support-key|app-x|400 days/,
     );
   });
 }
@@ -413,8 +479,27 @@ test("the page: an app with no data yet", async ({ ldf, page }) => {
         name: "Help",
         as_of: null,
         stale: false,
-        days: [],
-        totals: {},
+        days: answer.apps[1].days.map((d) => ({
+          day: d.day,
+          counted: true,
+          state: null,
+          availability: null,
+          windows: null,
+          requests: null,
+          active_users: null,
+          page_loads: null,
+          tickets: null,
+        })),
+        totals: {
+          availability: null,
+          windows: null,
+          requests: null,
+          incidents: 0,
+          active_users: null,
+          page_loads: null,
+        },
+        tickets: null,
+        pages: [],
         since: null,
       },
     ];

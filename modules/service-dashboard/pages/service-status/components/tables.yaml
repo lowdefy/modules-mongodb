@@ -74,9 +74,11 @@ blocks:
                   field: page
                   flex: 1
                   minWidth: 160
-                - headerName: Users
-                  field: users
-                  width: 90
+                # Each day's users summed: a user on the page on 3 days counts 3.
+                - headerName: User-days
+                  field: user_days
+                  width: 100
+                  headerTooltip: Each day's users of the page, added up over the period
                   cell:
                     type: number
                 - headerName: Page loads

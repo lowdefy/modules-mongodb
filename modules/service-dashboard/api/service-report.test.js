@@ -127,8 +127,8 @@ const APP = {
     requests: {
       total: 412380,
       server_errors: 330,
-      p50_ms: 310,
-      p95_ms: 1420,
+      error_rate: 330 / 412380,
+      p95_weighted_ms: 1420,
     },
     active_users: 214,
   },
@@ -161,13 +161,13 @@ const APP = {
       seen: "6 health checks failed; 41% of requests failed",
     },
   ],
-  pages: [{ page_id: "tickets", users: 188, loads: 21904 }],
+  pages: [{ page_id: "tickets", loads: 21904, user_days: 2210 }],
   tickets: {
     opened: 38,
     resolved: 41,
     open_at_end: 12,
-    first_reply_median_ms: 22 * 60000,
-    resolve_median_ms: 1.6 * 86400000,
+    median_first_reply_ms: 22 * 60000,
+    median_resolve_ms: 1.6 * 86400000,
   },
 };
 
