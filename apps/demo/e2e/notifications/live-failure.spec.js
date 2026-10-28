@@ -5,9 +5,6 @@ import { USER } from "./fixtures.js";
 // onMountAsync runs the page's own requests at once, the failure is reported
 // to the console and the client-error endpoint, and the user sees no toast.
 
-// The client waits this long for a subscribe ack before it gives up.
-const SUBSCRIBE_TIMEOUT_MS = 10_000;
-
 test("a page loads its own data at once when the live feed cannot subscribe", async ({
   ldf,
   page,
@@ -40,22 +37,29 @@ test("a page loads its own data at once when the live feed cannot subscribe", as
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
-  const reported = page.waitForRequest(
-    (request) =>
-      request.url().endsWith("/api/client-error") &&
-      (request.postData() ?? "").includes("notifications-live"),
-    { timeout: SUBSCRIBE_TIMEOUT_MS + 10_000 },
-  );
+  // The page's own request must answer before the failed subscribe is
+  // reported: an awaited subscribe would hold it until the client gives up.
+  let reportedFirst = false;
+  const reported = page
+    .waitForRequest(
+      (request) =>
+        request.url().endsWith("/api/client-error") &&
+        (request.postData() ?? "").includes("notifications-live"),
+      { timeout: 60_000 },
+    )
+    .then((request) => {
+      reportedFirst = true;
+      return request;
+    });
 
   await ldf.user({ ...USER, roles: ["admin", "user-admin"] });
-  const opened = Date.now();
   const members = page.waitForResponse((response) =>
     response.url().includes("/get_all_members"),
   );
   await page.goto("/user-admin/all");
   expect((await members).ok()).toBe(true);
+  expect(reportedFirst).toBe(false);
   await expect(page.getByText("Feed Failure Member")).toBeVisible();
-  expect(Date.now() - opened).toBeLessThan(SUBSCRIBE_TIMEOUT_MS);
   await page.screenshot({ path: test.info().outputPath("loaded.png") });
 
   const report = await reported;

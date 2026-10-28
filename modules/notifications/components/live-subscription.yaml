@@ -3,15 +3,15 @@
 #   actions        the Subscribe action for onMountAsync, skipped without a
 #                  signed-in user so public pages never open the stream. It runs
 #                  async, so the rest of the chain does not wait for it and a
-#                  failed subscribe cannot end it; the failure still reaches the
-#                  console and the client-error report, with no toast.
+#                  failed subscribe cannot end it.
 # Both are empty when the module's `live` var is false.
 #
 # Every batch refetches the bell, drops toasts whose record is now read, adds
 # new unread popup records to the toast stack (newest first, at most
 # popup_limit) and chirps for them through the page's notifications_sound
-# player. A failed feed shows nothing: the bell and toasts then update on
-# navigation, as they do without it.
+# player. A failed feed shows no toast and reports to the console and the
+# client-error endpoint; the bell and toasts then update on navigation, as they
+# do without it.
 #
 # Vars:
 #   on_message  further actions for each batch (the inbox refreshes its list
