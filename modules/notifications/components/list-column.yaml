@@ -105,8 +105,9 @@ blocks:
         <div class="nx-row{% if not item.read %} nx-row--unread{% endif %}">
           <span class="nx-icon" style="--c: {{ item.appearance.color }}"><i data-icon="{{ item.appearance.icon }}"></i></span>
           <div class="nx-main">
-            <div class="nx-head"><span class="nx-row-title">{{ item.title }}</span>{% if item.created_at %}<time class="nx-time" datetime="{{ item.created_at }}" data-time="relative"></time>{% endif %}{% if not item.read %}<span class="nx-dot" aria-label="Unread"></span>{% endif %}</div>
+            <div class="nx-head"><span class="nx-row-title">{{ item.title }}</span>{% if item.created_at %}<time class="nx-time" datetime="{{ item.created_at }}" data-time="relative"></time>{% endif %}</div>
             {% if item.preview %}<div class="nx-preview" data-truncate="2">{{ item.preview }}</div>{% endif %}
+            <div class="nx-foot"><span data-tag="{{ item.appearance.color }}">{{ item.appearance.label }}</span>{% if not item.read %}<span class="nx-dot" aria-label="Unread"></span>{% endif %}</div>
           </div>
         </div>
     # ListSelector rings the selected card in the primary colour; the inbox

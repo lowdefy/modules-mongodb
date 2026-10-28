@@ -153,9 +153,9 @@ exports:
   pages:
     - id: support
       description: >-
-        Support: every ticket the user has, as Open and Resolved tabs of rows
-        with a state icon and word, and a Report a problem button that opens the
-        report form in a drawer, at /{entry id}/support
+        My tickets: every ticket the user has, open and resolved, with a search
+        box and status and type filters, and a Report a problem button that
+        opens the report form in a drawer, at /{entry id}/support
     - id: ticket
       description: >-
         One ticket, its conversation and the reply composer, at

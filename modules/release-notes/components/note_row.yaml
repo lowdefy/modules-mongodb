@@ -1,61 +1,60 @@
-# One note in the What's new list (`notes.$`, a row of get_notes): a gold dot
-# while unread, the headline on one line and the date. The shown note is
-# outlined.
+# One note in the What's new list (`notes.$`, a row of get_notes): version with
+# its New mark, headline and date. The shown note is outlined.
 id: notes.$
 type: Box
-# contain: inline-size gives the row no intrinsic width, so a long headline is
-# cut by the column instead of widening the page past a phone.
 class:
-  .block: w-full min-w-0 max-w-full [contain:inline-size]
-  .element:
-    _if:
-      test:
-        _eq:
-          - _state: notes.$._id
-          - _state: note._id
-      then: min-w-0 cursor-pointer rounded-lg border border-solid border-[var(--ant-color-border-secondary)] bg-[var(--ant-color-bg-container)] px-3 py-2.5
-      else: min-w-0 cursor-pointer rounded-lg border border-solid border-transparent px-3 py-2.5 hover:bg-[var(--ant-color-fill-quaternary)]
-style:
-  width: 100%
-  maxWidth: 100%
+  _if:
+    test:
+      _eq:
+        - _state: notes.$._id
+        - _state: note._id
+    then: min-w-0 cursor-pointer rounded-lg border border-solid border-[var(--ant-color-border-secondary)] bg-[var(--ant-color-bg-container)] px-3 py-2.5
+    else: min-w-0 cursor-pointer rounded-lg border border-solid border-transparent px-3 py-2.5 hover:bg-[var(--ant-color-fill-quaternary)]
 layout:
-  gap: 10
-  align: middle
-  wrap: nowrap
+  direction: column
+  gap: 2
 events:
   onClick:
     _ref: actions/select_note.yaml
 blocks:
-  - id: notes.$.dot_slot
+  - id: notes.$.heading
     type: Box
-    class: w-2 shrink-0
     layout:
-      flex: 0 0 8px
+      gap: 6
+      align: middle
+      wrap: nowrap
     blocks:
+      - id: notes.$.version_label
+        type: Span
+        class: font-semibold
+        layout:
+          flex: 0 1 auto
+        properties:
+          content:
+            _string.concat:
+              - "Version "
+              - _state: notes.$.version
       - id: notes.$.new_mark
-        type: Box
-        class: h-2 w-2 rounded-full bg-[var(--ant-color-warning)]
+        type: Tag
         visible:
           _state: notes.$.new
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: New
+          color: success
   - id: notes.$.headline
     type: Span
-    class:
-      .element: block truncate text-sm
-    layout:
-      flex: 1 1 0
-    style:
-      minWidth: 0
+    class: line-clamp-1 text-[13px]
     properties:
       content:
         _state: notes.$.title
   - id: notes.$.date
     type: Span
     class: text-xs text-[var(--ant-color-text-tertiary)]
-    layout:
-      flex: 0 0 auto
     properties:
       content:
         _dayjs.format:
           on:
             _state: notes.$.released_at
-          format: D MMM
+          format: D MMMM YYYY

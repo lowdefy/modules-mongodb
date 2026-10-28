@@ -2,7 +2,7 @@
 "@lowdefy/modules-mongodb-support": minor
 ---
 
-**support:** a person can report a problem without the help button or an assistant, and the Support pages are calmer.
+**support:** a person can report a problem without the help button or an assistant.
 
 New for apps:
 
@@ -12,9 +12,7 @@ New for apps:
 
 Changed:
 
-- **Support page**: one `Support` crumb with a line on what the page is for, a Report a problem button, and Open N and Resolved N tabs in place of the search box, the status switch and the type selector. A search box shows only past ten tickets. Rows lead with the stage's icon and word, then the title and date; the key, type tag and unread dot are gone, and a bold title marks a ticket that waits for a reply. An empty list says "Tell us what went wrong"; nothing open says "Nothing open. Show resolved N."
-- **Ticket page**: crumbs `Support / {title}`, one line of stage, type, date and key, the thread names the signed-in person "You", and the reply box says "Press ⌘ ↵ to send".
-- **A failed check for replies** is one grey line, "Couldn't check for replies.", with a Try again button, on the page and in the thread, in place of the yellow banner.
-- `enums/stages.yaml` gains an `icon` and a `color` for each stage.
+- **My tickets page**: a Report a problem button in the title row opens the report form in the page's own drawer. The list, its filters and the ticket page look as before.
+- **A failed check for replies** is one grey line, "Couldn't check for replies.", with a Try again button, on My tickets and in the thread, in place of the yellow banner.
 
 Nothing to change in an app that only uses the help button. The report form's ids, state keys and upload policy are now set per surface; the help button's panel keeps its own (`support_report.*`, `upload_policy_support_report_files`).

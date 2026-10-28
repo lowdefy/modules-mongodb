@@ -261,9 +261,9 @@ mask_selectors:
 
 **My tickets** in the panel lists the user's tickets, newest first: the ones they reported and the ones the team logged for them. Each row is one line, and the whole row opens the ticket: the key, the title, the type, the stage (Received, In progress, Needs your reply or Resolved, from Pelican's codes `received`, `in_progress`, `needs_your_reply` and `resolved`) and when it last changed. Open, Resolved and All switch the list (it opens on Open), and a search box and a type filter narrow it; they filter the loaded list without fetching again. A dot marks a ticket with a team message the user has not read. When the user's tickets come from more than one organisation, each row names its organisation. Opening the view fetches the list from Pelican; when that fails, it shows the saved tickets with a notice.
 
-Opening a ticket shows its **thread**: the messages, with images inline and PDFs as file chips, and a composer for a reply with up to five images or PDFs, which says "Press ⌘ ↵ to send". Opening it fetches the ticket from Pelican, which renews its file links and marks it read. A message the team removed shows as "Removed". The team's messages, Pelican's own included, sit on the left; the user's, named "You", on the right, with one day pill for each day. A reporter cannot close a ticket: the team resolves it. A reply that fails keeps its draft and says why, as the report form does.
+Opening a ticket shows its **thread**: the messages, with images inline and PDFs as file chips, and a composer for a reply with up to five images or PDFs. Opening it fetches the ticket from Pelican, which renews its file links and marks it read. A message the team removed shows as "Removed". The team's messages, Pelican's own included, sit on the left; the user's on the right. A reporter cannot close a ticket: the team resolves it. A reply that fails keeps its draft and says why, as the report form does.
 
-When the check for replies fails, the thread (like the Support page) shows one grey line, "Couldn't check for replies.", with a Try again button, and keeps showing what the copy holds.
+When the check for replies fails, the thread (like My tickets) shows one grey line, "Couldn't check for replies.", with a Try again button, and keeps showing what the copy holds.
 
 ### The live thread
 
@@ -277,14 +277,12 @@ Module websockets need a signed-in caller by default, so `support/ticket-thread`
 
 The module ships two pages for the user, at full width.
 
-| Page id   | Path                       | Shows                                                                                                                                                                                                             |
-| --------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `support` | `/{entry id}/support`      | **Support**: one crumb, a line on what the page is for and a Report a problem button. Open N and Resolved N tabs list the user's tickets as rows: the stage's icon and word, the title and when it last changed.  |
-| `ticket`  | `/{entry id}/{ticket key}` | One ticket: crumbs Support / the ticket's title, its title, one line (stage with its icon, type, when it opened, key), the conversation and the reply composer.                                                    |
+| Page id   | Path                       | Shows                                                                                                                                                                                                      |
+| --------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `support` | `/{entry id}/support`      | **My tickets**: every ticket the user has, open and resolved, newest activity first. Each row has the title, key, type, stage, when it last changed and a dot when the team replied since the user looked. |
+| `ticket`  | `/{entry id}/{ticket key}` | One ticket: its title, key, type, stage and when it opened, the conversation (images inline, the team's messages on the left, the user's on the right) and the reply composer.                             |
 
-A ticket that waits for the user's reply, or has a team message they have not read, shows its title in bold. A search box appears only once the user has more than ten tickets, and filters the loaded list by title. With no tickets the page says "Tell us what went wrong" and offers a Report a problem button; with nothing open it says "Nothing open. Show resolved N." The Report a problem button opens the report form in the page's own drawer, so it works whether or not the app mounts the help button or the report drawer. The list reads from the copy, fetched from Pelican when the page opens; the tabs change what shows, not what is fetched.
-
-The row's icon and colour come from the module's `enums/stages.yaml`, one entry per stage with its `label`, `icon`, `color` and tag colour.
+A search box filters the list by title or key, and two selectors by status (Open, Resolved, or one stage) and by type. With no tickets the list says so, and with filters that match none it asks the user to change them. A Report a problem button in the title row opens the report form in the page's own drawer, so it works whether or not the app mounts the help button or the report drawer. The list reads from the copy, fetched from Pelican when the page opens; the filters change what shows, not what is fetched.
 
 A ticket's address is its key in the path, such as `/support/PEL-1715`, so a link, a notification or the agent can name it. A key that is the ticket's id works too. A ticket that is not the user's shows nothing of it. Link to the pages from the app with `_module.pageId`; the ticket page takes the key as the `ticket_key` path param:
 

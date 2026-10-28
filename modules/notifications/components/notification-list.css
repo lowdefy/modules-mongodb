@@ -1,4 +1,4 @@
-/* Notifications inbox: actions row, rail | list | reading pane. Every colour, radius
+/* Notifications inbox: header, rail | list | reading pane. Every colour, radius
    and shadow is an Ant Design token, so the page follows each app's theme and
    dark mode. The page is full-bleed: the layout publishes the height left
    under its header as --layout-content-height, and the three regions fill it,
@@ -7,11 +7,29 @@
    gives way to a View selector. */
 
 .nx-inbox {
-  --nx-panel-height: calc(var(--layout-content-height, 100dvh) - 96px);
+  --nx-panel-height: calc(var(--layout-content-height, 100dvh) - 120px);
   --notifications-list-height: calc(var(--nx-panel-height) - 126px);
   --nx-list-width: clamp(320px, 36%, 420px);
   container: nx-inbox / inline-size;
   padding: 16px 24px 24px;
+}
+
+.nx-title h1 {
+  margin: 0;
+  font-size: var(--ant-font-size-heading-4, 20px);
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--ant-color-text);
+}
+
+.nx-title p {
+  margin: 0;
+  color: var(--ant-color-text-tertiary);
+}
+
+.nx-title strong {
+  color: var(--ant-color-text-secondary);
+  font-weight: 500;
 }
 
 .nx-panel {
@@ -201,9 +219,15 @@
   color: var(--ant-color-text-tertiary);
 }
 
+.nx-foot {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .nx-dot {
-  flex: 0 0 auto;
-  align-self: center;
   width: 8px;
   height: 8px;
   border-radius: 999px;

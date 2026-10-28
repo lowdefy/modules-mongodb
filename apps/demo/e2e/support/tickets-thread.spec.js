@@ -305,123 +305,36 @@ test("the ticket page opens the ticket its path names, by key", async ({
   );
 });
 
-test("the Support page lists open tickets, switches to resolved and opens one", async ({
+test("My tickets page lists every ticket, filters them and opens one", async ({
   ldf,
   page,
 }) => {
   await ldf.user(USER);
-  const RESOLVED = view({
-    id: "t-resolved",
-    key: "ENC-33",
-    version: 2,
-    stage: "resolved",
-    updated: "2026-10-01T10:00:00.000Z",
-    messages: [],
-  });
   pelican.answer(
-    pelicanAnswering({
-      "t-replied": REPLIED,
-      "t-logged": LOGGED,
-      "t-resolved": RESOLVED,
-    }),
+    pelicanAnswering({ "t-replied": REPLIED, "t-logged": LOGGED }),
   );
   await ldf.goto("/support/support");
   const list = page.locator("#support_list_tickets .ant-card");
-  const tabs = page.locator("#support_list_tabs");
-  await expect(tabs).toContainText("Open 2");
-  await expect(tabs).toContainText("Resolved 1");
   await expect(list).toHaveCount(2);
   await expect(list.nth(0)).toContainText("Ticket ENC-32");
-  await expect(list.nth(0)).toContainText("Received");
   await expect(list.nth(1)).toContainText("Ticket ENC-31");
-  await expect(list.nth(1)).toContainText("Needs your reply");
-  // Few tickets need no search.
-  await expect(page.locator("#support_list_filter\\.search")).toHaveCount(0);
 
-  await tabs.getByRole("tab", { name: /Resolved/ }).click();
+  await ldf.block("support_list_filter.search").do.fill("enc-31");
   await expect(list).toHaveCount(1);
-  await expect(list.first()).toContainText("Ticket ENC-33");
+  await expect(list.first()).toContainText("Ticket ENC-31");
 
-  await tabs.getByRole("tab", { name: /Open/ }).click();
+  await ldf.block("support_list_filter.search").do.fill("nothing like it");
+  await expect(page.locator("#support_list_tickets")).toContainText(
+    "No tickets match",
+  );
+
+  await ldf.block("support_list_filter.search").do.fill("");
+  await expect(list).toHaveCount(2);
   await list.nth(1).click();
   await expect(page).toHaveURL(/\/support\/ENC-31$/);
   await expect(page.locator("#support_page_thread_messages")).toContainText(
     "Which file were you exporting?",
   );
-  // The signed-in person is You, and the reply box says how to send.
-  await expect(page.locator("#support_page_thread_messages")).toContainText(
-    "You",
-  );
-  await expect(page.locator("#support_page_reply\\.message")).toContainText(
-    "Press ⌘ ↵ to send",
-  );
-});
-
-test("the Support page offers a search past ten tickets", async ({
-  ldf,
-  page,
-}) => {
-  await ldf.user(USER);
-  const views = {};
-  for (let n = 1; n <= 11; n += 1) {
-    const id = `t-many-${n}`;
-    views[id] = view({
-      id,
-      key: `ENC-${100 + n}`,
-      version: 1,
-      stage: "received",
-      updated: `2026-10-03T10:${String(n).padStart(2, "0")}:00.000Z`,
-      messages: [],
-    });
-  }
-  pelican.answer(pelicanAnswering(views));
-  await ldf.goto("/support/support");
-  const list = page.locator("#support_list_tickets .ant-card");
-  await expect(list).toHaveCount(11);
-  await ldf.block("support_list_filter.search").do.fill("ticket enc-105");
-  await expect(list).toHaveCount(1);
-  await ldf.block("support_list_filter.search").do.fill("");
-  await expect(list).toHaveCount(11);
-});
-
-test("with nothing open, the Support page offers the resolved tickets", async ({
-  ldf,
-  page,
-}) => {
-  await ldf.user(USER);
-  pelican.answer(
-    pelicanAnswering({
-      "t-resolved": view({
-        id: "t-resolved",
-        key: "ENC-33",
-        version: 2,
-        stage: "resolved",
-        updated: "2026-10-01T10:00:00.000Z",
-        messages: [],
-      }),
-    }),
-  );
-  await ldf.goto("/support/support");
-  await expect(page.locator("#support_list_none_here")).toContainText(
-    /Nothing open\.\s*Show resolved 1\./,
-  );
-  await page.getByRole("button", { name: "Show resolved 1." }).click();
-  await expect(page.locator("#support_list_tickets .ant-card")).toHaveCount(1);
-});
-
-test("with no tickets, the Support page asks what went wrong and opens the report form", async ({
-  ldf,
-  page,
-}) => {
-  await ldf.user(USER);
-  pelican.answer(pelicanAnswering({}));
-  await ldf.goto("/support/support");
-  await expect(page.locator("#support_list_empty")).toContainText(
-    "Tell us what went wrong",
-  );
-  await page.locator("#support_list_empty_report").click();
-  await expect(page.locator("#support_page_report_drawer")).toBeVisible();
-  await expect(page.locator("#support_page_report\\.title")).toBeVisible();
 });
 
 test("a failed check for replies is one grey line with a way to try again", async ({

@@ -1,24 +1,14 @@
-# The reporter's stages Pelican sends as codes, with the word the user and the
-# app's agent see, the icon that leads a row, and the colour the icon takes (a
-# CSS value, or empty for the muted default). `tag` is the tag colour for
-# surfaces that show a stage as a tag.
+# The reporter's stages Pelican sends as codes, with the label the user and the
+# app's agent see and the tag colour the list and thread show it in.
 received:
   label: Received
-  icon: Clock
-  color: ""
   tag: default
 in_progress:
   label: In progress
-  icon: LoaderCircle
-  color: ""
   tag: processing
 needs_your_reply:
   label: Needs your reply
-  icon: Inbox
-  color: var(--ant-color-warning)
   tag: warning
 resolved:
   label: Resolved
-  icon: CircleCheck
-  color: var(--ant-color-success)
   tag: success
