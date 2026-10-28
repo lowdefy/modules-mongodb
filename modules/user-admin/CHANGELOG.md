@@ -1,5 +1,31 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## 1.4.1
+
+### Patch Changes
+
+- [#324](https://github.com/lowdefy/modules-mongodb/pull/324) [`64c8292`](https://github.com/lowdefy/modules-mongodb/commit/64c829257834dbc7040756708606e750c81145fa) Thanks [@machielvdw](https://github.com/machielvdw)! - **A person whose login identity was deleted can now be re-invited and save their profile.** user-admin's Delete login identity hard-deleted the user row but left the person's contact pointing at the deleted user id. When an admin re-invited the person, they signed in under a new user id, and onboarding stopped with "We couldn't save your profile": the contact could not be claimed, because the claim only takes a contact with no `user_id`. Once the login is deleted, `delete-user` now unsets `user_id` on the person's contact, stamped with `updated`, so the re-invited person's onboarding profile save claims the contact by address. A delete that is refused leaves the contact linked.
+
+  Nothing to change in config to upgrade; upgrade every module and `@lowdefy/modules-mongodb-plugins` together, as always. Contacts that an earlier delete left linked stay stuck until their `user_id` is unset. To find them, list the contacts whose `user_id` names no user:
+
+  ```js
+  db["user-contacts"].aggregate([
+    { $match: { user_id: { $exists: true } } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "user_id",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    { $match: { user: { $size: 0 } } },
+    { $project: { email: 1, user_id: 1 } },
+  ]);
+  ```
+
+  Unset `user_id` on those contacts with `$unset`, never by setting it to `null`: the `user_id` index is unique and partial on `$exists`, so a stored `null` collides with the next unlinked contact.
+
 ## 1.4.0
 
 ## 1.3.0
