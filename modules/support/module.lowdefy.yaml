@@ -1,5 +1,5 @@
 name: Support
-version: 1.1.0
+version: 1.4.0
 description: >-
   The reporter's side of the Pelican support desk: a signed-in user reports a
   problem and chats with the team. Tickets live in Pelican; the app keeps a copy
@@ -48,6 +48,13 @@ vars:
       release-notes/receive. The webhook hands every release.* event to it. Null
       (the default) answers those events 404, "This app does not take release
       notes".
+  user_lookup:
+    type: boolean
+    default: false
+    description: >-
+      Answer Pelican's users.lookup event with the email and name of the app's
+      members it names. False (the default) answers it 404, "This app does not
+      share user details".
   types:
     type: array
     default:
@@ -222,6 +229,10 @@ exports:
       description: >-
         Read-only view of the auth engine's users, for the email a reply
         notification goes to
+    - id: support-members
+      description: >-
+        Read-only view of the auth engine's member rows, read for Pelican's user
+        lookup
   api:
     - id: create-ticket
       description: >-
@@ -251,8 +262,9 @@ exports:
     - id: webhook
       description: >-
         Pelican's signed webhook: stores each ticket change in the copy and
-        notifies the user of new team messages, and hands release.* events to
-        the release_notes_endpoint. List it in auth.api.public
+        notifies the user of new team messages, hands release.* events to the
+        release_notes_endpoint, and answers users.lookup with the app's members
+        when user_lookup is on. List it in auth.api.public
     - id: agent-file-ticket
       description: >-
         Agent tool: file a ticket for the session user, with the images and
@@ -317,6 +329,7 @@ connections:
   - _ref: connections/support_organizations.yaml
   - _ref: connections/support_webhook.yaml
   - _ref: connections/support_users.yaml
+  - _ref: connections/support_members.yaml
 
 api:
   - _ref: api/create-ticket.yaml
@@ -346,4 +359,4 @@ secrets:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.1.0"
+    version: "^1.4.0"

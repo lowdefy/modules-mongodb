@@ -187,7 +187,7 @@ false` — the prior hook owns doc creation), then L119-125 returns them as
 Client side, `chat.yaml:154-182` accumulates them: `onDataPart` with a `skip`
 guard on `_event: type`, appending to `charts` or `downloads` state. The panel at
 L293-309 renders charts through a `List` + `EChart`; downloads (L333-360) are
-buttons that re-run `query-data` live and pipe the response into `DownloadCsv`.
+buttons that re-run `query-data` live and pipe the response into `DownloadAnalyticsCsv`.
 
 The asymmetry is intentional — **charts are a snapshot** (option baked at turn
 end), **downloads are live** (query stored, executed on click).
@@ -379,9 +379,9 @@ and the drop-and-reload recovery need. The app lists the policy under
   `AgGridBalham` (L1034) sized to its rows rather than to the block's 500px
   default (`tableHeight`, L92) — 500 becomes a **ceiling**, so a table near the
   1000-row pipeline cap still scrolls and virtualises; markdown → `Markdown`;
-  download → `Button` + `CallAPI` + `DownloadCsv`. Chart and table sections each
+  download → `Button` + `CallAPI` + `DownloadAnalyticsCsv`. Chart and table sections each
   also get their own **⤓** (`sectionDownload`, L138) — a `CallAPI` →
-  `DownloadCsv` pair that re-queries the endpoint for the section's full result
+  `DownloadAnalyticsCsv` pair that re-queries the endpoint for the section's full result
   set, not the capped on-screen rows. It shares the section heading's row rather
   than taking one of its own (heading span 20, ⤓ span 4) and renders as the icon
   alone. `hideTitle` is what makes it icon-only and is load-bearing — the `Button`

@@ -16,7 +16,7 @@ Tickets live in Pelican. The app keeps a copy of each of its users' tickets in i
 ```yaml
 # modules.yaml
 - id: support
-  source: "github:lowdefy/modules-mongodb/modules/support@v1.1.0"
+  source: "github:lowdefy/modules-mongodb/modules/support@v1.4.0"
   vars:
     environment:
       _build.env: STAGE
@@ -69,6 +69,38 @@ A deployment with no webhook address in Pelican refreshes a thread only when it 
 ### Release notes
 
 Pelican sends release announcements on the same webhook. A delivery whose event starts with `release.` goes, once verified, to the endpoint the `release_notes_endpoint` var names, such as `release-notes/receive` for the [release-notes](../release-notes/index.md) module, as `{ delivery, app_version }`, and the webhook answers with what it returns. With the var null (the default), it answers 404, "This app does not take release notes". Ticket events and test deliveries are unaffected.
+
+### User lookup
+
+App request logs name users only by id, so Pelican asks the app who they are on the same webhook. A `users.lookup` delivery, `{ event: 'users.lookup', at, user_ids }` with 1 to 200 user ids, answers with the email and name of each id that is a member of the app:
+
+```
+{ users: [{ id, email, name }] }
+```
+
+- Only the app's members answer: an id with a member row in the app's organisation under the `pinned` policy, or in any organisation under `tenant`, since every organisation on a tenant deployment is the app's. An id with no member row here (unknown, in another organisation, or removed from the app) is left out, never an error. A person with several memberships answers once.
+- `email` and `name` come from the auth engine's user record. `email` is lowercased, or null when the record has none; `name` is null when the record has none. Nothing else is shared.
+- The lookup reads and writes nothing else, and needs no index beyond the `user-members` one the [user-admin indexes](../user-admin/reference/indexes.md) list.
+
+It is off by default, since it shares users' emails. Turn it on per deployment in the module's vars:
+
+```yaml
+# modules/support/vars.yaml
+user_lookup: true
+```
+
+What the webhook answers:
+
+| Delivery                                      | Answer                                                                                                                             |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Bad or stale signature                        | 401                                                                                                                                |
+| `test`                                        | 200 `{ ok: true }`                                                                                                                 |
+| `release.*`                                   | What the `release_notes_endpoint` answers, or 404 with the var null                                                                |
+| `users.lookup`, `user_lookup` off             | 404 "This app does not share user details"                                                                                         |
+| `users.lookup` without 1 to 200 non-empty ids | 422 "A users.lookup names 1 to 200 user ids."                                                                                      |
+| `users.lookup`, `user_lookup` on              | 200 `{ users }`                                                                                                                    |
+| A ticket event with a bad body                | 400 "A support webhook names an event, the user_id the ticket belongs to, and the ticket's reporter view with its id and version." |
+| Any other event, or none                      | 404 "Unknown event"                                                                                                                |
 
 ### Reply notifications
 
@@ -360,7 +392,7 @@ Each answers `{ ok: true, ... }` or `{ ok: false, error, ... }` and never fails 
 
 `ticket` is a ticket's id or its key.
 
-`webhook` takes Pelican's deliveries, `{ event, at, delivery_id, user_id, ticket }`, and hands `release.*` events on as [Release notes](#release-notes) says. Every ticket event (`ticket.created`, `ticket.message`, `ticket.message_deleted`, `ticket.stage`, `ticket.updated`) writes `ticket`, the reporter view, into the copy of the user `user_id` names, creating the row when there is none, so a ticket the team logs for a user shows in their list. A view no newer than the stored one changes nothing and still answers 200, so Pelican stops sending it. `ticket.message` also sends a [reply notification](#reply-notifications) for each team message the row did not have. To try it on a dev server, `apps/demo/scripts/support-webhook-check.mjs` posts signed deliveries and checks what they store.
+`webhook` takes Pelican's deliveries, `{ event, at, delivery_id, user_id, ticket }`, hands `release.*` events on as [Release notes](#release-notes) says, and answers `users.lookup` as [User lookup](#user-lookup) says. Any other event that is not a ticket event answers 404 "Unknown event". Every ticket event (`ticket.created`, `ticket.message`, `ticket.message_deleted`, `ticket.stage`, `ticket.updated`) writes `ticket`, the reporter view, into the copy of the user `user_id` names, creating the row when there is none, so a ticket the team logs for a user shows in their list. A view no newer than the stored one changes nothing and still answers 200, so Pelican stops sending it. `ticket.message` also sends a [reply notification](#reply-notifications) for each team message the row did not have. To try it on a dev server, `apps/demo/scripts/support-webhook-check.mjs` posts signed deliveries and checks what they store and what a lookup answers; its last argument, `on` or `off`, is the app's `user_lookup`.
 
 The app's own agent files and follows up tickets through four more endpoints. A ticket it files carries the same page, browser and error context as the form's when the app adds the `agent-context` component to its agent's shared state: see [Give the app's agent the support tools](how-to/agent-tools.md).
 

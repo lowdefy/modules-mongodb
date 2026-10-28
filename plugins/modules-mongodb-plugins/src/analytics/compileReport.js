@@ -574,7 +574,7 @@ function formatTimestamp(value, { withTime = false } = {}) {
   return new Intl.DateTimeFormat("en-GB", options).format(date);
 }
 
-// A per-section CSV export: the same CallAPI → DownloadCsv wiring a download
+// A per-section CSV export: the same CallAPI → DownloadAnalyticsCsv wiring a download
 // section uses, re-querying `endpointId` for the section's own rows so the file
 // is the full result set, not the (capped) on-screen rows. Only chart/table
 // sections get one — a KPI is a single number with nothing to export.
@@ -607,7 +607,7 @@ function sectionDownload(section, endpointId) {
         },
         {
           id: `download_${section.id}`,
-          type: "DownloadCsv",
+          type: "DownloadAnalyticsCsv",
           params: {
             data: { __api: `${endpointId}.response` },
             filename: safeFilename(section.label),
@@ -1042,7 +1042,7 @@ function downloadsCard(run, endpointId) {
           },
           {
             id: `download_${section.id}`,
-            type: "DownloadCsv",
+            type: "DownloadAnalyticsCsv",
             params: {
               data: { __api: `${endpointId}.response` },
               filename: safeFilename(section.label),

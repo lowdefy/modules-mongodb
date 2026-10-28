@@ -1,5 +1,15 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## 1.4.0
+
+## 1.3.0
+
+## 1.2.0
+
+### Patch Changes
+
+- [#318](https://github.com/lowdefy/modules-mongodb/pull/318) [`12b46dc`](https://github.com/lowdefy/modules-mongodb/commit/12b46dcd4c66db0140c9cd0cd41ac5bf5ffa686a) Thanks [@machielvdw](https://github.com/machielvdw)! - Admins can now reinstate a suspended user from the user detail page. When a user is suspended, the Security tile shows **Reinstate access** in place of Suspend access. It opens a confirm, lifts the ban through the existing `reinstate` endpoint, and refreshes the page so the status goes back to Active. Like Suspend, it sits behind the `suspension` var.
+
 ## 1.1.0
 
 ## 1.0.0

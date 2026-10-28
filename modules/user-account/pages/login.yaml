@@ -26,7 +26,8 @@
 # password errors return inline on the `Login` call (mapped in the onClick
 # `catch`), OAuth / magic-link failures arrive as a redirect to authPages.error
 # (this page) carrying `?error=` (mapped in `onInit`). Terminal codes
-# (MEMBERSHIP_REQUIRED, EMAIL_NOT_VERIFIED) render the form-hiding noaccess wall.
+# (MEMBERSHIP_REQUIRED, EMAIL_NOT_VERIFIED, BANNED_USER) render the form-hiding
+# noaccess wall.
 # Every retryable code stays on signin and surfaces as a persistent inline notice
 # (login_notice_alert) the user can read at their own pace: INVALID_EMAIL_OR_PASSWORD
 # and any unmapped/rate-limit default show it error-typed (red); a retryable
@@ -123,6 +124,11 @@ _ref:
                         - _url_query: error
                         - MEMBERSHIP_REQUIRED
                     then: Your sign-in worked, but no one has granted you access to this app yet. Ask an administrator for an invitation.
+                  - if:
+                      _eq:
+                        - _url_query: error
+                        - BANNED_USER
+                    then: Your access to this app has been removed. Contact an administrator if you think this is a mistake.
                 default: Something went wrong while signing you in. Try again, or contact an administrator.
             # Reveal sub-state for the signin method chooser. Seeded open only when
             # password is the sole method (no chooser to show); otherwise the chooser

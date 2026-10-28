@@ -36,3 +36,5 @@ report_secondary:
           type: Link
           params:
             pageId: home
+# Pelican's users.lookup answers with the email and name of the members it names.
+user_lookup: true

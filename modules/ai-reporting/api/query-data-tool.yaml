@@ -13,7 +13,7 @@
 #
 # query-data keeps its 8 MB budget and its bare-array return for report filter
 # re-queries and panel downloads: chat.yaml reads that response as an array
-# straight into DownloadCsv, so a display key on it would break the download.
+# straight into DownloadAnalyticsCsv, so a display key on it would break the download.
 #
 # The security boundary does not move. Both endpoints run the same signed-in
 # guard and the same AnalyticsPipeline request against the same catalog, bound

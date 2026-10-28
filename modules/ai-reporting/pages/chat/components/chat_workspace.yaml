@@ -1186,7 +1186,7 @@ blocks:
                               query:
                                 _state: downloads.$.query
                         - id: download_csv
-                          type: DownloadCsv
+                          type: DownloadAnalyticsCsv
                           params:
                             data:
                               _api:

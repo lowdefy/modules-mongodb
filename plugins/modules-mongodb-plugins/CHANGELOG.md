@@ -1,5 +1,35 @@
 # @lowdefy/modules-mongodb-plugins
 
+## 1.4.0
+
+### Minor Changes
+
+- [#320](https://github.com/lowdefy/modules-mongodb/pull/320) [`e373cc9`](https://github.com/lowdefy/modules-mongodb/commit/e373cc990d3c9ab9ff290c83adb99126f4fc5c36) Thanks [@JohannMoller](https://github.com/JohannMoller)! - **Breaking:** the plugin's CSV download action is renamed from `DownloadCsv` to `DownloadAnalyticsCsv`. If your app calls `DownloadCsv` with `columns`, it still builds and runs after this upgrade, but it now runs Lowdefy's own `DownloadCsv`, which ignores `columns`, so the file's columns change without an error. Switch it to `DownloadAnalyticsCsv` (same params), or keep `DownloadCsv` and pass `fields`.
+
+  The plugin's action had the same name as Lowdefy's and replaced it in every app that loads the plugin, so a `DownloadCsv` with `fields` ignored `fields` and wrote every key of every row, nested objects as JSON. `DownloadCsv` is Lowdefy's action again. The ai-reporting module uses the new name already.
+
+## 1.3.0
+
+## 1.2.0
+
+### Minor Changes
+
+- [#313](https://github.com/lowdefy/modules-mongodb/pull/313) [`07e7fdd`](https://github.com/lowdefy/modules-mongodb/commit/07e7fdd8767333240d7551b188957b9000aa4d8a) Thanks [@puffin-mrm](https://github.com/puffin-mrm)! - **A reply that finishes after the person leaves the page is kept.** Only the browser saved the assistant's reply, when it finished streaming, so moving to another page mid-reply lost it, even though the agent finished on the server. The new `save-thread-on-finish` endpoint stores the reply from the server. Set it as your agent's `onFinish` hook:
+
+  ```yaml
+  agents:
+    - id: support
+      hooks:
+        onFinish:
+          - ai-assistant/save-thread-on-finish
+  ```
+
+  Each time the panel opens it re-reads the stored thread, so the finished reply is there, also when the chat was streaming when the person left. A page with the embedded chat gets the same by running `enter` in its `onMount` as well as its `onInit`. A thread still waiting for its reply shows a one-line status above the chat, "The assistant is still replying.", with a **Check again** link.
+
+  `save-thread` now merges the history it is sent with the stored one rather than replacing it, so a reply the hook stored survives the browser's next save. The chat sends `known_ids`, the ids of every message it has held, and a stored message is dropped only when it is one of those. An app that calls `save-thread` itself without `known_ids` gets the old behaviour: its history replaces the stored one.
+
+  The `FloatingPanel` block's `onOpen` event now carries `{ first }`, true on the first open since the block mounted, when its children mount.
+
 ## 1.1.0
 
 ### Minor Changes

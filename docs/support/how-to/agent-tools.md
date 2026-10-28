@@ -58,7 +58,7 @@ The browser builds the chat request, so the tools send a file only when its key 
 
 ```yaml
 - id: support
-  source: "github:lowdefy/modules-mongodb/modules/support@v1.1.0"
+  source: "github:lowdefy/modules-mongodb/modules/support@v1.4.0"
   vars:
     chat_files_prefix:
       _string.concat:
@@ -79,7 +79,7 @@ A ticket from the report form carries the page, the browser's details and the ta
 
 ```yaml
 - id: ai-assistant
-  source: "github:lowdefy/modules-mongodb/modules/ai-assistant@v1.1.0"
+  source: "github:lowdefy/modules-mongodb/modules/ai-assistant@v1.4.0"
   vars:
     shared_state:
       support_context:
