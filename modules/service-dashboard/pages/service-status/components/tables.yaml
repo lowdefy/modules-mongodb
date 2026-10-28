@@ -18,7 +18,8 @@ blocks:
           - id: incidents_table
             type: AgGridBalham
             properties:
-              domLayout: autoHeight
+              height:
+                _state: app.table_heights.incidents
               size: small
               overlayNoRowsTemplate: No incidents in this period
               defaultColDef:
@@ -61,7 +62,8 @@ blocks:
           - id: pages_table
             type: AgGridBalham
             properties:
-              domLayout: autoHeight
+              height:
+                _state: app.table_heights.pages
               size: small
               overlayNoRowsTemplate: No page loads in this period
               defaultColDef:
@@ -103,7 +105,8 @@ blocks:
               - id: top_users_table
                 type: AgGridBalham
                 properties:
-                  domLayout: autoHeight
+                  height:
+                    _state: app.table_heights.top_users
                   size: small
                   overlayNoRowsTemplate: No signed-in users in this period
                   defaultColDef:

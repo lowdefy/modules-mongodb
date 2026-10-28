@@ -87,12 +87,20 @@
         const rangeDays = [];
         for (let t = time(range.from); t <= time(range.to); t += DAY) rangeDays.push(isoDay(t));
         const yesterday = isoDay(time(range.today) - DAY);
+        // Only the first and last dates, flush with the plot's ends.
         const categoryAxis = (labels) => ({
           type: 'category',
           data: labels,
           axisTick: { show: false },
-          axisLabel: { interval: labels.length > 2 ? labels.length - 2 : 0 },
+          axisLabel: {
+            interval: labels.length > 2 ? labels.length - 2 : 0,
+            alignMinLabel: 'left',
+            alignMaxLabel: 'right',
+          },
         });
+        // The tables' heights in pixels: the small grid's 36 px header and rows,
+        // with room for two lines in a row that wraps.
+        const tableHeight = (rows, rowHeight = 36) => 38 + rowHeight * Math.max(rows, 2);
         const grid = { left: 8, right: 8, top: 36, bottom: 8, containLabel: true };
         const legend = (names) => ({ data: names, top: 0, right: 0, itemWidth: 10, itemHeight: 10, selectedMode: false });
 
@@ -114,7 +122,7 @@
           ];
           const labels = days.map((d) => dayLabel(d.day));
           return {
-            grid: { left: 0, right: 0, top: 0, bottom: 28, containLabel: true },
+            grid: { left: 0, right: 0, top: 0, bottom: 48 },
             tooltip: { trigger: 'item', formatter: '{b}: {a}' },
             legend: { bottom: 0, itemWidth: 10, itemHeight: 10, selectedMode: false, data: kinds.map(([, name]) => name) },
             xAxis: { ...categoryAxis(labels), axisLine: { show: false } },
@@ -353,6 +361,11 @@
               })),
             pages: (app.pages || []).map((page) => ({ page_id: page.page_id, page: page.page_id, users: page.users, loads: page.loads })),
             top_users: topUsers,
+            table_heights: {
+              incidents: tableHeight(incidents.length, 56),
+              pages: tableHeight((app.pages || []).length),
+              top_users: tableHeight(topUsers ? topUsers.length : 0),
+            },
             foot: `${asOfNote}Updated daily at 03:30. Availability counts each 5-minute window: up when the health check passed, degraded when responses were slow or 5% or more failed, down when the check failed twice in a row. Times are South African.`,
           };
         }

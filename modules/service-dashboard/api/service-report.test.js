@@ -173,7 +173,13 @@ const APP = {
 
 describe("shaping the report", () => {
   test("one tab per app, named with its host", () => {
-    const report = shape([APP, { ...APP, id: "app-2", name: "Help", url: "https://help.example.com/" }], RANGE);
+    const report = shape(
+      [
+        APP,
+        { ...APP, id: "app-2", name: "Help", url: "https://help.example.com/" },
+      ],
+      RANGE,
+    );
     expect(report.ok).toBe(true);
     expect(report.tabs).toEqual([
       { key: "0", title: "Orders · orders.example.com" },
@@ -231,7 +237,8 @@ describe("shaping the report", () => {
     const series = Object.fromEntries(
       app.strip.series.map((s) => [s.name, s.data]),
     );
-    const index = (date) => daysBetween("2026-09-28", "2026-10-27").indexOf(date);
+    const index = (date) =>
+      daysBetween("2026-09-28", "2026-10-27").indexOf(date);
     expect(series.Down[index("2026-10-25")]).toBe(1);
     expect(series.Degraded[index("2026-10-17")]).toBe(1);
     expect(series["No data"][index("2026-10-05")]).toBe(1);
