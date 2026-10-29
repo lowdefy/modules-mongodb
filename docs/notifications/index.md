@@ -218,8 +218,9 @@ The bell, the toast stack and the inbox update the moment a notification arrives
 
 - **One stream per signed-in user.** Each signed-in user with a page open holds one change stream, and one pooled MongoDB connection while it waits. Size `maxPoolSize` in the connection string for your concurrent users plus your request load (the driver's default is 100).
 - **Replica set required.** Change streams run only on a replica set (Atlas clusters are one). Where they cannot run, set `live: false`: the bell and toasts then update on page load, as before.
+- **Websockets required.** The feed reaches the browser over a websocket at `/api/websocket`, so the host must accept websocket upgrades. On Vercel, turn on Fluid Compute for the project; without it every upgrade is answered with a 502. Set `live: false` only on a host that can't run websockets.
 - **Mark all as read sends one change per record.** Each record it marks reaches the user's open tabs as its own change, batched every 250 ms; marking thousands at once means a few seconds of batches and count refetches in those tabs.
-- **Failure is quiet.** If the feed fails, the page shows nothing; the bell and toasts update on the next navigation.
+- **Failure is quiet.** If the feed fails to subscribe, the page loads as normal and shows no error: the subscribe runs alongside the page's `onMountAsync` steps rather than before them. The failure is logged to the browser console and sent to the client-error report. The bell and toasts then update on the next navigation.
 - **Tenant wall.** Under `policy: tenant` the stream is scoped to the active organization, like a read.
 
 ### Sound
