@@ -1,7 +1,10 @@
 # Magic-link landing page. Serves authPages.magicLink: with that role set the
-# sign-in email links here, carrying `?token=` and the callback targets, instead
-# of linking straight at the verify endpoint. `MagicLinkVerify` reads them off
-# the query and performs the navigation to that endpoint.
+# sign-in email links here, carrying the token and the callback targets in the
+# URL fragment (`#token=`), instead of linking straight at the verify endpoint.
+# Browsers never send the fragment, so the token stays out of request logs.
+# `MagicLinkVerify` reads the params and posts them to the verify endpoint.
+# Links emailed before Lowdefy moved the token to the fragment carry `?token=`,
+# so the page checks the fragment first, then the query.
 #
 # The indirection exists because corporate mail security (Defender Safe Links,
 # Proofpoint, Mimecast) GETs every link in a message at delivery, and the verify
@@ -33,7 +36,9 @@ _ref:
         type: Html
         visible:
           _ne:
-            - _url_query: token
+            - _if_none:
+                - _url_hash: token
+                - _url_query: token
             - null
         properties:
           html: You've opened your sign-in link. One click finishes signing you in.
@@ -45,7 +50,9 @@ _ref:
         type: Button
         visible:
           _ne:
-            - _url_query: token
+            - _if_none:
+                - _url_hash: token
+                - _url_query: token
             - null
         properties:
           title: Sign in
@@ -56,7 +63,7 @@ _ref:
         events:
           onClick:
             # No params: the action reads the token and the callback
-            # destinations off this page's own query.
+            # destinations off this page's own fragment, else its query.
             - id: verify_magic_link
               type: MagicLinkVerify
 
@@ -64,7 +71,9 @@ _ref:
         type: Alert
         visible:
           _eq:
-            - _url_query: token
+            - _if_none:
+                - _url_hash: token
+                - _url_query: token
             - null
         properties:
           type: warning
@@ -75,7 +84,9 @@ _ref:
         type: Button
         visible:
           _eq:
-            - _url_query: token
+            - _if_none:
+                - _url_hash: token
+                - _url_query: token
             - null
         properties:
           title: Back to sign in
