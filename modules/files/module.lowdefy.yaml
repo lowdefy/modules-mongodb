@@ -20,13 +20,14 @@ vars:
     type: object
     description: >-
       An app endpoint that decides who may work with a record's files. When
-      set, list-files, upload-policy, save-file, download-file and delete-file
-      each call it before they act, with { operation (list, upload, save,
+      set, list-files, upload-policy, save-file, download-file, file and
+      delete-file each call it before they act, with { operation (list, upload, save,
       download or delete), entity_type, entity_id, file_id } (file_id is null
       for list and upload). Only { allowed: true } lets the operation go ahead;
       { allowed: false, message } stops it with that message, which the block
-      shows. Unset, every signed-in member of the organization passes. A record
-      may not be saved yet when it is asked: the activities module mints
+      shows; the file link answers a refusal with a bare 404 instead. Unset,
+      every signed-in member of the organization passes. A record may not be
+      saved yet when it is asked: the activities module mints
       activity_id before the activity is saved, so files can be uploaded to a
       new activity, and the endpoint decides what to answer for a record it
       cannot find.
@@ -86,6 +87,12 @@ exports:
       description: >-
         Sign a download link for a live file record. Payload { file_id }.
         Returns { url }.
+    - id: file
+      description: >-
+        A file's stable link, GET /api/endpoints/<files entry>/file/<key>
+        (link: true). Answers 302 to a 60-second signed S3 link after the
+        tenant wall and the access check; images and PDFs open inline, every
+        other type downloads. Signed out is 401, every refusal a bare 404.
     - id: delete-file
       description: Soft-delete a live file record. Payload { file_id }.
   components:
@@ -118,6 +125,7 @@ api:
   - _ref: api/upload-policy.yaml
   - _ref: api/save-file.yaml
   - _ref: api/download-file.yaml
+  - _ref: api/file.yaml
   - _ref: api/delete-file.yaml
 
 components:

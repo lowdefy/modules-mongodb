@@ -1,23 +1,30 @@
+# The page emailed attachment links open: file-download?_id=<notification>&index=<n>.
+# It is protected, so a signed-out recipient goes through the app's sign-in and
+# lands back here. It signs nothing: on mount it forwards the browser to the
+# module's `file` link endpoint, which checks the caller is the notification's
+# recipient and answers 302 to the file.
+#
+# `href`, not `url`: Link routes a root-relative `url` as a client-side page
+# change, which never sends the GET to the endpoint.
 id: file-download
 type: Box
-requests:
-  - _ref: requests/get-notification-file.yaml
-  - _ref: requests/download-notification-file.yaml
 events:
   onMount:
-    - id: get_file
-      type: Request
-      params: get_notification_file
-    - id: set_file
-      type: SetState
-      params:
-        file:
-          _request: get_notification_file.0.file
-    - id: download_file
-      type: Request
-      params: download_notification_file
-    - id: link_to_file
+    - id: open_file
       type: Link
       params:
-        url:
-          _request: download_notification_file
+        href:
+          _js:
+            fn: |
+              const { basePath, endpointId, notificationId, index } = args[0];
+              const segment = (value) => encodeURIComponent(value === null || value === undefined ? '' : String(value));
+              return `${basePath || ''}/api/endpoints/${endpointId}/${segment(notificationId)}/${segment(index)}`;
+            args:
+              - basePath:
+                  _location: basePath
+                endpointId:
+                  _module.endpointId: file
+                notificationId:
+                  _url_query: _id
+                index:
+                  _url_query: index

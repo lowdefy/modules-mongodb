@@ -55,8 +55,9 @@ dependencies:
       universal-fields surface composes (Part 24 / Part 24a).
   - id: files
     description: >
-      Provides the files-bucket connection the download-form-file endpoint
-      signs workflow form files with.
+      Provides the files-bucket connection the download-form-file and
+      form-file endpoints sign workflow form files with, and the sign-link
+      part (api/parts/sign-link.yaml) form-file signs through.
 
 vars:
   workflows_config:
@@ -216,6 +217,14 @@ exports:
         Payload { workflow_id, file_id }, file_id being the file's key.
         Signs only a key in the form slots of actions the caller may view.
         Returns { url }.
+    - id: form-file
+      description: >-
+        A workflow form file's stable link, GET /api/endpoints/<workflows
+        entry>/form-file/<workflow_id>/<key> (link: true). Answers 302 to a
+        60-second signed S3 link when the key is in the form slots of actions
+        the caller may view, rich-text images included; images and PDFs open
+        inline, every other type downloads. Signed out is 401, every refusal a
+        bare 404.
 
 components:
   - id: action_statuses
@@ -254,6 +263,7 @@ api:
       - _ref: api/get-workflow-overview.yaml
       - _ref: api/get-action-group-overview.yaml
       - _ref: api/download-form-file.yaml
+      - _ref: api/form-file.yaml
     - _ref:
         resolver: resolvers/makeWorkflowApis.js
         vars:

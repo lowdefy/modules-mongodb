@@ -62,6 +62,12 @@ form:
   - key: form.po_document
     component: file_upload
     title: PO document
+  # Rich text whose pasted images upload through the same upload_files policy
+  # and are saved as the workflows form-file link, so they load only for people
+  # who may view this action.
+  - key: form.notes
+    component: tiptap_input
+    title: Notes
   # Role-scoped multi-select — a dropdown of contacts holding any of the given
   # app roles; the block value is an array of denormalized (view-renderable) values.
   - key: form.reviewers
@@ -77,7 +83,8 @@ form:
 # "button → modal" pattern (docs/workflows/reference/authoring-grammar.md).
 pages:
   edit:
-    # The policy the PO document field uploads through (file_upload's default
+    # The policy the PO document field and images pasted into the notes
+    # upload through (the file_upload and tiptap_input default
     # s3PostPolicyRequestId). Form file keys must start with
     # {organization_id}/workflows/: submit refuses any other new key, and
     # download-form-file signs only those and keys from before the prefix.
