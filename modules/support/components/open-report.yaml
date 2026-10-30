@@ -1,0 +1,29 @@
+# An action list that opens the report drawer with a draft filled in, for a
+# button's onClick on a page that mounts the report-drawer component. Each var
+# is a value or a runtime operator, resolved when the action runs.
+#
+# Vars:
+#   type     one of the types var's values
+#   title    the draft's title
+#   body     the draft's message
+#   context  an object sent in the ticket's context, under `extra`
+_ref:
+  path: actions/open_report.yaml.njk
+  vars:
+    prefix: support_drawer
+    type:
+      _var:
+        key: type
+        default: null
+    title:
+      _var:
+        key: title
+        default: null
+    body:
+      _var:
+        key: body
+        default: null
+    context:
+      _var:
+        key: context
+        default: null

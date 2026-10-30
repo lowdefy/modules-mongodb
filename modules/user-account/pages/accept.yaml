@@ -266,7 +266,7 @@ _ref:
                     then:
                       _module.pageId: signup
                     else:
-                      _module.pageId: login
+                      _ref: components/sign_in_page_id.yaml
                 urlQuery:
                   email:
                     _state: invite.email
@@ -294,7 +294,7 @@ _ref:
               type: Link
               params:
                 pageId:
-                  _module.pageId: login
+                  _ref: components/sign_in_page_id.yaml
                 urlQuery:
                   email:
                     _state: invite.email

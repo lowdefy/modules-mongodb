@@ -4,7 +4,8 @@ description: >-
   Posts the session user's message on one of their tickets: { ticket, message,
   files: [{ key, name }] }, the ticket by id or key. Files are keys the user
   uploaded through the module's upload policy. Answers { ok, ticket } or
-  { ok: false, error }.
+  { ok: false, error }. A posted message marks the ticket's support-reply
+  notifications read.
 payloadSchema:
   type: object
   required:
@@ -41,5 +42,57 @@ routine:
           _if_none:
             - _payload: files
             - []
+  - :if:
+      _eq:
+        - _step: send_message.ok
+        - true
+    :then:
+      # The person has answered, so the bell no longer asks them to. The reply
+      # is already posted, so a failure here is logged and never fails it: the
+      # message would be sent twice.
+      - :try:
+          - id: read_reply_notifications
+            type: MongoDBUpdateMany
+            connectionId:
+              _module.connectionId:
+                id: notifications-collection
+                module: notifications
+            properties:
+              filter:
+                type:
+                  _module.notificationId: support-reply
+                read: false
+                data.ticket_key:
+                  _step: send_message.ticket.view.key
+                created.app_name:
+                  _build.app: slug
+                # The recipient matches as the notifications module's own
+                # reads do: by the auth user, or by a contact whose id is the
+                # user's. Never null without a session.
+                $or:
+                  - contact_id:
+                      _if_none:
+                        - _user: id
+                        - __no_session__
+                  - user_id:
+                      _if_none:
+                        - _user: id
+                        - __no_session__
+              update:
+                $set:
+                  read: true
+                  updated:
+                    _ref:
+                      module: events
+                      component: change_stamp
+        :catch:
+          - :log:
+              event: support_reply_notification_not_marked_read
+              ticket:
+                _payload: ticket
+              message: >-
+                The reply was posted, but the ticket's support-reply
+                notifications could not be marked read.
+            :level: warn
   - :return:
       _step: send_message

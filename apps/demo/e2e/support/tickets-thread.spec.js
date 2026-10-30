@@ -247,7 +247,7 @@ test("a reply with an image and a PDF posts and shows its files", async ({
   await expect(page.locator("#support_reply\\.files")).toContainText(
     "export.pdf",
   );
-  await ldf.block("support_reply_send").do.click();
+  await ldf.block("support_reply.message").do.send();
 
   await expect(page.locator("#support_thread_messages")).toContainText(
     "This one, attached.",
@@ -278,7 +278,7 @@ test("a retry answer to a reply keeps the draft", async ({ ldf, page }) => {
   await openMyTickets({ ldf, page });
   await rows(page, "support").first().click();
   await ldf.block("support_reply.message").do.fill("Still failing.");
-  await ldf.block("support_reply_send").do.click();
+  await ldf.block("support_reply.message").do.send();
   await expect(page.locator("#support_reply_error")).toContainText(
     "Something went wrong, try again.",
   );
@@ -337,6 +337,22 @@ test("My tickets page lists every ticket, filters them and opens one", async ({
   );
 });
 
+test("a failed check for replies is one grey line with a way to try again", async ({
+  ldf,
+  page,
+}) => {
+  await ldf.user(USER);
+  pelican.answer(() => ({ status: 500, body: {} }));
+  await ldf.goto("/support/support");
+  await expect(page.locator("#support_list_notice")).toContainText(
+    "Couldn't check for replies.",
+  );
+  pelican.answer(pelicanAnswering({ "t-logged": LOGGED }));
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.locator("#support_list_notice")).toHaveCount(0);
+  await expect(page.locator("#support_list_tickets .ant-card")).toHaveCount(1);
+});
+
 test("a link to another user's ticket shows nothing of it", async ({
   ldf,
   page,
@@ -368,7 +384,7 @@ test("a link to another user's ticket shows nothing of it", async ({
   await ldf.goto("/support/t-other");
 
   await expect(page.locator("#support_page_thread_notice")).toContainText(
-    "No such ticket.",
+    "Couldn't check for replies.",
   );
   await expect(page.getByText("Ticket ENC-99")).toHaveCount(0);
   await expect(page.getByText("Someone else's problem.")).toHaveCount(0);
@@ -405,7 +421,7 @@ test("sending a report opens its thread in the panel", async ({
   await ldf.block("support_report.type").do.select("Bug");
   await ldf.block("support_report.title").do.fill("The export fails");
   await ldf.block("support_report.message").do.fill("Export shows an error.");
-  await ldf.block("support_report_send").do.click();
+  await ldf.block("support_report.message").do.send();
 
   await expect(page.locator("#support_thread_title")).toContainText(
     "Ticket ENC-40",

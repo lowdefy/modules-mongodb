@@ -25,13 +25,25 @@ global_events:
       type: SetState
       params:
         whats_new_dismissed: false
+    - id: fetch_unread_release_notes
+      type: Request
+      params: get_unread_release_notes_count
     - _ref:
         module: support
         component: on-init
 global_requests:
-  _ref:
-    module: support
-    component: requests
+  _build.array.concat:
+    - _ref:
+        module: support
+        component: requests
+    # Tickets waiting for the person's reply, read on the home page.
+    - - _ref:
+          module: support
+          component: get-awaiting-reply-count
+    # The unread count behind the What's new launcher below.
+    - - _ref:
+          module: release-notes
+          component: get_unread_release_notes_count
 # The support panel's live thread, opened only while a thread is open.
 global_subscriptions:
   _ref:
@@ -41,11 +53,36 @@ global_blocks:
   - _ref:
       module: support
       component: launcher
+  # The report form in a drawer, opened by open-report with no model call: it
+  # works when the help button is off or the assistant is unavailable.
+  - _ref:
+      module: support
+      component: report-drawer
+      vars:
+        secondary:
+          - id: report_ask_assistant
+            type: Button
+            properties:
+              title: Ask the assistant instead
+              type: link
+              size: small
+            events:
+              onClick:
+                - id: report_ask_assistant_link
+                  type: Link
+                  params:
+                    pageId: home
   - id: whats_new_launcher
     type: Button
-    # Hidden on What's new itself, where it would float over the note.
+    # Shown while a release note is unread; hidden on What's new itself, where
+    # it would float over the note.
     visible:
       _and:
+        - _gt:
+            - _if_none:
+                - _request: get_unread_release_notes_count.0.total
+                - 0
+            - 0
         - _not:
             _state: whats_new_dismissed
         - _ne:

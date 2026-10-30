@@ -1,0 +1,37 @@
+# Opens the report drawer on {{ prefix }}, with the fields the caller names
+# filled in. The file's vars are values or runtime operators, resolved when the
+# action runs; a field left out starts empty. Nothing calls a model: the form
+# files a ticket straight to the support desk.
+#
+# Vars:
+#   prefix   the state and block id prefix of the drawer's surface
+#   type, title, body  the draft's type, title and message
+#   context  an object added to the ticket's context under `extra`
+- id: {{ prefix }}_prefill
+  type: SetState
+  params:
+    {{ prefix }}.type:
+      _var:
+        key: type
+        default: null
+    {{ prefix }}.title:
+      _var:
+        key: title
+        default: null
+    {{ prefix }}.message:
+      _var:
+        key: body
+        default: null
+    {{ prefix }}.files: []
+    {{ prefix }}_error: null
+    {{ prefix }}_extra:
+      _var:
+        key: context
+        default: null
+- id: {{ prefix }}_open
+  type: CallMethod
+  params:
+    blockId: {{ prefix }}_drawer
+    method: setOpen
+    args:
+      - open: true

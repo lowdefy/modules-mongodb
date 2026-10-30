@@ -277,6 +277,23 @@ test("someone with no notes sees the empty state and the switch", async ({
   await expect(page.locator("#email_releases")).toBeVisible();
 });
 
+test("the unread count drives the What's new launcher on other pages", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  const launcher = page.locator("#whats_new_launcher");
+  await ldf.goto("/home");
+  await expect(launcher).toBeVisible();
+
+  await mdb
+    .collection("release-notes-recipients")
+    .updateMany({ user_id: USER.id }, { $set: { opened_at: new Date() } });
+  await ldf.goto("/home");
+  await expect(page.locator("main")).toBeVisible();
+  await expect(launcher).toHaveCount(0);
+});
+
 test("on a phone the list stacks above the note", async ({ ldf, page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await ldf.goto("/release-notes/view");

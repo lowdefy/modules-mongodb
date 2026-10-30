@@ -6,19 +6,16 @@ type: Box
 layout:
   gap: 12
 blocks:
-  - id: support_list_notice
-    type: Alert
-    visible:
-      _ne:
-        - _state: support_list_tickets_error
-        - null
-    properties:
-      type: warning
-      showIcon: true
-      message:
-        _string.concat:
-          - "Showing your saved tickets. "
-          - _state: support_list_tickets_error
+  - _ref:
+      path: components/parts/sync_notice.yaml.njk
+      vars:
+        id: support_list_notice
+        error_state: support_list_tickets_error
+        retry:
+          _ref:
+            path: actions/open_tickets.yaml.njk
+            vars:
+              prefix: support_list
   - id: support_list_tickets
     type: ListSelector
     loading:
@@ -35,18 +32,10 @@ blocks:
       noData:
         _js:
           fn: |
-            if (!args.total) {
-              return args.help_button
-                ? 'No tickets yet. Report a problem with the Help button and it shows here.'
-                : 'No tickets yet.';
-            }
+            if (!args.total) return 'No tickets yet. Report a problem and it shows here.';
             if (args.status === 'open' && !args.search && !args.type) return 'No open tickets. Choose All to see resolved ones.';
             return 'No tickets match. Change the search or the filters.';
           args:
-            # An app with the help button off (launcher.show: false) has its
-            # own way in, so the empty list does not point at the button.
-            help_button:
-              _module.var: launcher.show
             total:
               _array.length:
                 _state: support_list_tickets

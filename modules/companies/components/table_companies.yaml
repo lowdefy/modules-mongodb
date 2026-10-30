@@ -1,58 +1,52 @@
+# Companies list. Sorting is the table's own (click a header); search, the
+# sort menu and pagination sit around it on the page. A row opens the view page.
 id: companies_table
-type: AgGridBalham
-loading:
-  _not:
-    _request: get_all_companies
+type: Table
 properties:
-  height: 70vh
-  overlayNoRowsTemplate: No rows
-  rowStyle:
-    cursor: pointer
-  rowData:
-    _request: get_all_companies
-  defaultColDef:
-    sortable: true
-    resizable: true
-    cellStyle:
-      cursor: pointer
-      wordBreak: break-word
-      display: flex
-      alignItems: center
-  columnDefs:
+  size: comfortable
+  headerMenu: false
+  reorderable: false
+  emptyText: No companies
+  rowKey: _id
+  loading:
+    _not:
+      _request: get_all_companies
+  rowLink:
+    pageId:
+      _module.pageId: view
+    urlQuery:
+      _id: _id
+  data:
+    _if_none:
+      - _request: get_all_companies
+      - []
+  columns:
     _build.array.concat:
-      - - headerName: ID
-          field: _id
+      - - key: _id
+          title: ID
           width: 120
-        - headerName: Name
-          field: display_name
+        - key: display_name
+          title: Name
           flex: 1
           minWidth: 240
       - _build.if:
           test:
             _module.var: short_name.enabled
           then:
-            - headerName: Short Name
-              field: short_name
+            - key: short_name
+              title: Short Name
               width: 140
           else: []
-      - - headerName: Description
-          field: description
+      - - key: description
+          title: Description
           flex: 1
           minWidth: 200
       - _module.var: components.table_columns
-      - - headerName: Updated At
-          field: updated_at
+      - - key: updated_at
+          title: Updated At
+          type: date
           width: 120
-        - headerName: Created At
-          field: created_at
+        - key: created_at
+          title: Created At
+          type: date
           width: 120
-events:
-  onRowClick:
-    - id: link_to_detail
-      type: Link
-      params:
-        pageId:
-          _module.pageId: view
-        urlQuery:
-          _id:
-            _event: row._id

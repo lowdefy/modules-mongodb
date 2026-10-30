@@ -2,13 +2,16 @@
    and shadow is an Ant Design token, so the page follows each app's theme and
    dark mode. The page is full-bleed: the layout publishes the height left
    under its header as --layout-content-height, and the three regions fill it,
-   each scrolling on its own. Below md the rail gives way to a View selector
-   and the list and pane take turns. */
+   each scrolling on its own. When the inbox is too narrow for the pane to sit
+   beside the list, the list and pane take turns; below md the rail also
+   gives way to a View selector. */
 
 .nx-inbox {
   --nx-panel-height: calc(var(--layout-content-height, 100dvh) - 120px);
   --notifications-list-height: calc(var(--nx-panel-height) - 126px);
-  padding: 24px 32px;
+  --nx-list-width: clamp(320px, 36%, 420px);
+  container: nx-inbox / inline-size;
+  padding: 16px 24px 24px;
 }
 
 .nx-title h1 {
@@ -287,20 +290,29 @@
   align-items: start;
 }
 
+.nx-pane-titles {
+  min-width: 0;
+}
+
 .nx-pane-head h2 {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: var(--ant-font-size-lg, 16px);
   line-height: 24px;
   font-weight: 600;
   color: var(--ant-color-text);
 }
 
+.nx-pane-tag {
+  margin-top: 6px;
+}
+
+.nx-pane-tag [data-tag] {
+  white-space: nowrap;
+}
+
 .nx-pane-meta {
-  margin-top: 4px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  margin-top: 6px;
   font-size: var(--ant-font-size-sm, 12px);
   line-height: 20px;
   color: var(--ant-color-text-tertiary);
@@ -331,6 +343,37 @@
   font-size: var(--ant-font-size-sm, 12px);
 }
 
+/* ── narrow inbox ─────────────────────────────────────────────────────── */
+
+/* The pane needs about 380px beside rail and list; narrower than that the
+   list and the open notification take turns, and Back returns to the list.
+   Lowdefy wraps each block in a "bl-" element named after it carrying its
+   flex basis. */
+#bl-pane_back {
+  display: none;
+}
+
+@container nx-inbox (max-width: 940px) {
+  #bl-list_column,
+  #bl-reading_pane {
+    flex: 1 1 0 !important;
+  }
+  #bl-list_column:has(.nx-narrow-hidden),
+  #bl-reading_pane:has(.nx-narrow-hidden) {
+    display: none !important;
+  }
+  #bl-pane_back {
+    display: block;
+  }
+  .nx-list-column {
+    border-right: 0;
+  }
+}
+
+.nx-pane-meta time {
+  white-space: nowrap;
+}
+
 /* ── narrow screens ───────────────────────────────────────────────────── */
 
 @media (max-width: 767px) {
@@ -353,10 +396,6 @@
   #bl-list_column,
   #bl-reading_pane {
     flex: 1 1 100% !important;
-  }
-  #bl-list_column:has(.nx-narrow-hidden),
-  #bl-reading_pane:has(.nx-narrow-hidden) {
-    display: none !important;
   }
   .nx-pane-header,
   .nx-pane-body {

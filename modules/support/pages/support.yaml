@@ -1,5 +1,8 @@
 # My tickets: every ticket the user has, open and resolved, newest activity
 # first, with a search box and filters. A row opens the ticket page (ticket.yaml).
+# Report a problem, in the title row, opens the page's own drawer with the
+# report form, so a person can report a problem from here whether or not the
+# app has a help button or an assistant.
 _ref:
   module: layout
   component: page
@@ -10,6 +13,20 @@ _ref:
     breadcrumbs:
       - label: Support
       - label: My tickets
+    page_actions:
+      - id: support_list_report
+        type: Button
+        properties:
+          title: Report a problem
+          type: primary
+        events:
+          onClick:
+            _ref: actions/open_page_report.yaml
+    requests:
+      - _ref:
+          path: requests/upload_policy.yaml
+          vars:
+            block_id: support_page_report_files
     events:
       onInit:
         - id: support_list_init
@@ -21,6 +38,14 @@ _ref:
             support_list_filter.search: null
             support_list_filter.status: open
             support_list_filter.type: null
+            support_page_report.type: null
+            support_page_report.title: null
+            support_page_report.message: null
+            support_page_report.files: []
+            support_page_report_extra: null
+            support_page_report_error: null
+            support_page_report_open: false
+            support_page_report_sending: false
       onMount:
         _build.array.concat:
           # The ticket page may have left its live thread open.
@@ -44,3 +69,9 @@ _ref:
         blocks:
           - _ref: components/my_tickets/filters.yaml
           - _ref: components/my_tickets/list.yaml
+      - _ref:
+          path: components/report/report_drawer.yaml.njk
+          vars:
+            prefix: support_page_report
+            secondary:
+              _module.var: report_secondary

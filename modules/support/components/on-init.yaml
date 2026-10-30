@@ -1,5 +1,5 @@
 # For the layout's global_events.onInit: the state the support panel reads, set
-# on every page so the panel starts on a blank report.
+# on every page so the panel and the report drawer start on a blank report.
 id: support_init
 type: SetState
 params:
@@ -16,6 +16,7 @@ params:
   support_reply.files: []
   support_sending: false
   support_report_error: null
+  support_report_open: false
   support_report.type: null
   support_report.title: null
   support_report.message: null
@@ -24,3 +25,11 @@ params:
   support_live.surface: null
   support_live.row: null
   support_live.newer: false
+  support_drawer.type: null
+  support_drawer.title: null
+  support_drawer.message: null
+  support_drawer.files: []
+  support_drawer_extra: null
+  support_drawer_error: null
+  support_drawer_open: false
+  support_drawer_sending: false

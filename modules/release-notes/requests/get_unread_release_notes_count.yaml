@@ -1,0 +1,13 @@
+# How many announced notes the signed-in person has not opened: `[{ total }]`,
+# and `[]` when none. An app reads it to show a New mark while a note is unread.
+id: get_unread_release_notes_count
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: release-notes-recipients
+properties:
+  pipeline:
+    - $match:
+        user_id:
+          _user: id
+        opened_at: null
+    - $count: total

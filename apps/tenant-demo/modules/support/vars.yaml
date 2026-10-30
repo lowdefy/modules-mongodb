@@ -14,5 +14,19 @@ app_version:
     key: APP_VERSION
     default: null
 release_notes_endpoint: release-notes/receive
+# Under the Support page's report form: the assistant as a second way.
+report_secondary:
+  - id: support_page_ask_assistant
+    type: Button
+    properties:
+      title: Ask the assistant instead
+      type: link
+      size: small
+    events:
+      onClick:
+        - id: support_page_ask_assistant_link
+          type: Link
+          params:
+            pageId: home
 # Pelican's users.lookup answers with the email and name of the members it names.
 user_lookup: true

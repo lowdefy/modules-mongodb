@@ -10,7 +10,7 @@ class:
       then: nx-region nx-list-column nx-narrow-hidden
       else: nx-region nx-list-column
 layout:
-  flex: 0 0 400px
+  flex: 0 0 var(--nx-list-width)
 blocks:
   - _ref: components/form-filter.yaml
   - id: new_rows_pill
@@ -110,9 +110,12 @@ blocks:
             <div class="nx-foot"><span data-tag="{{ item.appearance.color }}">{{ item.appearance.label }}</span>{% if not item.read %}<span class="nx-dot" aria-label="Unread"></span>{% endif %}</div>
           </div>
         </div>
+    # ListSelector rings the selected card in the primary colour; the inbox
+    # keeps the row's own edges and marks it with a tint and its left edge.
     style:
       .selected:
-        background: var(--ant-color-primary-bg)
+        background: color-mix(in srgb, var(--ant-color-primary) 7%, transparent)
+        borderColor: var(--ant-color-border-secondary)
         borderLeftColor: var(--ant-color-primary)
         boxShadow: none
     events:

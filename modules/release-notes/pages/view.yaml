@@ -8,6 +8,8 @@ _ref:
     id: view
     title: What's new
     hide_title: true
+    about:
+      _module.var: about
     content_width: 1100
     requests:
       - _ref: requests/get_notes.yaml

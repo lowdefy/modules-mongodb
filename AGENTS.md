@@ -167,7 +167,7 @@ This repository is public, and the apps that use it belong to confidential clien
 
 ### UI
 
-- Tables are `AgGridBalham`.
+- Tables use Lowdefy's `Table` block (`type: Table`), as `modules/organizations/components/members_table.yaml` does.
 - Prefer a Lowdefy block to `Html`. Prefer `_nunjucks` to `Html` built with `_js`.
 - Space siblings with the parent's `layout.gap` before adding margins.
 - Write `_eq`, `_ne`, `_or` and the like as block sequences, one item per line.

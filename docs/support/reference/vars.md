@@ -24,6 +24,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `user` | object | `{"id":{"_user":"id"},"name":{"_user":"name"},"email":{"_user":"email"}}` |  | Runtime operators resolving to the reporter as { id, name, email }, sent to Pelican on every call. Pelican matches the reporter by id, then by email. The default reads the session; an app whose session keeps these elsewhere points them there. Always from the session, never from a payload. |
 | `organization` |  |  |  | Runtime operator resolving to the organisation a ticket is filed from, as { id, name }, or null. Sent as the ticket's `context.organization` and recorded on the copy. Null (the default) sends the session's active organisation, or null for a user with none. |
 | `chat_files_prefix` |  |  |  | Runtime operator resolving to the storage key prefix of the caller's own chat uploads, such as `_string.concat: [ai-assistant/, _user: id, /]`. The agent tools send a file the user attached in the chat only when its key starts with it, since the browser builds the chat request. Null (the default) sends no chat files. |
+| `report_secondary` | array | `[]` |  | Blocks shown under the report form's composer in the Support page's report drawer, such as a way to the app's own assistant or a line on when it is unavailable. The report-drawer component takes its own `secondary` var. |
 | `launcher` | object |  |  | The help button that opens the support panel. |
 
 ## Nested var details

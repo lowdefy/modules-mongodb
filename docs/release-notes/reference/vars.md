@@ -13,6 +13,7 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 
 | Name | Type | Default | Required | Description |
 |---|---|---|---|---|
+| `about` | string | `What changed in the app, newest first, and whether new releases are also emailed to you.` |  | One sentence on what What's new is for, handed to the layout page component as `about`. A layout that shows an `about` on the last crumb (a page about text) uses it; one that does not ignores it. |
 | `audiences` | array | `[]` |  | The groups of the app's members Pelican can announce to, besides everyone, which is always offered. Each is { id, label, query }: query is a MongoDB filter over the person's member row in user-members (app_roles, attributes). |
 | `email_template` | string |  |  | A notifications template id in the app's own config for the release note email. Null uses the module's release-note template. |
 | `region` | string |  | Yes | The AWS region of the public files bucket, for the URLs of a note's images and videos. |
