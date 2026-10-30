@@ -14,8 +14,10 @@ import {
  * Loads the workflow (the tenant wall applies) and its actions, keeps the
  * form_data slots of the actions the caller holds a verb on, exactly as the
  * overview requests prune them, and searches what is left at any depth for an
- * object whose `key` is `file_id`. The workflows `download-form-file` endpoint
- * signs the key only when this finds it.
+ * object whose `key` is `file_id`: a file upload value, or an image pasted
+ * into a rich-text field, whose upload the Tiptap value keeps in its
+ * `fileList`. The workflows `form-file` link and `download-form-file`
+ * endpoints sign the key only when this finds it.
  *
  * form_data is written from the browser, so finding a key is not enough: it
  * must also be under the caller's own `{organization_id}/workflows/`, or carry

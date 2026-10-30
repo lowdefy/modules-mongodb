@@ -1,0 +1,54 @@
+id: form-file
+type: Api
+link: true
+description: >-
+  A workflow form file's stable link: a GET on
+  /api/endpoints/<workflows entry>/form-file/<workflow_id>/<key> finds the key
+  in the form slots of actions the caller may view, in a workflow the tenant
+  wall lets the caller read, and answers 302 to a 60-second signed S3 link.
+  Rich-text images link here too. Every refusal, a malformed path included, is
+  a bare 404, so an outsider cannot tell which keys exist.
+routine:
+  # The path is <workflow_id>/<key>, and the key keeps its own "/" separators.
+  - :set_state:
+      form_file_path:
+        _string.split:
+          - _if_none:
+              - _payload: path
+              - ""
+          - /
+  - id: find_file
+    type: GetWorkflowFormFile
+    connectionId:
+      _module.connectionId: workflow-api
+    properties:
+      workflow_id:
+        _state: form_file_path.0
+      file_id:
+        _array.join:
+          - _array.slice:
+              - _state: form_file_path
+              - 1
+          - /
+  - :if:
+      _eq:
+        - _if_none:
+            - _step: find_file
+            - null
+        - null
+    :then:
+      - :reject: This file was not found in this workflow's forms.
+        :status: 404
+  - _ref:
+      path: ../files/api/parts/sign-link.yaml
+      vars:
+        connection_id:
+          _module.connectionId:
+            id: files-bucket
+            module: files
+        key:
+          _step: find_file.key
+        content_type:
+          _step: find_file.type
+        file_name:
+          _step: find_file.name
