@@ -71,6 +71,9 @@ export default {
         process.env.LOWDEFY_SECRET_FILES_S3_BUCKET || "e2e-bucket",
       LOWDEFY_SECRET_FILES_S3_BUCKET_PUB:
         process.env.LOWDEFY_SECRET_FILES_S3_BUCKET_PUB || "e2e-bucket-pub",
+      // The notifications bucket reads its region from this secret.
+      LOWDEFY_SECRET_FILES_S3_REGION:
+        process.env.LOWDEFY_SECRET_FILES_S3_REGION || "eu-west-1",
     },
   },
 };
