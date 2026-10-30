@@ -8,7 +8,7 @@ type: index
 
 File attachments backed by S3 — drag-drop upload with thumbnails, downloads, deletes, and category filters. Every file is stamped onto a parent entity (`{ collection, doc_id }`), so the same component drops onto contact pages, company pages, or any entity page.
 
-The module ships three rendering components (`file-manager`, `file-card`, `file-list`), the five endpoints every file operation goes through, and the supporting connections and audit hooks.
+The module ships three rendering components (`file-manager`, `file-card`, `file-list`), the endpoints every file operation goes through, including the `file` link, and the supporting connections and audit hooks.
 
 ## Dependencies
 
@@ -80,7 +80,7 @@ The check can be asked about a record that is not saved yet. The activities modu
 
 ## Reference
 
-- [Endpoints](reference/endpoints.md) — the five file endpoints, their payloads and refusals
+- [Endpoints](reference/endpoints.md) — the file endpoints and the `file` link, their payloads and refusals
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
 
 ## Shared idioms

@@ -1,6 +1,12 @@
-# Loads the live file record named by the payload's file_id into
-# state.file_record, or rejects. The tenant wall filters the read, so another
-# organization's record is not found, whether the caller sends its key or its id.
+# Loads the live file record named by file_id into state.file_record, or
+# rejects. The tenant wall filters the read, so another organization's record
+# is not found, whether the caller sends its key or its id.
+#
+# Vars:
+#   file_id        the record's _id (default: the payload's file_id)
+#   reject_status  optional: the HTTP status the reject answers with. Only a
+#                  link, webhook or InternalApi endpoint may set one, so the
+#                  build refuses it anywhere else.
 - id: load_file
   type: MongoDBFindOne
   connectionId:
@@ -8,7 +14,10 @@
   properties:
     query:
       _id:
-        _payload: file_id
+        _var:
+          key: file_id
+          default:
+            _payload: file_id
       deleted.timestamp:
         $exists: false
 - :if:
@@ -18,7 +27,21 @@
           - null
       - null
   :then:
-    - :reject: This file was not found. It may have been deleted.
+    - _build.if:
+        test:
+          _build.eq:
+            - _build.if_none:
+                - _var:
+                    key: reject_status
+                    default: null
+                - null
+            - null
+        then:
+          :reject: This file was not found. It may have been deleted.
+        else:
+          :reject: This file was not found. It may have been deleted.
+          :status:
+            _var: reject_status
 - :set_state:
     file_record:
       _step: load_file
