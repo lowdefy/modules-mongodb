@@ -1,0 +1,47 @@
+# A card holding one chart from state.app.
+#
+# Vars:
+#   id       the chart's key in state.app, such as requests_chart; block ids
+#            are <id>_card and <id>
+#   title    the card title, html
+#   height   the chart's height in pixels, default 220
+#   above    optional blocks between the title and the chart
+id:
+  _build.string.concat:
+    - _var: id
+    - _card
+type: Card
+layout:
+  span: 24
+  lg:
+    span: 12
+properties:
+  size: small
+  title:
+    _var: title
+# Wrap the title on a phone rather than widen the page (see strip_card.yaml).
+style:
+  .header:
+    paddingBlock: 8
+  .title:
+    whiteSpace: normal
+blocks:
+  _build.array.concat:
+    - _var:
+        key: above
+        default: []
+    - - id:
+          _var: id
+        type: EChart
+        properties:
+          height:
+            _var:
+              key: height
+              default: 220
+          option:
+            _state:
+              _build.string.concat:
+                - app.
+                - _var: id
+          theme:
+            _ref: defaults/chart_theme_current.yaml

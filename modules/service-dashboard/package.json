@@ -1,0 +1,7 @@
+{
+  "name": "@lowdefy/modules-mongodb-service-dashboard",
+  "version": "1.4.1",
+  "license": "MIT",
+  "private": true,
+  "type": "module"
+}

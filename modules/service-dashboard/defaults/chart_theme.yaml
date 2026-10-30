@@ -1,0 +1,52 @@
+# The ECharts theme of every chart on the service status page, the same chrome
+# ai-reporting's charts use: typography and axis inks only. Series colours are
+# set in each chart's option (api/parts/shape-report.yaml), where they win over
+# anything here. Instantiated by chart_theme_light.yaml and
+# chart_theme_dark.yaml, since a chart on antd's dark card needs inverted inks.
+#
+#   ink   text: axis labels, legend entries, tooltip
+#   axis  the axis line itself
+#   split the grid lines across the plot
+backgroundColor: transparent
+textStyle:
+  fontFamily: &font -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+  color:
+    _var: ink
+categoryAxis:
+  axisLabel:
+    fontSize: 12
+    color:
+      _var: ink
+  axisLine:
+    lineStyle:
+      color:
+        _var: axis
+  splitLine:
+    lineStyle:
+      color:
+        _var: split
+valueAxis:
+  axisLabel:
+    fontSize: 12
+    color:
+      _var: ink
+  axisLine:
+    lineStyle:
+      color:
+        _var: axis
+  splitLine:
+    lineStyle:
+      color:
+        _var: split
+  nameTextStyle:
+    fontFamily: *font
+    color:
+      _var: ink
+legend:
+  textStyle:
+    fontFamily: *font
+    color:
+      _var: ink
+tooltip:
+  textStyle:
+    fontFamily: *font

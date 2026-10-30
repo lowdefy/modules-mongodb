@@ -1,0 +1,8 @@
+# The chart theme for the mode the page is in.
+_if:
+  test:
+    _media: darkMode
+  then:
+    _ref: defaults/chart_theme_dark.yaml
+  else:
+    _ref: defaults/chart_theme_light.yaml

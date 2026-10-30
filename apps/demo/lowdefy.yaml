@@ -145,6 +145,13 @@ auth:
         - user-admin/**
       customer-user-admin:
         - customer-user-admin/**
+      # The same roles as the service-dashboard module's `roles` var. This hides
+      # the page and its menu link from everyone else; the auth.api.roles entry
+      # below answers its endpoint 403 to them.
+      admin:
+        - service-dashboard/service-status
+      manager:
+        - service-dashboard/service-status
   # The endpoint gate is required, not defence in depth: an admin instance's
   # endpoints answering without its role would hand its organization's members,
   # emails and export to any signed-in user. The write steps are floored
@@ -162,6 +169,10 @@ auth:
         - user-admin/**
       customer-user-admin:
         - customer-user-admin/**
+      admin:
+        - service-dashboard/service-report
+      manager:
+        - service-dashboard/service-report
 
 modules:
   _ref: modules.yaml

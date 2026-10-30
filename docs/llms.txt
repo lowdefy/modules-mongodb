@@ -119,6 +119,11 @@
 - docs/release-notes/index.md: Release Notes — Release notes the team writes and announces from [Pelican](https://pelican.lowdefy.app). Pelican sends each announcement, with who it goes to, through the [support](../support/index.md) module's signed webhook; this module answers it from the app's own members. The module ships the What's new pag...
 - docs/release-notes/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
+## service-dashboard
+
+- docs/service-dashboard/index.md: Service dashboard — A service status page for a client app: how available, fast and used the app was, and how its support tickets went, for the users with the roles the app chooses. [Pelican](https://pelican.lowdefy.app) checks the app every 5 minutes, rolls each day up overnight from the app's logs, the checks and ...
+- docs/service-dashboard/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
+
 ## support
 
 - docs/support/how-to/agent-tools.md: Give the app's agent the support tools — The module ships four tools and a brief for the app's own agent, so a user can describe a problem in the chat and the agent files the ticket and follows it up for them.
