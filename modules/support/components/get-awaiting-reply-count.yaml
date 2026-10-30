@@ -1,0 +1,27 @@
+# The number of the signed-in person's tickets that wait for their reply, in the
+# organisation they are in (any, in an app with none): for a menu item's count
+# or a badge. Declare it on a page, or among the layout's global_requests, and
+# read `_request: get_awaiting_reply_count.0.total` (no row means 0).
+id: get_awaiting_reply_count
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: support-tickets
+properties:
+  pipeline:
+    - $match:
+        $and:
+          - user_id:
+              _user: id
+            view.stage: needs_your_reply
+          - _if:
+              test:
+                _ne:
+                  - _if_none:
+                      - _user: organization_id
+                      - null
+                  - null
+              then:
+                organization.id:
+                  _user: organization_id
+              else: {}
+    - $count: total

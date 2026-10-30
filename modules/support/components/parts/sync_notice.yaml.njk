@@ -1,0 +1,40 @@
+# The one grey line a failed check for replies leaves, with a button to check
+# again. It shows while {{ error_state }} holds an error, and the surface keeps
+# showing what the copy holds.
+#
+# Vars:
+#   id           the line's block id
+#   error_state  the state key holding the sync error, or null
+#   retry        the actions that check again
+id: {{ id }}
+type: Box
+visible:
+  _ne:
+    - _state: {{ error_state }}
+    - null
+layout:
+  direction: row
+  align: middle
+  wrap: wrap
+  gap: 4
+blocks:
+  - id: {{ id }}_text
+    type: Paragraph
+    layout:
+      flex: 0 0 auto
+    style:
+      marginBottom: 0
+    properties:
+      type: secondary
+      content: Couldn't check for replies.
+  - id: {{ id }}_retry
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: Try again
+      type: link
+      size: small
+    events:
+      onClick:
+        _var: retry

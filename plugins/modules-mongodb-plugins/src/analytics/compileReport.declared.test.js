@@ -146,7 +146,7 @@ function collect(blocks) {
 // filter per control — select, daterange and multiselect (the __state/__api
 // re-query path) — with the multiselect sourcing its options from a query so the
 // MultipleSelector branch is actually emitted, an unbound section (inlined
-// rows), a download (DownloadCsv), and markdown. The two charts are adjacent and
+// rows), a download (DownloadAnalyticsCsv), and markdown. The two charts are adjacent and
 // both narrow, so layout derivation pairs them and the Box wrapper is emitted
 // too — the second container type, and the one whose nesting the walk below has
 // to descend two levels for.

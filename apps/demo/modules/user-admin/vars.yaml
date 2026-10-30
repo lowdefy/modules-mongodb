@@ -22,27 +22,22 @@ components:
   # collects it: `profile.department` is `fields.profile`'s block id,
   # `member_attributes.team` is `fields.member_attributes`'s.
   table_columns:
-    - headerName: Department
+    - key: department
       field: profile.department
+      title: Department
       width: 140
     # A bag column renders the STORED value, so an enum-backed field (a Selector
-    # over { label, value }) renders its slug — `alpha`, not `Alpha`. Prettifying
-    # is the column's job.
-    - headerName: Team
+    # over { label, value }) renders its slug (`alpha`, not `Alpha`). A tag
+    # column's `options` map the slug to its label.
+    - key: team
       field: member_attributes.team
+      title: Team
+      type: tag
       width: 120
-      cellRenderer:
-        _function:
-          __nunjucks:
-            template: >
-              {% if team %}<span style="display:inline-flex; padding:0 8px; border-radius:4px; font-size:12px; line-height:20px; border:1px solid var(--ant-color-border); background:var(--ant-color-fill-quaternary); color:var(--ant-color-text-secondary)">{{ labels[team] or team }}</span>{% endif %}
-            on:
-              team:
-                __args: 0.data.member_attributes.team
-              labels:
-                alpha: Alpha
-                beta: Beta
-                gamma: Gamma
+      options:
+        alpha: Alpha
+        beta: Beta
+        gamma: Gamma
   # The export binds the same row paths. `type: String` exports the stored slug —
   # a spreadsheet cell has no renderer, so the raw value is the honest export.
   download_columns:

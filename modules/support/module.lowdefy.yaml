@@ -1,5 +1,5 @@
 name: Support
-version: 1.1.0
+version: 1.4.1
 description: >-
   The reporter's side of the Pelican support desk: a signed-in user reports a
   problem and chats with the team. Tickets live in Pelican; the app keeps a copy
@@ -48,6 +48,13 @@ vars:
       release-notes/receive. The webhook hands every release.* event to it. Null
       (the default) answers those events 404, "This app does not take release
       notes".
+  user_lookup:
+    type: boolean
+    default: false
+    description: >-
+      Answer Pelican's users.lookup event with the email and name of the app's
+      members it names. False (the default) answers it 404, "This app does not
+      share user details".
   types:
     type: array
     default:
@@ -133,13 +140,22 @@ vars:
       The agent tools send a file the user attached in the chat only when its
       key starts with it, since the browser builds the chat request. Null (the
       default) sends no chat files.
+  report_secondary:
+    type: array
+    default: []
+    description: >-
+      Blocks shown under the report form's composer in the Support page's
+      report drawer, such as a way to the app's own assistant or a line on
+      when it is unavailable. The report-drawer component takes its own
+      `secondary` var.
 
 exports:
   pages:
     - id: support
       description: >-
         My tickets: every ticket the user has, open and resolved, with a search
-        box and status and type filters, at /{entry id}/support
+        box and status and type filters, and a Report a problem button that
+        opens the report form in a drawer, at /{entry id}/support
     - id: ticket
       description: >-
         One ticket, its conversation and the reply composer, at
@@ -173,6 +189,27 @@ exports:
         The browser's details and the tab's recent errors, for the app's agent's
         shared state under the key support_context, so a ticket the agent files
         carries what the report form sends
+    - id: report-drawer
+      description: >-
+        The report form in a drawer, for the layout's global_blocks. open-report
+        opens it; it needs no help button and no model, so a person can report a
+        problem while the app's assistant is unavailable. Takes an optional
+        `secondary` var: blocks shown under the form's composer, such as a link
+        to the app's own assistant
+    - id: open-report
+      description: >-
+        An action list that opens the report drawer with a draft filled in, for
+        a button's onClick on a page that mounts report-drawer. Takes the vars
+        `type`, `title`, `body` and `context`, each a value or a runtime
+        operator resolved when the action runs; `context` is an object sent in
+        the ticket's context under `extra`
+    - id: get-awaiting-reply-count
+      description: >-
+        A request, get_awaiting_reply_count: the signed-in person's tickets that
+        wait for their reply, in the organisation they are in. Declare it on a
+        page or among the layout's global_requests, fire it with a Request
+        action and read
+        `_request: get_awaiting_reply_count.0.total` for a menu item's count
   connections:
     - id: support_pelican
       description: Pelican's support API, authorised with the support app's key
@@ -192,13 +229,19 @@ exports:
       description: >-
         Read-only view of the auth engine's users, for the email a reply
         notification goes to
+    - id: support-members
+      description: >-
+        Read-only view of the auth engine's member rows, read for Pelican's user
+        lookup
   api:
     - id: create-ticket
       description: >-
         File a ticket for the session user from the report form, with files
         they uploaded
     - id: post-message
-      description: Post the session user's message, with files, on one of their tickets
+      description: >-
+        Post the session user's message, with files, on one of their tickets,
+        and mark the ticket's support-reply notifications read
     - id: send-ticket
       description: >-
         Internal: file a ticket with checked input; the core of create-ticket
@@ -219,8 +262,9 @@ exports:
     - id: webhook
       description: >-
         Pelican's signed webhook: stores each ticket change in the copy and
-        notifies the user of new team messages, and hands release.* events to
-        the release_notes_endpoint. List it in auth.api.public
+        notifies the user of new team messages, hands release.* events to the
+        release_notes_endpoint, and answers users.lookup with the app's members
+        when user_lookup is on. List it in auth.api.public
     - id: agent-file-ticket
       description: >-
         Agent tool: file a ticket for the session user, with the images and
@@ -256,6 +300,15 @@ components:
   - id: agent-context
     component:
       _ref: components/agent-context.yaml
+  - id: report-drawer
+    component:
+      _ref: components/report-drawer.yaml
+  - id: open-report
+    component:
+      _ref: components/open-report.yaml
+  - id: get-awaiting-reply-count
+    component:
+      _ref: components/get-awaiting-reply-count.yaml
 
 pages:
   - _ref: pages/support.yaml
@@ -276,6 +329,7 @@ connections:
   - _ref: connections/support_organizations.yaml
   - _ref: connections/support_webhook.yaml
   - _ref: connections/support_users.yaml
+  - _ref: connections/support_members.yaml
 
 api:
   - _ref: api/create-ticket.yaml
@@ -305,4 +359,4 @@ secrets:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.1.0"
+    version: "^1.4.1"

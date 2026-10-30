@@ -1,5 +1,21 @@
 # @lowdefy/modules-mongodb-user-account
 
+## 1.4.1
+
+## 1.4.0
+
+## 1.3.0
+
+### Patch Changes
+
+- [#315](https://github.com/lowdefy/modules-mongodb/pull/315) [`e494429`](https://github.com/lowdefy/modules-mongodb/commit/e494429f364cee1b00b88708027e7af2edcdefb0) Thanks [@SamTolmay](https://github.com/SamTolmay)! - A banned user who tries to sign in is now told their access was removed. Before, the login page had no message for a ban: a sign-in link landed on "Something went wrong while signing you in", and a correct emailed code toasted "That code is wrong or has expired", so the person kept retrying. A sign-in link or password sign-in now shows the "You don't have access to this app" wall with "Your access to this app has been removed. Contact an administrator if you think this is a mistake." A correct emailed code for a banned user, or for one with no access to the app, toasts the matching message in place of the wrong-code one. A sign-in link reaches the wall once Lowdefy redirects a refused magic-link sign-in to the error page.
+
+## 1.2.0
+
+### Patch Changes
+
+- [#310](https://github.com/lowdefy/modules-mongodb/pull/310) [`64f4b6f`](https://github.com/lowdefy/modules-mongodb/commit/64f4b6f31927d4b1babdddcc374ee1f727c37989) Thanks [@machielvdw](https://github.com/machielvdw)! - Pressing "Accept and continue" on an invitation now goes straight into the app. Before, the accept page reloaded itself partway through and stopped on "You're already a member" until the invitee pressed "Go to app". Accepting makes the invitee a member, and the page called the join log before it refreshed its session, so Lowdefy saw the call answered as a different caller and reloaded the page. The page now refreshes the session first, on the accept path and on a retry of an already-accepted invitation.
+
 ## 1.1.0
 
 ## 1.0.0

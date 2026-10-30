@@ -31,7 +31,7 @@ Modules ship working list/edit/view pages straight away. Apps still need to add 
 
 **`components`** is an object whose properties are named regions. Common regions:
 
-- `table_columns` — extra columns on the list page.
+- `table_columns` — extra columns on the list page. Companies and user-admin take `Table` block columns (`key`, `title`, `type`, `cell`); the other modules still take AgGrid column definitions (`field`, `headerName`).
 - `filters` — extra filter blocks below the search bar on the list page.
 - `main_slots` — extra blocks appended to the main column on detail pages.
 - `sidebar_slots` — extra blocks appended to the sidebar.
@@ -52,7 +52,7 @@ Add an "Industry" attribute to the company form and a matching column to the lis
 
 ```yaml
 - id: companies
-  source: "github:lowdefy/modules-mongodb/modules/companies@v1.1.0"
+  source: "github:lowdefy/modules-mongodb/modules/companies@v1.4.1"
   vars:
     fields:
       attributes:
@@ -66,8 +66,9 @@ Add an "Industry" attribute to the company form and a matching column to the lis
               - Retail
     components:
       table_columns:
-        - field: attributes.industry
-          headerName: Industry
+        - key: industry
+          field: attributes.industry
+          title: Industry
           width: 160
 ```
 

@@ -1,0 +1,176 @@
+# The report form: type, title, then the message box with its files and Send,
+# and under it the app's own blocks (the `secondary` var). The inputs write under
+# {{ prefix }}, which Send validates and the surface's onInit resets.
+#
+# The form sits in a drawer or panel mounted on every page, closed most of the
+# time. Its checks hold only while the surface is open ({{ prefix }}_open, which
+# the surface sets on open and close), so a page's own Validate with no params
+# passes over a closed form instead of failing on its empty fields.
+#
+# Vars:
+#   prefix     the state and block id prefix of the surface
+#   sending    the state key that is true while Send runs
+#   drawer     the id of the drawer the form sits in, which Send closes; empty for
+#              the panel
+#   view_state a state key; the form shows only while it is "report" (the panel)
+#   secondary  blocks shown in a row under the composer
+id: {{ prefix }}_view
+type: Box
+{% if view_state %}
+visible:
+  _eq:
+    - _state: {{ view_state }}
+    - report
+{% endif %}
+layout:
+  gap: 12
+blocks:
+  - id: {{ prefix }}_context
+    type: SupportContext
+  - id: {{ prefix }}.type
+    type: Selector
+    required:
+      _eq:
+        - _state: {{ prefix }}_open
+        - true
+    properties:
+      title: Type
+      placeholder: What is this about?
+      allowClear: false
+      options:
+        _array.map:
+          on:
+            _module.var: types
+          callback:
+            _function:
+              label:
+                __args: 0.label
+              value:
+                __args: 0.value
+  - id: {{ prefix }}_type_description
+    type: Paragraph
+    visible:
+      _ne:
+        - _state: {{ prefix }}.type
+        - null
+    style:
+      marginTop: -8
+    properties:
+      type: secondary
+      content:
+        _get:
+          key: description
+          default: ""
+          from:
+            _array.find:
+              on:
+                _module.var: types
+              callback:
+                _function:
+                  __eq:
+                    - __args: 0.value
+                    - _state: {{ prefix }}.type
+  - id: {{ prefix }}.title
+    type: TextInput
+    required:
+      _eq:
+        - _state: {{ prefix }}_open
+        - true
+    validate:
+      - pass:
+          _or:
+            - _ne:
+                - _state: {{ prefix }}_open
+                - true
+            - _lte:
+                - _string.length:
+                    _if_none:
+                      - _state: {{ prefix }}.title
+                      - ""
+                - 120
+        status: error
+        message: Keep the title to 120 characters.
+    properties:
+      title: Title
+      placeholder: A short summary
+  - _ref:
+      path: components/report/report_files.yaml.njk
+      vars:
+        prefix: {{ prefix }}
+  - id: {{ prefix }}_sends
+    type: Paragraph
+    style:
+      marginBottom: 0
+    properties:
+      type: secondary
+      content: >-
+        Sending also shares this page's address, your browser details and the
+        errors this tab recorded, with the files you attach.
+  - id: {{ prefix }}.message
+    type: MessageComposer
+    required:
+      _eq:
+        - _state: {{ prefix }}_open
+        - true
+    properties:
+      placeholder: What happened, and what did you expect?
+      maxLength: 4000
+      minRows: 4
+      maxRows: 10
+      submitLabel: Send report
+      s3PostPolicyRequestId: upload_policy_{{ prefix }}_files
+      files:
+        _if_none:
+          - _state: {{ prefix }}.files
+          - []
+      loading:
+        _state: {{ sending }}
+    events:
+      onUploaded:
+        - id: {{ prefix }}_add_file
+          type: SetState
+          params:
+            {{ prefix }}.files:
+              _event: files
+            {{ prefix }}_error: null
+      onRemove:
+        - id: {{ prefix }}_remove_file
+          type: SetState
+          params:
+            {{ prefix }}.files:
+              _event: files
+            {{ prefix }}_error: null
+      onError:
+        - id: {{ prefix }}_file_refused
+          type: SetState
+          params:
+            {{ prefix }}_error:
+              _event: message
+      onSubmit:
+        _ref:
+          path: actions/send_report.yaml.njk
+          vars:
+            prefix: {{ prefix }}
+            sending: {{ sending }}
+            drawer: {{ drawer }}
+  - id: {{ prefix }}_secondary
+    type: Box
+    layout:
+      direction: row
+      align: middle
+      gap: 12
+    blocks:
+      _var:
+        key: secondary
+        default: []
+  - id: {{ prefix }}_error
+    type: Alert
+    visible:
+      _ne:
+        - _state: {{ prefix }}_error
+        - null
+    properties:
+      type: error
+      showIcon: true
+      message:
+        _state: {{ prefix }}_error

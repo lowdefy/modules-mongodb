@@ -205,7 +205,7 @@ _ref:
                 class:
                   .element: nx-region nx-rail
                 layout:
-                  flex: 0 0 240px
+                  flex: 0 0 216px
                 blocks:
                   - _ref: components/rail.yaml
               - _ref: components/list-column.yaml

@@ -96,14 +96,24 @@
   color: var(--ant-color-link, inherit) !important;
 }
 
-/* Call-to-action button: keep the email theme's primary colour, size it like
-   an app button. */
+/* Call-to-action button: the email's brand-coloured button reads as the app's
+   default button here, so the page's own primary stays the only filled one. */
 .notification-email a[style*="background-color"] {
-  color: #ffffff !important;
-  font-weight: 500 !important;
-  padding: 6px 16px !important;
+  display: inline-block !important;
+  background: var(--ant-color-bg-container, transparent) !important;
+  border: 1px solid var(--ant-color-border, #d9d9d9) !important;
+  color: var(--ant-color-text, inherit) !important;
+  font-size: var(--ant-font-size, 14px) !important;
+  font-weight: 400 !important;
+  padding: 4px 15px !important;
   border-radius: var(--ant-border-radius, 6px) !important;
   line-height: 22px !important;
+  text-decoration: none !important;
+}
+
+.notification-email a[style*="background-color"]:hover {
+  border-color: var(--ant-color-primary-hover, currentColor) !important;
+  color: var(--ant-color-primary-hover, inherit) !important;
 }
 
 /* Metadata rows: quieter labels. */

@@ -1,5 +1,5 @@
 name: Notifications
-version: 1.1.0
+version: 1.4.1
 description: Notification dispatch pipeline, bell, inbox, and deep-link routing
 
 dependencies:
@@ -78,8 +78,9 @@ vars:
       Live notifications: the bell, the toast stack and the inbox update the
       moment a notification arrives or is read elsewhere, through a change
       stream per signed-in user with a page open. Needs MongoDB as a replica
-      set (Atlas is one). Set false where change streams cannot run; the bell
-      and toasts then update on navigation.
+      set (Atlas is one) and a host that serves websockets (on Vercel, turn on
+      Fluid Compute for the project). Set false where change streams or
+      websockets cannot run; the bell and toasts then update on navigation.
   server_url:
     type: string
     default: null
@@ -203,7 +204,7 @@ vars:
 plugins:
   # NotificationSound (the inbox's Sound switch and the page-wide player).
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.1.0"
+    version: "^1.4.1"
 
 websockets:
   - _ref: websockets/notifications-live.yaml

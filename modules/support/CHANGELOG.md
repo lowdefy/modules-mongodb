@@ -1,5 +1,32 @@
 # @lowdefy/modules-mongodb-support
 
+## 1.4.1
+
+## 1.4.0
+
+## 1.3.0
+
+### Minor Changes
+
+- [#314](https://github.com/lowdefy/modules-mongodb/pull/314) [`d8fb717`](https://github.com/lowdefy/modules-mongodb/commit/d8fb71783bc2613139adb6e87035f56570f22543) Thanks [@SamTolmay](https://github.com/SamTolmay)! - **support:** the webhook can tell Pelican who your app's active users are. Pelican reads which user ids used an app from its request logs, which name users only by id, and now asks the app for their details with a signed `users.lookup` event naming up to 200 user ids. The webhook answers `{ users: [{ id, email, name }] }` with the email and name from the user record of each id that is a member of your app (your pinned organisation, or any organisation under `tenant`). Anyone else is left out, and nothing else is shared.
+
+  It is off by default. Turning it on shares the email and name of the members Pelican asks about:
+
+  ```yaml
+  # modules/support/vars.yaml
+  user_lookup: true
+  ```
+
+  Left off, the event answers 404, "This app does not share user details". A malformed lookup answers 422.
+
+  Webhook events the module does not know now answer 404 "Unknown event", where they used to answer the 400 a bad ticket delivery gets. Ticket, test and `release.*` deliveries answer as before. Nothing to change in your app unless you want the lookup on.
+
+## 1.2.0
+
+### Patch Changes
+
+- [#309](https://github.com/lowdefy/modules-mongodb/pull/309) [`7ed612d`](https://github.com/lowdefy/modules-mongodb/commit/7ed612d6f15f777a25b6d46ff411dbbe2b2e2dba) Thanks [@puffin-mrm](https://github.com/puffin-mrm)! - My tickets is centred on wide screens, and its rows keep their columns in line. The page passes `content_width: 960` to the layout page, so the title, filters and list sit in a centred 960px column rather than against the left edge. In each row the timestamp has a 128px right-aligned column, so "a few seconds ago" no longer runs into the row border, and the type, stage and organisation columns have fixed widths, truncating long values. Nothing to change in your app.
+
 ## 1.1.0
 
 ### Minor Changes

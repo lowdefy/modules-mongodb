@@ -80,19 +80,25 @@ Invited ──accept──► Active ◄──unban──── Suspended (ban: 
 cancel / expire       │
                  Remove from app (member row deleted; re-invite to restore)
                       │
-                 Delete login identity (user row hard-deleted; contact survives)
+                 Delete login identity (user row hard-deleted; contact kept, unlinked)
 ```
 
 **Suspend is user-level, so it applies across every app in the suite.** The
 confirm dialog enumerates the user's other memberships so the admin sees the
 blast radius. This rests on the deployment premise that the pinned suite is
 administered by one trusted operator group; it sits behind the `suspension` var
-(default on). **Remove from app** (`RemoveMember`) is the app-scoped alternative.
+(default on). Once a user is suspended, the Security tile offers **Reinstate access**
+in place of Suspend. It lifts the ban (`UnbanUser`), so the user can sign in to every
+app they belong to again, with their roles as they were.
+**Remove from app** (`RemoveMember`) is the app-scoped alternative.
 **Delete login identity** is offered only when the user holds no other memberships.
 
 Remove from app deletes the member row, so the person's roles and member
 attributes go with it. Delete login removes the user id that other records may be
-keyed on, and a re-invite creates a new one. In an app whose people carry history
+keyed on, and a re-invite creates a new one. The person's contact stays, with its
+`user_id` unset, so after a re-invite their onboarding profile save claims it by
+address, as it does for any invitee. A delete that is refused leaves the contact
+linked. In an app whose people carry history
 or settings on those rows, set `remove_member: false` and `delete_user: false`:
 each hides its button and confirm modal and makes its endpoint (`remove-member`,
 `delete-user`) reject, the same shape as `suspension: false` on `suspend` /
@@ -241,7 +247,7 @@ contributes. Neither has a default.
 # lowdefy.yaml
 modules:
   - id: user-admin
-    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1.1.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1.4.1"
     vars:
       # Required. The organization this surface administers — the same slug as this
       # app's own `auth.organizations.org` for the app's own users.
@@ -260,7 +266,7 @@ modules:
   # source, two entries, two `org_slug` values. Auto-scoping keeps them apart —
   # `customer-user-admin/all` beside `user-admin/all`.
   - id: customer-user-admin
-    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1.1.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1.4.1"
     vars:
       org_slug: customer-portal
       app_title: Customer

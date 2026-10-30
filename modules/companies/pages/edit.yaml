@@ -176,6 +176,9 @@ _ref:
                   onClick:
                     - id: validate
                       type: Validate
+                      params:
+                        blockIds:
+                          - card
                     - id: update_company
                       type: CallAPI
                       params:

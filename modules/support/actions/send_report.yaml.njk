@@ -1,0 +1,167 @@
+# Send on the report form: check the draft, read the page's context, file the
+# ticket. The draft clears only when Pelican has the ticket; nothing is resent on
+# its own, since a create repeated after a lost answer files a second ticket.
+# The panel then opens the new ticket's thread; a drawer closes and says the
+# report is sent.
+#
+# Vars:
+#   prefix   the state and block id prefix of the surface
+#   sending  the state key that is true while Send runs
+#   drawer   the id of the drawer the form sits in, which Send closes; empty for
+#            the panel
+try:
+  _build.array.concat:
+    - - id: {{ prefix }}_validate
+        type: Validate
+        params:
+          regex: ^{{ prefix }}\.
+      - id: {{ prefix }}_start
+        type: SetState
+        params:
+          {{ sending }}: true
+          {{ prefix }}_error: null
+{% if not drawer %}
+          support_ticket: null
+{% endif %}
+      - id: {{ prefix }}_snapshot
+        type: CallMethod
+        params:
+          blockId: {{ prefix }}_context
+          method: snapshot
+      - id: {{ prefix }}_create_ticket
+        type: CallAPI
+        params:
+          endpointId:
+            _module.endpointId: create-ticket
+          payload:
+            type:
+              _state: {{ prefix }}.type
+            title:
+              _state: {{ prefix }}.title
+            message:
+              _state: {{ prefix }}.message
+            files:
+              _array.map:
+                on:
+                  _if_none:
+                    - _state: {{ prefix }}.files
+                    - []
+                callback:
+                  _function:
+                    key:
+                      __args: 0.key
+                    name:
+                      __args: 0.name
+            # The server adds app, environment, version and organization.
+            context:
+              page:
+                _location: pageId
+              url:
+                _state: {{ prefix }}_context.url
+              user_agent:
+                _state: {{ prefix }}_context.user_agent
+              viewport:
+                _state: {{ prefix }}_context.viewport
+              screen:
+                _state: {{ prefix }}_context.screen
+              locale:
+                _state: {{ prefix }}_context.locale
+              timezone:
+                _state: {{ prefix }}_context.timezone
+              errors:
+                _state: {{ prefix }}_context.errors
+              extra:
+                _object.assign:
+                  - _if_none:
+                      - _module.var: context
+                      - {}
+                  - _if_none:
+                      - _state: {{ prefix }}_extra
+                      - {}
+      - id: {{ prefix }}_sent
+        type: SetState
+        skip:
+          _ne:
+            - _actions: {{ prefix }}_create_ticket.response.response.ok
+            - true
+        params:
+          {{ prefix }}.type: null
+          {{ prefix }}.title: null
+          {{ prefix }}.message: null
+          {{ prefix }}.files: []
+          {{ prefix }}_extra: null
+{% if drawer %}
+      - id: {{ prefix }}_close_drawer
+        type: CallMethod
+        skip:
+          _ne:
+            - _actions: {{ prefix }}_create_ticket.response.response.ok
+            - true
+        params:
+          blockId: {{ drawer }}
+          method: setOpen
+          args:
+            - open: false
+      - id: {{ prefix }}_sent_message
+        type: DisplayMessage
+        skip:
+          _ne:
+            - _actions: {{ prefix }}_create_ticket.response.response.ok
+            - true
+        params:
+          status: success
+          content: Report sent. Replies show under Support.
+{% else %}
+      # A step of its own, after the reset: the form's inputs take the cleared
+      # values while still shown, so the draft does not come back when the form
+      # shows again.
+      - id: {{ prefix }}_show_ticket
+        type: SetState
+        skip:
+          _ne:
+            - _actions: {{ prefix }}_create_ticket.response.response.ok
+            - true
+        params:
+          support_view: tickets
+          support_ticket:
+            _actions: {{ prefix }}_create_ticket.response.response.ticket._id
+{% endif %}
+{% if not drawer %}
+    # Opens the new ticket's thread; skipped when nothing was filed.
+    - _ref:
+        path: actions/open_thread.yaml.njk
+        vars:
+          prefix: support
+{% endif %}
+    - - id: {{ prefix }}_refused
+        type: SetState
+        skip:
+          _eq:
+            - _actions: {{ prefix }}_create_ticket.response.response.ok
+            - true
+        params:
+          {{ prefix }}_error:
+            _ref:
+              path: components/parts/error_message.yaml
+              vars:
+                error:
+                  _actions: {{ prefix }}_create_ticket.response.response.error
+      - id: {{ prefix }}_done
+        type: SetState
+        params:
+          {{ sending }}: false
+catch:
+  # A failed check stops before {{ sending }} is set, and the form shows
+  # what to fix. Anything later is a failed call: the draft stays.
+  - id: {{ prefix }}_failed
+    type: SetState
+    skip:
+      _ne:
+        - _state: {{ sending }}
+        - true
+    params:
+      {{ prefix }}_error: Something went wrong, try again.
+  - id: {{ prefix }}_failed_done
+    type: SetState
+    params:
+      {{ sending }}: false

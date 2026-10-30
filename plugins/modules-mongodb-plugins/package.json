@@ -1,6 +1,6 @@
 {
   "name": "@lowdefy/modules-mongodb-plugins",
-  "version": "1.1.0",
+  "version": "1.4.1",
   "license": "MIT",
   "type": "module",
   "publishConfig": {
@@ -16,6 +16,7 @@
     "./actions": "./dist/actions.js",
     "./blocks": "./dist/blocks.js",
     "./connections": "./dist/connections.js",
+    "./e2e": "./dist/e2e.js",
     "./fsm": "./dist/connections/shared/fsm/tables.js",
     "./metas": "./dist/metas.js",
     "./operators/client": "./dist/operators/client.js",

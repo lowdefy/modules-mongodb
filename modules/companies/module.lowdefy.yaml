@@ -1,5 +1,5 @@
 name: Companies
-version: 1.1.0
+version: 1.4.1
 description: Company management — list, detail, edit, create, selector
 
 dependencies:
@@ -132,7 +132,7 @@ vars:
     properties:
       table_columns:
         default: []
-        description: Extra column definitions appended to the companies list table.
+        description: Extra `Table` block columns (`{ key, title, type?, cell?, options?, width? }`) appended to the companies list table.
       filters:
         default: []
         description: >-
@@ -259,4 +259,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.1.0"
+    version: "^1.4.1"

@@ -269,7 +269,7 @@ test("compiles the full report to blocks", () => {
     __api: `${endpointId}.response`,
   });
 
-  // Download: CallAPI naming the section, then DownloadCsv.
+  // Download: CallAPI naming the section, then DownloadAnalyticsCsv.
   const download = byId.s4;
   expect(download.type).toBe("Button");
   const [dlCall, dl] = download.events.onClick;
@@ -277,7 +277,7 @@ test("compiles the full report to blocks", () => {
     report_id: { __url_query: "report_id" },
     section_id: "s4",
   });
-  expect(dl.type).toBe("DownloadCsv");
+  expect(dl.type).toBe("DownloadAnalyticsCsv");
   expect(dl.params.filename).toBe("download-csv.csv");
   expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
 });
@@ -1219,7 +1219,7 @@ describe("provenance line", () => {
         report_id: { __url_query: "report_id" },
         section_id: id,
       });
-      expect(download.type).toBe("DownloadCsv");
+      expect(download.type).toBe("DownloadAnalyticsCsv");
       expect(download.params.data).toEqual({ __api: `${endpointId}.response` });
       expect(download.params.filename).toMatch(/\.csv$/);
     }
@@ -3371,7 +3371,7 @@ describe("layout derivation", () => {
           report_id: { __url_query: "report_id" },
           section_id: `s${index}`,
         });
-        expect(dl.type).toBe("DownloadCsv");
+        expect(dl.type).toBe("DownloadAnalyticsCsv");
         expect(dl.params.data).toEqual({ __api: `${endpointId}.response` });
         expect(dl.params.filename).toBe(`download-${index}.csv`);
       });

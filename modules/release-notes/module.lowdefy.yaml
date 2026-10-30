@@ -1,5 +1,5 @@
 name: Release Notes
-version: 1.1.0
+version: 1.4.1
 description: >-
   Release notes the team announces from Pelican: the app's What's new page,
   and the counts Pelican shows before anyone announces. Pelican's release events
@@ -20,6 +20,15 @@ dependencies:
       are copied into.
 
 vars:
+  about:
+    type: string
+    default: >-
+      What changed in the app, newest first, and whether new releases are also
+      emailed to you.
+    description: >-
+      One sentence on what What's new is for, handed to the layout page
+      component as `about`. A layout that shows an `about` on the last crumb
+      (a page about text) uses it; one that does not ignores it.
   audiences:
     type: array
     default: []
@@ -80,6 +89,13 @@ exports:
       description: Read-only view of the auth engine's users
     - id: release-notes-organizations
       description: Read-only view of the auth engine's user-organizations
+  components:
+    - id: get_unread_release_notes_count
+      description: >-
+        The request get_unread_release_notes_count, the signed-in person's
+        count of announced notes they have not opened, as [{ total }] (empty
+        when none). Add it to the requests of any page, or to the layout's
+        global_requests, to show a New mark while a note is unread.
   api:
     - id: receive
       description: >-
@@ -105,6 +121,11 @@ api:
 
 pages:
   - _ref: pages/view.yaml
+
+components:
+  - id: get_unread_release_notes_count
+    component:
+      _ref: requests/get_unread_release_notes_count.yaml
 
 menus:
   - _ref: menus.yaml

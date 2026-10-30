@@ -16,23 +16,23 @@ slug: my-app # kebab-case; modules scope themselves to it via `_build.app: slug`
 
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v1.1.0"
+    source: "github:lowdefy/modules-mongodb/modules/events@v1.4.1"
 
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v1.1.0"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v1.4.1"
 
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v1.1.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v1.4.1"
 
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v1.1.0"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v1.4.1"
 ```
 
 The slug is declared once and read by every module that scopes data per app — there is no per-module app-name var. Where a value needs it explicitly, use the operator; the audit stamp's app attribution is the common case (the stored field stays named `app_name`, its value is the slug):
 
 ```yaml
 - id: events
-  source: "github:lowdefy/modules-mongodb/modules/events@v1.1.0"
+  source: "github:lowdefy/modules-mongodb/modules/events@v1.4.1"
   vars:
     change_stamp:
       timestamp:
