@@ -19,6 +19,12 @@ properties:
   size: small
   title:
     _var: title
+# Wrap the title on a phone rather than widen the page (see strip_card.yaml).
+style:
+  .header:
+    paddingBlock: 8
+  .title:
+    whiteSpace: normal
 blocks:
   _build.array.concat:
     - _var:

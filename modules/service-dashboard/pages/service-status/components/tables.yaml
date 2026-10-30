@@ -103,6 +103,12 @@ blocks:
             properties:
               size: small
               title: Top users <span data-tone="secondary">by active days</span>
+            # Wrap the title on a phone rather than widen the page (see strip_card.yaml).
+            style:
+              .header:
+                paddingBlock: 8
+              .title:
+                whiteSpace: normal
             blocks:
               - id: top_users_table
                 type: AgGridBalham

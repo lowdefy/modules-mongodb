@@ -393,6 +393,10 @@ async function shoot(page, name, ready, then = async () => {}) {
     await expect(ready()).toBeVisible();
     await then();
     await page.waitForTimeout(1500);
+    // Nothing may push the page past the viewport (a long card title once did).
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
     await page.screenshot({
       path: test.info().outputPath(`${name}-${suffix}.png`),
       fullPage: true,
