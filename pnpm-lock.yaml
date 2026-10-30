@@ -41,15 +41,15 @@ importers:
   apps/demo:
     dependencies:
       lowdefy:
-        specifier: 7.2.0
-        version: 7.2.0(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20261027111447
+        version: 0.0.0-experimental-20261027111447(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
     devDependencies:
       '@lowdefy/community-plugin-e2e-mdb':
         specifier: latest
         version: 1.1.0(@playwright/test@1.60.0)(supports-color@8.1.1)
       '@lowdefy/e2e-utils':
-        specifier: 7.2.0
-        version: 7.2.0(@playwright/test@1.60.0)
+        specifier: 0.0.0-experimental-20261027111447
+        version: 0.0.0-experimental-20261027111447(@playwright/test@1.60.0)
       '@lowdefy/modules-mongodb-plugins':
         specifier: workspace:*
         version: link:../../plugins/modules-mongodb-plugins
@@ -60,14 +60,14 @@ importers:
   apps/passwordless-demo:
     dependencies:
       lowdefy:
-        specifier: 7.2.0
-        version: 7.2.0(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20261027111447
+        version: 0.0.0-experimental-20261027111447(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
 
   apps/tenant-demo:
     dependencies:
       lowdefy:
-        specifier: 7.2.0
-        version: 7.2.0(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20261027111447
+        version: 0.0.0-experimental-20261027111447(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
     devDependencies:
       '@lowdefy/community-plugin-e2e-mdb':
         specifier: latest
@@ -82,18 +82,18 @@ importers:
   apps/workflows-test:
     dependencies:
       '@lowdefy/plugin-better-auth':
-        specifier: 7.2.0
-        version: 7.2.0(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        specifier: 0.0.0-experimental-20261027111447
+        version: 0.0.0-experimental-20261027111447(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       lowdefy:
-        specifier: 7.2.0
-        version: 7.2.0(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
+        specifier: 0.0.0-experimental-20261027111447
+        version: 0.0.0-experimental-20261027111447(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1)
     devDependencies:
       '@lowdefy/community-plugin-e2e-mdb':
         specifier: latest
         version: 1.1.0(@playwright/test@1.60.0)(supports-color@8.1.1)
       '@lowdefy/e2e-utils':
-        specifier: 7.2.0
-        version: 7.2.0(@playwright/test@1.60.0)
+        specifier: 0.0.0-experimental-20261027111447
+        version: 0.0.0-experimental-20261027111447(@playwright/test@1.60.0)
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.60.0
@@ -1029,8 +1029,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@lowdefy/ajv@7.2.0':
-    resolution: {integrity: sha512-khqLdshYlsR3vhH1pXoCU0ItXS1ctHq0yFVZArOAj1bNLKk3I/kPpw+8Vpy1eHPelqHxxz2o+pD5ceg272HzyQ==}
+  '@lowdefy/ajv@0.0.0-experimental-20261027111447':
+    resolution: {integrity: sha512-kczdojJnAx320HFsrMiCSapYW7UN7gpaQVrcmWes1GzG4vJLmpAPyC7cqZzw4LTFnJNFDPC4Q9AlB3f0EuPmgQ==}
 
   '@lowdefy/block-utils@5.3.0':
     resolution: {integrity: sha512-yhso7jmdfNBdhtUt6Kuesa0YwQwhOQ3O1XvdDmSXavc9nvNaMPvgbyCPCKEsqAiprKVaPj2ocfOaMcsWNhPBNw==}
@@ -1075,6 +1075,15 @@ packages:
   '@lowdefy/connection-mongodb@4.7.3':
     resolution: {integrity: sha512-rLFMWgxU+MEonL4rCwJQtkd3CwaoaO1kk/lMCu3DpsJBD4gfqgYL9v0EzY1MVq+83Me7ytDDstDMhX4ry+v+ng==}
 
+  '@lowdefy/e2e-utils@0.0.0-experimental-20261027111447':
+    resolution: {integrity: sha512-ReIK1qI+BhlEVzFqTIYVaQAwrOY2XQRjHxSwwnq0lAC7mfVs9PBBOjQs9ybvjpmRQeCxUzWbEtNW0+OqqwPsfg==}
+    hasBin: true
+    peerDependencies:
+      '@playwright/test': 1.59.1
+    peerDependenciesMeta:
+      '@playwright/test':
+        optional: true
+
   '@lowdefy/e2e-utils@7.2.0':
     resolution: {integrity: sha512-WR0XaIVKHV3Tdjinpg65AsqeRxRUpfEc2D4obtrq5PS1zpfQF8UKIwIIb7PViITAylMJVWEAG16oOfT4Jl8yRw==}
     hasBin: true
@@ -1083,6 +1092,9 @@ packages:
     peerDependenciesMeta:
       '@playwright/test':
         optional: true
+
+  '@lowdefy/errors@0.0.0-experimental-20261027111447':
+    resolution: {integrity: sha512-d3mgKRhL1kX0d5UHL+TpW7NNEkXaYUTBFBEkoL+EA0hcAq8umwgWXdAlGME/jgYXXUZhgif/Spy/5QBgXWMadg==}
 
   '@lowdefy/errors@4.7.3':
     resolution: {integrity: sha512-WZcCCKDhx6zl/GlZRtOJN6ghkM+S80B7w0tHN5OQeXhcdwFJrCh17aF4V7nCkZw2Ej/HHyuCpcwIk2zI+ZZkBg==}
@@ -1093,6 +1105,9 @@ packages:
   '@lowdefy/errors@7.2.0':
     resolution: {integrity: sha512-JGOw+wjho9gnEVDl2Nx+IJVCsLDUiCUUWHv3pnrlnJP6/VvmaRWKQpMnbG+H9bCHKIyqKxldEiR69I4m7bsEVA==}
 
+  '@lowdefy/helpers@0.0.0-experimental-20261027111447':
+    resolution: {integrity: sha512-zKBy1yBxqFN0vBjz4O8qGUy8a73ilcudZAgFL7TYzF+CZIJj8nM82XeMLD+xZ9yp17n4dga7UZw9TMthRyJXOA==}
+
   '@lowdefy/helpers@4.7.3':
     resolution: {integrity: sha512-iRw5DagM5S7BRf6zIq2RkhZsybgui5AMeTCAlE0YMG6/fXxhiEKuXfdoGLaItq1/4KpJIKlMbXAemMLjP3Yy7A==}
 
@@ -1102,11 +1117,17 @@ packages:
   '@lowdefy/helpers@7.2.0':
     resolution: {integrity: sha512-/UHayP1rkwMx/y47cVacqfceWQTSU/3bOx869dF4rKAeuztpNP3hEDuVFe2oXlWBrht61mUE2uCgGs21809KPg==}
 
-  '@lowdefy/logger@7.2.0':
-    resolution: {integrity: sha512-7sxXrunWb7+sFku9dXh1pfXHtxjKOJO9LGFLmejh2kLGc9JoAf3eoibFIbrp4ueyVdinp8v5kAGjJKcQRCsmCw==}
+  '@lowdefy/logger@0.0.0-experimental-20261027111447':
+    resolution: {integrity: sha512-xwmuEY4mp1IBX21SENajDUVvDQEfIr4FlZGCS0KZkvcaipOmsIdTR6OmEMZAEtlo+jV1F2HFSzhj2mdxsXmImw==}
+
+  '@lowdefy/node-utils@0.0.0-experimental-20261027111447':
+    resolution: {integrity: sha512-Soyi9EccFFRdFVudbFP+AqMiyJxw7+hc7qQ9xi3UYu68PnhcVtTDs9IGMmUAy6qm2+jDAmRR5u4YXuhgwwNjhw==}
 
   '@lowdefy/node-utils@7.2.0':
     resolution: {integrity: sha512-xk2fyvTgtrK3knLBh9mgOk5G4Drgm/MldkL0jKbHpp7ya4iLRDPwS8amPiKqfzcryl8sMbg2+JVT2E9XFXCwGQ==}
+
+  '@lowdefy/nunjucks@0.0.0-experimental-20261027111447':
+    resolution: {integrity: sha512-6uUv+jpzIyoqfzyqHk86cK2p/MrO9rUAMc0OABfud18l0CCJTruUi3b+MOE1rQXdpRJQ0VySeKWLBjR/Uw/1/g==}
 
   '@lowdefy/nunjucks@7.2.0':
     resolution: {integrity: sha512-w/30zWzOdt2ruIfdGr8qOWwZPmK/qjt9cL4YqzMoXvGHpqa7MgHB+gWZsFASYvry2YSSzJgf89IlijIrS8w8Cg==}
@@ -1118,8 +1139,8 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
-  '@lowdefy/plugin-better-auth@7.2.0':
-    resolution: {integrity: sha512-3OibIXmRudkOZMyu2KT33OgXEQzsdFwu2J0497sJql3jPGSmMkgcXJCI6LC/oxtKiGc9S7UuiVXlmAWY5gvnBg==}
+  '@lowdefy/plugin-better-auth@0.0.0-experimental-20261027111447':
+    resolution: {integrity: sha512-/CgLJU4pRdsiyNsu/fdcGPz1k3Q9LhhFLmT85oVuQ88pSrv22W9C/z45hSCAR1NnYMR4/i9map5EBP6PaNvJwg==}
 
   '@manypkg/find-root@1.1.0':
     resolution: {integrity: sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA==}
@@ -3428,8 +3449,8 @@ packages:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
 
-  lowdefy@7.2.0:
-    resolution: {integrity: sha512-KGER3fJ3GEoAhjOBu57Xt8oFL6UMfthwjvm0mn3a4xZplrxtiu+UD2ERcwUIEypl4qGLbXQsf5mCu9Zs7Kuuxw==}
+  lowdefy@0.0.0-experimental-20261027111447:
+    resolution: {integrity: sha512-o58nBO+LNGSqmtrIK2KFzKau20LcMPRJX/gUy3bUTgz3gwNqY0PdwZeZUnT+zdPlDIKxd22L4I5K/7XAIS7Kxg==}
     engines: {node: '>=24'}
     hasBin: true
 
@@ -5859,10 +5880,10 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@lowdefy/ajv@7.2.0':
+  '@lowdefy/ajv@0.0.0-experimental-20261027111447':
     dependencies:
-      '@lowdefy/helpers': 7.2.0
-      '@lowdefy/nunjucks': 7.2.0
+      '@lowdefy/helpers': 0.0.0-experimental-20261027111447
+      '@lowdefy/nunjucks': 0.0.0-experimental-20261027111447
       ajv: 8.20.0
       ajv-errors: 3.0.0(ajv@8.20.0)
       ajv-formats: 2.1.1(ajv@8.20.0)
@@ -5981,6 +6002,15 @@ snapshots:
       - snappy
       - socks
 
+  '@lowdefy/e2e-utils@0.0.0-experimental-20261027111447(@playwright/test@1.60.0)':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20261027111447
+      '@lowdefy/node-utils': 0.0.0-experimental-20261027111447
+      js-yaml: 4.3.2
+      prompts: 2.4.2
+    optionalDependencies:
+      '@playwright/test': 1.60.0
+
   '@lowdefy/e2e-utils@7.2.0(@playwright/test@1.60.0)':
     dependencies:
       '@lowdefy/helpers': 7.2.0
@@ -5990,11 +6020,19 @@ snapshots:
     optionalDependencies:
       '@playwright/test': 1.60.0
 
+  '@lowdefy/errors@0.0.0-experimental-20261027111447': {}
+
   '@lowdefy/errors@4.7.3': {}
 
   '@lowdefy/errors@5.3.0': {}
 
   '@lowdefy/errors@7.2.0': {}
+
+  '@lowdefy/helpers@0.0.0-experimental-20261027111447':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20261027111447
+      change-case: 5.4.0
+      intl-messageformat: 11.2.7
 
   '@lowdefy/helpers@4.7.3':
     dependencies:
@@ -6012,12 +6050,20 @@ snapshots:
       change-case: 5.4.0
       intl-messageformat: 11.2.7
 
-  '@lowdefy/logger@7.2.0':
+  '@lowdefy/logger@0.0.0-experimental-20261027111447':
     dependencies:
-      '@lowdefy/errors': 7.2.0
-      '@lowdefy/helpers': 7.2.0
+      '@lowdefy/errors': 0.0.0-experimental-20261027111447
+      '@lowdefy/helpers': 0.0.0-experimental-20261027111447
       ora: 7.0.1
       pino: 10.3.1
+
+  '@lowdefy/node-utils@0.0.0-experimental-20261027111447':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20261027111447
+      '@lowdefy/helpers': 0.0.0-experimental-20261027111447
+      fs-extra: 11.3.4
+      undici: 7.30.1
+      yaml: 2.9.0
 
   '@lowdefy/node-utils@7.2.0':
     dependencies:
@@ -6026,6 +6072,11 @@ snapshots:
       fs-extra: 11.3.4
       undici: 7.30.1
       yaml: 2.9.0
+
+  '@lowdefy/nunjucks@0.0.0-experimental-20261027111447':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20261027111447
+      dayjs: 1.11.20
 
   '@lowdefy/nunjucks@7.2.0':
     dependencies:
@@ -6047,10 +6098,10 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@lowdefy/plugin-better-auth@7.2.0(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+  '@lowdefy/plugin-better-auth@0.0.0-experimental-20261027111447(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
     dependencies:
-      '@lowdefy/errors': 7.2.0
-      '@lowdefy/helpers': 7.2.0
+      '@lowdefy/errors': 0.0.0-experimental-20261027111447
+      '@lowdefy/helpers': 0.0.0-experimental-20261027111447
       better-auth: 1.7.7(@opentelemetry/api@1.9.1)(mongodb@7.2.0)(next@15.5.20(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       jose: 6.2.12
     transitivePeerDependencies:
@@ -8675,13 +8726,13 @@ snapshots:
     dependencies:
       js-tokens: 4.0.0
 
-  lowdefy@7.2.0(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1):
+  lowdefy@0.0.0-experimental-20261027111447(debug@4.4.3(supports-color@8.1.1))(rollup@3.29.5)(supports-color@8.1.1):
     dependencies:
-      '@lowdefy/ajv': 7.2.0
-      '@lowdefy/errors': 7.2.0
-      '@lowdefy/helpers': 7.2.0
-      '@lowdefy/logger': 7.2.0
-      '@lowdefy/node-utils': 7.2.0
+      '@lowdefy/ajv': 0.0.0-experimental-20261027111447
+      '@lowdefy/errors': 0.0.0-experimental-20261027111447
+      '@lowdefy/helpers': 0.0.0-experimental-20261027111447
+      '@lowdefy/logger': 0.0.0-experimental-20261027111447
+      '@lowdefy/node-utils': 0.0.0-experimental-20261027111447
       '@modelcontextprotocol/sdk': 1.32.2(supports-color@8.1.1)(zod@3.25.76)
       '@vercel/nft': 1.10.2(rollup@3.29.5)(supports-color@8.1.1)
       axios: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
