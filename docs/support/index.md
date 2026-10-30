@@ -16,7 +16,7 @@ Tickets live in Pelican. The app keeps a copy of each of its users' tickets in i
 ```yaml
 # modules.yaml
 - id: support
-  source: "github:lowdefy/modules-mongodb/modules/support@v1.4.1"
+  source: "github:lowdefy/modules-mongodb/modules/support@v2.0.0"
   vars:
     environment:
       _build.env: STAGE

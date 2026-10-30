@@ -1,5 +1,5 @@
 name: Organizations
-version: 1.4.1
+version: 2.0.0
 description: >-
   Self-serve organization workspace for tenant deployments — see and switch the
   active organization, name it, and manage its members (invite, cancel, remove,
@@ -431,4 +431,4 @@ plugins:
   # @lowdefy/community-plugin-mongodb pin is needed — the built-in is
   # auto-included.
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.4.1"
+    version: "^2.0.0"

@@ -50,7 +50,7 @@ atlas_search: true
 # lowdefy.yaml (or modules.yaml) — every searchable entry reads the same value
 modules:
   - id: contacts
-    source: "github:lowdefy/modules-mongodb/modules/contacts@v1.4.1"
+    source: "github:lowdefy/modules-mongodb/modules/contacts@v2.0.0"
     vars:
       atlas_search:
         _ref:
