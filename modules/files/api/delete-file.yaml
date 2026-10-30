@@ -1,6 +1,28 @@
 id: delete-file
 type: Api
+description: >-
+  Soft-deletes one live file record. The record type and id come from the
+  stored record, not the payload.
+payloadSchema:
+  type: object
+  required:
+    - file_id
+  properties:
+    file_id:
+      type: string
+      minLength: 1
 routine:
+  - _ref: api/parts/load-file.yaml
+  - _ref:
+      path: api/parts/check-access.yaml
+      vars:
+        operation: delete
+        entity_type:
+          _state: file_record.collection
+        entity_id:
+          _state: file_record.doc_id
+        file_id:
+          _state: file_record._id
   - id: delete
     type: MongoDBUpdateOne
     connectionId:
@@ -8,7 +30,7 @@ routine:
     properties:
       filter:
         _id:
-          _payload: file_id
+          _state: file_record._id
       update:
         $set:
           deleted:
@@ -34,14 +56,14 @@ routine:
         type: delete-file
         references:
           entity_type:
-            _payload: entity_type
+            _state: file_record.collection
           entity_id:
-            _payload: entity_id
+            _state: file_record.doc_id
         metadata:
           file_id:
-            _payload: file_id
+            _state: file_record._id
           file_name:
-            _payload: file_name
+            _state: file_record.file.name
 
   - :return:
       success: true

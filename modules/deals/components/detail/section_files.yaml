@@ -40,6 +40,16 @@ blocks:
       variant: dashed
     events:
       onClick:
+        # The manager lists on its own mount only, so list the selected deal's
+        # files again before it opens.
+        - _ref: actions/fetch_deal_files.yaml
+        - id: set_manager_files
+          type: SetState
+          params:
+            detail_files_manager_files:
+              _if_none:
+                - _actions: fetch_deal_files.response.response
+                - []
         - id: open_files_upload_modal
           type: CallMethod
           params:

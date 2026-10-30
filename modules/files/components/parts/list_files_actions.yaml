@@ -1,0 +1,31 @@
+# Lists a record's files through the list-files endpoint into state.
+#
+# Vars:
+#   state_key      the state key the records are set to
+#   entity_type    the record type
+#   entity_id      the record id; nothing is listed while it is null
+#   file_category  only files of this category, or null for all
+- id: list_files
+  type: CallAPI
+  skip:
+    _eq:
+      - _var: entity_id
+      - null
+  params:
+    endpointId:
+      _module.endpointId: list-files
+    payload:
+      entity_type:
+        _var: entity_type
+      entity_id:
+        _var: entity_id
+      file_category:
+        _var: file_category
+- id: set_files
+  type: SetState
+  params:
+    _build.object.fromEntries:
+      - - _var: state_key
+        - _if_none:
+            - _actions: list_files.response.response
+            - []

@@ -1,0 +1,24 @@
+# Loads the live file record named by the payload's file_id into
+# state.file_record, or rejects. The tenant wall filters the read, so another
+# organization's record is not found, whether the caller sends its key or its id.
+- id: load_file
+  type: MongoDBFindOne
+  connectionId:
+    _module.connectionId: files-collection
+  properties:
+    query:
+      _id:
+        _payload: file_id
+      deleted.timestamp:
+        $exists: false
+- :if:
+    _eq:
+      - _if_none:
+          - _step: load_file
+          - null
+      - null
+  :then:
+    - :reject: This file was not found. It may have been deleted.
+- :set_state:
+    file_record:
+      _step: load_file

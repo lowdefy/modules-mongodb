@@ -1,0 +1,7 @@
+id: set_deal_files
+type: SetState
+params:
+  detail_files_list_items:
+    _if_none:
+      - _actions: fetch_deal_files.response.response
+      - []

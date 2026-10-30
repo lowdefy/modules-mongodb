@@ -55,10 +55,8 @@ dependencies:
       universal-fields surface composes (Part 24 / Part 24a).
   - id: files
     description: >
-      Provides the download-policy component the two overview pages instantiate
-      into their `requests:` — the presigned S3 GET DataDescriptions needs
-      before a file field inside an action card renders as a download instead of
-      "No files available".
+      Provides the files-bucket connection the download-form-file endpoint
+      signs workflow form files with.
 
 vars:
   workflows_config:
@@ -211,6 +209,13 @@ exports:
         [{ open: true }]) contract. One instance per page; never drop it on a
         page that already defines a get_workflow_action request (the
         per-workflow {workflow_type}-action page).
+  api:
+    - id: download-form-file
+      description: >-
+        Sign a download link for a file uploaded through a workflow form.
+        Payload { workflow_id, file_id }, file_id being the file's key.
+        Signs only a key in the form slots of actions the caller may view.
+        Returns { url }.
 
 components:
   - id: action_statuses
@@ -248,6 +253,7 @@ api:
     - - _ref: api/get-entity-workflows.yaml
       - _ref: api/get-workflow-overview.yaml
       - _ref: api/get-action-group-overview.yaml
+      - _ref: api/download-form-file.yaml
     - _ref:
         resolver: resolvers/makeWorkflowApis.js
         vars:

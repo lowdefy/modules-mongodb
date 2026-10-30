@@ -775,6 +775,87 @@ describe("form-data merge end to end", () => {
   });
 });
 
+describe("form file keys", () => {
+  const ORG_USER = {
+    id: "U1",
+    organization_id: "org-a",
+    profile: { name: "Test User" },
+    roles: ["account-manager", "reviewer"],
+  };
+  const upload = (key) => {
+    const file = { key, name: key.split("/").pop(), type: "application/pdf" };
+    return { file, fileList: [file] };
+  };
+
+  test("saves a file under the caller's own organization", async () => {
+    await seed();
+    await SubmitWorkflowAction(
+      buildContext({
+        user: ORG_USER,
+        request: {
+          action_id: "A1",
+          signal: "submit",
+          form: { contract: upload("org-a/workflows/x/contract.pdf") },
+        },
+      }),
+    );
+    const wf = await mongo.db.collection("workflows").findOne({ _id: "W1" });
+    expect(wf.form_data.qualify.contract.file.key).toBe(
+      "org-a/workflows/x/contract.pdf",
+    );
+  });
+
+  test("refuses another organization's key before the pre-hook, and writes nothing", async () => {
+    await seed();
+    const calls = [];
+    await expect(
+      SubmitWorkflowAction(
+        buildContext({
+          user: ORG_USER,
+          callApi: makeCallApi({ calls }),
+          request: {
+            action_id: "A1",
+            signal: "submit",
+            form: { contract: upload("org-b/workflows/x/contract.pdf") },
+            hooks: { qualify: { submit: { pre: "hooks/pre" } } },
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({
+      name: "UserError",
+      isReject: true,
+      message: expect.stringContaining("form.contract"),
+    });
+    expect(calls).toEqual([]);
+    const wf = await mongo.db.collection("workflows").findOne({ _id: "W1" });
+    expect(wf.form_data).toEqual({});
+    expect(wf.updated).toEqual(changeStamp);
+    const action = await mongo.db.collection("actions").findOne({ _id: "A1" });
+    expect(action.status[0].stage).toBe("action-required");
+    expect(await mongo.db.collection("events").countDocuments()).toBe(0);
+  });
+
+  test("carries a legacy file already in the slot over on resubmit", async () => {
+    await seed({
+      workflowOverrides: {
+        form_data: { qualify: { contract: upload("legacy/contract.pdf") } },
+      },
+    });
+    await SubmitWorkflowAction(
+      buildContext({
+        user: ORG_USER,
+        request: {
+          action_id: "A1",
+          signal: "submit",
+          form: { contract: upload("legacy/contract.pdf"), notes: "again" },
+        },
+      }),
+    );
+    const wf = await mongo.db.collection("workflows").findOne({ _id: "W1" });
+    expect(wf.form_data.qualify.notes).toBe("again");
+  });
+});
+
 describe("completed_groups with on_complete join", () => {
   test("a submit that completes a group returns completed_groups with on_complete", async () => {
     // Both grouped actions terminal after this submit: qualify (review-less here

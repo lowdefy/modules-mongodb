@@ -30,6 +30,7 @@
 - docs/plugins/contact-selector.md: ContactSelector — A multi-select contact picker. Search the contact pool, add a new contact inline (with a custom form rendered into the modal slot), edit or verify selected contacts, and remove them. Used by the `contacts` module to back its `contact-selector` component.
 - docs/plugins/data-descriptions.md: DataDescriptions — A read-only data view built on Antd `Descriptions`, driven by an explicit `formConfig` that lays out sections, ordering, labels, and renderer hints. Use it on detail pages where the field set is fixed and you want full control over how the data is grouped.
 - docs/plugins/events-timeline.md: EventsTimeline — A vertical timeline of audit events. Each entry shows an avatar, the event title (Nunjucks-rendered upstream by the `events` module), a relative timestamp, an optional description, optional info link with a modal, optional inline action cards with status badges, and optional attached files.
+- docs/plugins/file-download.md: FileDownload — A list of files that downloads each one through an API endpoint. On click it calls the endpoint named by `downloadEndpointId` with `{ ...downloadPayload, file_id }` and opens the `url` it returns. The endpoint loads the record the file belongs to, checks the caller may see it, and signs that reco...
 - docs/plugins/file-manager.md: FileManager — Drag-drop file upload with S3 signed URLs, paste-to-upload, optional metadata form, file-type icons, image thumbnails, download links, and a delete-confirmation modal. Used by the `files` module to back its `file-manager`, `file-card`, and (indirectly) `file-list` components.
 - docs/plugins/floating-panel.md: FloatingPanel — An Intercom-style corner launcher and the floating panel it opens. A container block: it owns a fixed-position launcher button and the panel that springs from it, and renders whatever blocks the page nests inside its slots.
 - docs/plugins/index.md: Modules MongoDB Plugins — Custom Lowdefy blocks, actions, and connections used by the modules in this repo. The package is a regular Lowdefy plugin — modules declare it under their `plugins:` and consumers register it in their app's `lowdefy.yaml`. You only need to add it yourself if you are wiring blocks, the `FetchReque...
@@ -92,6 +93,7 @@
 ## files
 
 - docs/files/index.md: Files — File attachments backed by S3 — drag-drop upload with thumbnails, downloads, deletes, and category filters. Every file is stamped onto a parent entity (`{ collection, doc_id }`), so the same component drops onto contact pages, company pages, or any entity page.
+- docs/files/reference/endpoints.md: Endpoints — Every file operation goes through one of the module's five API endpoints. Each loads what it acts on through the `files-collection` connection, so the tenant wall applies, and calls the app's [access check](../index.md#access-check) before it acts. A refusal rejects the call with a message the bl...
 - docs/files/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
 ## layout

@@ -46,6 +46,16 @@
   source: "file:../../modules/files"
   vars:
     s3_region: us-east-1
+    access_check:
+      endpoint_id: files-access-check
+    allowed_content_types:
+      - application/pdf
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/webp
+      - text/plain
+      - text/csv
 
 - id: layout
   source: "file:../../modules/layout"

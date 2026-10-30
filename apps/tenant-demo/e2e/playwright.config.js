@@ -42,6 +42,17 @@ export default {
       ...process.env,
       NEXTAUTH_SECRET:
         process.env.NEXTAUTH_SECRET || "build-only-not-a-real-secret",
+      // Presigning an S3 link or upload policy is computed locally, so the
+      // files endpoint specs need only placeholder bucket secrets.
+      LOWDEFY_SECRET_FILES_S3_ACCESS_KEY_ID:
+        process.env.LOWDEFY_SECRET_FILES_S3_ACCESS_KEY_ID || "e2e-access-key",
+      LOWDEFY_SECRET_FILES_S3_SECRET_ACCESS_KEY:
+        process.env.LOWDEFY_SECRET_FILES_S3_SECRET_ACCESS_KEY ||
+        "e2e-secret-key",
+      LOWDEFY_SECRET_FILES_S3_BUCKET:
+        process.env.LOWDEFY_SECRET_FILES_S3_BUCKET || "e2e-bucket",
+      LOWDEFY_SECRET_FILES_S3_BUCKET_PUB:
+        process.env.LOWDEFY_SECRET_FILES_S3_BUCKET_PUB || "e2e-bucket-pub",
     },
   },
 };

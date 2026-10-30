@@ -19,8 +19,10 @@ const USER = {
   profile: { name: "Send User" },
 };
 
-const file = (name, owner = USER.id) => ({
-  key: `support/${owner}/u-${name}/${name}`,
+// Uploads land under {organization_id}/support/{user id}/, or support/{user id}/
+// for a user with no organization.
+const file = (name, owner = USER.id, organization = USER.organization_id) => ({
+  key: `${organization ? `${organization}/` : ""}support/${owner}/u-${name}/${name}`,
   name,
 });
 
@@ -142,10 +144,20 @@ test("a user with no active organisation files with organization null", async ({
   await ldf.user({ ...USER, organization_id: null });
   pelican.answer(() => ({ status: 200, body: createdView([]) }));
 
-  const result = await call(page, "create-ticket", { ...REPORT, files: [] });
+  expect(
+    await call(page, "create-ticket", {
+      ...REPORT,
+      files: [file("other.png", USER.id, "demo")],
+    }),
+  ).toEqual(fixError("Attach only files you uploaded here."));
+  expect(pelican.calls).toEqual([]);
+
+  const own = file("own.png", USER.id, null);
+  const result = await call(page, "create-ticket", { ...REPORT, files: [own] });
 
   expect(pelican.calls[0].body.context.organization).toBeNull();
-  expect(pelican.calls[0].body.files).toEqual([]);
+  expect(pelican.calls[0].body.files).toHaveLength(1);
+  expect(pelican.calls[0].body.files[0].url).toContain(own.key);
   expect(result.ticket.organization).toBeNull();
 });
 

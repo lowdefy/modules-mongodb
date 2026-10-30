@@ -1,0 +1,59 @@
+id: list-files
+type: Api
+description: >-
+  Lists the live file records of one record, newest first, as stored
+  (file.bucket included), optionally of one file_category.
+payloadSchema:
+  type: object
+  required:
+    - entity_type
+    - entity_id
+  properties:
+    entity_type:
+      type: string
+      minLength: 1
+    entity_id:
+      type: string
+      minLength: 1
+    file_category:
+      type:
+        - string
+        - "null"
+routine:
+  - _ref:
+      path: api/parts/check-access.yaml
+      vars:
+        operation: list
+        entity_type:
+          _payload: entity_type
+        entity_id:
+          _payload: entity_id
+  - id: files
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: files-collection
+    properties:
+      pipeline:
+        - $match:
+            collection:
+              _payload: entity_type
+            doc_id:
+              _payload: entity_id
+            deleted.timestamp:
+              $exists: false
+        - $match:
+            _if:
+              test:
+                _eq:
+                  - _if_none:
+                      - _payload: file_category
+                      - null
+                  - null
+              then: {}
+              else:
+                file_category:
+                  _payload: file_category
+        - $sort:
+            created.timestamp: -1
+  - :return:
+      _step: files

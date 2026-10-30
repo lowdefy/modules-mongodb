@@ -1,42 +1,138 @@
 id: save-file
 type: Api
+description: >-
+  Records a file uploaded through an upload-policy key. Refuses a key
+  upload-policy did not mint for the caller's organization and this record, a
+  key any record already holds (deleted ones included), and a key with nothing
+  uploaded. The record's _id is the key; its size and type come from storage,
+  not the payload.
+payloadSchema:
+  type: object
+  required:
+    - entity_type
+    - entity_id
+    - key
+  properties:
+    entity_type:
+      type: string
+    entity_id:
+      type: string
+    key:
+      type: string
+    thumbnail:
+      type:
+        - string
+        - "null"
+    file_title:
+      type:
+        - string
+        - "null"
+    file_category:
+      type:
+        - string
+        - "null"
+    metadata:
+      type:
+        - object
+        - "null"
 routine:
-  - id: save
-    type: MongoDBUpdateOne
+  - _ref: api/parts/check-save.yaml
+  - :if:
+      _ne:
+        - _state: save_check_result.problem
+        - null
+    :then:
+      - :reject:
+          _state: save_check_result.problem
+  - _ref:
+      path: api/parts/check-access.yaml
+      vars:
+        operation: save
+        entity_type:
+          _payload: entity_type
+        entity_id:
+          _payload: entity_id
+        file_id:
+          _payload: key
+  - id: existing
+    type: MongoDBFindOne
     connectionId:
       _module.connectionId: files-collection
     properties:
-      options:
-        upsert: true
-      filter:
+      query:
         _id:
-          _payload: file.key
-      update:
-        $set:
-          collection:
-            _payload: entity_type
-          doc_id:
-            _payload: entity_id
-          file:
-            _payload: file
-          file_title:
-            _payload: file_title
-          file_category:
-            _if_none:
-              - _payload: metadata.file_category
-              - _payload: file_category
-          metadata:
-            _payload: metadata
-          updated:
-            _ref:
-              module: events
-              component: change_stamp
-        $setOnInsert:
-          created:
-            _ref:
-              module: events
-              component: change_stamp
-          deleted: null
+          _payload: key
+      options:
+        projection:
+          _id: 1
+  - :if:
+      _ne:
+        - _if_none:
+            - _step: existing
+            - null
+        - null
+    :then:
+      - :reject: This file is already saved. Upload it again to add another copy.
+  - id: head
+    type: AwsS3HeadObject
+    connectionId:
+      _module.connectionId: files-bucket
+    properties:
+      key:
+        _payload: key
+  - :if:
+      _ne:
+        - _step: head.exists
+        - true
+    :then:
+      - :reject: The upload did not reach storage. Upload the file again.
+  - :set_state:
+      file_category:
+        _if_none:
+          - _payload: metadata.file_category
+          - _payload: file_category
+  # An insert, not an upsert: a second save of the same key fails on the
+  # duplicate _id rather than rewriting the first record.
+  - id: save
+    type: MongoDBInsertOne
+    connectionId:
+      _module.connectionId: files-collection
+    properties:
+      doc:
+        _id:
+          _payload: key
+        collection:
+          _payload: entity_type
+        doc_id:
+          _payload: entity_id
+        file:
+          name:
+            _state: save_check_result.name
+          key:
+            _payload: key
+          bucket:
+            _step: head.bucket
+          size:
+            _step: head.size
+          type:
+            _step: head.contentType
+          thumbnail:
+            _state: save_check_result.thumbnail
+        file_title:
+          _payload: file_title
+        file_category:
+          _state: file_category
+        metadata:
+          _payload: metadata
+        created:
+          _ref:
+            module: events
+            component: change_stamp
+        updated:
+          _ref:
+            module: events
+            component: change_stamp
+        deleted: null
 
   - id: log-event
     type: CallApi
@@ -57,14 +153,12 @@ routine:
             _payload: entity_id
         metadata:
           file_name:
-            _payload: file.name
+            _state: save_check_result.name
           file_category:
-            _if_none:
-              - _payload: metadata.file_category
-              - _payload: file_category
+            _state: file_category
           file_key:
-            _payload: file.key
+            _payload: key
 
   - :return:
       fileId:
-        _payload: file.key
+        _payload: key

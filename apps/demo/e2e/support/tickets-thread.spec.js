@@ -18,7 +18,7 @@ const USER = {
 };
 
 const S3_URL = "https://s3.e2e.test/support-reply-upload";
-const KEY = `support/${USER.id}/e2e-reply/file`;
+const KEY = `${USER.organization_id}/support/${USER.id}/e2e-reply/file`;
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
   "base64",

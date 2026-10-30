@@ -57,13 +57,10 @@ const WORKFLOW_FIELDS = [
 // makeActionFormConfigs so the overview pages' inline submitted-data rendering
 // continues to work once they switch to reading from workflowsConfig.
 
-const STRUCTURAL_COMPONENTS = [
-  "controlled_list",
-  "section",
-  "box",
-  "label",
-  "file_upload",
-];
+// A node with `form` reads as a list on the overview card's DataDescriptions,
+// so only components that nest a form are structural: a file_upload value is a
+// { fileList } object the card renders as a download.
+const STRUCTURAL_COMPONENTS = ["controlled_list", "section", "box", "label"];
 
 // `enum` rides along so the overview card's read-only DataDescriptions can show
 // an enum-backed selector's title instead of its stored slug. `options` stays

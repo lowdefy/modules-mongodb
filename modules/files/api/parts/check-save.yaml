@@ -1,0 +1,53 @@
+# Checks a save-file payload, leaving state.save_check_result as
+# { problem, name, thumbnail }: problem is null or the message to refuse with,
+# name is the key's last segment and thumbnail the payload's thumbnail when it
+# is a small data:image/ URL, else null.
+#
+# The browser sends the key, so it is accepted only in the exact shape
+# upload-policy mints, under the caller's organization and the payload's entity:
+#   {organization_id}/files/{entity_type}/{entity_id}/{YYYYMMDD_HHmmssSSS}/{uuid}/{name}
+# Any other key could name an object the caller did not upload.
+- :set_state:
+    save_check:
+      organization_id:
+        _if_none:
+          - _user: organization_id
+          - null
+      entity_type:
+        _payload: entity_type
+      entity_id:
+        _payload: entity_id
+      key:
+        _payload: key
+      thumbnail:
+        _payload: thumbnail
+- :set_state:
+    save_check_result:
+      _js: |
+        const { organization_id, entity_type, entity_id, key, thumbnail } = state('save_check');
+        const segment = (value) => typeof value === 'string' && value.length > 0 && !value.includes('/');
+        const refuse = (problem) => ({ problem, name: null, thumbnail: null });
+        if (!segment(organization_id)) {
+          return refuse('Files can only be saved by a member of an organization.');
+        }
+        if (!segment(entity_type) || !segment(entity_id)) {
+          return refuse('The record type and ID must be set and cannot contain "/".');
+        }
+        const parts = typeof key === 'string' ? key.split('/') : [];
+        const minted =
+          parts.length === 7 &&
+          parts[0] === organization_id &&
+          parts[1] === 'files' &&
+          parts[2] === entity_type &&
+          parts[3] === entity_id &&
+          /^\d{8}_\d{9}$/.test(parts[4]) &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(parts[5]) &&
+          parts[6].length > 0;
+        if (!minted) {
+          return refuse('This file was not uploaded here. Upload it again.');
+        }
+        // FileManager draws a 64 px thumbnail in the browser; anything larger
+        // or not an image data URL is dropped rather than stored on the record.
+        const smallImage =
+          typeof thumbnail === 'string' && thumbnail.startsWith('data:image/') && thumbnail.length <= 16384;
+        return { problem: null, name: parts[6], thumbnail: smallImage ? thumbnail : null };
