@@ -1,44 +1,41 @@
 export default {
   category: "display",
   valueType: null,
-  // The block registers a CallAPI action that reads _event; a page's own
-  // config may use neither, so they are counted from here.
-  actions: ["CallAPI"],
-  operators: ["_event"],
   icons: [],
   cssKeys: {
     element: "The file list element.",
   },
   properties: {
     type: "object",
-    required: ["downloadEndpointId"],
+    required: ["linkEndpointId"],
     properties: {
-      downloadEndpointId: {
+      linkEndpointId: {
         type: "string",
         description:
-          "Id of an API endpoint that takes { file_id, ...downloadPayload } and returns { url }, a signed link to that file. The files module's download-file is one.",
+          "Id of a link endpoint (link: true) that answers GET /api/endpoints/<linkEndpointId>/<...linkPath>/<key> with a redirect to the file, such as the files module's file endpoint ({ _module.endpointId: file }). Each file renders as a link to it.",
       },
-      downloadPayload: {
-        type: "object",
+      linkPath: {
+        type: "array",
+        items: { type: "string" },
         description:
-          "Extra fields sent to the endpoint with each download, such as { workflow_id }. file_id is always set from the clicked file.",
+          "Path segments that go before each file's key in the link, such as [workflow_id] for the workflows module's form-file endpoint.",
       },
       fileList: {
         type: "array",
         description:
-          "The files to list. file_id is each file's _id, else its key.",
+          "The files to list. Each link names the file's _id, else its key.",
         items: {
           type: "object",
           properties: {
             _id: {
               type: "string",
               description:
-                "The file record's id, sent as file_id when present.",
+                "The file record's id, used in the link when present.",
             },
             key: {
               type: "string",
               description:
-                "Storage object key, sent as file_id when there is no _id.",
+                "Storage object key, used in the link when there is no _id.",
             },
             name: {
               type: "string",

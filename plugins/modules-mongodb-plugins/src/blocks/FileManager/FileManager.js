@@ -16,10 +16,7 @@ import dayjs from "dayjs";
 import getS3Upload from "./getS3Upload.js";
 import useFileList from "./useFileList.js";
 import getOnPaste from "./getOnPaste.js";
-import {
-  downloadFile,
-  registerDownloadEvent,
-} from "../FileDownload/downloadFile.js";
+import fileLinkHref from "../FileDownload/fileLinkHref.js";
 
 const { Dragger } = Upload;
 const { Text } = Typography;
@@ -62,16 +59,9 @@ const FILE_TYPE_ICONS = {
   webp: ["FileImage", "#722ed1"],
 };
 
-const downloadFileDoc = async ({ fileDoc, downloadPayload, methods }) => {
-  const url = await downloadFile({
-    file: fileDoc.file,
-    fileId: fileDoc._id,
-    downloadPayload,
-    methods,
-  });
-  if (!url) return;
-  methods.triggerEvent({ name: "onDownload", event: { fileDoc } });
-};
+// A left or middle click opens the link in a new tab. The link endpoint
+// checks access when it opens, so onDownload records a click, not a download.
+const isOpeningClick = (e) => e.button === 0 || e.button === 1;
 
 /**
  * FileManager block.
@@ -89,12 +79,13 @@ const downloadFileDoc = async ({ fileDoc, downloadPayload, methods }) => {
  *     with its uid, or cancelUpload forgets it
  *   onSave: { file: { name, key, bucket, size, type, thumbnail, pasted } }
  *   onDelete: { fileDoc: <full file document> }
- *   onDownload: { fileDoc }, once the downloadEndpointId endpoint returned a url
+ *   onDownload: { fileDoc }, when a file link is clicked (left or middle click)
  *
- * Downloads call the API endpoint `properties.downloadEndpointId` with
- * { ...downloadPayload, file_id: fileDoc._id } and open the { url } it returns.
+ * Each file is a link to the link endpoint `properties.linkEndpointId`:
+ * <basePath>/api/endpoints/<linkEndpointId>/<...linkPath>/<fileDoc._id>.
  */
 const FileManager = ({
+  basePath,
   blockId,
   classNames = {},
   components,
@@ -215,13 +206,6 @@ const FileManager = ({
       });
     }
   }, []);
-
-  useEffect(() => {
-    registerDownloadEvent({
-      methods,
-      downloadEndpointId: properties.downloadEndpointId,
-    });
-  }, [properties.downloadEndpointId]);
 
   useEffect(() => {
     methods.registerMethod("uploadFromPaste", async () => {
@@ -359,6 +343,18 @@ const FileManager = ({
       ? dayjs(fileDoc.created.timestamp).format("YYYY-MM-DD")
       : null;
 
+    const href = fileLinkHref({
+      basePath,
+      linkEndpointId: properties.linkEndpointId,
+      linkPath: properties.linkPath,
+      key: fileDoc._id,
+    });
+    const onLinkClick = (e) => {
+      if (isOpeningClick(e)) {
+        methods.triggerEvent({ name: "onDownload", event: { fileDoc } });
+      }
+    };
+
     const metaParts = [];
     if (userName) metaParts.push(userName);
     if (timestamp) metaParts.push(timestamp);
@@ -388,15 +384,12 @@ const FileManager = ({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div>
             <a
-              onClick={(e) => {
-                e.preventDefault();
-                downloadFileDoc({
-                  fileDoc,
-                  downloadPayload: properties.downloadPayload,
-                  methods,
-                });
-              }}
-              style={{ fontWeight: 500, cursor: "pointer" }}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onLinkClick}
+              onAuxClick={onLinkClick}
+              style={{ fontWeight: 500 }}
             >
               {displayName}
             </a>
@@ -435,13 +428,11 @@ const FileManager = ({
           <Button
             type="text"
             size="small"
-            onClick={() =>
-              downloadFileDoc({
-                fileDoc,
-                downloadPayload: properties.downloadPayload,
-                methods,
-              })
-            }
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onLinkClick}
+            onAuxClick={onLinkClick}
           >
             <Icon
               blockId={`${blockId}_file_${index}_dl`}

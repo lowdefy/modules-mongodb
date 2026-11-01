@@ -202,17 +202,17 @@ export const fieldTypeRegistry = {
   fileList: {
     priority: 35, // Check before 'file' (more specific)
     detect: (value) => type.isObject(value) && type.isArray(value.fileList),
-    render: ({ value, methods, properties }) => {
-      if (value.fileList && methods && properties?.downloadEndpointId) {
+    render: ({ value, properties }) => {
+      if (value.fileList && properties?.linkEndpointId) {
         return (
           <span className="dataview-value">
             <FileDownload
               blockId={`file-downloads`}
-              methods={methods}
+              basePath={properties.basePath}
               properties={{
                 fileList: value.fileList,
-                downloadEndpointId: properties.downloadEndpointId,
-                downloadPayload: properties.downloadPayload,
+                linkEndpointId: properties.linkEndpointId,
+                linkPath: properties.linkPath,
               }}
             />
           </span>
@@ -228,22 +228,17 @@ export const fieldTypeRegistry = {
     priority: 40,
     detect: (value) =>
       type.isObject(value) && "key" in value && "bucket" in value,
-    render: ({ value, methods, properties }) => {
-      if (
-        value.bucket &&
-        value.key &&
-        methods &&
-        properties?.downloadEndpointId
-      ) {
+    render: ({ value, properties }) => {
+      if (value.bucket && value.key && properties?.linkEndpointId) {
         return (
           <span className="dataview-value">
             <FileDownload
               blockId={`file-download-${value.key}`}
-              methods={methods}
+              basePath={properties.basePath}
               properties={{
                 fileList: [value],
-                downloadEndpointId: properties.downloadEndpointId,
-                downloadPayload: properties.downloadPayload,
+                linkEndpointId: properties.linkEndpointId,
+                linkPath: properties.linkPath,
               }}
             />
           </span>

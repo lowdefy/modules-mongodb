@@ -16,13 +16,14 @@
       "type": "object",
       "description": "Map of action status → display metadata (color, title, card_color, border_color). Used to render action status badges within events."
     },
-    "downloadEndpointId": {
+    "linkEndpointId": {
       "type": "string",
-      "description": "Id of an API endpoint that takes { file_id, ...downloadPayload } and returns { url }. When provided, events with a files array render a download list; file_id is each file's _id, else its key."
+      "description": "Id of a link endpoint (link: true) that redirects GET /api/endpoints/<linkEndpointId>/<...linkPath>/<key> to the file. When provided, events with a files array render a list of links; key is each file's _id, else its key."
     },
-    "downloadPayload": {
-      "type": "object",
-      "description": "Extra fields sent to downloadEndpointId with each download."
+    "linkPath": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Path segments that go before each file's key in the link."
     },
     "contactPageId": {
       "type": "string",
