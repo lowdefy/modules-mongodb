@@ -1,5 +1,56 @@
 # @lowdefy/modules-mongodb-support
 
+## 2.0.0
+
+### Major Changes
+
+- [#316](https://github.com/lowdefy/modules-mongodb/pull/316) [`397ac4e`](https://github.com/lowdefy/modules-mongodb/commit/397ac4e07cf28c81fa6ad1b8f565743f5d098130) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **The files components, and the modules that use them, now work through the files module's endpoints.**
+
+  - **files:** `file-manager` and `file-card` list through `list-files` on mount and again after each save and delete, get each upload's policy from `upload-policy`, save with `save-file` (sending the key and the thumbnail) and delete with `delete-file`. `file-list` lists through `list-files` and downloads through `download-file` with the `FileDownload` block. A refused upload shows the endpoint's message and is dropped. The components need no page requests, and their vars are unchanged.
+  - **events:** the `events-timeline` component's `s3GetPolicyRequestId` var is replaced by `download_endpoint_id` (default null). Set it to the files module's `download-file` to show download links for files on `event.files`; a file that is not a file record is refused. Unset, event files are not shown.
+  - **support:** uploads land under `{organization_id}/support/{user id}/{uuid}/{name}`, or `support/{user id}/…` for a user with no organization, who can still attach files. `create-ticket` and `post-message` accept only files under the caller's own prefix. An app that signs or checks support keys by the `support/{user id}/` prefix must accept the organization prefix too.
+  - **deals:** the deal files panel lists through `list-files` when a deal is opened or switched and when the upload modal closes, and the upload modal lists the selected deal's files each time it opens.
+  - **plugins:** `FileDownload` gives each file without a `uid` one from its `_id` or `key`, so a file is listed once.
+
+- [#316](https://github.com/lowdefy/modules-mongodb/pull/316) [`e857039`](https://github.com/lowdefy/modules-mongodb/commit/e8570395614810b639ca73540b8aa6764fe3e854) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **Breaking: v2 makes the files module safe for an app with many organizations.** Until now anyone signed in who held a file's key could get a download link for it, whatever organization or record it belonged to, and could save a record over another file's key. Every file operation now goes through a files module endpoint that loads the record and runs an access check the app can supply, and every download link is signed from a stored record. Every module and the plugin move to 2.0.0 together, on Lowdefy 7 as before; no framework upgrade is needed. Files already uploaded stay where they are and keep working, so there is no data migration.
+
+  To upgrade an app:
+
+  1. **Move off the removed files requests.** The `get-entity-files`, `upload-policy` and `download-policy` page requests and the `download-policy` component export are gone. The `file-manager`, `file-card` and `file-list` components need no page requests now. An app that lists, uploads, saves, downloads or deletes files itself calls the endpoints `list-files`, `upload-policy`, `save-file`, `download-file` and `delete-file` (`files/<endpoint>` in app config). `save-file` takes `{ entity_type, entity_id, key, thumbnail?, file_title?, file_category?, metadata? }` with a key `upload-policy` minted, and `delete-file` and `download-file` take `{ file_id }`. See `docs/files/reference/endpoints.md`.
+  2. **Decide who may work with a record's files.** Without config, every signed-in member of the organization may. To narrow it, write an app endpoint that answers `{ allowed: true }` or `{ allowed: false, message }` for `{ operation, entity_type, entity_id, file_id }` and name it in the files module's `access_check: { endpoint_id }` var. It may be asked about a record that is not saved yet (the activities module mints an activity's id before saving it).
+  3. **Check the upload limits.** Uploads are capped at `max_file_size`, 25 MB by default; raise it if the app takes larger files. Set `allowed_content_types` to limit the types `upload-policy` accepts.
+  4. **Rename the download property on blocks.** FileManager, EventsTimeline, DataDescriptions and SmartDescriptions take `downloadEndpointId` (and an optional `downloadPayload`) in place of `s3GetPolicyRequestId`; with only the old property set they show no download. Point it at the files module's `download-file` for files module records. An app that signs its own files writes an endpoint that takes `{ file_id, ...downloadPayload }`, loads the record the file belongs to, and returns `{ url }`, failing with a message (`:reject:`) to refuse.
+  5. **Events timeline:** the `events-timeline` component's `s3GetPolicyRequestId` var is now `download_endpoint_id`, null by default. Set it to `files/download-file` to show downloads for files on `event.files`. A file there that is not a file record no longer downloads.
+  6. **Workflows:** the `file_download` field's `s3GetPolicyRequestId` var is replaced by `download_endpoint_id` and `download_payload`, which default to the workflows module's `download-form-file` with the page's `{ workflow_id }`, so form files keep downloading with no app config. Drop `s3GetPolicyRequestId`; to show files module records in the field, set `download_endpoint_id: files/download-file`. The overview pages no longer pull in the files module's `download-policy`.
+  7. **Workflow form uploads must carry the organization.** The app's `upload_files` request (the `file_upload` field's `s3PostPolicyRequestId`) must mint keys under `{organization_id}/workflows/`, for example `{organization_id}/workflows/{workflow type}/{uuid}/{name}`; see the `file_upload` field in `docs/workflows/reference/form-components.md`. Submitting a form refuses a new file under any other key, and `download-form-file` signs only those keys and keys from before the upgrade, so a form file with another organization's key, or a files module or support key, no longer downloads.
+  8. **Support uploads** land under `{organization_id}/support/{user id}/`, or `support/{user id}/` for a user with no organization. An app that signs or checks support keys by the `support/{user id}/` prefix must accept the organization prefix too.
+  9. **Guard the app's own signing requests.** A page request that signs any key the browser sends gives anyone signed in every object in the bucket, including other organizations' files. An app that signs its own download links for other prefixes in the same bucket (chat attachments, for example) should sign only keys under the caller's own prefix and return a null key for any other, as `apps/demo/modules/ai-assistant/attachment_requests.yaml` does.
+
+  New uploads land under `{organization_id}/files/{entity_type}/{entity_id}/`; older objects keep their keys and still download, because signing goes by the record rather than the key. The other entries in this release give each module's changes in full.
+
+### Minor Changes
+
+- [#317](https://github.com/lowdefy/modules-mongodb/pull/317) [`307c5ea`](https://github.com/lowdefy/modules-mongodb/commit/307c5eab32b88b10cb74051c4341235173704ccf) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **support:** a person can report a problem without the help button or an assistant.
+
+  New for apps:
+
+  - **`report-drawer` component** (for the layout's `global_blocks`) and **`open-report` action** (for any button's `onClick`): the report form in a drawer, opened with a draft filled in from `type`, `title`, `body` and `context` (each a value or a runtime operator; `context` is an object sent under the ticket's `context.extra`). Nothing calls a model, so it works with `launcher.show: false` and while an assistant is paused. `report-drawer` takes an optional `secondary` var: blocks shown under the composer, such as a link to the app's own assistant. Wire the `requests` and `on-init` components as for the help button, since the drawer declares an upload policy and resets its draft there.
+  - **`get-awaiting-reply-count` component**: a request, `get_awaiting_reply_count`, counting the signed-in person's tickets in `needs_your_reply` in their organisation. Declare it on a page or among `global_requests`, fire it with a `Request` action and read `_request: get_awaiting_reply_count.0.total` for a menu item or badge.
+  - **Replying on a ticket marks its `support-reply` notifications read**, change-stamped, so the bell stops asking once the person has answered.
+
+  Changed:
+
+  - **My tickets page**: a Report a problem button in the title row opens the report form in the page's own drawer. The list, its filters and the ticket page look as before.
+  - **A failed check for replies** is one grey line, "Couldn't check for replies.", with a Try again button, on My tickets and in the thread, in place of the yellow banner.
+
+  Nothing to change in an app that only uses the help button. The report form's ids, state keys and upload policy are now set per surface; the help button's panel keeps its own (`support_report.*`, `upload_policy_support_report_files`).
+
+- [#317](https://github.com/lowdefy/modules-mongodb/pull/317) [`000bbf7`](https://github.com/lowdefy/modules-mongodb/commit/000bbf70fa91bc8e173a5f8e4a2f36ae00f5a901) Thanks [@Gervwyk](https://github.com/Gervwyk)! - The Support page's report drawer can show the app's own blocks under its composer, as the report-drawer component already can: set the new `report_secondary` var, such as a link to the app's assistant or a line saying it is unavailable. It defaults to none, so nothing changes for an app that does not set it.
+
+### Patch Changes
+
+- [#317](https://github.com/lowdefy/modules-mongodb/pull/317) [`e859586`](https://github.com/lowdefy/modules-mongodb/commit/e8595867d8a95779cfcb6f2b200fe8f51ec44423) Thanks [@Gervwyk](https://github.com/Gervwyk)! - **support:** a closed report drawer no longer blocks a page's Save. The report form's required fields counted even while its drawer or the help panel was shut, so on a page that mounts `report-drawer` any `Validate` without `params` failed on the empty report and the page's own Save or Create did nothing. The form's checks now hold only while its drawer or panel is open.
+
 ## 1.4.1
 
 ## 1.4.0
