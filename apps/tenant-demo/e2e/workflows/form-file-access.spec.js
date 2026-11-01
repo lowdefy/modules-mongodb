@@ -1,13 +1,14 @@
 import { test, expect } from "../fixtures.js";
 
-// The workflows module's download-form-file endpoint and the per-workflow
-// submit endpoint, called as the browser calls them, with two organizations on
-// one in-memory MongoDB. A key is signed only when it is in the form slots of
-// actions the caller holds a verb on, in a workflow the tenant wall lets the
-// caller read, and is the caller's own {organization_id}/workflows/ key or a
-// key from before form files carried the organization. Submit refuses any
-// other new form file key. Signing is computed locally, so the placeholder
-// bucket secrets in playwright.config.js are enough.
+// Who may open a workflow form file through the workflows module's form-file
+// link endpoint, and which keys the per-workflow submit endpoint saves, with
+// two organizations on one in-memory MongoDB. A link redirects only when its
+// key is in the form slots of actions the caller holds a verb on, in a
+// workflow the tenant wall lets the caller read, and is the caller's own
+// {organization_id}/workflows/ key or a key from before form files carried the
+// organization; every other open is a bare 404. Submit refuses any other new
+// form file key. Signing is computed locally, so the placeholder bucket
+// secrets in playwright.config.js are enough to read the 302's Location.
 
 const SLUG = "tenant-demo";
 const STAMP = {
@@ -148,23 +149,27 @@ async function as(ldf, caller, roles = ["admin"]) {
   await ldf.user({ name: caller.email, email: caller.email, roles, ...caller });
 }
 
-async function download(page, payload) {
-  const raw = await page.request.post(
-    "/api/endpoints/workflows/download-form-file",
-    { data: { payload } },
+// Opens a form file's link as a browser does, redirects not followed. The link
+// is the one the module builds: each segment encoded, the key's "/" kept.
+async function download(page, { workflow_id, file_id }) {
+  const key = file_id.split("/").map(encodeURIComponent).join("/");
+  const raw = await page.request.get(
+    `/api/endpoints/workflows/form-file/${encodeURIComponent(workflow_id)}/${key}`,
+    { maxRedirects: 0 },
   );
-  const body = await raw.json().catch(() => null);
-  return { status: raw.status(), body, text: JSON.stringify(body ?? "") };
+  const location = raw.headers().location;
+  return {
+    status: raw.status(),
+    url: location ? decodeURIComponent(location) : null,
+  };
 }
-
-const NOT_FOUND = "This file was not found in this workflow's forms.";
 
 function refused(result) {
-  expect(result.body?.response ?? null).toBeNull();
-  expect(result.text).toContain(NOT_FOUND);
+  expect(result.status).toBe(404);
+  expect(result.url).toBeNull();
 }
 
-test("signs a form file in a slot the caller may view, keyed slots included", async ({
+test("opens a form file in a slot the caller may view, keyed slots included", async ({
   ldf,
   page,
   mdb,
@@ -173,9 +178,9 @@ test("signs a form file in a slot the caller may view, keyed slots included", as
   await as(ldf, ORG_A);
   for (const key of [PO_KEY, SITE_A_KEY, LEGACY_A_KEY]) {
     const result = await download(page, { workflow_id: "wf-a", file_id: key });
-    expect(result.status).toBe(200);
-    expect(result.body.response.url).toContain(key);
-    expect(result.body.response.url).toContain("X-Amz-Signature=");
+    expect(result.status).toBe(302);
+    expect(result.url).toContain(key);
+    expect(result.url).toContain("X-Amz-Signature=");
   }
 });
 
@@ -209,7 +214,7 @@ test("refuses a key in the slot of an action the caller has no verb on", async (
     workflow_id: "wf-a",
     file_id: AUDIT_KEY,
   });
-  expect(result.body.response.url).toContain(AUDIT_KEY);
+  expect(result.url).toContain(AUDIT_KEY);
 });
 
 test("refuses another organization's workflow and a key from it", async ({
@@ -225,7 +230,7 @@ test("refuses another organization's workflow and a key from it", async ({
     workflow_id: "wf-b",
     file_id: OTHER_ORG_KEY,
   });
-  expect(own.body.response.url).toContain(OTHER_ORG_KEY);
+  expect(own.url).toContain(OTHER_ORG_KEY);
 });
 
 test("refuses another organization's key and a files module key planted in the caller's own form", async ({
@@ -315,7 +320,7 @@ test("refuses a submitted form file under another organization, and writes nothi
   expect(legacy.text).toContain("form.po_document");
 });
 
-test("saves a form file under the caller's own organization, and it downloads", async ({
+test("saves a form file under the caller's own organization, and its link opens", async ({
   ldf,
   page,
   mdb,
@@ -339,5 +344,5 @@ test("saves a form file under the caller's own organization, and it downloads", 
     workflow_id: "wf-b-open",
     file_id: OWN_KEY,
   });
-  expect(signed.body.response.url).toContain(OWN_KEY);
+  expect(signed.url).toContain(OWN_KEY);
 });

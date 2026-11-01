@@ -82,7 +82,8 @@ const isOpeningClick = (e) => e.button === 0 || e.button === 1;
  *   onDownload: { fileDoc }, when a file link is clicked (left or middle click)
  *
  * Each file is a link to the link endpoint `properties.linkEndpointId`:
- * <basePath>/api/endpoints/<linkEndpointId>/<...linkPath>/<fileDoc._id>.
+ * <basePath>/api/endpoints/<linkEndpointId>/<...linkPath>/<key>, where key is
+ * the file document's _id, else its file.key.
  */
 const FileManager = ({
   basePath,
@@ -347,7 +348,7 @@ const FileManager = ({
       basePath,
       linkEndpointId: properties.linkEndpointId,
       linkPath: properties.linkPath,
-      key: fileDoc._id,
+      key: fileDoc._id ?? fileDoc.file?.key,
     });
     const onLinkClick = (e) => {
       if (isOpeningClick(e)) {

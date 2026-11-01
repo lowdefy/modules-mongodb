@@ -13,8 +13,8 @@ import UserError from "./UserError.js";
  * under the caller's own `{organization_id}/workflows/` (the prefix the app's
  * `upload_files` request mints), or already be in the slot this submit merges
  * into, so resubmitting a form carries its earlier files over. Without this, a
- * member could store any key they know in form_data and have
- * `download-form-file` sign it. A pre-hook's `form_overrides` is app server
+ * member could store any key they know in form_data and have the `form-file`
+ * link sign it. A pre-hook's `form_overrides` is app server
  * code and is not checked.
  *
  * The slot is found as planFormDataMerge finds it: `form_data[type]`, or
