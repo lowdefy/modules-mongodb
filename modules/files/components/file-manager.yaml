@@ -4,8 +4,8 @@ id:
     default: file_manager
 type: FileManager
 properties:
-  downloadEndpointId:
-    _module.endpointId: download-file
+  linkEndpointId:
+    _module.endpointId: file
   # Set by the list-files actions, not by an input block.
   files:
     _state:

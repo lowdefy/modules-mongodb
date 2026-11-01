@@ -41,7 +41,8 @@ _ref:
             instance uses an upload-modal form slot (E1) — after each upload a
             modal collects a category (which sets the file's `file_category`) and
             an "available to client" flag (stored in `metadata`) — and an
-            `on_download` hook (E3) that shows a message on download.
+            `on_download` hook (E3) that shows a message when a file link is
+            clicked.
       - _ref:
           module: files
           component: file-card
@@ -215,8 +216,9 @@ _ref:
           content: >
             The events module's timeline for the record the file-card above
             manages. Files on an event's `files` download through the files
-            module's `download-file` (the component's `download_endpoint_id`
-            var), so a file that is not a file record is refused.
+            module's `file` link endpoint (the component's
+            `file_link_endpoint_id` var), so a file that is not a file record
+            answers 404.
       - _ref:
           module: layout
           component: card
@@ -229,7 +231,7 @@ _ref:
                   vars:
                     reference_field: entity_id
                     reference_value: showcase
-                    download_endpoint_id: files/download-file
+                    file_link_endpoint_id: files/file
 
       # ── access check ────────────────────────────────────────────────────
       - id: private_record_divider

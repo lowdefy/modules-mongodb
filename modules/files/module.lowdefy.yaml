@@ -20,7 +20,7 @@ vars:
     type: object
     description: >-
       An app endpoint that decides who may work with a record's files. When
-      set, list-files, upload-policy, save-file, download-file, file and
+      set, list-files, upload-policy, save-file, file and
       delete-file each call it before they act, with { operation (list, upload, save,
       download or delete), entity_type, entity_id, file_id } (file_id is null
       for list and upload). Only { allowed: true } lets the operation go ahead;
@@ -83,10 +83,6 @@ exports:
         Record a file uploaded through an upload-policy key. Payload
         { entity_type, entity_id, key, thumbnail?, file_title?,
         file_category?, metadata? }. Returns { fileId }.
-    - id: download-file
-      description: >-
-        Sign a download link for a live file record. Payload { file_id }.
-        Returns { url }.
     - id: file
       description: >-
         A file's stable link, GET /api/endpoints/<files entry>/file/<key>
@@ -111,7 +107,7 @@ exports:
     - id: file-list
       description: >-
         Lightweight read-only file list. Lists through list-files on mount
-        and downloads through download-file. Vars: block_id, entity_type,
+        and links each file to the file endpoint. Vars: block_id, entity_type,
         entity_id, file_category, and `empty_text` (default "No files" — the
         empty-state message).
 
@@ -124,7 +120,6 @@ api:
   - _ref: api/list-files.yaml
   - _ref: api/upload-policy.yaml
   - _ref: api/save-file.yaml
-  - _ref: api/download-file.yaml
   - _ref: api/file.yaml
   - _ref: api/delete-file.yaml
 

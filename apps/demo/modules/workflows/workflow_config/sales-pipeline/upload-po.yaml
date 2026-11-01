@@ -87,7 +87,7 @@ pages:
     # upload through (the file_upload and tiptap_input default
     # s3PostPolicyRequestId). Form file keys must start with
     # {organization_id}/workflows/: submit refuses any other new key, and
-    # download-form-file signs only those and keys from before the prefix.
+    # form-file signs only those and keys from before the prefix.
     requests:
       - id: upload_files
         type: AwsS3PresignedPostPolicy
