@@ -9,7 +9,7 @@ concepts: [files, access-check, upload-policy, download, file-link, tenant-wall]
 
 Every file operation goes through one of the module's API endpoints. Each loads what it acts on through the `files-collection` connection, so the tenant wall applies, and calls the app's [access check](../index.md#access-check) before it acts. A refusal rejects the call with a message the block shows.
 
-Call them with `CallAPI` and `_module.endpointId`, for example `{ id: download-file, module: files }`.
+Call them with `CallAPI` and `_module.endpointId`, for example `{ id: list-files, module: files }`. Downloads are the exception: each file has a stable link, the [`file`](#file) link endpoint, opened with a `GET`.
 
 ## `list-files`
 
@@ -46,10 +46,6 @@ Refuses when:
 
 The record's `_id` is the key. Its `file` holds `name` (the key's last segment), `key`, `bucket`, `size` and `type` (from S3, not the payload) and `thumbnail`. The thumbnail is kept only when it is a `data:image/` URL of 16 KB or less. `file_category` is `metadata.file_category` when set, else `file_category`. With `log_events`, it logs an `upload-file` event.
 
-## `download-file`
-
-Payload `{ file_id }`. Loads the live record with that `_id` and returns `{ url }`, a link signed for the key stored on the record. A deleted record, or one in another organization, is refused as not found. Records saved before keys carried the organization download the same way.
-
 ## `file`
 
 A file's stable link, a link endpoint (`link: true`) that answers a `GET`, not a `CallAPI`:
@@ -70,6 +66,8 @@ Refusals have no body:
 - `404` for everything else: a key no live record holds, a deleted record, another organization's record, a record the access check refuses, and an empty key. One status for all of them keeps an outsider from learning which keys exist, and the access check's message is not shown.
 
 The link has no host, so it works on every domain the app is served on, each checked with that domain's session.
+
+The download blocks ([FileDownload](../../plugins/file-download.md), [FileManager](../../plugins/file-manager.md), and the file lists in EventsTimeline, DataDescriptions and SmartDescriptions) render this link from `linkEndpointId: { _module.endpointId: { id: file, module: files } }`. The module's `file-manager` and `file-list` components set it.
 
 ## `delete-file`
 

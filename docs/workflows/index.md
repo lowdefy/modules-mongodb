@@ -18,7 +18,7 @@ Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped
 | [notifications](../../modules/notifications/README.md) | Provides the `send-notification` InternalApi the engine dispatches after each committed event                       |
 | [contacts](../../modules/contacts/README.md)           | Provides the `contact-selector` component wrapped by `contact` / `multiple_contact` form fields                     |
 | [user-account](../../modules/user-account/README.md)   | Supplies the `user-multi-selector` and `user-avatar` components used by the universal-fields surface                |
-| [files](../../modules/files/README.md)                 | Provides the `files-bucket` connection `download-form-file` signs workflow form files with                          |
+| [files](../../modules/files/README.md)                 | Provides the `files-bucket` connection `form-file` signs workflow form files with                                   |
 
 The `events` and `notifications` dispatch targets are resolved at app build time via `_module.endpointId` into the `workflow-api` connection's `endpoints` property.
 
