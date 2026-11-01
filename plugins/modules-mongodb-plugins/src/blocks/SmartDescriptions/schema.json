@@ -110,13 +110,14 @@
       "default": "companies/view",
       "description": "Page ID for company detail links."
     },
-    "downloadEndpointId": {
+    "linkEndpointId": {
       "type": "string",
-      "description": "Id of an API endpoint that takes { file_id, ...downloadPayload } and returns { url }. Required for file and fileList values to render download links; file_id is each file's _id, else its key."
+      "description": "Id of a link endpoint (link: true) that redirects GET /api/endpoints/<linkEndpointId>/<...linkPath>/<key> to the file. Required for file and fileList values to render links; key is each file's _id, else its key."
     },
-    "downloadPayload": {
-      "type": "object",
-      "description": "Extra fields sent to downloadEndpointId with each download, such as { workflow_id }."
+    "linkPath": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Path segments that go before each file's key in the link, such as [workflow_id] for the workflows module's form-file endpoint."
     }
   }
 }

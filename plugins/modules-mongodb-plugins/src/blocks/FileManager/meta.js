@@ -1,9 +1,5 @@
 export default {
   category: "container",
-  // Downloads run a CallAPI action that reads _event, registered by the
-  // block; a page's own config may use neither, so they are counted from here.
-  actions: ["CallAPI"],
-  operators: ["_event"],
   slots: {
     form: "Fields rendered in the post-upload modal. Field ids must be nested under `{blockId}.form.*`; their state is passed through to onSave.",
   },
@@ -51,9 +47,10 @@ export default {
       },
     },
     onDownload: {
-      description: "Triggered when a file download is initiated.",
+      description:
+        "Triggered when a file link or its download button is clicked (left or middle click). It records the click: the link endpoint checks access when the link opens, and the block cannot tell whether that was allowed.",
       event: {
-        fileDoc: "The full file document being downloaded.",
+        fileDoc: "The full file document whose link was clicked.",
       },
     },
   },

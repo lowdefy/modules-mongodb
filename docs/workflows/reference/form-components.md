@@ -527,25 +527,25 @@ pages:
 Form data is written from the browser, so the module checks form file keys by their prefix. A form file is any object in the form with a string `key`.
 
 - **Submit** refuses a form file whose key is not under the caller's `{organization_id}/workflows/`, naming the field, and writes nothing. A file already in the slot the submit writes to is accepted, so resubmitting a form keeps its earlier files. A pre-hook's `form_overrides` is not checked.
-- **Download** (`download-form-file`) signs a key only when it is under the caller's `{organization_id}/workflows/` or has no module prefix, meaning its second path segment is not `workflows`, `files` or `support`. Keys without the organization are form files uploaded before it was required. Another organization's key, and a `files` or support module key put in a form, are refused.
+- **Link** (`form-file`) opens a key only when it is under the caller's `{organization_id}/workflows/` or has no module prefix, meaning its second path segment is not `workflows`, `files` or `support`. Keys without the organization are form files uploaded before it was required. Another organization's key, and a `files` or support module key put in a form, are refused.
 
 Form files stored before the prefix was required had no checks, so any key already in a form slot stays signable for the people who may view that slot. So does a key without a module prefix that app code writes into `form_data` outside the module's submit.
 
 ### `file_download`
 
-Lists files and downloads each through an API endpoint. Renders a `Label` wrapping a [`FileDownload`](../../plugins/file-download.md).
+Lists files as plain links to a link endpoint. Renders a `Label` wrapping a [`FileDownload`](../../plugins/file-download.md).
 
-| Var                    | Type    | Required / Default                     |
-| ---------------------- | ------- | -------------------------------------- |
-| `key`                  | string  | required                               |
-| `title`                | string  | —                                      |
-| `visible`              | boolean | `true`                                 |
-| `fileList`             | array   | required                               |
-| `label_disabled`       | boolean | `true`                                 |
-| `download_endpoint_id` | string  | this module's `download-form-file`     |
-| `download_payload`     | object  | `{ workflow_id }` of the page's action |
+| Var                | Type    | Required / Default                   |
+| ------------------ | ------- | ------------------------------------ |
+| `key`              | string  | required                             |
+| `title`            | string  | —                                    |
+| `visible`          | boolean | `true`                               |
+| `fileList`         | array   | required                             |
+| `label_disabled`   | boolean | `true`                               |
+| `link_endpoint_id` | string  | this module's `form-file`            |
+| `link_path`        | array   | `[workflow_id]` of the page's action |
 
-With no app config, a form file signs through `download-form-file`, which signs the key only when it is in the form slots of actions the caller may view in that workflow, and is the caller's organization's form file or one stored before keys carried the organization (see [`file_upload`](#file_upload)). Files that are `files` module records (from its `list-files`) need `download_endpoint_id: files/download-file` (the files module's entry id, then `download-file`), which signs by record.
+With no app config, a form file links to `form-file`, which redirects to the file only when it is in the form slots of actions the caller may view in that workflow, and is the caller's organization's form file or one stored before keys carried the organization (see [`file_upload`](#file_upload)). Files that are `files` module records (from its `list-files`) need `link_endpoint_id: files/file` (the files module's entry id, then `file`) and `link_path: []`, which link by record. Each file opens in a new tab and checks access every time it opens.
 
 ```yaml
 - component: file_download

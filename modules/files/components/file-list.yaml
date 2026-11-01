@@ -99,8 +99,8 @@ blocks:
                 - _items.$.download
             type: FileDownload
             properties:
-              downloadEndpointId:
-                _module.endpointId: download-file
+              linkEndpointId:
+                _module.endpointId: file
               fileList:
                 - _state:
                     _build.string.concat:

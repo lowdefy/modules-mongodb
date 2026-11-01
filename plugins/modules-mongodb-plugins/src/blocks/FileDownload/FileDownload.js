@@ -1,56 +1,53 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Upload } from "antd";
 import { withBlockDefaults } from "@lowdefy/block-utils";
-import {
-  downloadFile,
-  getFileId,
-  registerDownloadEvent,
-} from "./downloadFile.js";
+import fileLinkHref, { getFileKey } from "./fileLinkHref.js";
 
 // antd keys list rows by uid and, given a file without one, renders it twice
 // after a re-render. File records carry no uid, so one is taken from the file.
-const withUids = (fileList) =>
-  (fileList ?? []).map((file, index) =>
-    file?.uid == null
-      ? { ...file, uid: String(getFileId(file) ?? index) }
-      : file,
-  );
+// With a url, antd renders the file name as <a href target="_blank"
+// rel="noopener noreferrer">.
+const withLinks = ({ fileList, basePath, linkEndpointId, linkPath }) =>
+  (fileList ?? []).map((file, index) => {
+    const key = getFileKey(file);
+    return {
+      ...file,
+      uid: file?.uid ?? String(key ?? index),
+      url: fileLinkHref({ basePath, linkEndpointId, linkPath, key }),
+    };
+  });
+
+const openLink = (file) => {
+  if (file.url) window.open(file.url, "_blank", "noopener,noreferrer");
+};
 
 /**
  * FileDownload block.
  *
- * Lists `properties.fileList` and, on click, asks the API endpoint
- * `properties.downloadEndpointId` for a signed link to that one file with
- * payload { ...downloadPayload, file_id }, where file_id is the file's _id,
- * else its key. The endpoint returns { url }, which opens in a new tab.
+ * Lists `properties.fileList` as plain links to the link endpoint
+ * `properties.linkEndpointId`:
+ * <basePath>/api/endpoints/<linkEndpointId>/<...linkPath>/<key>, where key is
+ * each file's _id, else its key. The endpoint checks access on every open and
+ * redirects to the file.
  *
- * EventsTimeline and DataDescriptions render it inside themselves with their
- * own methods, so several instances share one host's registered event; each
- * click carries its own file and payload in the event.
+ * EventsTimeline, DataDescriptions and SmartDescriptions render it inside
+ * themselves and pass their own basePath.
  */
 const FileDownload = ({
+  basePath,
   blockId,
   classNames = {},
-  methods,
   properties,
   styles = {},
 }) => {
-  const { downloadEndpointId, downloadPayload } = properties;
-
-  useEffect(() => {
-    registerDownloadEvent({ methods, downloadEndpointId });
-  }, [downloadEndpointId]);
-
-  const onDownload = (file) => downloadFile({ file, downloadPayload, methods });
-
+  const { fileList, linkEndpointId, linkPath } = properties;
   return (
     <Upload
       id={blockId}
       className={classNames.element}
       style={styles.element}
-      fileList={withUids(properties.fileList)}
-      onPreview={onDownload}
-      onDownload={onDownload}
+      fileList={withLinks({ fileList, basePath, linkEndpointId, linkPath })}
+      onDownload={openLink}
       showUploadList={{ showDownloadIcon: true, showRemoveIcon: false }}
     />
   );

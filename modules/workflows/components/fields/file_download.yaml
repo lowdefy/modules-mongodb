@@ -14,13 +14,13 @@ vars:
   label_disabled:
     type: boolean
     default: true
-  download_endpoint_id:
+  link_endpoint_id:
     type: string
-    default: download-form-file
-  download_payload:
-    type: object
+    default: form-file
+  link_path:
+    type: array
     default:
-      workflow_id: action.workflow_id
+      - action.workflow_id
 
 config:
   id:
@@ -47,19 +47,18 @@ config:
         _var: key
       type: FileDownload
       properties:
-        # Unset, form files sign through this module's download-form-file for
-        # the page's workflow, which checks the key is in a form slot the
-        # caller may view.
-        downloadEndpointId:
+        # Unset, form files link to this module's form-file for the page's
+        # workflow, which checks the key is in a form slot the caller may
+        # view.
+        linkEndpointId:
           _var:
-            key: download_endpoint_id
+            key: link_endpoint_id
             default:
-              _module.endpointId: download-form-file
-        downloadPayload:
+              _module.endpointId: form-file
+        linkPath:
           _var:
-            key: download_payload
+            key: link_path
             default:
-              workflow_id:
-                _state: action.workflow_id
+              - _state: action.workflow_id
         fileList:
           _var: fileList

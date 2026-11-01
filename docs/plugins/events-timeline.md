@@ -38,9 +38,9 @@ Used by the `events` module to back its `events-timeline` component. The block d
         title: Complete
       blocked:
         color: "#ff4d4f"
-    downloadEndpointId:
+    linkEndpointId:
       _module.endpointId:
-        id: download-file
+        id: file
         module: files
     reverse: true
     mode: left
@@ -68,8 +68,8 @@ The matching request resolves each event against its per-app display template �
 | `data`               | array                                  | `[]`     | Event documents to render. See [Event document shape](#event-document-shape).                                                                                                |
 | `eventTypeConfig`    | object                                 | `{}`     | Map of `event.type` → display config: `color`, `icon`, `card_color`, `border_color`, `title`. The icon (when present) replaces the timeline dot for that event.              |
 | `actionStatusConfig` | object                                 | —        | Map of `action.status` → display config: `color`, `title`, `card_color`, `border_color`. Required for inline actions to render. Actions with `status: "blocked"` are hidden. |
-| `downloadEndpointId` | string                                 | —        | Id of an API endpoint that takes `{ file_id, ...downloadPayload }` and returns `{ url }`. Required for `event.files` to render, as a [FileDownload](file-download.md) list.  |
-| `downloadPayload`    | object                                 | —        | Extra fields sent to `downloadEndpointId` with each download. `file_id` is each file's `_id`, else its `key`.                                                                |
+| `linkEndpointId`     | string                                 | —        | Id of a link endpoint each file links to, such as the `files` module's `file`. Required for `event.files` to render, as a [FileDownload](file-download.md) list.             |
+| `linkPath`           | array                                  | —        | Path segments that go before each file's key in its link, such as `[workflow_id]`. The key is each file's `_id`, else its `key`.                                             |
 | `reverse`            | boolean                                | `false`  | Reverse the order of items (newest first when the source array is oldest-first).                                                                                             |
 | `mode`               | `"left"` \| `"alternate"` \| `"right"` | `"left"` | Antd `Timeline` mode.                                                                                                                                                        |
 
@@ -94,7 +94,7 @@ The matching request resolves each event against its per-app display template �
       link: { pageId: "...", pathParams: {...}, urlQuery: {...}, title: "Complete" } // optional; pathParams fills a page path placeholder; title is the button label (default "View")
     }
   ],
-  files: [                                    // optional; needs downloadEndpointId
+  files: [                                    // optional; needs linkEndpointId
     { _id, name, key, bucket, size, type, thumbnail } // _id optional; file_id is _id, else key
   ]
 }
@@ -123,5 +123,5 @@ When `onActionClick` is **wired**, clicking the affordance fires the action obje
 
 - **HTML in `title` / `description` / `info` is sanitized.** All three pass through DOMPurify before insertion. Upstream code is responsible for producing the HTML.
 - **Time-ago labels.** Computed client-side with `dayjs.duration`. Hovering the label shows the absolute timestamp (and the user's name when present).
-- **Files download through an endpoint.** Each event's files render as a [FileDownload](file-download.md) list on `downloadEndpointId`. The endpoint decides what may be signed: the `files` module's `download-file` signs only files that are file records. The block's meta declares the `CallAPI` action and the `_event` operator the list uses, so a page whose own config uses neither still downloads.
+- **Files are plain links.** Each event's files render as a [FileDownload](file-download.md) list of links to `linkEndpointId`. The endpoint decides what opens on every open: the `files` module's `file` redirects only to files that are file records the caller may see, and answers a bare 404 otherwise.
 - **Actions with `status: "blocked"`** are filtered out and never rendered.

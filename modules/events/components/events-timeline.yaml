@@ -113,11 +113,11 @@ blocks:
         _var:
           key: reverse
           default: false
-      # An endpoint that loads the file's record and signs its key, such as
-      # the files module's download-file. Unset, event files are not shown.
-      downloadEndpointId:
+      # A link endpoint that redirects /<key> to the file, such as the files
+      # module's file. Unset, event files are not shown.
+      linkEndpointId:
         _var:
-          key: download_endpoint_id
+          key: file_link_endpoint_id
           default: null
       contactPageId:
         _var:

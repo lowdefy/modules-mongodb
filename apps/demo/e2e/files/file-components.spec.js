@@ -1,11 +1,14 @@
 import { test, expect } from "../fixtures.js";
 
 // The files module's components on the files-demo page, against an in-memory
-// MongoDB: file-manager and file-list list through list-files, download
-// through download-file and delete through delete-file, and file-manager
+// MongoDB: file-manager and file-list list through list-files, link each file
+// to the file link endpoint and delete through delete-file, and file-manager
 // lists again after a save or a delete.
 //
-// Signing is computed locally, so the placeholder bucket secrets in
+// This app's e2e server serves no link endpoints, so a clicked link's tab is
+// answered here; the endpoint's redirect and refusals are proven in
+// apps/tenant-demo/e2e/files/file-link.spec.js. Signing an upload policy is
+// computed locally, so the placeholder bucket secrets in
 // playwright.config.js are enough. save-file checks the object reached S3,
 // which needs a bucket, so the upload test answers save-file in the browser
 // with the record it would have written, after checking what the block sent.
@@ -57,19 +60,28 @@ test.beforeEach(async ({ ldf, page, mdb }) => {
     record({ key: CARD, doc_id: "showcase", at: "2024-01-03" }),
   ]);
   await ldf.user(USER);
-  // A download opens the signed link; keep it instead of opening a tab.
-  await page.addInitScript(() => {
-    window.__opened = [];
-    window.open = (url) => {
-      window.__opened.push(url);
-      return null;
-    };
-  });
+  await page
+    .context()
+    .route("**/api/endpoints/files/file/**", (route) =>
+      route.fulfill({ status: 200, contentType: "text/plain", body: "file" }),
+    );
 });
 
-const opened = (page) => page.evaluate(() => window.__opened);
+const linkOf = (key) => `/api/endpoints/files/file/${key}`;
 
-test("file-manager lists, downloads and deletes through the endpoints", async ({
+// Clicks a link, which opens a new tab, and returns the path that tab opened.
+async function clickToTab(page, link) {
+  const [tab] = await Promise.all([
+    page.context().waitForEvent("page"),
+    link.click(),
+  ]);
+  await tab.waitForLoadState();
+  const { pathname } = new URL(tab.url());
+  await tab.close();
+  return pathname;
+}
+
+test("file-manager lists, links and deletes through the endpoints", async ({
   ldf,
   page,
   mdb,
@@ -80,12 +92,13 @@ test("file-manager lists, downloads and deletes through the endpoints", async ({
   await expect(manager).toContainText("beta.pdf");
   await expect(manager).not.toContainText("card.pdf");
 
-  // Newest first: beta is row 0.
-  await page.locator("#demo_file_manager_file_0_dl").click();
-  await expect.poll(() => opened(page)).toHaveLength(1);
-  const [url] = await opened(page);
-  expect(url).toContain(BETA);
-  expect(url).toContain("X-Amz-Signature=");
+  // Newest first: beta is row 0, and its name and download button link alike.
+  const name = manager.getByRole("link", { name: "beta.pdf", exact: true });
+  await expect(name).toHaveAttribute("href", linkOf(BETA));
+  await expect(name).toHaveAttribute("target", "_blank");
+  expect(
+    await clickToTab(page, page.locator("#demo_file_manager_file_0_dl")),
+  ).toBe(linkOf(BETA));
 
   await page.locator("#demo_file_manager_file_0_rm").click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
@@ -95,7 +108,7 @@ test("file-manager lists, downloads and deletes through the endpoints", async ({
   expect(stored.deleted.timestamp).toBeTruthy();
 });
 
-test("file-list lists its record's files and downloads one", async ({
+test("file-list lists its record's files and links each one", async ({
   ldf,
   page,
 }) => {
@@ -104,11 +117,9 @@ test("file-list lists its record's files and downloads one", async ({
   await expect(list).toContainText("card.pdf");
   await expect(list).not.toContainText("alpha.pdf");
 
-  await list.getByText("card.pdf").click();
-  await expect.poll(() => opened(page)).toHaveLength(1);
-  const [url] = await opened(page);
-  expect(url).toContain(CARD);
-  expect(url).toContain("X-Amz-Signature=");
+  const link = list.getByRole("link", { name: "card.pdf" });
+  await expect(link).toHaveAttribute("href", linkOf(CARD));
+  expect(await clickToTab(page, link)).toBe(linkOf(CARD));
 });
 
 test("an upload mints its key on the server, saves with its thumbnail and lists again", async ({
