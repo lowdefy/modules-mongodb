@@ -4,10 +4,13 @@
 # organization passes, and the tenant wall keeps organizations apart.
 #
 # Vars:
-#   operation    list, upload, save, download or delete
-#   entity_type  the record type the file belongs to
-#   entity_id    the record's id
-#   file_id      the file record's id, or null for list and upload
+#   operation      list, upload, save, download or delete
+#   entity_type    the record type the file belongs to
+#   entity_id      the record's id
+#   file_id        the file record's id, or null for list and upload
+#   reject_status  optional: the HTTP status the reject answers with. Only a
+#                  link, webhook or InternalApi endpoint may set one, so the
+#                  build refuses it anywhere else.
 _build.if:
   test:
     _build.ne:
@@ -37,8 +40,25 @@ _build.if:
           - _step: check_access.allowed
           - true
       :then:
-        - :reject:
-            _if_none:
-              - _step: check_access.message
-              - You do not have access to these files.
+        - _build.if:
+            test:
+              _build.eq:
+                - _build.if_none:
+                    - _var:
+                        key: reject_status
+                        default: null
+                    - null
+                - null
+            then:
+              :reject:
+                _if_none:
+                  - _step: check_access.message
+                  - You do not have access to these files.
+            else:
+              :reject:
+                _if_none:
+                  - _step: check_access.message
+                  - You do not have access to these files.
+              :status:
+                _var: reject_status
   else: []

@@ -136,7 +136,7 @@ _ref:
             an "available to client" flag (stored in `metadata`) — a
             `metadata_tags` entry that renders a green "Available to client" tag
             on rows whose flag is set, and an `on_download` hook (E3) that shows
-            a message on download.
+            a message when a file link is clicked.
       - _ref:
           module: files
           component: file-card

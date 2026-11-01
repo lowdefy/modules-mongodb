@@ -8,7 +8,7 @@ type: index
 
 File attachments backed by S3 — drag-drop upload with thumbnails, downloads, deletes, and category filters. Every file is stamped onto a parent entity (`{ collection, doc_id }`), so the same component drops onto contact pages, company pages, or any entity page.
 
-The module ships three rendering components (`file-manager`, `file-card`, `file-list`), the five endpoints every file operation goes through, and the supporting connections and audit hooks.
+The module ships three rendering components (`file-manager`, `file-card`, `file-list`), the endpoints every file operation goes through, including the `file` link, and the supporting connections and audit hooks.
 
 ## Dependencies
 
@@ -47,9 +47,11 @@ modules:
 
 The `file-manager`, `file-card` and `file-list` components list, upload, save, download and delete through the module's endpoints, so a page needs no requests of its own for them. A component lists on mount, and `file-manager` lists again after each save and delete.
 
+Each file is a plain link to the module's [`file`](reference/endpoints.md#file) link endpoint: it opens in a new tab, can be copied, and checks access every time it opens. In `file-manager` and `file-card`, clicking a file link runs the `on_download` actions and, with `log_events`, logs a `download-file` event. Both mean the link was clicked, not that the file was served: a refused file still logs, and opening a copied link does not.
+
 ## Access check
 
-Listing, uploading, saving, downloading and deleting files each go through a module endpoint (see [Endpoints](reference/endpoints.md)). Every one loads what it acts on through the walled `files-collection` connection, so one organization never reaches another's files, and downloads are signed from the key stored on the record, never from a key the browser sends.
+Listing, uploading, saving, downloading and deleting files each go through a module endpoint (see [Endpoints](reference/endpoints.md)). Every one loads what it acts on through the walled `files-collection` connection, so one organization never reaches another's files, and a file's link is signed from the key stored on the record, never from a key the browser sends. The link checks access again every time it is opened, so access ends when the caller's does.
 
 Inside one organization, only the app knows who may see a record. Name an app endpoint in `access_check` to decide:
 
@@ -72,7 +74,7 @@ entity_id: lot-1
 file_id: org-a/files/lot/lot-1/… # null for list and upload
 ```
 
-It answers `{ allowed: true }` to let the operation go ahead, or `{ allowed: false, message }` to stop it; the module rejects with `message`, and the block shows it. Without `access_check`, every signed-in member of the organization passes. Declare the endpoint as `InternalApi` so browsers cannot call it directly. `apps/tenant-demo/api/files-access-check.yaml` is a worked example.
+It answers `{ allowed: true }` to let the operation go ahead, or `{ allowed: false, message }` to stop it; the module rejects with `message`, and the block shows it. A file link the check refuses answers a bare `404` instead, which the new tab shows as the browser's own status page. Without `access_check`, every signed-in member of the organization passes. Declare the endpoint as `InternalApi` so browsers cannot call it directly. `apps/tenant-demo/api/files-access-check.yaml` is a worked example.
 
 The check can be asked about a record that is not saved yet. The activities module mints `activity_id` before the activity is saved, so files can be uploaded while it is being written. The endpoint decides what to answer for a record it cannot find, for example by allowing `upload` and `save` for the record type the caller may create.
 
@@ -80,7 +82,7 @@ The check can be asked about a record that is not saved yet. The activities modu
 
 ## Reference
 
-- [Endpoints](reference/endpoints.md) — the five file endpoints, their payloads and refusals
+- [Endpoints](reference/endpoints.md) — the file endpoints and the `file` link, their payloads and refusals
 - [Vars](reference/vars.md) — all module vars with types, defaults, and descriptions
 
 ## Shared idioms

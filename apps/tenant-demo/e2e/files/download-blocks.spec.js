@@ -1,20 +1,22 @@
 import { test, expect } from "../fixtures.js";
 
-// The plugin's download blocks, clicked as a member uses them, with two
-// organizations on one in-memory MongoDB. Every block signs through the files
-// module's download-file, which loads the record, so a member of organization
-// B gets no link for an organization A file whatever key or record id the
-// page holds, and a key no record holds is refused.
+// The plugin's download blocks as a member uses them, with two organizations
+// on one in-memory MongoDB. Every block renders each file as a plain link to
+// the files module's file link endpoint, which loads the record on every open,
+// so a member of organization B gets a 404 for an organization A file whatever
+// key or record id the page holds, and a key no record holds is a 404 too.
 //
 // file-downloads (pages/files/file-downloads.yaml) holds FileDownload,
 // FileManager, EventsTimeline and DataDescriptions on a page whose own config
-// uses no CallAPI and no _event, so a cold load of it proves the block metas
-// declare both. files-demo carries the files components, the events module's
-// timeline wired to download-file, and a record the app's access check
+// uses no CallAPI and no _event, so a cold load of it proves the links need
+// neither. files-demo carries the files components, the events module's
+// timeline linked to the file endpoint, and a record the app's access check
 // refuses (api/files-access-check.yaml).
 //
 // Signing is computed locally, so the placeholder bucket secrets in
-// playwright.config.js are enough.
+// playwright.config.js are enough to read the 302's Location. A clicked link
+// opens a tab that follows the redirect to S3, which the tests answer
+// themselves.
 
 const FILES = "files";
 const EVENTS = "log-events";
@@ -44,7 +46,6 @@ const NOT_A_RECORD = `lot/20240101_000000000/${UUID}/not-a-record.pdf`;
 const CARD_A = `org-a/files/files-demo/showcase/20260701_090000000/${UUID}/card-a.pdf`;
 const CARD_B = `org-b/files/files-demo/showcase/20260701_090000000/${UUID}/card-b.pdf`;
 
-const NOT_FOUND = "This file was not found. It may have been deleted.";
 const PRIVATE = "The files of this record are private.";
 
 function record({
@@ -120,14 +121,12 @@ test.beforeEach(async ({ page, mdb }) => {
       files: [fileOf(CARD_B)],
     }),
   ]);
-  // A download opens the signed link; keep it instead of opening a tab.
-  await page.addInitScript(() => {
-    window.__opened = [];
-    window.open = (url) => {
-      window.__opened.push(url);
-      return null;
-    };
-  });
+  // A clicked link's tab follows the 302 to S3; answer it as S3 would.
+  await page
+    .context()
+    .route(/amazonaws\.com/, (route) =>
+      route.fulfill({ status: 200, contentType: "text/plain", body: "file" }),
+    );
 });
 
 async function as(ldf, caller) {
@@ -139,72 +138,131 @@ async function as(ldf, caller) {
   });
 }
 
-const opened = (page) => page.evaluate(() => window.__opened);
+// The link a block builds: each key segment encoded, its "/" kept.
+function linkOf(key) {
+  return `/api/endpoints/files/file/${key
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}`;
+}
+
+async function open(page, href) {
+  const response = await page.request.get(href, { maxRedirects: 0 });
+  return { status: response.status(), location: response.headers().location };
+}
+
+async function expectRedirectTo(page, href, key) {
+  const { status, location } = await open(page, href);
+  expect(status, href).toBe(302);
+  const signed = new URL(location);
+  expect(decodeURIComponent(signed.pathname).endsWith(`/${key}`)).toBe(true);
+  expect(signed.searchParams.get("X-Amz-Expires")).toBe("60");
+}
+
+async function expectNotFound(page, href) {
+  const { status, location } = await open(page, href);
+  expect(status, href).toBe(404);
+  expect(location).toBeUndefined();
+}
+
+// Clicks a link, which opens a new tab, and returns the URL that tab ends on.
+async function clickToTab(page, link) {
+  const [tab] = await Promise.all([
+    page.context().waitForEvent("page"),
+    link.click(),
+  ]);
+  await tab.waitForLoadState();
+  const url = tab.url();
+  await tab.close();
+  return url;
+}
+
+// Records the CallAPI requests a page sends.
+function callApiRequests(page) {
+  const sent = [];
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      request.url().includes("/api/endpoints/")
+    ) {
+      sent.push(request.url());
+    }
+  });
+  return sent;
+}
 
 // The four download blocks on file-downloads, each listing OLD_A.
-const DOWNLOADS = {
-  FileDownload: (page) =>
-    page.locator("#bl-download_file_download").getByText("old.pdf"),
-  FileManager: (page) => page.locator("#download_file_manager_file_0_dl"),
-  EventsTimeline: (page) =>
-    page.locator("#download_events_timeline").getByText("old.pdf"),
-  DataDescriptions: (page) =>
-    page.locator("#download_data_descriptions").getByText("old.pdf"),
+const BLOCKS = {
+  FileDownload: "#bl-download_file_download",
+  FileManager: "#download_file_manager",
+  EventsTimeline: "#download_events_timeline",
+  DataDescriptions: "#download_data_descriptions",
 };
+const linkIn = (page, block, name) =>
+  page.locator(block).getByRole("link", { name, exact: true }).first();
 
-test("every download block signs a stored record on a cold load of a page with no CallAPI", async ({
+test("every download block renders a plain link and opens it on a cold load of a page with no CallAPI", async ({
+  ldf,
+  page,
+}) => {
+  await as(ldf, ORG_A);
+  const sent = callApiRequests(page);
+  await ldf.goto("/file-downloads");
+  for (const [name, block] of Object.entries(BLOCKS)) {
+    const link = linkIn(page, block, "old.pdf");
+    await expect(link, name).toHaveAttribute("href", linkOf(OLD_A));
+    await expect(link, name).toHaveAttribute("target", "_blank");
+    await expect(link, name).toHaveAttribute("rel", /noopener/);
+    const url = await clickToTab(page, link);
+    expect(url, name).toContain("X-Amz-Signature=");
+    expect(decodeURIComponent(new URL(url).pathname), name).toContain(OLD_A);
+  }
+  await expectRedirectTo(page, linkOf(OLD_A), OLD_A);
+  expect(sent).toEqual([]);
+});
+
+test("FileManager's download button is the same link", async ({
   ldf,
   page,
 }) => {
   await as(ldf, ORG_A);
   await ldf.goto("/file-downloads");
-  let count = 0;
-  for (const [name, link] of Object.entries(DOWNLOADS)) {
-    await link(page).click();
-    count += 1;
-    await expect
-      .poll(async () => (await opened(page)).length, { message: name })
-      .toBe(count);
-    const url = (await opened(page))[count - 1];
-    expect(url, name).toContain(OLD_A);
-    expect(url, name).toContain("X-Amz-Signature=");
-  }
+  const button = page
+    .locator("#download_file_manager")
+    .locator("a", { has: page.locator("#download_file_manager_file_0_dl") });
+  await expect(button).toHaveAttribute("href", linkOf(OLD_A));
+  await expect(button).toHaveAttribute("target", "_blank");
 });
 
-test("another organization's member gets no link through any block, by key or record id", async ({
+test("another organization's member gets the same links and a 404 from each, by key or record id", async ({
   ldf,
   page,
 }) => {
   await as(ldf, ORG_B);
   await ldf.goto("/file-downloads");
-  for (const [name, link] of Object.entries(DOWNLOADS)) {
-    await link(page).click();
-    await expect(page.getByText(NOT_FOUND).first(), name).toBeVisible();
+  for (const [name, block] of Object.entries(BLOCKS)) {
+    const link = linkIn(page, block, "old.pdf");
+    // A record's id is its key, so the key on the page is its record id too.
+    await expect(link, name).toHaveAttribute("href", linkOf(OLD_A));
+    await expectNotFound(page, await link.getAttribute("href"));
   }
-  // A record's id is its key, so the key on the page is its record id too.
-  expect(await opened(page)).toEqual([]);
 });
 
-test("a key no record holds and a record the access check refuses are refused, with the message shown", async ({
+test("a key no record holds and a record the access check refuses are bare 404s", async ({
   ldf,
   page,
 }) => {
   await as(ldf, ORG_A);
   await ldf.goto("/file-downloads");
-  await page
-    .locator("#download_events_timeline")
-    .getByText("not-a-record.pdf")
-    .click();
-  await expect(page.getByText(NOT_FOUND).first()).toBeVisible();
-  await page
-    .locator("#bl-download_file_download")
-    .getByText("private.pdf")
-    .click();
-  await expect(page.getByText(PRIVATE).first()).toBeVisible();
-  expect(await opened(page)).toEqual([]);
+  const notARecord = linkIn(page, BLOCKS.EventsTimeline, "not-a-record.pdf");
+  await expect(notARecord).toHaveAttribute("href", linkOf(NOT_A_RECORD));
+  await expectNotFound(page, linkOf(NOT_A_RECORD));
+  const refused = linkIn(page, BLOCKS.FileDownload, "private.pdf");
+  await expect(refused).toHaveAttribute("href", linkOf(PRIVATE_A));
+  await expectNotFound(page, linkOf(PRIVATE_A));
 });
 
-test("the timeline signs an event's file record and refuses a file that is not one", async ({
+test("the timeline links an event's file record and a file that is not one gets a 404", async ({
   ldf,
   page,
 }) => {
@@ -214,13 +272,38 @@ test("the timeline signs an event's file record and refuses a file that is not o
   await expect(timeline).toContainText("Contract signed");
   await expect(timeline).not.toContainText("Other organization's contract");
 
-  await timeline.getByText("card-a.pdf").click();
-  await expect.poll(async () => (await opened(page)).length).toBe(1);
-  expect((await opened(page))[0]).toContain(CARD_A);
+  const card = timeline.getByRole("link", { name: "card-a.pdf" });
+  await expect(card).toHaveAttribute("href", linkOf(CARD_A));
+  const url = await clickToTab(page, card);
+  expect(decodeURIComponent(new URL(url).pathname)).toContain(CARD_A);
 
-  await timeline.getByText("not-a-record.pdf").click();
-  await expect(page.getByText(NOT_FOUND).first()).toBeVisible();
-  expect(await opened(page)).toHaveLength(1);
+  await expect(
+    timeline.getByRole("link", { name: "not-a-record.pdf" }),
+  ).toHaveAttribute("href", linkOf(NOT_A_RECORD));
+  await expectNotFound(page, linkOf(NOT_A_RECORD));
+});
+
+test("clicking a FileManager link logs a download-file event and runs on_download", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await as(ldf, ORG_A);
+  await ldf.goto("/files-demo");
+  const card = page.locator("#demo_file_card").first();
+  const link = card.getByRole("link", { name: "card-a.pdf", exact: true });
+  await expect(link).toHaveAttribute("href", linkOf(CARD_A));
+  await clickToTab(page, link);
+  await expect(page.getByText("Downloading card-a.pdf")).toBeVisible();
+  await expect
+    .poll(() =>
+      mdb.collection(EVENTS).countDocuments({ type: "download-file" }),
+    )
+    .toBe(1);
+  const logged = await mdb
+    .collection(EVENTS)
+    .findOne({ type: "download-file" });
+  expect(logged.metadata.file_key).toBe(CARD_A);
 });
 
 test("the files components list only the caller's organization's files", async ({
@@ -239,9 +322,10 @@ test("the files components list only the caller's organization's files", async (
     "Contract signed",
   );
 
-  await list.getByText("card-b.pdf").click();
-  await expect.poll(async () => (await opened(page)).length).toBe(1);
-  expect((await opened(page))[0]).toContain(CARD_B);
+  const link = list.getByRole("link", { name: "card-b.pdf" });
+  await expect(link).toHaveAttribute("href", linkOf(CARD_B));
+  const url = await clickToTab(page, link);
+  expect(decodeURIComponent(new URL(url).pathname)).toContain(CARD_B);
 });
 
 test("a record the access check refuses lists nothing and shows the check's message", async ({

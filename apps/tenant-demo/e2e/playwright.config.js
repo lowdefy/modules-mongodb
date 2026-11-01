@@ -1,5 +1,6 @@
 import configureMdb from "@lowdefy/community-plugin-e2e-mdb/config";
 import { createConfig } from "@lowdefy/e2e-utils/config";
+import { devices } from "@playwright/test";
 
 // Set LOWDEFY_E2E_MONGODB_URI + LOWDEFY_SECRET_MONGODB_URI at config-eval time so the
 // webServer (started before globalSetup) connects to the in-memory MongoMemoryServer.
@@ -33,11 +34,28 @@ export default {
   // workers make each teardown wipe land between tests, where every spec
   // re-seeds what it needs.
   workers: 1,
+  // second-host runs the file link spec again on 127.0.0.1, a second host
+  // name for the same server, as an app served on two domains is: links carry
+  // no host, and each host has its own session cookie.
+  projects: [
+    ...config.projects,
+    {
+      name: "second-host",
+      testMatch: "files/file-link.spec.js",
+      use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:3103" },
+    },
+  ],
   // `lowdefy build --server e2e` fails the auth config check unless NEXTAUTH_SECRET
   // is set. The e2e server uses cookie-based mock auth, so the value is build-only —
   // mirror the `ldf:b` script and respect a real secret if one is already exported.
   webServer: {
     ...config.webServer,
+    // Lowdefy's e2e server serves no link endpoints; serve-link-endpoints.mjs
+    // adds the production server's GET route between the build and the start.
+    command: config.webServer.command.replace(
+      " && ",
+      " && node e2e/serve-link-endpoints.mjs && ",
+    ),
     env: {
       ...process.env,
       NEXTAUTH_SECRET:
@@ -53,6 +71,9 @@ export default {
         process.env.LOWDEFY_SECRET_FILES_S3_BUCKET || "e2e-bucket",
       LOWDEFY_SECRET_FILES_S3_BUCKET_PUB:
         process.env.LOWDEFY_SECRET_FILES_S3_BUCKET_PUB || "e2e-bucket-pub",
+      // The notifications bucket reads its region from this secret.
+      LOWDEFY_SECRET_FILES_S3_REGION:
+        process.env.LOWDEFY_SECRET_FILES_S3_REGION || "eu-west-1",
     },
   },
 };

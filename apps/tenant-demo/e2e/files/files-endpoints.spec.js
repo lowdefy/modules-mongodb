@@ -1,14 +1,14 @@
 import { test, expect } from "../fixtures.js";
 
-// The files module's endpoints, called as the browser calls them, with two
-// organizations on one in-memory MongoDB. The tenant wall keeps each
-// organization's records apart, the endpoints sign and soft-delete only a
-// stored record, save-file accepts only a key upload-policy minted, and the
+// The files module's CallAPI endpoints, called as the browser calls them,
+// with two organizations on one in-memory MongoDB. The tenant wall keeps each
+// organization's records apart, delete-file soft-deletes only a stored record, save-file accepts only a key upload-policy minted, and the
 // app's files-access-check (api/files-access-check.yaml) refuses every
 // operation on a record whose id starts with "private-".
 //
-// Signing a link or an upload policy is computed locally, so placeholder
-// bucket secrets are enough (playwright.config.js). save-file's check that the
+// Signing an upload policy is computed locally, so placeholder bucket secrets
+// are enough (playwright.config.js). The file link endpoint is proven in
+// file-link.spec.js. save-file's check that the
 // object reached S3 needs a bucket, so its happy path is not run here.
 
 const FILES = "files";
@@ -80,29 +80,13 @@ const NOT_FOUND = "This file was not found. It may have been deleted.";
 const PRIVATE = "The files of this record are private.";
 const NOT_HERE = "This file was not uploaded here. Upload it again.";
 
-test("download-file signs a stored record, old keys included", async ({
-  ldf,
-  page,
-  mdb,
-}) => {
-  await seed(mdb);
-  await as(ldf, ORG_A);
-  const result = await call(page, "download-file", { file_id: OLD_A });
-  expect(result.status).toBe(200);
-  expect(result.body.response.url).toContain(
-    "lot/20240101_000000000/0b7c6a8e-3f2d-4c1b-9a8e-1d2c3b4a5f60/old.pdf",
-  );
-  expect(result.body.response.url).toContain("X-Amz-Signature=");
-});
-
-test("another organization's record is neither signed nor deleted", async ({
+test("another organization's record is not deleted", async ({
   ldf,
   page,
   mdb,
 }) => {
   await seed(mdb);
   await as(ldf, ORG_B);
-  refusedWith(await call(page, "download-file", { file_id: OLD_A }), NOT_FOUND);
   refusedWith(await call(page, "delete-file", { file_id: OLD_A }), NOT_FOUND);
   const listed = await call(page, "list-files", {
     entity_type: "lot",
@@ -114,11 +98,11 @@ test("another organization's record is neither signed nor deleted", async ({
   expect(stored.deleted).toBeNull();
 });
 
-test("a deleted record is not signed", async ({ ldf, page, mdb }) => {
+test("a deleted record is not deleted again", async ({ ldf, page, mdb }) => {
   await seed(mdb);
   await as(ldf, ORG_A);
   refusedWith(
-    await call(page, "download-file", { file_id: DELETED_A }),
+    await call(page, "delete-file", { file_id: DELETED_A }),
     NOT_FOUND,
   );
 });
@@ -238,10 +222,6 @@ test("the app's access check stops every operation", async ({
       ...privateRecord,
       key: `org-a/files/lot/private-1/20260701_090000000/${UUID}/a.pdf`,
     }),
-    PRIVATE,
-  );
-  refusedWith(
-    await call(page, "download-file", { file_id: PRIVATE_A }),
     PRIVATE,
   );
   refusedWith(await call(page, "delete-file", { file_id: PRIVATE_A }), PRIVATE);

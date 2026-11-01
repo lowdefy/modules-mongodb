@@ -1,0 +1,73 @@
+id: file
+type: Api
+link: true
+description: >-
+  A notification attachment's link: a GET on
+  /api/endpoints/<notifications entry>/file/<notification_id>/<index> finds
+  the notification when the signed-in caller is its recipient (the inbox's
+  rule, requests/match-recipient.yaml), takes files[index] and answers 302 to
+  a 60-second signed link on the notifications bucket. Every refusal is a
+  bare 404, so a caller cannot tell which notifications exist.
+routine:
+  # The path is "<notification_id>/<index>". The index must be a whole number
+  # that fits $arrayElemAt's 32-bit index, so -1, x and 1.5 are refused here.
+  - :set_state:
+      link_path:
+        _payload: path
+  - :set_state:
+      attachment:
+        _js: |
+          const path = state('link_path');
+          const segments = typeof path === 'string' ? path.split('/') : [];
+          if (segments.length !== 2) return null;
+          const [notification_id, index] = segments;
+          if (notification_id.length === 0 || !/^[0-9]+$/.test(index)) return null;
+          const position = Number(index);
+          if (position > 2147483647) return null;
+          return { notification_id, index: position };
+  - :if:
+      _eq:
+        - _if_none:
+            - _state: attachment
+            - null
+        - null
+    :then:
+      - :reject: This attachment was not found.
+        :status: 404
+  - id: get_notification_file
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: notifications-collection
+    properties:
+      pipeline:
+        - $match:
+            _id:
+              _state: attachment.notification_id
+            $or:
+              _ref: requests/match-recipient.yaml
+        - $project:
+            _id: 0
+            file:
+              $arrayElemAt:
+                - $files
+                - _state: attachment.index
+  - :if:
+      _eq:
+        - _if_none:
+            - _step: get_notification_file.0.file.key
+            - null
+        - null
+    :then:
+      - :reject: This attachment was not found.
+        :status: 404
+  - _ref:
+      path: ../files/api/parts/sign-link.yaml
+      vars:
+        connection_id:
+          _module.connectionId: notifications-files-bucket-public
+        key:
+          _step: get_notification_file.0.file.key
+        content_type:
+          _step: get_notification_file.0.file.type
+        file_name:
+          _step: get_notification_file.0.file.name

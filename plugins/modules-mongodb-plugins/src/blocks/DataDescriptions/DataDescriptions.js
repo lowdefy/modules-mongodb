@@ -11,12 +11,16 @@ const DataDescriptions = ({
   blockId,
   classNames = {},
   content,
+  basePath,
   properties,
   components: { Icon, Link },
   methods,
   styles = {},
 }) => {
   const { data, formConfig } = properties;
+  // Field renderers get the block's properties; embedded file links also
+  // need the app's base path.
+  const fieldProperties = { ...properties, basePath };
 
   const groups = useMemo(() => {
     return preprocessData(data, formConfig);
@@ -49,7 +53,7 @@ const DataDescriptions = ({
       >
         {group.fields.map((field, j) => (
           <Descriptions.Item key={j} label={field.label} span={spans[j]}>
-            {renderFieldValue(field, Icon, Link, methods, properties)}
+            {renderFieldValue(field, Icon, Link, methods, fieldProperties)}
           </Descriptions.Item>
         ))}
       </Descriptions>

@@ -11,8 +11,8 @@
 # not vars): `collapse_map` (slot key -> expanded?) and `workflow` (whose
 # `form_data` holds the submitted values, keyed by slot key).
 #
-# File fields download through download-form-file, which signs only keys in
-# the form slots this caller may view.
+# File fields link to form-file, which signs only keys in the form slots this
+# caller may view.
 #
 # Vars:
 #   - prefix                    build-time state-path prefix of the action, e.g.
@@ -301,11 +301,10 @@ blocks:
                 default: null
             - null
     properties:
-      downloadEndpointId:
-        _module.endpointId: download-form-file
-      downloadPayload:
-        workflow_id:
-          _state: workflow._id
+      linkEndpointId:
+        _module.endpointId: form-file
+      linkPath:
+        - _state: workflow._id
       formConfig:
         _array.concat:
           - _if_none:

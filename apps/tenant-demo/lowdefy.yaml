@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20261025074501
+lowdefy: 0.0.0-experimental-20261027111447
 name: Tenant Demo App
 slug: tenant-demo
 
@@ -42,7 +42,7 @@ plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
   - name: "@lowdefy/connection-ai-gateway"
-    version: 0.0.0-experimental-20261025074501
+    version: 0.0.0-experimental-20261027111447
 
 auth:
   secret:
@@ -119,7 +119,7 @@ auth:
       description: Standard application user.
   # App-level page gate: every page requires a session except this public list.
   # Modules contribute their own public pages (user-account: login/signup/…,
-  # two-factor, logout; notifications: link, invalid, file-download), so this
+  # two-factor, logout; notifications: link, invalid), so this
   # list is only the app's own public surface — the 404 and router entry pages.
   # Protecting by default also matters under the tenant policy: a walled
   # request from an org-less anonymous caller fails closed, so an unprotected

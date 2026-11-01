@@ -1,0 +1,37 @@
+id: file
+type: Api
+link: true
+description: >-
+  A file's stable link: a GET on /api/endpoints/<files entry>/file/<key>
+  loads the live record with that key, runs the access check and answers 302
+  to a 60-second signed S3 link. Every refusal is a bare 404, so an outsider
+  cannot tell which keys exist.
+routine:
+  - _ref:
+      path: api/parts/load-file.yaml
+      vars:
+        file_id:
+          _payload: path
+        reject_status: 404
+  - _ref:
+      path: api/parts/check-access.yaml
+      vars:
+        operation: download
+        entity_type:
+          _state: file_record.collection
+        entity_id:
+          _state: file_record.doc_id
+        file_id:
+          _state: file_record._id
+        reject_status: 404
+  - _ref:
+      path: api/parts/sign-link.yaml
+      vars:
+        connection_id:
+          _module.connectionId: files-bucket
+        key:
+          _state: file_record.file.key
+        content_type:
+          _state: file_record.file.type
+        file_name:
+          _state: file_record.file.name
