@@ -39,7 +39,8 @@ async function startGallery({ ldf, mdb, workflow }) {
 const linkOf = (workflowId) =>
   `/api/endpoints/workflows/form-file/${workflowId}/${KEY}`;
 
-// Answers the link in place of the endpoint, and records any CallAPI request.
+// Answers the link in place of the endpoint, and records any CallAPI request
+// for a form file.
 async function watchLinks(page) {
   await page
     .context()
@@ -50,7 +51,8 @@ async function watchLinks(page) {
   page.on("request", (request) => {
     if (
       request.method() === "POST" &&
-      request.url().includes("/api/endpoints/workflows/")
+      request.url().includes("/api/endpoints/workflows/") &&
+      request.url().includes("form-file")
     ) {
       callApi.push(request.url());
     }
@@ -110,5 +112,5 @@ test("the file_download field links a form file to form-file", async ({
   await expect(link).toHaveAttribute("href", linkOf(workflowId));
   await expect(link).toHaveAttribute("target", "_blank");
   expect(await clickToTab(page, link)).toBe(linkOf(workflowId));
-  expect(callApi.filter((url) => url.includes("form-file"))).toEqual([]);
+  expect(callApi).toEqual([]);
 });
