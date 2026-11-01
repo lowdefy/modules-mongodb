@@ -1,0 +1,10 @@
+id: default
+links:
+  - id: service-status
+    type: MenuLink
+    pageId:
+      _module.pageId: service-status
+    properties:
+      title:
+        _module.var: title
+      icon: Activity

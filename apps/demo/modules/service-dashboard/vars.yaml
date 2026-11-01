@@ -1,0 +1,9 @@
+# Service status for admins and managers, the roles auth.pages.roles lists the
+# page under in lowdefy.yaml. Top users are named from the auth engine's users.
+roles:
+  - admin
+  - manager
+top_users: true
+users:
+  collection: users
+  name_field: name

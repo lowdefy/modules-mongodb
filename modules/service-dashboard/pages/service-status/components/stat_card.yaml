@@ -1,0 +1,77 @@
+# One headline card: a value over its label, with a line of context below.
+#
+# Vars:
+#   id     the card's key in state.app.cards (availability, incidents,
+#          response or users); block ids are card_<id>...
+#   title  the label
+id:
+  _build.string.concat:
+    - card_
+    - _var: id
+type: Card
+layout:
+  span: 24
+  md:
+    span: 12
+  xl:
+    span: 6
+properties:
+  size: small
+blocks:
+  - id:
+      _build.string.concat:
+        - card_
+        - _var: id
+        - _value
+    type: Statistic
+    properties:
+      title:
+        _var: title
+      value:
+        _state:
+          _build.string.concat:
+            - app.cards.
+            - _var: id
+            - .value
+    style:
+      .value:
+        color:
+          _switch:
+            branches:
+              - if:
+                  _eq:
+                    - _state:
+                        _build.string.concat:
+                          - app.cards.
+                          - _var: id
+                          - .tone
+                    - success
+                then: var(--ant-color-success)
+              - if:
+                  _eq:
+                    - _state:
+                        _build.string.concat:
+                          - app.cards.
+                          - _var: id
+                          - .tone
+                    - error
+                then: var(--ant-color-error)
+            default: inherit
+  - id:
+      _build.string.concat:
+        - card_
+        - _var: id
+        - _sub
+    type: Paragraph
+    properties:
+      type: secondary
+      content:
+        _state:
+          _build.string.concat:
+            - app.cards.
+            - _var: id
+            - .sub
+    style:
+      .element:
+        marginBottom: 0
+        fontSize: 13

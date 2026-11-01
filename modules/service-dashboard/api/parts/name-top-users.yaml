@@ -1,0 +1,62 @@
+# Names the top users in Pelican's answer from the app's own users, leaving
+# state.names { [user id]: { name, company } }. Pelican sends user ids only;
+# a user missing from the collection is left out and shows as "Unknown user".
+#
+# Vars:
+#   apps  Pelican's apps, each with top_users [{ user_id, ... }]
+- :set_state:
+    top_user_ids:
+      _js:
+        fn: |
+          const ids = new Set();
+          for (const app of args.apps || []) {
+            for (const user of app.top_users || []) {
+              if (typeof user.user_id === 'string' && user.user_id !== '') ids.add(user.user_id);
+            }
+          }
+          return [...ids];
+        args:
+          apps:
+            _var: apps
+- id: top_user_names
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId: service-dashboard-users
+  properties:
+    pipeline:
+      - $match:
+          _id:
+            $in:
+              _state: top_user_ids
+      - $project:
+          name:
+            _build.string.concat:
+              - $
+              - _module.var: users.name_field
+          company:
+            _build.if:
+              test:
+                _build.eq:
+                  - _module.var: users.company_field
+                  - null
+              then:
+                $literal: null
+              else:
+                _build.string.concat:
+                  - $
+                  - _module.var: users.company_field
+- :set_state:
+    names:
+      _js:
+        fn: |
+          const names = {};
+          for (const row of args.rows || []) {
+            names[String(row._id)] = {
+              name: typeof row.name === 'string' ? row.name : null,
+              company: typeof row.company === 'string' ? row.company : null,
+            };
+          }
+          return names;
+        args:
+          rows:
+            _step: top_user_names

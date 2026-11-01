@@ -1,0 +1,108 @@
+name: Service dashboard
+version: 1.4.1
+description: >-
+  Shows the app's service report from Pelican to the users with the roles the
+  app chooses: availability, incidents, response times, usage and support
+  tickets, for this app and the apps its support app reports on. Pelican rolls
+  each day up overnight; the page reads it through the support module's key.
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper for the service status page.
+  - id: support
+    description: >-
+      Pelican's support API (support_pelican connection), with the support
+      app's key and Pelican's address set once on the support module.
+
+vars:
+  roles:
+    type: array
+    required: true
+    description: >-
+      User roles that may see service status. The service-report endpoint
+      refuses (403) a user holding none of them. List the page
+      `{entry id}/service-status` under the app's `auth.pages.roles` with the
+      same roles, so the menu link and the page are refused too.
+  title:
+    type: string
+    default: Service status
+    description: Title of the page and of its menu link.
+  top_users:
+    type: boolean
+    default: false
+    description: >-
+      Show the 20 users with the most active days in the period, named from
+      the app's own users collection (see `users`). Pelican only ever sends
+      user ids and counts. Needs `users`; the build fails without it.
+  users:
+    type: object
+    description: >-
+      Where the app's users live, to name the top users. Needed when
+      `top_users` is on. A user id Pelican reports that is not in the
+      collection shows as "Unknown user".
+    properties:
+      collection:
+        type: string
+        description: >-
+          The collection holding the app's users, matched on `_id` against the
+          session user id, such as `users`.
+      name_field:
+        type: string
+        description: Field holding the user's display name, such as `name`.
+      company_field:
+        type: string
+        default: null
+        description: >-
+          Field holding the user's company name, such as
+          `profile.company_name`. Null (the default) leaves the company column
+          out.
+
+exports:
+  pages:
+    - id: service-status
+      description: >-
+        The service report: one tab per app, a period picker, cards, the daily
+        availability strip, charts, incidents, most-used pages and, with
+        top_users, top users, at /{entry id}/service-status
+  menus:
+    - id: default
+      description: A link to the service status page
+  api:
+    - id: service-report
+      description: >-
+        The service report for a period ({ period: last_30_days, last_90_days,
+        this_month or last_month }), read from Pelican and shaped for the page.
+        Refuses (403) a user holding none of `roles`.
+  connections:
+    - id: service-dashboard-users
+      description: >-
+        Read-only view of the app's users collection (`users.collection`), for
+        the names of top users
+
+pages:
+  - _ref: pages/service-status/service-status.yaml
+
+menus:
+  - _ref: menu.yaml
+
+connections:
+  - _ref: connections/service_dashboard_users.yaml
+
+api:
+  # The transformer fails the build when top_users is on without users.
+  - _ref:
+      path: api/service-report.yaml
+      transformer: build/require_users.js
+      vars:
+        top_users:
+          _module.var: top_users
+        users:
+          _module.var: users
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI, for the users collection top users are named from.
+
+plugins:
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^1.4.1"
