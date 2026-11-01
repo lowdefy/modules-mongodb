@@ -31,6 +31,7 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [ai-reporting](../modules/ai-reporting/README.md)   | AI chat over your data — open query engine, charts, CSV exports, saved reports                              |
 | [walkthroughs](../modules/walkthroughs/README.md) | Step-by-step walkthroughs stored and played in-app — native player, draft/publish editor, screen capture |
 | [support](../modules/support/README.md) | The reporter's side of the Pelican support desk: report a problem, chat with the team |
+| [service-dashboard](../modules/service-dashboard/README.md) | Service status from Pelican — availability, incidents, response times, usage and support tickets |
 
 ## Dependency graph
 
@@ -71,6 +72,8 @@ graph TD
   support --> events
   support --> notifications
   support --> files
+  service-dashboard --> layout
+  service-dashboard --> support
 ```
 
 A few notes on the shape:

@@ -1,0 +1,36 @@
+# Works out the days a period covers, leaving state.range { period, from, to }
+# with days as YYYY-MM-DD in South African time (UTC+2, no daylight saving),
+# the time zone Pelican's days run in. A period ends yesterday, the last day
+# Pelican can have rolled up; "this month" on the 1st is today alone.
+#
+# Vars:
+#   period  last_30_days (the default), last_90_days, this_month or last_month
+- :set_state:
+    range:
+      _js:
+        fn: |
+          const DAY = 86400000;
+          const SAST_OFFSET = 2 * 3600000;
+          const iso = (time) => new Date(time).toISOString().slice(0, 10);
+          const local = new Date(new Date(args.now).getTime() + SAST_OFFSET);
+          const year = local.getUTCFullYear();
+          const month = local.getUTCMonth();
+          const today = Date.UTC(year, month, local.getUTCDate());
+          const yesterday = today - DAY;
+          const periods = {
+            last_30_days: () => [yesterday - 29 * DAY, yesterday],
+            last_90_days: () => [yesterday - 89 * DAY, yesterday],
+            this_month: () => {
+              const first = Date.UTC(year, month, 1);
+              return [first, Math.max(first, yesterday)];
+            },
+            last_month: () => [Date.UTC(year, month - 1, 1), Date.UTC(year, month, 0)],
+          };
+          const period = periods[args.period] ? args.period : 'last_30_days';
+          const [from, to] = periods[period]();
+          return { period, from: iso(from), to: iso(to), today: iso(today) };
+        args:
+          now:
+            _date: now
+          period:
+            _var: period

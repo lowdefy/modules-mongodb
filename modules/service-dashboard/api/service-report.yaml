@@ -1,0 +1,119 @@
+id: service-report
+type: Api
+description: >-
+  The service report for a period, read from Pelican's service-report endpoint
+  with the support app's key and shaped for the service status page. Refuses
+  a user holding none of the module's roles. Answers { ok: true, range,
+  tabs, apps }, or { ok: false, message } when Pelican did not answer with a
+  report, so the page shows a retry message; the cause is logged.
+payloadSchema:
+  type: object
+  properties:
+    period:
+      type: string
+      enum:
+        - last_30_days
+        - last_90_days
+        - this_month
+        - last_month
+routine:
+  # The gate on the data, which holds even when the app forgets to list the
+  # endpoint under auth.api.roles. A module Api cannot set its HTTP status: this
+  # refusal answers 400, and the app's auth.api.roles entry answers 403 first.
+  - :if:
+      _js:
+        fn: |
+          const allowed = args.allowed || [];
+          return !(args.roles || []).some((role) => allowed.includes(role));
+        args:
+          roles:
+            _user: roles
+          allowed:
+            _module.var: roles
+    :then:
+      - :reject: You don't have access to service status.
+  - _ref:
+      path: api/parts/report-range.yaml
+      vars:
+        period:
+          _if_none:
+            - _payload: period
+            - last_30_days
+  - :set_state:
+      pelican_answer: null
+  - :try:
+      - id: get_service_report
+        type: AxiosHttp
+        connectionId:
+          _module.connectionId:
+            id: support_pelican
+            module: support
+        properties:
+          url: /api/endpoints/service-report
+          timeout: 15000
+          data:
+            from:
+              _state: range.from
+            to:
+              _state: range.to
+            top_users:
+              _module.var: top_users
+      - :set_state:
+          pelican_answer:
+            _step: get_service_report
+    :catch:
+      - :set_state:
+          pelican_answer: null
+  # Anything but a 2xx with a list of apps is Pelican not answering with a
+  # report: the page shows a retry message, and the log says what came back.
+  # 401 is the support key (SUPPORT_PELICAN_KEY) wrong or revoked.
+  - :if:
+      _js:
+        fn: |
+          const answer = args.answer;
+          if (!answer) return true;
+          if (answer.status < 200 || answer.status >= 300) return true;
+          return !(answer.data && Array.isArray(answer.data.apps));
+        args:
+          answer:
+            _state: pelican_answer
+    :then:
+      - :log:
+          event: service_report_unavailable
+          status:
+            _if_none:
+              - _state: pelican_answer.status
+              - null
+          code:
+            _if_none:
+              - _state: pelican_answer.data.error.code
+              - null
+          message: >-
+            Pelican did not answer the service report: no answer (timeout or
+            network), a non-2xx status (401: check SUPPORT_PELICAN_KEY against
+            the support app in Pelican), or a body without apps.
+        :level: error
+      - :return:
+          ok: false
+          message: Service status can't be loaded right now. Try again in a few minutes.
+  - :set_state:
+      names: null
+  - _build.if:
+      test:
+        _module.var: top_users
+      then:
+        _ref:
+          path: api/parts/name-top-users.yaml
+          vars:
+            apps:
+              _state: pelican_answer.data.apps
+      else: []
+  - _ref:
+      path: api/parts/shape-report.yaml
+      vars:
+        apps:
+          _state: pelican_answer.data.apps
+        range:
+          _state: range
+        names:
+          _state: names

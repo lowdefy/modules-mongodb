@@ -67,9 +67,13 @@
         title: Admin
         icon: settings
       links:
-        _ref:
-          module: user-admin
-          menu: default
+        _build.array.concat:
+          - _ref:
+              module: user-admin
+              menu: default
+          - _ref:
+              module: service-dashboard
+              menu: default
 
 - id: profile
   links:

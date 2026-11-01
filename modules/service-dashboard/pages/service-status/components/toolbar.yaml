@@ -1,0 +1,64 @@
+# One tab per app in the report, and the period picker. The tabs only switch
+# which app the rest of the page shows, so they hold no content of their own.
+id: toolbar
+type: Box
+visible:
+  _state: has_role
+layout:
+  gap: 12
+  justify: space-between
+  align: bottom
+blocks:
+  - id: app_tabs
+    type: Tabs
+    visible:
+      _gt:
+        - _array.length:
+            _if_none:
+              - _state: report.tabs
+              - []
+        - 0
+    layout:
+      flex: 1 1 320px
+    properties:
+      tabs:
+        _state: report.tabs
+    style:
+      .tabBar:
+        marginBottom: 0
+    events:
+      onChange:
+        - id: set_app_index
+          type: SetState
+          params:
+            app_index:
+              _event: activeKey
+        - id: set_app_for_tab
+          type: SetState
+          params:
+            app:
+              _get:
+                from:
+                  _state: report.apps
+                key:
+                  _event: activeKey
+                default: null
+  - id: period
+    type: SegmentedSelector
+    layout:
+      flex: 0 0 auto
+    properties:
+      label:
+        disabled: true
+      options:
+        - value: last_30_days
+          label: Last 30 days
+        - value: last_90_days
+          label: Last 90 days
+        - value: this_month
+          label: This month
+        - value: last_month
+          label: Last month
+    events:
+      onChange:
+        _ref: pages/service-status/actions/load_report.yaml
