@@ -81,6 +81,12 @@ try:
     type: SetState
     params:
       _var: on_sent
+  # Focuses a code box that was already showing (the expired-link render).
+  # A box the flip above reveals is not mounted yet when this runs, so it is
+  # focused by its own `autoFocus` instead. No-op without emailOTP.
+  - id: focus_code
+    type: SetFocus
+    params: otp_input
   - id: hold_cooldown
     type: Wait
     params:
