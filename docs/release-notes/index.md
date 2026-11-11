@@ -170,10 +170,12 @@ To try it on a server, `apps/demo/scripts/release-announced-check.mjs` posts sig
 
 ## Delivering
 
-`deliver` runs in its own function call, does one bounded piece of work and calls itself, detached, while work remains:
+`deliver` runs in its own function call. It works through the note one unit at a time, starting new units only in the call's first 20 seconds, since a media copy may take up to 4 minutes:
 
-1. **Media.** Copies one file not yet copied from its source link into the public files bucket at `release-notes/{repository}@{version}/{name}`, and marks it copied. A file already in the bucket is not fetched again. A copy that fails is logged and left for the sweep.
-2. **Notices.** Takes up to 100 recipient rows not yet notified, all in one organisation, and dispatches the `release-note` notification to them through the notifications module. Under the tenant policy the dispatch is bound to that organisation, so the notice lands in its bell; a person in several organisations gets it in their earliest membership's. Each item's key is `release-note:{note id}:{user id}`, so a repeat never notifies twice. The email is left out when the announcement had `email: false` or the person turned release emails off. A person whose user is gone is skipped.
+1. **Media.** Copies each file not yet copied from its source link into the public files bucket at `release-notes/{repository}@{version}/{name}`, and marks it copied. A file already in the bucket is not fetched again. A copy that fails is logged and left for the sweep.
+2. **Notices.** Then takes batches of up to 100 recipient rows not yet notified, each batch in one organisation, and dispatches the `release-note` notification to them through the notifications module. Under the tenant policy the dispatch is bound to that organisation, so the notice lands in its bell; a person in several organisations gets it in their earliest membership's. Each item's key is `release-note:{note id}:{user id}`, so a repeat never notifies twice. The email is left out when the announcement had `email: false` or the person turned release emails off. A person whose user is gone is skipped.
+
+When the time is up with work left, `deliver` calls itself detached, once: Vercel answers `508` to a chain of about three detached calls into one deployment, so a chain is the call the announcement or the sweep makes and one more. Work left after that waits for the sweep.
 
 A detached call runs once and is not retried. `sweep` restarts any note no `deliver` call has worked on for 10 minutes that still has recipient rows not notified, written more than 10 minutes ago, or media not copied, with a source link and content type, whose source links are under 7 days old.
 
