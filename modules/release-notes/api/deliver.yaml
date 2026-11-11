@@ -5,8 +5,8 @@ description: >-
   public files bucket, one at a time, then dispatches the release-note
   notification in batches of up to 100 people owed it, each batch in one
   organisation, starting new work only in its first 20 seconds. While work
-  remains it calls itself detached once, so a chain is at most 2 calls; the
-  sweep restarts what is left. Payload { note_id, failed, hop }: failed lists
+  remains it calls itself detached once, so a chain is at most 2 calls, and
+  the second copies no media; the sweep restarts what is left. Payload { note_id, failed, hop }: failed lists
   the media names whose copy failed earlier in this chain, left for the sweep,
   and hop counts this call in the chain, 1 when left out. Every step is safe
   to repeat.
@@ -78,10 +78,13 @@ routine:
           note:
             _step: stored_note
       # A file with no source link or content type cannot be fetched or
-      # checked, so it waits for a delivery that brings both.
+      # checked, so it waits for a delivery that brings both. The chain's last
+      # call copies nothing, so slow copies can't fill every call of a chain
+      # and hold the notices back.
       - :set_state:
           pending_media:
             _js: |
+              if (state('hop') >= 2) return null;
               const failed = state('failed');
               return (
                 (state('note').media || []).find(
@@ -117,9 +120,8 @@ routine:
           done: true
           notified:
             _state: notified
-  # Vercel answers 508 to a chain of about 3 detached calls into one
-  # deployment, counting the call that started it, so the chain stops at its
-  # second call and leaves the rest to the sweep.
+  # Vercel refuses the third detached call in a chain with 508, so the chain
+  # stops at its second call and leaves the rest to the sweep.
   - :if:
       _gte:
         - _state: hop
@@ -131,7 +133,8 @@ routine:
             _state: note_id
           message: >-
             A release note's delivery reached the end of its chain with work
-            left. The sweep restarts it within 20 minutes.
+            left. The sweep restarts it while it still has work the sweep
+            looks for.
       - :return:
           done: false
           notified:
