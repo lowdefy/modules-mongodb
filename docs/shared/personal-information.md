@@ -17,11 +17,11 @@ The two AI chat modules, [`ai-assistant`](../ai-assistant/index.md) and [`ai-rep
 
 While `pii_guard` is true (the default), the chat's `onBeforeSend` starts with one `Throw`. It tests the typed text against the module's `pii_patterns`, joined with `|` into one regex. On a match the send is cancelled: the chat shows `pii_guard_message` (default "This looks like personal information. Please remove it and describe the task instead."), the text stays in the composer for the user to edit, and nothing is posted to the agent. An app's own `on_before_send` actions run after the guard, so they never see a message it refused.
 
-| Var                 | Default                         | What it does                                                         |
-| ------------------- | ------------------------------- | -------------------------------------------------------------------- |
-| `pii_guard`         | `true`                          | `false` leaves the guard out of the build: every message is sent.    |
-| `pii_patterns`      | the four patterns below         | Regex sources (JavaScript syntax). Setting it replaces the whole list. |
-| `pii_guard_message` | the sentence above              | What the user sees when a send is refused.                          |
+| Var                 | Default                 | What it does                                                           |
+| ------------------- | ----------------------- | ---------------------------------------------------------------------- |
+| `pii_guard`         | `true`                  | `false` leaves the guard out of the build: every message is sent.      |
+| `pii_patterns`      | the four patterns below | Regex sources (JavaScript syntax). Setting it replaces the whole list. |
+| `pii_guard_message` | the sentence above      | What the user sees when a send is refused.                             |
 
 The guard runs in the browser, so it stops an honest user, not a determined one. Some sends skip it:
 
@@ -35,12 +35,12 @@ The `ai-reporting` agent is also told how to answer a message with personal info
 
 The default list, in order:
 
-| #   | Catches                                                                 | Pattern                                                                       |
-| --- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 1   | Email addresses                                                         | `[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`                              |
-| 2   | Nine or more digits with only single spaces between them                | `\d(?: ?\d){8,}`                                                              |
-| 3   | South African phone numbers, local or `+27`, with any separators       | `(?:\+27[ .-]?(?:\(0\)[ .-]?)?\|\(?0)\d{2}\)?[ .-]?\d{3}[ .-]?\d{4}(?!\d)`     |
-| 4   | South African passport numbers: a letter and eight digits              | `\b[A-Za-z]\d{8}\b`                                                           |
+| #   | Catches                                                          | Pattern                                                                    |
+| --- | ---------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | Email addresses                                                  | `[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`                           |
+| 2   | Nine or more digits with only single spaces between them         | `\d(?: ?\d){8,}`                                                           |
+| 3   | South African phone numbers, local or `+27`, with any separators | `(?:\+27[ .-]?(?:\(0\)[ .-]?)?\|\(?0)\d{2}\)?[ .-]?\d{3}[ .-]?\d{4}(?!\d)` |
+| 4   | South African passport numbers: a letter and eight digits        | `\b[A-Za-z]\d{8}\b`                                                        |
 
 The list lives in `modules/shared/pii_patterns.yaml`. When you set your own `pii_patterns`, single-quote each entry in YAML so `\b` and `\d` survive.
 
