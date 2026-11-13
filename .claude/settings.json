@@ -1,7 +1,6 @@
 {
   "enabledPlugins": {
-    "r@resonancy": true,
-    "r2@resonancy": true
+    "r@resonancy": true
   },
   "extraKnownMarketplaces": {
     "resonancy": {
