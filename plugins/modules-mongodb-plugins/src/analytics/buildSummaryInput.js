@@ -1,5 +1,6 @@
 import { MAX_SUMMARY_ROWS_PER_SECTION } from "./constants.js";
 import { orderedQueries } from "./querySections.js";
+import { filterValue } from "./summaryQueries.js";
 import validateReportSpec from "./validateReportSpec.js";
 
 export const NO_FILTERS_SCOPE = "All data — no filters applied";
@@ -68,7 +69,7 @@ function describeFilter(filter, value, optionRows) {
  *   results      — the routine's :for step results over summaryQueries(), one
  *                  entry per query in that order; a missing entry marks a
  *                  section whose query failed inside :try.
- *   filterValues — `field → value` map of the viewer's active controls.
+ *   filterValues — the viewer's active control values, each at its field's path.
  *   roles        — the viewing user's roles, forwarded to validateReportSpec.
  *
  * Returns { title, description, scope, hasFilters, sections, excluded }:
@@ -142,7 +143,7 @@ function buildSummaryInput({ spec, results, filterValues, roles }) {
 
   const parts = [];
   for (const filter of sections.filter((s) => s.type === "filter")) {
-    const value = filterValues?.[filter.field];
+    const value = filterValue(filterValues, filter.field);
     if (isUnset(value)) continue;
     const line = describeFilter(filter, value, rowsBySectionId.get(filter.id));
     if (line) parts.push(line);

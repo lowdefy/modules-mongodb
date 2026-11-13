@@ -786,6 +786,20 @@ test.describe("the seeded example report", () => {
       page.getByRole("button", { name: "Download activities CSV" }),
     ).toBeVisible();
 
+    // Nothing in the example report falls back to the policy's Alert. A
+    // refused filter renders that Alert in place of its control, and the
+    // layout checks above pass around it: the Region and Created filters did
+    // exactly that while the onChange of a filter driving many sections ran
+    // past the policy's action limit.
+    await expect(
+      page.getByText(
+        "This section contains values the report page cannot display",
+        {
+          exact: false,
+        },
+      ),
+    ).toHaveCount(0);
+
     // The orders filter group states its shared scope once, and Channel — which
     // moves only the four KPIs — keeps a note of its own beside it. Three
     // groups, so three Resets.

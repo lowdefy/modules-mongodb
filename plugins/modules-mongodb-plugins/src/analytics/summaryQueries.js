@@ -1,10 +1,21 @@
+import { get } from "@lowdefy/helpers";
+
 import { orderedQueries } from "./querySections.js";
 import validateReportSpec from "./validateReportSpec.js";
 
 /**
+ * A filter's value in the `filters` object the report page sends: the page's
+ * own filter state, where each control's value sits at its field's path, so a
+ * dotted field (`owner.user_id`) is nested rather than a literal key.
+ */
+export function filterValue(filterValues, field) {
+  return get(filterValues, field) ?? null;
+}
+
+/**
  * The filter triples a data section's summary query carries, derived
  * SERVER-SIDE from the stored spec and the viewer's current control values.
- * The client sends `field → value` and nothing else: the op comes from the
+ * The client sends each value at its field's path and nothing else: the op comes from the
  * spec's filter section (its control, and a multiselect's `match`), the same
  * control → op mapping compileReport bakes into a re-query — so a caller cannot
  * pick an operator, only a value, and the values are contained the way the
@@ -22,7 +33,7 @@ export function sectionFilters(section, filterSectionsByField, filterValues) {
   for (const field of section.filterBy ?? []) {
     const filter = filterSectionsByField.get(field);
     if (!filter) continue;
-    const value = filterValues?.[field] ?? null;
+    const value = filterValue(filterValues, field);
     if (filter.control === "daterange") {
       const [start, end] = Array.isArray(value) ? value : [null, null];
       triples.push(

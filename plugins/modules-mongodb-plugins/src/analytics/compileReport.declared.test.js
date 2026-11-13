@@ -5,6 +5,7 @@ import { dirname, resolve } from "path";
 import { load as loadYaml } from "js-yaml";
 
 import compileReport from "./compileReport.js";
+import { MAX_SECTIONS } from "./constants.js";
 import testCatalog from "./testDatasets.js";
 
 // compileReport emits Lowdefy config that the report page's Dynamic block
@@ -377,4 +378,63 @@ test("the failed-section Alert path emits only policy-listed types", () => {
   expect([...used.blocks].filter((t) => !declared.blocks.includes(t))).toEqual(
     [],
   );
+});
+
+// The policy also caps the actions in any one event (`limits.actionsPerEvent`,
+// 20 unless raised), and an event over it costs the whole block that carries it:
+// a filter whose onChange is too long renders as an Alert in place of the
+// control. A filter's onChange re-queries every section it drives, two actions
+// each, so its length grows with the report. Compile the longest one the spec
+// caps allow — one filter driving every other section, with the AI summary on —
+// and hold the policy's limit to it.
+test("the longest event compileReport emits fits the report policy's actionsPerEvent", () => {
+  const kpis = Array.from({ length: MAX_SECTIONS - 1 }, (_, i) => ({
+    type: "kpi",
+    label: `Revenue ${i + 1}`,
+    query: {
+      collection: "demo_orders",
+      pipeline: [{ $group: { _id: null, total: { $sum: "$total" } } }],
+    },
+    valueKey: "total",
+    filterBy: ["status"],
+  }));
+  const blocks = compileReport({
+    spec: {
+      title: "Widest filter",
+      sections: [
+        { type: "filter", control: "select", field: "status", label: "Status" },
+        ...kpis,
+      ],
+    },
+    results: kpis.map(() => [{ total: 10 }]),
+    catalog: testCatalog,
+    roles: ["analyst"],
+    endpointId: "ai-reporting/query-data",
+    chartEndpointId: "ai-reporting/chart-data",
+    ai_summary: true,
+    is_owner: true,
+    can_share: true,
+    visibility: "private",
+  });
+
+  let longest = 0;
+  const walk = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(walk);
+      return;
+    }
+    if (value === null || typeof value !== "object") return;
+    if (value.events && typeof value.events === "object") {
+      for (const actions of Object.values(value.events)) {
+        if (Array.isArray(actions)) longest = Math.max(longest, actions.length);
+      }
+    }
+    Object.values(value).forEach(walk);
+  };
+  walk(blocks);
+
+  // Two per driven section plus the summary's stale mark: if this moves, the
+  // fixture stopped exercising the widest filter, not the policy.
+  expect(longest).toBe(2 * (MAX_SECTIONS - 1) + 1);
+  expect(longest).toBeLessThanOrEqual(declared.limits.actionsPerEvent);
 });
