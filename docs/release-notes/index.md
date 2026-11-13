@@ -29,7 +29,7 @@ The app also needs the [support](../support/index.md) module, wired to Pelican w
 ```yaml
 # modules.yaml
 - id: release-notes
-  source: "github:lowdefy/modules-mongodb/modules/release-notes@v1.4.1"
+  source: "github:lowdefy/modules-mongodb/modules/release-notes@v2.0.0"
   vars:
     region: eu-west-1
     audiences:
@@ -40,7 +40,7 @@ The app also needs the [support](../support/index.md) module, wired to Pelican w
         label: Field technicians
         query: { app_roles: technician }
 - id: support
-  source: "github:lowdefy/modules-mongodb/modules/support@v1.4.1"
+  source: "github:lowdefy/modules-mongodb/modules/support@v2.0.0"
   vars:
     app_version: 1.4.0 # the app's bare X.Y.Z version
     release_notes_endpoint: release-notes/receive

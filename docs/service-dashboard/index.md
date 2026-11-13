@@ -16,7 +16,7 @@ The module keeps no data of its own. It reads the report from Pelican through th
 ```yaml
 # modules.yaml, after the support entry
 - id: service-dashboard
-  source: "github:lowdefy/modules-mongodb/modules/service-dashboard@v1.4.1"
+  source: "github:lowdefy/modules-mongodb/modules/service-dashboard@v2.0.0"
   vars:
     roles:
       - admin
