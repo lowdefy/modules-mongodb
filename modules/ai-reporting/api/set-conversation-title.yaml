@@ -81,8 +81,13 @@ routine:
           _user: id
       update:
         $set:
+          # Masked: this endpoint can be called with any title, outside the agent.
           title:
-            _payload: title
+            _ref:
+              path: ../shared/mask_text.yaml
+              vars:
+                text:
+                  _payload: title
         $setOnInsert:
           owner:
             _ref: defaults/owner.yaml

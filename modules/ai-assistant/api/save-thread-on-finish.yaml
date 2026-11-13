@@ -67,6 +67,7 @@ routine:
     :then:
       - :return:
           saved: false
+  - _ref: api/routines/mask_messages.yaml
   - :set_state:
       stored_messages:
         _if_none:

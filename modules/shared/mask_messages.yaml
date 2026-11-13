@@ -1,0 +1,55 @@
+# Chat messages (the AI SDK's UIMessage shape) with every match of the module's
+# `pii_patterns` in their text parts replaced by `[removed]`. Every role is
+# masked, since a reply can repeat what the user typed. File, tool and other
+# parts are left as they are: the patterns read text only. Pass the messages as
+# the `messages` var. Left as they are when `pii_guard` is false.
+#
+# Each function level takes one more underscore: `__` reads a message, `___`
+# one of its parts. The replace is evaluated for every part, so its `on` falls
+# back to "" where a part has no text.
+_build.if:
+  test:
+    _module.var: pii_guard
+  then:
+    _array.map:
+      - _var: messages
+      - _function:
+          __if:
+            test:
+              __type:
+                type: array
+                on:
+                  __args: 0.parts
+            then:
+              __object.assign:
+                - __args: 0
+                - parts:
+                    __array.map:
+                      - __if_none:
+                          - __args: 0.parts
+                          - []
+                      - __function:
+                          ___if:
+                            test:
+                              ___eq:
+                                - ___args: 0.type
+                                - text
+                            then:
+                              ___object.assign:
+                                - ___args: 0
+                                - text:
+                                    ___string.replace:
+                                      on:
+                                        ___if_none:
+                                          - ___args: 0.text
+                                          - ""
+                                      regex:
+                                        _ref: ../shared/pii_regex.yaml
+                                      newSubstr: "[removed]"
+                                      regexFlags: g
+                            else:
+                              ___args: 0
+            else:
+              __args: 0
+  else:
+    _var: messages

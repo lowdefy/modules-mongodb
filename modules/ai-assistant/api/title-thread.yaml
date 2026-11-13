@@ -58,10 +58,20 @@ routine:
         _module.var: title_zero_data_retention
       domain:
         _module.var: title_domain
+      # The exchange is masked before it reaches the model: this call is outside
+      # the agent, so the agent's redact never sees it.
       prompt:
-        _payload: prompt
+        _ref:
+          path: ../shared/mask_text.yaml
+          vars:
+            text:
+              _payload: prompt
       reply:
-        _payload: reply
+        _ref:
+          path: ../shared/mask_text.yaml
+          vars:
+            text:
+              _payload: reply
       context:
         _payload: context
 
@@ -91,12 +101,21 @@ routine:
         # still being generated must not have the result written back to it.
         deleted.timestamp:
           $exists: false
+        # save-thread stored the provisional title masked, so it is matched masked.
         title:
-          _payload: replaces
+          _ref:
+            path: ../shared/mask_text.yaml
+            vars:
+              text:
+                _payload: replaces
       update:
         $set:
           title:
-            _step: generate_title.title
+            _ref:
+              path: ../shared/mask_text.yaml
+              vars:
+                text:
+                  _step: generate_title.title
           updated:
             _date: now
 
@@ -111,4 +130,8 @@ routine:
 
   - :return:
       title:
-        _step: generate_title.title
+        _ref:
+          path: ../shared/mask_text.yaml
+          vars:
+            text:
+              _step: generate_title.title
