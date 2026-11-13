@@ -6,12 +6,12 @@
 # kept across close/reopen and discarded on navigation, so stale commentary can
 # never be read beside numbers it no longer describes.
 #
-# State this reads, all under `summary`:
-#   filter_values — field → live control value, seeded by the compiled header
-#                   button on open and rewritten by every filter's onChange and
-#                   Reset. The payload for summarize-report.
-#   stale         — set true by every filter change and Reset, false by Generate.
-#   text / scope / generatedAt / excluded — the last response.
+# State this reads:
+#   filters       — the compiled filter controls' own state, each value at its
+#                   field's path. Sent to summarize-report as it stands, so the
+#                   summary always describes the selection on screen.
+#   summary.stale — set true by every filter change and Reset, false by Generate.
+#   summary.text / scope / generatedAt / excluded — the last response.
 #
 # Generate is explicit — no auto-generate on open. A model call is a visible,
 # deliberate act; there is exactly one generate implementation (this button);
@@ -21,7 +21,7 @@
 # event exists if auto-generation is ever wanted.
 id: report_summary_drawer
 type: Drawer
-# `summary.filter_values` is written only by the compiled header inside the
+# `filters` and `summary.stale` are written only by compiled content inside the
 # Dynamic block's server-resolved content, which the build cannot see, and none
 # of the summary.* paths is an input block — so the state-refs check would warn
 # on every build.
@@ -141,7 +141,7 @@ blocks:
                 _url_query: report_id
               filters:
                 _if_none:
-                  - _state: summary.filter_values
+                  - _state: filters
                   - {}
         - id: set_summary
           type: SetState

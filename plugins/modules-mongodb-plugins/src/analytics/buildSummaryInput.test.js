@@ -154,6 +154,38 @@ describe("summaryQueries", () => {
     ]);
   });
 
+  // The page sends its `filters` state as it stands, where a control for a
+  // dotted field writes at the field's path.
+  test("a dotted field's value is read at its path", () => {
+    const dottedSpec = {
+      title: "By owner",
+      sections: [
+        {
+          type: "table",
+          label: "Orders",
+          query: ordersByRegion,
+          columns: [{ key: "region", label: "Region" }],
+          filterBy: ["owner.user_id"],
+        },
+        {
+          type: "filter",
+          control: "select",
+          field: "owner.user_id",
+          label: "Owner",
+          options: ["u1", "u2"],
+        },
+      ],
+    };
+    const [table] = summaryQueries({
+      spec: dottedSpec,
+      roles,
+      filterValues: { owner: { user_id: "u1" } },
+    });
+    expect(table.filters).toEqual([
+      { field: "owner.user_id", op: "eq", value: "u1" },
+    ]);
+  });
+
   test("a value for a field no filter declares is ignored", () => {
     const queries = summaryQueries({
       spec,

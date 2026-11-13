@@ -41,9 +41,9 @@ payloadSchema:
         - object
         - "null"
       description: >
-        The viewer's active filter control values keyed by filter field, as the
-        report page holds them: a select's value, a multiselect's array, a
-        daterange's [start, end] pair. Null/absent values and empty arrays mean
+        The viewer's active filter control values, each at its filter field's
+        path (a dotted field is nested), as the report page holds them: a
+        select's value, a multiselect's array, a daterange's [start, end] pair. Null/absent values and empty arrays mean
         "no constraint". Fields no filter section declares are ignored.
 routine:
   # The feature is opt-in per app (the `ai_summary` var). The hidden header

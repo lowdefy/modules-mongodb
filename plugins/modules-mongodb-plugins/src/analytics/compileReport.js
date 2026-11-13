@@ -292,39 +292,26 @@ function tableHeight(rows) {
   return Math.min(500, Math.max(120, 34 + count * 28));
 }
 
-// Filter control block ids double as their page-state keys.
+// Filter control block ids double as their page-state keys, all under one
+// `filters` object holding the selection on screen. The AI summary drawer sends
+// that object to summarize-report as it stands, so compiled content never copies
+// a filter value into other state: a select's options are data under the report
+// policy, and the policy refuses a read of data state anywhere the content might
+// draw it (only a CallAPI payload, a skip or a condition may read it).
 function filterStateKey(field) {
-  return `filter_${field}`;
+  return `filters.${field}`;
 }
 
-// The live value of every filter control, as a `field → deferred __state read`
-// map: what the AI summary drawer sends summarize-report so the server can
-// re-resolve the report under the viewer's current selection. Values, not
-// triples — the server derives each op from the stored spec, so the client
-// cannot choose an operator. Written into `summary.filter_values` by the header
-// button on open and by every filter's onChange, so the drawer's payload is
-// always the selection on screen.
-function summaryFilterValues(filterSectionsByField) {
-  const values = {};
-  for (const field of filterSectionsByField.keys()) {
-    values[field] = { __state: filterStateKey(field) };
-  }
-  return values;
-}
-
-// The SetState every filter's onChange ends with: refresh the summary's
-// filter values and mark any summary on screen stale. Mark, not re-generate —
-// a model call per filter change (including each step of a multi-filter
-// selection, with the drawer closed) would spend prose nobody is reading; the
-// drawer shows the stale Alert with Refresh beside it instead.
-function markSummaryStale(filterSectionsByField) {
+// The SetState every filter's onChange ends with: mark any summary on screen
+// stale. Mark, not re-generate — a model call per filter change (including each
+// step of a multi-filter selection, with the drawer closed) would spend prose
+// nobody is reading; the drawer shows the stale Alert with Refresh beside it
+// instead.
+function markSummaryStale() {
   return {
     id: "mark_summary_stale",
     type: "SetState",
-    params: {
-      "summary.filter_values": summaryFilterValues(filterSectionsByField),
-      "summary.stale": true,
-    },
+    params: { "summary.stale": true },
   };
 }
 
@@ -734,7 +721,7 @@ function requeryActions({
   // Last, so a re-query that throws leaves the summary state alone along with
   // the section it failed to refresh: the on-screen numbers did not change, so
   // the summary still describes them.
-  if (aiSummary) actions.push(markSummaryStale(filterSectionsByField));
+  if (aiSummary) actions.push(markSummaryStale());
   return actions;
 }
 
@@ -1394,33 +1381,15 @@ function sharedScopeKey(group) {
 // those are the only ones a filter change can leave behind. They have to be
 // cleared here rather than left to the controls: SetState fires no onChange, so
 // emptying a control does not run its own re-query.
-function filterResetAction({
-  anchorId,
-  group,
-  boundUnion,
-  filterSectionsByField,
-  aiSummary,
-}) {
+function filterResetAction({ anchorId, group, boundUnion, aiSummary }) {
   const params = {};
   const resetFields = new Set(group.map(({ filter }) => filter.field));
   for (const field of resetFields) {
     params[filterStateKey(field)] = null;
   }
-  // Reset changes what is on screen as surely as a selection does, so the
-  // summary's record of this group's values is cleared with the controls and
-  // any summary on screen is marked stale. The whole map is rewritten, as the
-  // onChange does, because the map is keyed by the field STRING: a dot-path
-  // `summary.filter_values.<field>` would nest a dotted field (owner.user_id)
-  // beside the literal key and leave its old value for the next Generate. The
-  // group's own fields are literal nulls rather than live reads: SetState
-  // evaluates its params before it writes, so a deferred read of a field being
-  // reset would capture the value on its way out.
-  if (aiSummary) {
-    const values = summaryFilterValues(filterSectionsByField);
-    for (const field of resetFields) values[field] = null;
-    params["summary.filter_values"] = values;
-    params["summary.stale"] = true;
-  }
+  // Reset changes what is on screen as surely as a selection does, so any
+  // summary on screen is marked stale.
+  if (aiSummary) params["summary.stale"] = true;
   for (const section of boundUnion) {
     if (section.type === "chart") {
       params[`sections.${section.id}.option`] = null;
@@ -1447,7 +1416,6 @@ function filterGroupFooter({
   boundUnion,
   note,
   rowsBySectionId,
-  filterSectionsByField,
   aiSummary,
 }) {
   // Nothing to put back: every section these filters drive failed its resolve,
@@ -1479,7 +1447,6 @@ function filterGroupFooter({
             anchorId,
             group,
             boundUnion,
-            filterSectionsByField,
             aiSummary,
           }),
         ],
@@ -1721,12 +1688,12 @@ function compileBlocks(
 
   // AI summary opens the STATIC drawer in report.yaml by id — the same
   // compiled-header-to-static-sibling path the ⋯ menu's Rename takes to
-  // rename_modal — after seeding the drawer's filter values from the live
-  // controls. The drawer owns generation (its own Generate button calls
-  // summarize-report), so there is one generate implementation and nothing
-  // model-related in compiled output. Only where the module's ai_summary var is
-  // on; when it is, every viewer gets it: reading a report is what the button
-  // serves, and the endpoint resolves under the viewer's own roles.
+  // rename_modal. The drawer owns generation (its own Generate button calls
+  // summarize-report with the `filters` state the controls write), so there is
+  // one generate implementation and nothing model-related in compiled output.
+  // Only where the module's ai_summary var is on; when it is, every viewer gets
+  // it: reading a report is what the button serves, and the endpoint resolves
+  // under the viewer's own roles.
   if (ai_summary) {
     actions.push({
       id: "report_summary",
@@ -1743,15 +1710,6 @@ function compileBlocks(
       },
       events: {
         onClick: [
-          {
-            id: "seed_summary_filters",
-            type: "SetState",
-            params: {
-              "summary.filter_values": summaryFilterValues(
-                filterSectionsByField,
-              ),
-            },
-          },
           {
             id: "open_summary_drawer",
             type: "CallMethod",
@@ -2199,7 +2157,6 @@ function compileBlocks(
       boundUnion,
       note: sharedNote,
       rowsBySectionId,
-      filterSectionsByField,
       aiSummary: Boolean(ai_summary),
     });
     blocks.push(...footer);

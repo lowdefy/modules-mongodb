@@ -52,3 +52,70 @@ test("the header's AI summary opens the drawer on its empty state", async ({
   );
   expect(bodyOverflow).not.toBe("hidden");
 });
+
+// Generate sends the controls' own `filters` state, so the summary describes the
+// selection on screen. The endpoint is stood in for: generation needs a live
+// gateway key, and what this guards is the payload the page builds, which a
+// change to where filter values live would silently empty.
+test("Generate sends the selection on screen, and a filter change marks the summary stale", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await mdb.seed("demo_orders", ORDERS);
+  await mdb.seed(REPORTS, [
+    reportDoc({ id: "e2e-summary-filters", title: "Filtered", owner: USER_A }),
+  ]);
+
+  let payload = null;
+  await page.route(
+    "**/api/endpoints/ai-reporting/summarize-report",
+    async (route) => {
+      payload = JSON.parse(route.request().postData()).payload;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          response: {
+            text: "Paid orders carry the revenue.",
+            scope: "Status: paid",
+            generatedAt: new Date().toISOString(),
+            excluded: [],
+          },
+        }),
+      });
+    },
+  );
+
+  await ldf.user(USER_A);
+  await ldf.goto("/ai-reporting/report?report_id=e2e-summary-filters");
+  await expect(page.getByRole("heading", { name: "Filtered" })).toBeVisible();
+
+  await pickStatus(page, "paid");
+  await expect(page.locator(".ant-select-content")).toContainText("paid");
+
+  await page.getByRole("button", { name: "AI summary" }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByRole("button", { name: "Generate summary" }).click();
+  await expect(
+    drawer.getByText("Paid orders carry the revenue."),
+  ).toBeVisible();
+  expect(payload.report_id).toBe("e2e-summary-filters");
+  expect(payload.filters).toEqual({ status: "paid" });
+  await expect(drawer.getByText("Filters changed")).toBeHidden();
+
+  // A filter change moves the numbers the summary describes.
+  await pickStatus(page, "pending");
+  await expect(drawer.getByText("Filters changed")).toBeVisible();
+});
+
+// The table beside the filter shows the same status values, so the option is
+// found inside the open dropdown rather than by its text alone.
+async function pickStatus(page, status) {
+  await page.getByRole("combobox").click();
+  await page
+    .locator(".ant-select-dropdown:visible .ant-select-item-option")
+    .filter({ hasText: new RegExp(`^${status}$`) })
+    .click();
+}

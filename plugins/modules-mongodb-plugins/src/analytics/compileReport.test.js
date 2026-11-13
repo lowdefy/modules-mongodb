@@ -244,9 +244,9 @@ test("compiles the full report to blocks", () => {
   expect(byId.report_filters).toBeUndefined();
   const idx = (id) => blocks.findIndex((b) => b.id === id);
   expect(byId.filters_s3_scope).toBeUndefined();
-  expect(idx("filter_status")).toBe(idx("filters_s3_reset") - 1);
+  expect(idx("filters.status")).toBe(idx("filters_s3_reset") - 1);
   expect(idx("filters_s3_reset")).toBe(idx("s3_heading") - 1);
-  const filter = byId.filter_status;
+  const filter = byId["filters.status"];
   expect(filter.type).toBe("Selector");
   expect(filter.layout).toEqual({ span: 24 });
   expect(filter.properties.title).toBe("Status");
@@ -262,7 +262,7 @@ test("compiles the full report to blocks", () => {
   expect(call.params.payload.report_id).toEqual({ __url_query: "report_id" });
   expect(call.params.payload.section_id).toBe("s3");
   expect(call.params.payload.filters).toEqual([
-    { field: "status", op: "eq", value: { __state: "filter_status" } },
+    { field: "status", op: "eq", value: { __state: "filters.status" } },
   ]);
   expect(set.type).toBe("SetState");
   expect(set.params["sections.s3.rows"]).toEqual({
@@ -611,7 +611,7 @@ describe("a filter driving a chart and a table", () => {
     chartEndpointId,
   });
   const byId = byIdOf(blocks);
-  const onChange = byId.filter_status.events.onChange;
+  const onChange = byId["filters.status"].events.onChange;
 
   test("the chart binds option and height, each falling back to the resolve-time value", () => {
     const chart = byId.s1;
@@ -644,7 +644,7 @@ describe("a filter driving a chart and a table", () => {
       // this report holds nothing else that would claim one.
       colors: {},
       filters: [
-        { field: "status", op: "eq", value: { __state: "filter_status" } },
+        { field: "status", op: "eq", value: { __state: "filters.status" } },
       ],
     });
     expect(set.params).toEqual({
@@ -691,7 +691,7 @@ describe("a filter driving a chart and a table", () => {
       report_id: { __url_query: "report_id" },
       section_id: "s2",
       filters: [
-        { field: "status", op: "eq", value: { __state: "filter_status" } },
+        { field: "status", op: "eq", value: { __state: "filters.status" } },
       ],
     });
     expect(set.params).toEqual({
@@ -869,7 +869,7 @@ describe("report-scoped colour identity", () => {
       // the chart alone.
       [statusRows],
     );
-    const [call] = byId.filter_status.events.onChange;
+    const [call] = byId["filters.status"].events.onChange;
     // Decided over the unfiltered rows, so a filter that drops a series cannot
     // repaint the ones that survive.
     expect(call.params.payload.colors).toEqual({
@@ -1287,7 +1287,7 @@ describe("provenance line", () => {
     // the filter would sit one small row gap under the previous section and a
     // full SECTION_TOP_GAP above the section it actually drives — reading as
     // though it filtered the one before it.
-    expect(byId.filter_status.style.marginTop).toBe(gap);
+    expect(byId["filters.status"].style.marginTop).toBe(gap);
     expect(byId.s3_heading.style?.marginTop).toBeUndefined();
     expect(byId.s3_download.style.marginTop).toBeUndefined();
     // s3 is a table, so the grid itself is the line under the head row.
@@ -1377,7 +1377,7 @@ describe("filter controls", () => {
   });
 
   // Controls are now flat top-level blocks interleaved above their sections, so
-  // `filters` and `byId` are the same flat map — a control by `filter_<field>`,
+  // `filters` and `byId` are the same flat map — a control by `filters.<field>`,
   // an options-failure Alert by the filter section's id.
   const filterRow = (spec, results) => {
     const blocks = compileReport({
@@ -1396,9 +1396,9 @@ describe("filter controls", () => {
 
   test("each control emits its own block type, all inline above their section", () => {
     const { filters } = filterRow(allControlsSpec(), [tableRows]);
-    expect(filters.filter_status.type).toBe("Selector");
-    expect(filters.filter_region.type).toBe("MultipleSelector");
-    expect(filters.filter_order_date.type).toBe("DateRangeSelector");
+    expect(filters["filters.status"].type).toBe("Selector");
+    expect(filters["filters.region"].type).toBe("MultipleSelector");
+    expect(filters["filters.order_date"].type).toBe("DateRangeSelector");
   });
 
   // `match` is the author's intent; the triple's op is the query it compiles to
@@ -1406,39 +1406,39 @@ describe("filter controls", () => {
   test("triples per control: eq, in / all, and a gte+lte pair", () => {
     const { filters } = filterRow(allControlsSpec(), [tableRows]);
     expect(
-      filters.filter_region.events.onChange[0].params.payload.filters,
+      filters["filters.region"].events.onChange[0].params.payload.filters,
     ).toEqual([
-      { field: "status", op: "eq", value: { __state: "filter_status" } },
-      { field: "region", op: "in", value: { __state: "filter_region" } },
+      { field: "status", op: "eq", value: { __state: "filters.status" } },
+      { field: "region", op: "in", value: { __state: "filters.region" } },
       {
         field: "order_date",
         op: "gte",
-        value: { __state: "filter_order_date.0" },
+        value: { __state: "filters.order_date.0" },
       },
       {
         field: "order_date",
         op: "lte",
-        value: { __state: "filter_order_date.1" },
+        value: { __state: "filters.order_date.1" },
       },
     ]);
 
     const all = filterRow(allControlsSpec("all"), [tableRows]);
     expect(
-      all.filters.filter_region.events.onChange[0].params.payload.filters,
+      all.filters["filters.region"].events.onChange[0].params.payload.filters,
     ).toContainEqual({
       field: "region",
       op: "all",
-      value: { __state: "filter_region" },
+      value: { __state: "filters.region" },
     });
 
     // `match: any` is the default a bare multiselect normalizes to.
     const any = filterRow(allControlsSpec("any"), [tableRows]);
     expect(
-      any.filters.filter_region.events.onChange[0].params.payload.filters,
+      any.filters["filters.region"].events.onChange[0].params.payload.filters,
     ).toContainEqual({
       field: "region",
       op: "in",
-      value: { __state: "filter_region" },
+      value: { __state: "filters.region" },
     });
   });
 
@@ -1478,11 +1478,11 @@ describe("filter controls", () => {
       ],
       tableRows,
     ]);
-    expect(filters.filter_company_id.properties.options).toEqual([
+    expect(filters["filters.company_id"].properties.options).toEqual([
       { label: "Beta", value: "c2" },
       { label: "Alpha", value: "c1" },
     ]);
-    expect(filters.filter_company_id.properties.title).toBe("Companies");
+    expect(filters["filters.company_id"].properties.title).toBe("Companies");
   });
 
   // A dropdown silently missing the company someone is looking for is
@@ -1493,10 +1493,10 @@ describe("filter controls", () => {
       (_, i) => ({ _id: `c${i}`, name: `Company ${i}` }),
     );
     const capped = filterRow(companySpec(), [rows, tableRows]);
-    expect(capped.filters.filter_company_id.properties.options).toHaveLength(
-      MAX_QUERY_FILTER_OPTIONS,
-    );
-    expect(capped.filters.filter_company_id.properties.title).toBe(
+    expect(
+      capped.filters["filters.company_id"].properties.options,
+    ).toHaveLength(MAX_QUERY_FILTER_OPTIONS);
+    expect(capped.filters["filters.company_id"].properties.title).toBe(
       `Companies — first ${MAX_QUERY_FILTER_OPTIONS}`,
     );
 
@@ -1504,7 +1504,9 @@ describe("filter controls", () => {
       rows.slice(0, MAX_QUERY_FILTER_OPTIONS),
       tableRows,
     ]);
-    expect(short.filters.filter_company_id.properties.title).toBe("Companies");
+    expect(short.filters["filters.company_id"].properties.title).toBe(
+      "Companies",
+    );
   });
 
   // Four ways an options list can be unusable, four descriptions: one message
@@ -1533,7 +1535,7 @@ describe("filter controls", () => {
     expect(filters.s0.type).toBe("Alert");
     expect(filters.s0.properties.message).toBe("Companies");
     expect(filters.s0.properties.description).toMatch(match);
-    expect(filters.filter_company_id).toBeUndefined();
+    expect(filters["filters.company_id"]).toBeUndefined();
     // The bound section still renders its resolve-time rows.
     expect(byId.s1.type).toBe("AgGridBalham");
   });
@@ -1566,8 +1568,8 @@ describe("filter controls", () => {
       ],
     };
     const { filters } = filterRow(spec, [null, tableRows]);
-    expect(filters.filter_status.type).toBe("Selector");
-    expect(filters.filter_status.properties.options).toEqual([
+    expect(filters["filters.status"].type).toBe("Selector");
+    expect(filters["filters.status"].properties.options).toEqual([
       "pending",
       "paid",
       "shipped",
@@ -1584,10 +1586,10 @@ describe("filter controls", () => {
       [{ _id: "c1", name: "Alpha" }],
       tableRows,
     ]);
-    const control = filters[`filter_${field}`];
+    const control = filters[`filters.${field}`];
     expect(control.type).toBe("MultipleSelector");
     expect(control.events.onChange[0].params.payload.filters).toEqual([
-      { field, op: "in", value: { __state: `filter_${field}` } },
+      { field, op: "in", value: { __state: `filters.${field}` } },
     ]);
   });
 
@@ -1624,7 +1626,7 @@ describe("filter controls", () => {
       roles,
       endpointId,
       chartEndpointId,
-    }).find((b) => b.id === "filter_status");
+    }).find((b) => b.id === "filters.status");
     expect(control.properties.options).toHaveLength(MAX_FILTER_OPTIONS);
     expect(control.properties.title).toBe(
       `Status — first ${MAX_FILTER_OPTIONS}`,
@@ -1670,7 +1672,7 @@ describe("filter controls", () => {
     };
     // The denial arrives as a null results entry — the resolver's :try caught it.
     // Denied → an Alert keyed by the filter section id (s0); allowed → the
-    // Selector keyed by filter_status.
+    // Selector keyed by filters.status.
     const compile = (viewerRoles) => {
       const byId = byIdOf(
         compileReport({
@@ -1682,7 +1684,7 @@ describe("filter controls", () => {
           chartEndpointId,
         }),
       );
-      return byId.filter_status ?? byId.s0;
+      return byId["filters.status"] ?? byId.s0;
     };
 
     const denied = compile(["analyst"]);
@@ -1738,24 +1740,24 @@ describe("filter placement", () => {
     // directly above its own group, neither divorced at the top, and each group
     // closes on its own Reset before the section it leads.
     expect(byId.report_filters).toBeUndefined();
-    expect(idx("filter_status")).toBe(idx("filters_s0_reset") - 1);
+    expect(idx("filters.status")).toBe(idx("filters_s0_reset") - 1);
     expect(idx("filters_s0_reset")).toBe(idx("s0_card") - 1);
-    expect(idx("filter_region")).toBe(idx("filters_s3_reset") - 1);
+    expect(idx("filters.region")).toBe(idx("filters_s3_reset") - 1);
     expect(idx("filters_s3_reset")).toBe(idx("s3_heading") - 1);
-    expect(idx("filter_status")).toBeGreaterThan(idx("report_title"));
+    expect(idx("filters.status")).toBeGreaterThan(idx("report_title"));
     // Single-bound: position carries it, so no scope note in either place.
-    expect(byId.filter_status.properties.title).toBe("Status");
-    expect(byId.filter_region.properties.title).toBe("Region");
-    expect(byId.filter_status.properties.label).toBeUndefined();
-    expect(byId.filter_region.properties.label).toBeUndefined();
+    expect(byId["filters.status"].properties.title).toBe("Status");
+    expect(byId["filters.region"].properties.title).toBe("Region");
+    expect(byId["filters.status"].properties.label).toBeUndefined();
+    expect(byId["filters.region"].properties.label).toBeUndefined();
     // Reset is per group too: a group clears its own filter and the sections it
     // drives, and nothing of the group beside it.
     expect(byId.filters_s0_reset.events.onClick[0].params).toEqual({
-      filter_status: null,
+      "filters.status": null,
       "sections.s0.rows": null,
     });
     expect(byId.filters_s3_reset.events.onClick[0].params).toEqual({
-      filter_region: null,
+      "filters.region": null,
       "sections.s3.rows": null,
     });
   });
@@ -1794,16 +1796,16 @@ describe("filter placement", () => {
     // ids: s0 filter, s1 kpi, s2 table. Bound to both — emitted exactly once,
     // above the first subscriber (the kpi), with the group's closing line
     // between it and that section.
-    expect(blocks.filter((b) => b.id === "filter_status")).toHaveLength(1);
-    expect(idx("filter_status")).toBe(idx("filters_s1_scope") - 1);
+    expect(blocks.filter((b) => b.id === "filters.status")).toHaveLength(1);
+    expect(idx("filters.status")).toBe(idx("filters_s1_scope") - 1);
     expect(idx("filters_s1_reset")).toBe(idx("s1_card") - 1);
     // The scope is stated once under the group rather than on the control, in a
     // muted line of its own. The title stays the plain label either way, so a
     // filter naming several sections cannot wrap its title and push its input
     // out of line with the control beside it. A group of one states its scope
     // the way a group of four does: one place to read it at every group size.
-    expect(byId.filter_status.properties.title).toBe("Status");
-    expect(byId.filter_status.properties.label).toBeUndefined();
+    expect(byId["filters.status"].properties.title).toBe("Status");
+    expect(byId["filters.status"].properties.label).toBeUndefined();
     expect(byId.filters_s1_scope).toMatchObject({
       type: "Paragraph",
       properties: { content: "Also filters: Orders", type: "secondary" },
@@ -1834,7 +1836,7 @@ describe("filter placement", () => {
       endpointId,
       chartEndpointId,
     });
-    const control = blocks.find((b) => b.id === "filter_status");
+    const control = blocks.find((b) => b.id === "filters.status");
     expect(control.properties.title).toBe("Status");
     expect(control.properties.label).toBeUndefined();
   });
@@ -1890,7 +1892,7 @@ describe("filter placement", () => {
       chartEndpointId,
     });
     const byId = byIdOf(blocks);
-    const control = byId.filter_company_id;
+    const control = byId["filters.company_id"];
     expect(control.properties.title).toBe(
       `Companies — first ${MAX_QUERY_FILTER_OPTIONS}`,
     );
@@ -1937,7 +1939,7 @@ describe("filter placement", () => {
         chartEndpointId,
       });
       return fields.map(
-        (field) => blocks.find((b) => b.id === `filter_${field}`).layout.span,
+        (field) => blocks.find((b) => b.id === `filters.${field}`).layout.span,
       );
     };
 
@@ -2016,7 +2018,7 @@ describe("filter placement", () => {
         chartEndpointId,
       });
       const byId = byIdOf(blocks);
-      const gaps = fields.map((f) => byId[`filter_${f}`].style?.marginTop);
+      const gaps = fields.map((f) => byId[`filters.${f}`].style?.marginTop);
       expect(gaps.slice(0, leading).every((g) => g > 0)).toBe(true);
       expect(new Set(gaps.slice(0, leading)).size).toBe(1);
       expect(gaps.slice(leading)).toEqual(
@@ -2063,9 +2065,9 @@ describe("filter placement", () => {
         chartEndpointId,
       });
       const byId = byIdOf(blocks);
-      expect(byId.filter_status.layout.span).toBe(12);
-      expect(byId.filter_region.layout.span).toBe(12);
-      expect(byId.filter_channel.layout.span).toBe(24);
+      expect(byId["filters.status"].layout.span).toBe(12);
+      expect(byId["filters.region"].layout.span).toBe(12);
+      expect(byId["filters.channel"].layout.span).toBe(24);
     });
 
     // A filter that loses its options is replaced by an Alert. It takes the
@@ -2109,7 +2111,7 @@ describe("filter placement", () => {
       const byId = byIdOf(blocks);
       expect(byId.s0.type).toBe("Alert");
       expect(byId.s0.layout.span).toBe(12);
-      expect(byId.filter_status.layout.span).toBe(12);
+      expect(byId["filters.status"].layout.span).toBe(12);
     });
   });
 
@@ -2163,7 +2165,7 @@ describe("filter placement", () => {
         }),
       );
     const notes = (byId, fields) =>
-      fields.map((field) => byId[`filter_${field}`].properties.label);
+      fields.map((field) => byId[`filters.${field}`].properties.label);
 
     // Every control drives the same two sections, so every per-control note
     // would have read identically. One line says it for all of them.
@@ -2251,27 +2253,22 @@ describe("filter placement", () => {
       // The union of what the group's filters drive, wider than any one
       // control's: status alone would leave the chart showing filtered data.
       expect(reset.params).toEqual({
-        filter_status: null,
-        filter_region: null,
+        "filters.status": null,
+        "filters.region": null,
         "sections.s2.rows": null,
         "sections.s3.option": null,
         "sections.s3.height": null,
         "sections.s4.rows": null,
-        // Reset moves the numbers too, so the AI summary's record of this
-        // group's values goes with the controls and a shown summary is stale.
-        // The whole map, keyed by field string like the onChange writes it,
-        // with this group's fields as literal nulls.
-        "summary.filter_values": { status: null, region: null },
+        // Reset moves the numbers too, so a shown summary is stale.
         "summary.stale": true,
       });
       // The invariant behind those keys, asserted against the re-query that
       // writes them: a key a filter change can write and Reset does not clear is
-      // a section still showing filtered data after a Reset. The summary keys
-      // are asserted literally above — onChange writes the whole map with live
-      // reads, Reset rewrites it with the group's fields nulled.
+      // a section still showing filtered data after a Reset. The summary key is
+      // asserted literally above.
       const written = new Set();
       for (const field of ["status", "region"]) {
-        for (const action of byId[`filter_${field}`].events.onChange) {
+        for (const action of byId[`filters.${field}`].events.onChange) {
           if (action.type === "SetState") {
             Object.keys(action.params)
               .filter((key) => !key.startsWith("summary."))
@@ -2283,15 +2280,14 @@ describe("filter placement", () => {
         new Set(
           Object.keys(reset.params).filter((k) => !k.startsWith("summary.")),
         ),
-      ).toEqual(new Set([...written, "filter_status", "filter_region"]));
+      ).toEqual(new Set([...written, "filters.status", "filters.region"]));
     });
 
     // Two groups, one with a dotted field: Reset on one group nulls only its own
-    // fields and keeps a live read for the other group's, in the same
-    // string-keyed map the onChange writes. A dot-path per field would have
-    // nested `owner.user_id` beside the literal key and left the old value for
-    // the next Generate.
-    test("Reset rewrites the summary map: its own fields null, the other group's a live read, dotted fields kept as one key", () => {
+    // control, at the same path the control writes, and leaves the other
+    // group's alone — the drawer sends `filters` as it stands, so whatever
+    // Reset leaves there is what the next Generate summarizes.
+    test("Reset nulls only its own group's controls, a dotted field at its path", () => {
       const byId = compile(
         [
           select("owner.user_id"),
@@ -2301,14 +2297,10 @@ describe("filter placement", () => {
         ],
         [[{ total: 5 }], tableRows],
       );
+      expect(byId["filters.owner.user_id"].type).toBe("Selector");
       const [reset] = byId.filters_s2_reset.events.onClick;
-      expect(reset.params["summary.filter_values"]).toEqual({
-        "owner.user_id": null,
-        region: { __state: "filter_region" },
-      });
-      expect(Object.keys(reset.params)).not.toContainEqual(
-        expect.stringMatching(/^summary\.filter_values\./),
-      );
+      expect(reset.params["filters.owner.user_id"]).toBeNull();
+      expect(Object.keys(reset.params)).not.toContain("filters.region");
     });
 
     // The arithmetic filterSpans exists for, applied to what follows the
@@ -2349,7 +2341,7 @@ describe("filter placement", () => {
       );
       expect(byId.s1.type).toBe("Alert");
       expect(byId.filters_s1_reset).toBeUndefined();
-      expect(byId.filter_status.layout.span).toBe(24);
+      expect(byId["filters.status"].layout.span).toBe(24);
     });
   });
 
@@ -3135,7 +3127,7 @@ describe("layout derivation", () => {
     );
     const byId = byIdOf(blocks);
     expect(byId.s1_box.layout.span).toBe(12);
-    const [call] = byId.filter_status.events.onChange;
+    const [call] = byId["filters.status"].events.onChange;
     expect(call.params.payload.width).toBe(chartWidthForSpan(12));
   });
 
@@ -3582,12 +3574,12 @@ describe("AI summary", () => {
       actions
         .filter((a) => a.type === "SetState")
         .flatMap((a) => Object.keys(a.params));
-    expect(writes(off.filter_status.events.onChange)).not.toContainEqual(
+    expect(writes(off["filters.status"].events.onChange)).not.toContainEqual(
       expect.stringMatching(/^summary\./),
     );
-    expect(off.filter_status.events.onChange.map((a) => a.id)).not.toContain(
-      "mark_summary_stale",
-    );
+    expect(
+      off["filters.status"].events.onChange.map((a) => a.id),
+    ).not.toContain("mark_summary_stale");
     const reset = Object.values(off).find((b) =>
       /^filters_.*_reset$/.test(b.id),
     );
@@ -3605,33 +3597,31 @@ describe("AI summary", () => {
     expect(byId.report_summary.properties.type).toBe("default");
   });
 
-  test("the button seeds the drawer's filter values from the live controls, then opens the static drawer by id", () => {
-    const [seed, open] = byId.report_summary.events.onClick;
-    expect(seed.type).toBe("SetState");
-    expect(seed.params).toEqual({
-      "summary.filter_values": { status: { __state: "filter_status" } },
-    });
-    expect(open).toEqual({
-      id: "open_summary_drawer",
-      type: "CallMethod",
-      params: {
-        blockId: "report_summary_drawer",
-        method: "setOpen",
-        args: [{ open: true }],
+  // The drawer reads the controls' own `filters` state when it generates, so
+  // the button only opens it: compiled content never copies a filter value
+  // into other state, which the report policy refuses for a select whose
+  // options are data.
+  test("the button opens the static drawer by id and writes no state", () => {
+    expect(byId.report_summary.events.onClick).toEqual([
+      {
+        id: "open_summary_drawer",
+        type: "CallMethod",
+        params: {
+          blockId: "report_summary_drawer",
+          method: "setOpen",
+          args: [{ open: true }],
+        },
       },
-    });
+    ]);
   });
 
-  test("every filter's onChange ends by refreshing the values and marking the summary stale", () => {
-    const onChange = byId.filter_status.events.onChange;
+  test("every filter's onChange ends by marking the summary stale", () => {
+    const onChange = byId["filters.status"].events.onChange;
     const last = onChange[onChange.length - 1];
     expect(last).toEqual({
       id: "mark_summary_stale",
       type: "SetState",
-      params: {
-        "summary.filter_values": { status: { __state: "filter_status" } },
-        "summary.stale": true,
-      },
+      params: { "summary.stale": true },
     });
     // After the re-queries, never before: a throwing CallAPI must leave the
     // summary describing the numbers still on screen.
@@ -3643,24 +3633,31 @@ describe("AI summary", () => {
     );
   });
 
-  test("a report with no filters seeds an empty map", () => {
-    const unfiltered = compileReport({
-      spec: {
-        title: "Plain",
-        sections: [
-          { type: "kpi", label: "Total", query: orderTotal, valueKey: "total" },
-        ],
-      },
-      results: [[{ total: 1 }]],
-      roles,
-      endpointId,
-      chartEndpointId,
-      ai_summary: true,
-    });
-    const button = byIdOf(unfiltered).report_summary;
-    expect(button.events.onClick[0].params).toEqual({
-      "summary.filter_values": {},
-    });
+  // The policy check that matters: no compiled SetState reads filter state.
+  // A read of a data-filled input anywhere but a CallAPI payload, a skip or a
+  // condition costs the block that carries it.
+  test("no SetState in compiled content reads a filter's state", () => {
+    const reads = [];
+    const walk = (value, inSetState) => {
+      if (Array.isArray(value)) {
+        value.forEach((item) => walk(item, inSetState));
+        return;
+      }
+      if (value === null || typeof value !== "object") return;
+      if (
+        inSetState &&
+        typeof value.__state === "string" &&
+        value.__state.startsWith("filters.")
+      ) {
+        reads.push(value.__state);
+      }
+      const isSetState = value.type === "SetState";
+      Object.values(value).forEach((child) =>
+        walk(child, inSetState || isSetState),
+      );
+    };
+    walk(blocks, false);
+    expect(reads).toEqual([]);
   });
 });
 
@@ -4007,7 +4004,7 @@ describe("policy refusals", () => {
       chartEndpointId,
     };
     const first = compileReport(args);
-    const controlIndex = indexOf(first, "filter_region");
+    const controlIndex = indexOf(first, "filters.region");
     const blocks = compileReport({
       ...args,
       policyErrors: [
@@ -4017,7 +4014,7 @@ describe("policy refusals", () => {
         },
       ],
     });
-    expect(blocks.find((b) => b.id === "filter_region")).toBeUndefined();
+    expect(blocks.find((b) => b.id === "filters.region")).toBeUndefined();
     const alert = blocks.find((b) => b.id === "s0");
     expect(alert.type).toBe("Alert");
     expect(blocks.find((b) => b.id === "s1").type).toBe("AgGridBalham");

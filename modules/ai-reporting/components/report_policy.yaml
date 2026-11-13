@@ -91,3 +91,10 @@ limits:
   # content over it render as Alerts, in spec order, rather than failing the
   # report.
   bytes: 8000000
+  # A filter's onChange re-queries every section it drives, two actions each,
+  # then marks the AI summary stale: 2 × 23 + 1 for one filter driving every
+  # other section of a 24-section report (MAX_SECTIONS). An event over the limit
+  # costs the block that carries it, so under the default 20 a filter driving
+  # ten sections rendered as an Alert. compileReport.declared.test.js holds this
+  # to the longest event the compiler emits.
+  actionsPerEvent: 47
