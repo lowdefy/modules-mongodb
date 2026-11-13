@@ -207,6 +207,11 @@ agents:
     connectionId: ai_gateway
     properties:
       model: anthropic/claude-haiku-4-5
+      # What the ai-assistant docs ask of an app's agent: chats can carry personal
+      # information, so route only to Anthropic under zero data retention.
+      zeroDataRetention: true
+      only:
+        - anthropic
       maxSteps: 4
       instructions: >-
         You are the assistant in the Lowdefy modules-mongodb tenant demo app.

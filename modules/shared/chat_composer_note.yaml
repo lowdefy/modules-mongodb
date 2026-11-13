@@ -1,0 +1,27 @@
+# The AI chat modules' composer note (ai-assistant and ai-reporting): the
+# module's `composer_note` var when the app set one, else the default notice
+# with the module's `retention_days` and, when `privacy_notice_url` is set, a
+# Privacy Notice link that opens in a new tab.
+#
+# Rendered as HTML by a Paragraph. `_nunjucks` escapes the URL. The link says
+# `data-new-tab` rather than `target`: the HTML sanitiser strips `target`, and
+# Lowdefy's link enhancer opens a `data-new-tab` link in a new tab.
+_build.if:
+  test:
+    _build.eq:
+      - _module.var: composer_note
+      - null
+  then:
+    _nunjucks:
+      template: >-
+        Don't enter personal information such as names, ID or employee numbers,
+        salaries or contact details. Chats are processed by an AI service and
+        kept for {{ retention_days }} days.{% if privacy_notice_url %}
+        <a href="{{ privacy_notice_url }}" data-new-tab>Privacy Notice</a>{% endif %}
+      on:
+        retention_days:
+          _module.var: retention_days
+        privacy_notice_url:
+          _module.var: privacy_notice_url
+  else:
+    _module.var: composer_note

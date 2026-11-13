@@ -5,6 +5,24 @@ connectionId:
 properties:
   model:
     _module.var: model
+  # Every turn sends app data to the model: route it only to providers that keep
+  # nothing (zero_data_retention) and only to the providers the app agreed to
+  # (providers, the gateway's `only`; an empty list for any).
+  providerOptions:
+    gateway:
+      _build.object.assign:
+        - zeroDataRetention:
+            _module.var: zero_data_retention
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _module.var: providers
+                - 0
+            then:
+              only:
+                _module.var: providers
+            else: {}
   maxSteps: 12
   # Generate a concise AI title from the first user message on the first turn.
   # The block's onTitleGenerated event persists it via set-conversation-title;

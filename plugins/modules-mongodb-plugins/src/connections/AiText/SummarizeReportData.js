@@ -16,6 +16,8 @@
 import { createGateway } from "@ai-sdk/gateway";
 import { generateText } from "ai";
 
+import gatewayOptions, { gatewaySchemaProperties } from "./gatewayOptions.js";
+
 const DEFAULT_MODEL = "anthropic/claude-sonnet-5";
 
 const INSTRUCTIONS = `You write short readings of business reports for the people who use them.
@@ -47,6 +49,14 @@ export function buildPrompt({
   return lines.join("\n");
 }
 
+// The report's rows can carry personal data, so the routing options go with
+// the call. Returned spread into generateText's arguments: no key at all when
+// the request asks for none.
+export function buildProviderOptions(request) {
+  const gateway = gatewayOptions(request);
+  return gateway ? { providerOptions: { gateway } } : {};
+}
+
 async function SummarizeReportData({ connection, request }) {
   if (!connection?.apiKey) {
     throw new Error(
@@ -60,6 +70,7 @@ async function SummarizeReportData({ connection, request }) {
     model: createGateway({ apiKey: connection.apiKey })(
       request.model || DEFAULT_MODEL,
     ),
+    ...buildProviderOptions(request),
     system: INSTRUCTIONS,
     prompt: buildPrompt(request),
   });
@@ -97,6 +108,7 @@ SummarizeReportData.schema = {
       type: ["string", "null"],
       description: "Gateway model id (provider/model).",
     },
+    ...gatewaySchemaProperties,
   },
 };
 SummarizeReportData.meta = { checkRead: false, checkWrite: false };

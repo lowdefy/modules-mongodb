@@ -402,7 +402,17 @@ blocks:
           #
           # maxWidth widened from the original ~62ch measure on request. antd's
           # body fontSize is 14px; this caps the transcript column and composer.
-          height: var(--layout-content-height, 100dvh)
+          #
+          # The composer note below takes 56px and the column's 16px gap from it, so the
+          # row still ends at the content area's bottom edge.
+          height:
+            _build.if:
+              test:
+                _build.eq:
+                  - _module.var: composer_note
+                  - false
+              then: var(--layout-content-height, 100dvh)
+              else: calc(var(--layout-content-height, 100dvh) - 72px)
           maxWidth: 620
           # The two-track teaching empty state, rendered by the block inside the
           # message scroll area: it is the transcript's leading item, so it
@@ -544,6 +554,35 @@ blocks:
                       title:
                         _event: title
               - _ref: pages/chat/actions/refresh_conversations.yaml
+      # What not to type and how chats are handled, under the composer and as wide as it.
+      # Hidden with the chat while a conversation loads, so it never sits under the skeleton.
+      - id: composer_note
+        type: Paragraph
+        visible:
+          _build.ne:
+            - _module.var: composer_note
+            - false
+        style:
+          display:
+            _if:
+              test:
+                _eq:
+                  - _state: loading_conversation
+                  - true
+              then: none
+              else: null
+          .element:
+            margin: 0 auto
+            maxWidth: 620px
+            minHeight: 56px
+            padding: 0 16px
+            boxSizing: border-box
+            fontSize: 12px
+            lineHeight: 1.4
+        properties:
+          type: secondary
+          content:
+            _ref: ../shared/chat_composer_note.yaml
   - id: results_panel
     type: Box
     properties:

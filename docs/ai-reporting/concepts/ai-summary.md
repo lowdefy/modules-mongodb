@@ -48,7 +48,7 @@ modules:
       ai_summary: true
 ```
 
-The call goes through the module's `ai-text` connection (type `AiText`, from [`@lowdefy/modules-mongodb-plugins`](../../plugins/index.md#aitext-connection)), keyed by the same `AI_GATEWAY_API_KEY` secret as the agent's `ai` connection, and uses the module's `model` var. An app that remaps `ai` to its own gateway remaps `ai-text` the same way:
+The call goes through the module's `ai-text` connection (type `AiText`, from [`@lowdefy/modules-mongodb-plugins`](../../plugins/index.md#aitext-connection)), keyed by the same `AI_GATEWAY_API_KEY` secret as the agent's `ai` connection, and uses the module's `model` var. It routes like the agent: zero data retention and only the `providers` (Anthropic by default), from the `zero_data_retention` and `providers` vars. An app that remaps `ai` to its own gateway remaps `ai-text` the same way:
 
 ```yaml
 modules:

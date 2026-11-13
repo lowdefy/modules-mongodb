@@ -135,6 +135,16 @@ A typed question that looks like personal information (an email address, an ID, 
 
 `on_before_send` adds the app's own checks to the send, after the guard: a list of actions on the chat's `onBeforeSend`, whose event is `{ text, files, messages, switches }`. `Throw` refuses the send. It runs in the browser and the follow-up suggestion chip sends without it, so a quota or entitlement check must also be enforced where the agent runs.
 
+A short note sits under the composer. By default it reads:
+
+> Don't enter personal information such as names, ID or employee numbers, salaries or contact details. Chats are processed by an AI service and kept for 90 days. Privacy Notice
+
+The number is `retention_days` (default 90; declare the conversations collection's TTL index with the same period, see [Expected indexes](reference/indexes.md)). "Privacy Notice" links `privacy_notice_url` and opens it in a new tab; with no URL set the link is left out. `composer_note` replaces the note with your own text (HTML allowed), and `composer_note: false` hides it.
+
+### The model provider
+
+The reporting assistant and the report page's AI summary send app data to the model. Both go through the AI Gateway with zero data retention and only to Anthropic by default (`zero_data_retention: true`, `providers: [anthropic]`), so neither the gateway nor the provider keeps prompts or outputs, and the gateway cannot route to another host of the same model, such as Amazon Bedrock or Google Vertex, which would add a sub-processor. `model` must be a model those providers serve. Change them only with the customer's written agreement.
+
 ## Concepts
 
 - [The open query engine](concepts/open-query-engine.md) — the pipeline model, the three default-deny grammars, resource caps, the always-appended row limit, the two-layer security model, and the grain/fan-out risk

@@ -168,12 +168,30 @@ vars:
       the endpoint must check each key is one the caller may read before
       signing it. Null (the default) leaves stored links as they are.
   composer_note:
-    type: string
     default: null
     description: >-
       A short fixed note (a sentence or two) of small text under the composer
-      in both shells, e.g. what not to type into the chat. Always visible with
-      the conversation, and never added to it. Null for none.
+      in both shells: what not to type, and how chats are handled. Always
+      visible with the conversation, and never added to it. Null (the default)
+      shows the module's notice: "Don't enter personal information such as
+      names, ID or employee numbers, salaries or contact details. Chats are
+      processed by an AI service and kept for {retention_days} days. Privacy
+      Notice", with Privacy Notice linking `privacy_notice_url` in a new tab. A
+      string replaces it (HTML allowed); `false` hides it. An app that turns on
+      `sender_attachments` or `screenshot` says here that files are kept too.
+  privacy_notice_url:
+    type: string
+    default: null
+    description: >-
+      URL of the app's privacy notice, linked from the default composer note
+      and opened in a new tab. Null leaves the link out.
+  retention_days:
+    type: number
+    default: 90
+    description: >-
+      How many days a thread is kept from when it started. The default
+      composer note states it; the TTL index the app declares on the threads
+      collection must use the same period.
   thinking_messages:
     type: array
     default: []
@@ -414,15 +432,29 @@ vars:
       "a staffing and payroll tool". Null for a generic prompt.
   title_model:
     type: string
-    default: openai/gpt-5-mini
-    description: Gateway model id for the titling call. Small and fast is the right choice.
+    default: anthropic/claude-haiku-4.5
+    description: >-
+      Gateway model id for the titling call. Small and fast is the right
+      choice. Must be a model one of `title_providers` serves.
   title_zero_data_retention:
     type: boolean
-    default: false
+    default: true
     description: >-
-      Route the titling call only to gateway providers with a zero data
-      retention policy. It is sent the first question and reply, so set this
-      where the agent itself sets `zeroDataRetention`.
+      Route the titling call only to gateway providers under a zero data
+      retention agreement. It is sent the first question and reply, so set it
+      as the agent itself sets `zeroDataRetention`, and turn it off only with
+      the customer's written agreement.
+  title_providers:
+    type: array
+    items:
+      type: string
+    default:
+      - anthropic
+    description: >-
+      Gateway providers the titling call may be routed to (the gateway's
+      `only` option). The default keeps it on Anthropic's own API, as the
+      agent should be (`only: [anthropic]` on the app's agent). An empty list
+      allows any provider.
 
   collection:
     type: string

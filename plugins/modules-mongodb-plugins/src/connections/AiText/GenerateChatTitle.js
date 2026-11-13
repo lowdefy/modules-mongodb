@@ -17,6 +17,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 
 import cleanTitle, { MAX_TITLE_CHARS } from "./cleanTitle.js";
+import gatewayOptions, { gatewaySchemaProperties } from "./gatewayOptions.js";
 
 const DEFAULT_MODEL = "openai/gpt-5-mini";
 const DEFAULT_EFFORT = "low";
@@ -57,12 +58,13 @@ Examples:
 
 // The exchange can carry personal data, and a gateway model can have providers
 // that retain it, so an app under a DPA restricts routing to ones that don't.
-export const buildProviderOptions = (request) => ({
-  openai: { reasoningEffort: request.reasoningEffort || DEFAULT_EFFORT },
-  ...(request.zeroDataRetention === true && {
-    gateway: { zeroDataRetention: true },
-  }),
-});
+export const buildProviderOptions = (request) => {
+  const gateway = gatewayOptions(request);
+  return {
+    openai: { reasoningEffort: request.reasoningEffort || DEFAULT_EFFORT },
+    ...(gateway && { gateway }),
+  };
+};
 
 async function GenerateChatTitle({ connection, request }) {
   if (!connection?.apiKey) {
@@ -118,11 +120,7 @@ GenerateChatTitle.schema = {
       description: "Gateway model id. Small and fast is the right choice.",
     },
     reasoningEffort: { type: ["string", "null"] },
-    zeroDataRetention: {
-      type: ["boolean", "null"],
-      description:
-        "Route only to gateway providers with a zero data retention policy.",
-    },
+    ...gatewaySchemaProperties,
   },
 };
 GenerateChatTitle.meta = { checkRead: false, checkWrite: false };

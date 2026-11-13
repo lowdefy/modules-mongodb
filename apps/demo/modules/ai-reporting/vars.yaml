@@ -69,3 +69,7 @@ welcome:
     - Which region has the highest total sales?
     - How many activities were logged in the last month?
     - List the top 5 companies by number of contacts.
+
+# Linked from the default composer note, which opens it in a new tab. A stand-in: the demo has
+# no privacy notice of its own.
+privacy_notice_url: https://example.com/privacy
