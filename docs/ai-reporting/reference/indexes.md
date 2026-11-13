@@ -25,6 +25,30 @@ Field order follows **equality, then sort, then range** — a non-point predicat
 
 The collection names come from the [`reports_collection` and `conversations_collection`](vars.md) vars.
 
+## Retention: TTL indexes
+
+Conversations are kept for a fixed period from when they started, then removed by a TTL index. `expireAfterSeconds` is `retention_days` × 86400; 7776000 is the default 90 days.
+
+| Collection    | TTL index                                                   | Removes                                     |
+| ------------- | ----------------------------------------------------------- | ------------------------------------------- |
+| conversations | `{ 'created.timestamp': 1 }`, `expireAfterSeconds: 7776000` | Each conversation, 90 days after it started |
+| `ai_usage`    | `{ timestamp: 1 }`, `expireAfterSeconds: 7776000`           | Token usage rows, after the same period     |
+
+```js
+db.getCollection("<conversations collection>").createIndex(
+  { "created.timestamp": 1 },
+  { expireAfterSeconds: 7776000 },
+);
+```
+
+**On `created.timestamp`, not `created`.** `created` is a change stamp object (`{ timestamp, user }`), and a TTL index on a field that is not a Date never removes anything. Every writer that can create a conversation (`save-conversation` and `set-conversation-title`) stamps `created.timestamp` as a Date.
+
+**On creation, not last activity.** Every turn's save and every title write move `updated`, so a TTL on `updated.timestamp` would never remove a conversation still in use, and its oldest messages would outlive the period the notice states. A conversation still in use is removed when its period runs out, and the person starts a new one.
+
+**Replace, don't add.** Replace any TTL index the collection already has rather than adding this one beside it. Each TTL index removes rows on its own, so an older one keeps deleting on its own schedule and the stated period stops being the real one. An existing index on the same key with another period is changed with `collMod`, or dropped and created again; creating it with a new `expireAfterSeconds` fails.
+
+**Delete.** Deleting a conversation clears its `messages`, `data_parts` and `title` in the same write that stamps `deleted`, and leaves the empty row for the TTL. The writers (`save-conversation`, `set-conversation-title` and `emit-data-parts`) skip a deleted row, so a reply that finishes after the delete writes nothing back. Saved reports are not chats: they keep their soft delete and no TTL.
+
 ## The caveat that matters more than the table
 
 **These serve the `$match`, not the default sort, and the default sort cannot be indexed at all.**
