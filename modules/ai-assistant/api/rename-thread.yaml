@@ -39,12 +39,21 @@ routine:
           $exists: false
       update:
         $set:
+          # Masked: the user types this title, and the endpoint can be called directly.
           title:
-            _payload: title
+            _ref:
+              path: ../shared/mask_text.yaml
+              vars:
+                text:
+                  _payload: title
           updated:
             _date: now
   - :return:
       conversationId:
         _payload: conversationId
       title:
-        _payload: title
+        _ref:
+          path: ../shared/mask_text.yaml
+          vars:
+            text:
+              _payload: title

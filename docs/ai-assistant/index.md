@@ -410,7 +410,7 @@ The merge is a read then a write, so two saves to one thread within a few millis
 
 The browser guard stops what an honest user types, but anyone signed in can call the module's endpoints or the agent route directly. So personal information is also masked on the server, with the same `pii_patterns`: every match in a text part becomes `[removed]`.
 
-- **Stored threads.** `save-thread` and `save-thread-on-finish` mask every message's text parts before they merge it with the stored history, and `save-thread` masks the title it stores on a new thread. `title-thread` masks the exchange before the titling model sees it, and the title before it is stored.
+- **Stored threads.** `save-thread` and `save-thread-on-finish` mask every message's text parts before they merge it with the stored history, and `save-thread` masks the title it stores on a new thread. `title-thread` masks the exchange before the titling model sees it, and the title before it is stored, and `rename-thread` masks the name a user types.
 - **What the model sees.** The agent is the app's, so the app sets its `redact`, with the module's `agent-redact` component:
 
   ```yaml

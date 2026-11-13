@@ -92,6 +92,31 @@ test("save-thread-on-finish stores the reply masked", async ({
   expect(textsOf(doc.messages)).toEqual([MASKED_ID, MASKED_PHONE]);
 });
 
+test("rename-thread stores and returns a masked title", async ({
+  ldf,
+  page,
+  mdb,
+}) => {
+  await ldf.user(USER);
+  await post(page, "save-thread", {
+    conversationId: "e2e-mask-rename",
+    messages: [text("q1", "user", "hello")],
+    known_ids: ["q1"],
+    title: "Stored title",
+    scope: "demo",
+    tag: null,
+  });
+  const { body } = await post(page, "rename-thread", {
+    conversationId: "e2e-mask-rename",
+    title: PHONE_TEXT,
+  });
+  expect(body?.response?.title).toBe(MASKED_PHONE);
+  const doc = await mdb
+    .collection(THREADS)
+    .findOne({ conversationId: "e2e-mask-rename" });
+  expect(doc.title).toBe(MASKED_PHONE);
+});
+
 test("a file part passes through unmasked", async ({ ldf, page, mdb }) => {
   await ldf.user(USER);
   const file = {
