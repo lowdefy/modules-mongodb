@@ -42,10 +42,27 @@ routine:
           _payload: conversationId
         owner.user_id:
           _user: id
+        deleted.timestamp:
+          $exists: false
       options:
         projection:
           data_parts: 1
           messages: 1
+  # A deleted conversation opens as an empty one, by deep link too, and its
+  # saved reports drop out of the chat's section; they stay in the reports list.
+  - :if:
+      _eq:
+        - _if_none:
+            - _step: load
+            - null
+        - null
+    :then:
+      - :return:
+          messages: []
+          charts: []
+          tables: []
+          downloads: []
+          saved_reports: []
   # The caller's reports for this conversation, owner-scoped and not-deleted —
   # the reports-store "mine" predicate (see list-reports.yaml). A plain find,
   # not an aggregation: no computed fields, so a projection is the whole job.

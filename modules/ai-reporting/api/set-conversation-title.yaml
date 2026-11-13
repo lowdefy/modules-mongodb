@@ -43,6 +43,32 @@ routine:
     :then:
       - :return:
           skipped: true
+  # A conversation deleted while its reply was streaming stays deleted: its
+  # text was cleared and this write must not put it back. Read first rather
+  # than filtering the upsert on deleted.timestamp, because an upsert whose
+  # filter misses inserts a second row instead of skipping.
+  - id: load_conversation
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: conversations-store
+    properties:
+      query:
+        _id:
+          _payload: conversationId
+        owner.user_id:
+          _user: id
+      options:
+        projection:
+          deleted: 1
+  - :if:
+      _ne:
+        - _if_none:
+            - _step: load_conversation.deleted.timestamp
+            - null
+        - null
+    :then:
+      - :return:
+          skipped: true
   - id: set_title
     type: MongoDBUpdateOne
     connectionId:

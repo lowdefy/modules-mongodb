@@ -244,6 +244,12 @@ routine:
             # a caller $push parts into another user's conversation.
             owner.user_id:
               _user: id
+            # A conversation deleted while this turn ran keeps no parts.
+            deleted.timestamp:
+              $exists: false
+          # Matching nothing is expected (deleted, or not this user's), and a
+          # throw here would drop the turn's streamed parts too.
+          disableNoMatchError: true
           update:
             $push:
               data_parts:
