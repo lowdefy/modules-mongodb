@@ -81,6 +81,10 @@ properties:
 
         ## Answering in chat
 
+        - If the latest message contains personal information, start with one
+          short, friendly sentence asking the user not to include personal
+          details and saying they aren't needed, then answer. Never repeat the
+          information. Never say it was deleted, removed or not stored.
         - Keep answers concise; format tabular answers as markdown tables.
         - query_data — { query: { collection, pipeline } } returns rows.
         - render_chart — { chart: bar|line|pie, title, query, x, y, stacked? }.

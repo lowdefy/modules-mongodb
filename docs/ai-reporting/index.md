@@ -129,6 +129,12 @@ auth:
 
 Role-gate individual collections with `roles` in the [catalog](reference/catalog.md#roles-semantics) — that is enforced by the engine on every touched collection, including `$lookup` targets.
 
+### Personal information in questions
+
+A typed question that looks like personal information (an email address, an ID, account or phone number, a passport number) is refused in the browser before it is sent: the chat shows `pii_guard_message` and keeps the text in the composer. It is on by default (`pii_guard: true`); `pii_patterns` replaces the pattern list. When a message with personal information gets through, the agent opens its answer with a short reminder that personal details aren't needed, and never repeats them. [Personal information in AI chats](../shared/personal-information.md) has the list, what it blocks and lets through, and its limits.
+
+`on_before_send` adds the app's own checks to the send, after the guard: a list of actions on the chat's `onBeforeSend`, whose event is `{ text, files, messages, switches }`. `Throw` refuses the send. It runs in the browser and the follow-up suggestion chip sends without it, so a quota or entitlement check must also be enforced where the agent runs.
+
 ## Concepts
 
 - [The open query engine](concepts/open-query-engine.md) — the pipeline model, the three default-deny grammars, resource caps, the always-appended row limit, the two-layer security model, and the grain/fan-out risk
@@ -151,4 +157,5 @@ Role-gate individual collections with `roles` in the [catalog](reference/catalog
 
 ## Shared idioms
 
+- [Personal information in AI chats](../shared/personal-information.md) — the `pii_guard` check on every typed question, its patterns and their limits
 - [Secrets](../shared/secrets.md) — `REPORTING_MONGODB_URI`, `REPORTING_DATA_MONGODB_URI` (the read-only principal), and `AI_GATEWAY_API_KEY`

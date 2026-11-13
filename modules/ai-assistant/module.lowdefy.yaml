@@ -262,6 +262,32 @@ vars:
       here to refuse the send. It runs in the browser and only for a typed message: welcome
       prompts, suggestions, regenerate and edit send without it. So it can turn a user away
       early, but a quota or entitlement check must also be enforced where the agent runs.
+      Runs after the personal-information guard (`pii_guard`).
+  pii_guard:
+    type: boolean
+    default: true
+    description: >-
+      Refuse a typed message that matches `pii_patterns`, in the browser, before it is
+      sent: the chat shows `pii_guard_message` and keeps the text in the composer.
+      Message editing and the block's `sendMessage` method skip this check, so keep
+      editing off (`message_display.actions` without `edit`) while it is on. See
+      docs/shared/personal-information.md.
+  pii_patterns:
+    type: array
+    items:
+      type: string
+    default:
+      _ref: ../shared/pii_patterns.yaml
+    description: >-
+      Regex sources (JavaScript syntax) for personal information, joined with `|`
+      into one regex in this order. The default catches email addresses, nine or
+      more digits with only spaces between them, South African phone numbers and
+      South African passport numbers. Setting it replaces the whole list. See
+      docs/shared/personal-information.md for what passes and what is blocked.
+  pii_guard_message:
+    type: string
+    default: This looks like personal information. Please remove it and describe the task instead.
+    description: The message shown when `pii_guard` refuses a send.
   on_user_message:
     type: array
     default: []

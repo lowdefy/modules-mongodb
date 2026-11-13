@@ -459,6 +459,11 @@ blocks:
                   label: Turn this conversation into a report
                   description: The assistant drafts a saved report from what you've explored
         events:
+          # The personal-information guard first, then the app's own checks.
+          onBeforeSend:
+            _build.array.concat:
+              - _ref: ../shared/pii_guard.yaml
+              - _module.var: on_before_send
           onDataPart:
             - id: append_chart
               type: SetState

@@ -1,0 +1,22 @@
+# The default personal-information patterns of the AI chat modules (ai-assistant
+# and ai-reporting), the `pii_patterns` var's default. pii_regex.yaml joins them
+# with `|` into one regex, which the browser guard tests a message against and
+# the server masks with, so the two never drift apart. docs/shared/personal-information.md
+# lists what each one catches, what passes, and the strings they were tested on.
+#
+# Single-quoted so `\b` and `\d` reach the regex as written.
+#
+# Order matters: where two alternatives match at the same place, the joined
+# regex takes the first. The long-number rule comes before the phone rule so
+# `082 123 4567 890` masks whole; with the phone rule first it masks to
+# `[removed] 890`.
+# Email address.
+- '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+# Nine or more digits, with only single spaces between them: ID numbers (whole
+# or partial), bank and account numbers. Dashes and colons end the run, so dates
+# and times pass.
+- '\d(?: ?\d){8,}'
+# South African phone number, with spaces, dots, dashes or brackets, local or +27.
+- '(?:\+27[ .-]?(?:\(0\)[ .-]?)?|\(?0)\d{2}\)?[ .-]?\d{3}[ .-]?\d{4}(?!\d)'
+# South African passport number: a letter and eight digits.
+- '\b[A-Za-z]\d{8}\b'
