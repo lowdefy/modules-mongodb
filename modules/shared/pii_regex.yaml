@@ -1,0 +1,8 @@
+# The module's `pii_patterns` joined with `|` into one regex source, resolved at
+# build. One alternation, not a list of separate patterns: applied one after
+# another, a shorter rule can leave digits behind that the longer one would
+# have taken (see the order note in pii_patterns.yaml).
+_build.array.join:
+  on:
+    _module.var: pii_patterns
+  separator: '|'

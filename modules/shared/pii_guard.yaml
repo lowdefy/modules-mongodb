@@ -1,0 +1,25 @@
+# The AI chat modules' personal-information guard: the first onBeforeSend
+# action of the chat. It refuses a typed message that matches the module's
+# `pii_patterns` with `pii_guard_message`, so nothing reaches the server, and
+# the block keeps the text in the composer for the user to edit. Left out of
+# the build when `pii_guard` is false.
+#
+# The chat's onBeforeSend event is { text, files, messages, switches }.
+_build.if:
+  test:
+    _module.var: pii_guard
+  then:
+    - id: pii_guard
+      type: Throw
+      skip:
+        _not:
+          _regex:
+            pattern:
+              _ref: ../shared/pii_regex.yaml
+            on:
+              _event: text
+      params:
+        throw: true
+        message:
+          _module.var: pii_guard_message
+  else: []
