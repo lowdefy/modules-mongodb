@@ -1,18 +1,15 @@
 id: delete-thread
 type: Api
 description: >
-  Soft-deletes a thread. Ownership-scoped to the session user.
+  Deletes a thread. Ownership-scoped to the session user.
 
-  Soft, not hard: the repo convention is that a delete sets a `deleted` change
-  stamp and reads filter it out (docs/shared/soft-delete.md). A chat is the
-  user's own record of what they asked and what they were told — a stray click
-  on a control sitting beside "New chat" should not be the end of it, and the
-  confirm cannot be the only safeguard. The stamp doubles as the audit record of
-  who deleted it and when.
+  The row stays as a `deleted` change stamp (docs/shared/soft-delete.md), so
+  every read filters it out and the stamp records who deleted it and when. Its
+  text goes in the same write: the messages and the title are cleared, because
+  the shell tells the user the chat is deleted. The stub is removed by the TTL
+  index on `created`. save-thread and save-thread-on-finish skip a deleted row,
+  so a reply finishing after the delete cannot write the text back.
 
-  Nothing in the module reads deleted threads back and there is no restore
-  control: recovery is an operator action against the collection. The point is
-  that the data survives the click, not that the shell grows an undo.
 payloadSchema:
   type: object
   required:
@@ -45,6 +42,9 @@ routine:
         $set:
           deleted:
             _ref: defaults/change_stamp.yaml
+        $unset:
+          messages: ""
+          title: ""
   - :return:
       conversationId:
         _payload: conversationId
