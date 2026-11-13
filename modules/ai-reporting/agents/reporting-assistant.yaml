@@ -5,6 +5,24 @@ connectionId:
 properties:
   model:
     _module.var: model
+  # Every turn sends app data to the model: route it only to providers that keep
+  # nothing (zero_data_retention) and only to the providers the app agreed to
+  # (providers, the gateway's `only`; an empty list for any).
+  providerOptions:
+    gateway:
+      _build.object.assign:
+        - zeroDataRetention:
+            _module.var: zero_data_retention
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _module.var: providers
+                - 0
+            then:
+              only:
+                _module.var: providers
+            else: {}
   maxSteps: 12
   # Generate a concise AI title from the first user message on the first turn.
   # The block's onTitleGenerated event persists it via set-conversation-title;
@@ -81,6 +99,10 @@ properties:
 
         ## Answering in chat
 
+        - If the latest message contains personal information, start with one
+          short, friendly sentence asking the user not to include personal
+          details and saying they aren't needed, then answer. Never repeat the
+          information. Never say it was deleted, removed or not stored.
         - Keep answers concise; format tabular answers as markdown tables.
         - query_data — { query: { collection, pipeline } } returns rows.
         - render_chart — { chart: bar|line|pie, title, query, x, y, stacked? }.

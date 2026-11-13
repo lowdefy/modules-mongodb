@@ -1,4 +1,7 @@
-import SummarizeReportData, { buildPrompt } from "./SummarizeReportData.js";
+import SummarizeReportData, {
+  buildPrompt,
+  buildProviderOptions,
+} from "./SummarizeReportData.js";
 
 test("the prompt names the scope as the reading's subject only when filters are active", () => {
   const filtered = buildPrompt({
@@ -43,4 +46,18 @@ test("throws on a missing title before reaching the gateway", async () => {
       request: { scope: "x", sections: [] },
     }),
   ).rejects.toThrow(/title/);
+});
+
+test("sends zero data retention and the allowed providers only when requested", () => {
+  expect(
+    buildProviderOptions({ zeroDataRetention: true, only: ["anthropic"] }),
+  ).toEqual({
+    providerOptions: {
+      gateway: { zeroDataRetention: true, only: ["anthropic"] },
+    },
+  });
+  expect(
+    buildProviderOptions({ zeroDataRetention: false, only: null }),
+  ).toEqual({});
+  expect(buildProviderOptions({})).toEqual({});
 });

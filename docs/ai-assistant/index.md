@@ -172,15 +172,44 @@ The provisional title (the user's first message, truncated) still appears instan
 
 **A name the user typed is theirs.** Renaming a chat before its first reply lands skips titling for it, and a rename while the title is generating wins: the endpoint only replaces the provisional title it was given. After a thread is first saved its title changes only by a rename or by titling, never by a later save, so a tab holding an older name cannot put that name back. Set `generate_titles: false` to skip the model call entirely — the `AI_GATEWAY_API_KEY` secret is only exercised while titling is on.
 
-Two vars sharpen the generated names: `title_context` (one line of grounding, e.g. `"Acme Ltd — onboarding"`) lets the model name the subject when the exchange only ever says "this record", and `title_domain` (e.g. `"a staffing and payroll tool"`) grounds its vocabulary. `title_model` picks the gateway model — small and fast is the right choice. The titling call is sent the first question and reply, so where the agent routes with `zeroDataRetention`, set `title_zero_data_retention: true` to hold titling to the same providers.
+Two vars sharpen the generated names: `title_context` (one line of grounding, e.g. `"Acme Ltd — onboarding"`) lets the model name the subject when the exchange only ever says "this record", and `title_domain` (e.g. `"a staffing and payroll tool"`) grounds its vocabulary. `title_model` picks the gateway model — small and fast is the right choice. The titling call is sent the first question and reply, so it runs under zero data retention (`title_zero_data_retention: true`) and only on Anthropic (`title_providers: [anthropic]`) by default; see [The model provider](#the-model-provider). `title_model` must be a model those providers serve: the default is `anthropic/claude-haiku-4.5`.
 
 ## Tags
 
 `tag` is a display **label**, accumulated as a set and shown as chips on the thread cards. It is stored as the string, not an id — the module cannot resolve app ids, and a thread list is a historical record of what was discussed. The trade-off is that renaming the underlying record does not retitle old chips.
 
+## Personal information
+
+A typed message that looks like personal information (an email address, an ID, account or phone number, a passport number) is refused in the browser before it is sent: the chat shows `pii_guard_message` and keeps the text in the composer. It is on by default (`pii_guard: true`) and runs before `on_before_send`. `pii_patterns` replaces the pattern list. Editing a message skips the check, so leave `edit` out of `message_display.actions` while it is on. [Personal information in AI chats](../shared/personal-information.md) has the list, what it blocks and lets through, and its limits.
+
+The guard does not reach what the agent says: tell your own agent in its instructions how to answer a message with personal information in it, as `ai-reporting`'s agent does.
+
+## The model provider
+
+The module runs one model call of its own, the title. It goes through the AI Gateway with zero data retention and only to Anthropic by default (`title_zero_data_retention`, `title_providers`), so neither the gateway nor the provider keeps the exchange, and the gateway cannot route it to another host of the same model, such as Amazon Bedrock or Google Vertex, which would add a sub-processor. Change them only with the customer's written agreement.
+
+The agent is the app's, so set the same on it. Every message, and everything its tools read, goes to the model:
+
+```yaml
+agents:
+  - id: support
+    type: AIGatewayAgent
+    properties:
+      model: anthropic/claude-sonnet-5
+      zeroDataRetention: true
+      only:
+        - anthropic
+```
+
 ## Composer note
 
-`composer_note` puts a short fixed note of small secondary text under the composer, in both the docked panel and the embedded shell, e.g. a reminder not to share personal information. It shows whenever the conversation does and is never added to it, so the transcript stays clean. Inside the panel the chat gives up a fixed 56px to it, so a note longer than about three lines at the panel's width is clipped. Keep it to a sentence or two.
+A short fixed note of small secondary text sits under the composer, in both the docked panel and the embedded shell. By default it reads:
+
+> Don't enter personal information such as names, ID or employee numbers, salaries or contact details. Chats are processed by an AI service and kept for 90 days. Privacy Notice
+
+The number is `retention_days` (default 90; declare the threads collection's TTL index with the same period). "Privacy Notice" links `privacy_notice_url` and opens it in a new tab; with no URL set the link is left out. `composer_note` replaces the whole note with your own text (HTML allowed), and `composer_note: false` hides it. An app that turns on `sender_attachments` or `screenshot` should say in its own note that files are kept too: the default promises nothing about them.
+
+The note shows whenever the conversation does and is never added to it, so the transcript stays clean. Inside the panel the chat gives up a fixed 72px to it, so a note longer than four lines at the panel's width is clipped; the default fits down to a 360px-wide phone. Keep your own to a sentence or two.
 
 ## Attachments
 
@@ -275,16 +304,16 @@ The user's bubble, the outlined reply border and the composer border take the th
 message_display:
   roles:
     assistant:
-      variant: borderless   # `roles` replaces the module's whole key, so restate it
+      variant: borderless # `roles` replaces the module's whole key, so restate it
     user:
       styles:
         content:
-          background: '#0f766e'
-          color: '#ffffff'
+          background: "#0f766e"
+          color: "#ffffff"
 sender:
   styles:
     root:
-      borderColor: '#0f766e'
+      borderColor: "#0f766e"
 ```
 
 ## App behaviour on the chat
@@ -293,7 +322,7 @@ The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` 
 
 | Var                | Event           | For                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `on_before_send`   | `onBeforeSend`  | Refuse a typed send — `Throw` here. It runs in the browser, and welcome prompts, suggestions, regenerate and edit send without it, so a quota or entitlement check must also be enforced where the agent runs.                                                                                                                                                      |
+| `on_before_send`   | `onBeforeSend`  | Refuse a typed send — `Throw` here. Runs after the [personal-information guard](#personal-information). It runs in the browser, and welcome prompts, suggestions, regenerate and edit send without it, so a quota or entitlement check must also be enforced where the agent runs.                                                                                  |
 | `on_user_message`  | `onUserMessage` | The app's own record of what was asked. Runs after the module has persisted the thread, so a thread id is already stored by this point.                                                                                                                                                                                                                             |
 | `on_data_part`     | `onDataPart`    | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here.                                                                                                                                                                                                                                                                     |
 | `on_feedback`      | `onFeedback`    | Ratings from the feedback control.                                                                                                                                                                                                                                                                                                                                  |

@@ -102,13 +102,18 @@ properties:
       - _module.var: message_display
 events:
   _build.object.assign:
-    - # Consumer-owned seams. The module wires none of these itself: they exist so an app
-      # can gate a send (a quota cap), read a streamed data part, or handle the feedback
-      # control it turns on through `message_display`, without forking the shell. The
-      # module's own chain lives on onMessageComplete below and is not overridable — thread
-      # persistence and titling are the module's job, not the consumer's.
+    - # Consumer-owned seams: they exist so an app can gate a send (a quota cap), read a
+      # streamed data part, or handle the feedback control it turns on through
+      # `message_display`, without forking the shell. The module's own chain lives on
+      # onMessageComplete below and is not overridable — thread persistence and titling are
+      # the module's job, not the consumer's.
+      #
+      # onBeforeSend starts with the module's personal-information guard (pii_guard), so an
+      # app's own check never sees a message the guard refuses.
       onBeforeSend:
-        _module.var: on_before_send
+        _build.array.concat:
+          - _ref: ../shared/pii_guard.yaml
+          - _module.var: on_before_send
       # Persist on SEND as well as on completion. The save on send is what creates the thread:
       # the agent's onFinish hook (save-thread-on-finish) only adds the reply to a thread that
       # is already stored, so this is what lets a reply that lands after the person has left
