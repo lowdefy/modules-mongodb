@@ -92,6 +92,31 @@ config:
       _var:
         key: s3PostPolicyRequestId
         default: upload_files
+    # A pasted image is saved as this module's form-file link for the page's
+    # workflow, never as an S3 URL, so it loads only for people who may view
+    # this action. The link has no host, so it works on every domain the app
+    # runs on; the base path and the workflows entry id are part of the saved
+    # HTML, so apps that share workflow data must share both.
+    imageSrc:
+      _function:
+        __string.concat:
+          - _if_none:
+              - _location: basePath
+              - ""
+          - /api/endpoints/
+          - _module.endpointId: form-file
+          - /
+          - __uri.encode:
+              __state: action.workflow_id
+          - /
+          # Each key segment encoded, its own "/" kept as path separators.
+          - __string.replace:
+              on:
+                __uri.encode:
+                  __args: 0.key
+              regex: "%2F"
+              newSubstr: /
+              regexFlags: g
   events:
     onChange:
       _var:

@@ -12,12 +12,16 @@ const SmartDescriptions = ({
   blockId,
   classNames = {},
   content,
+  basePath,
   properties,
   components: { Icon, Link },
   methods,
   styles = {},
 }) => {
   const { data, fields } = properties;
+  // Field renderers get the block's properties; embedded file links also
+  // need the app's base path.
+  const fieldProperties = { ...properties, basePath };
 
   const items = useMemo(() => {
     if (!data) return [];
@@ -70,7 +74,7 @@ const SmartDescriptions = ({
       <Descriptions {...descProps} title={title} extra={extra}>
         {items.map((item, i) => (
           <Descriptions.Item key={i} label={item.label} span={spans[i]}>
-            {renderValue(item, Icon, Link, methods, properties)}
+            {renderValue(item, Icon, Link, methods, fieldProperties)}
           </Descriptions.Item>
         ))}
       </Descriptions>

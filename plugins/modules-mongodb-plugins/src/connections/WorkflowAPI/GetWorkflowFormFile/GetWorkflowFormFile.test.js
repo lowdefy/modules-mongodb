@@ -277,3 +277,80 @@ test("signs only the caller's own organization's keys and legacy keys", async ()
     file(keys.legacy),
   );
 });
+
+// A rich-text (Tiptap) value keeps each pasted image's upload in its
+// fileList, beside the HTML that links to it through form-file.
+const richText = (...keys) => ({
+  html: keys
+    .map(
+      (key) =>
+        `<img src="/api/endpoints/workflows/form-file/wf-1/${key}"><p>Enlarge Image</p>`,
+    )
+    .join(""),
+  text: null,
+  markdown: "",
+  fileList: keys.map((key) => ({
+    ...file(key),
+    type: "image/png",
+    bucket: "b",
+    size: 10,
+    status: "done",
+    url: `/api/endpoints/workflows/form-file/wf-1/${key}`,
+  })),
+});
+
+test("finds a rich-text image in a viewable slot", async () => {
+  const key = "org-a/workflows/notes/u/paste.png";
+  await seedWorkflow({
+    form_data: { inspect: { notes: richText(key) } },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+
+  const found = await find(
+    { workflow_id: "wf-1", file_id: key },
+    { organization_id: "org-a" },
+  );
+  expect(found).toMatchObject({ key, type: "image/png", name: "paste.png" });
+});
+
+test("refuses a rich-text image in a slot the caller may not view", async () => {
+  const open = "org-a/workflows/notes/u/open.png";
+  const secret = "org-a/workflows/audit/u/secret.png";
+  await seedWorkflow({
+    form_data: {
+      inspect: { notes: richText(open) },
+      audit: { notes: richText(secret) },
+    },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+  await seedAction({
+    _id: "act-2",
+    type: "audit",
+    access: { view: ["admin"], edit: ["admin"] },
+  });
+
+  const asMember = (file_id) =>
+    find({ workflow_id: "wf-1", file_id }, { organization_id: "org-a" });
+  expect(await asMember(open)).toMatchObject({ key: open });
+  expect(await asMember(secret)).toBeNull();
+  expect(
+    await find(
+      { workflow_id: "wf-1", file_id: secret },
+      { organization_id: "org-a", roles: ["admin"] },
+    ),
+  ).toMatchObject({ key: secret });
+});
+
+test("refuses a rich-text image outside the caller's organization prefix", async () => {
+  const otherOrg = "org-b/workflows/notes/u/other.png";
+  const filesModule = "org-a/files/deal/d1/20260101_000000000/u/x.png";
+  await seedWorkflow({
+    form_data: { inspect: { notes: richText(otherOrg, filesModule) } },
+  });
+  await seedAction({ _id: "act-1", type: "inspect" });
+
+  const asOrgA = (file_id) =>
+    find({ workflow_id: "wf-1", file_id }, { organization_id: "org-a" });
+  expect(await asOrgA(otherOrg)).toBeNull();
+  expect(await asOrgA(filesModule)).toBeNull();
+});

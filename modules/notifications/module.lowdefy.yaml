@@ -223,14 +223,14 @@ pages:
 
 # Public pages the module contributes to auth.pages.public so consuming apps
 # don't have to list them by hand: `link` resolves auth-less event types for
-# recipients who aren't logged in yet, `invalid` is its error page, and
-# `file-download` is a capability-URL attachment redirector (matched by id, no
-# session). The inbox (`all`) stays protected.
+# recipients who aren't logged in yet, and `invalid` is its error page. The
+# inbox (`all`) and `file-download` stay protected: an attachment opens only
+# for its signed-in recipient, so a signed-out one goes through sign-in and
+# lands back on `file-download`.
 auth:
   public:
     - link
     - invalid
-    - file-download
 
 exports:
   pages:
@@ -241,7 +241,7 @@ exports:
     - id: invalid
       description: Error page for invalid notification links
     - id: file-download
-      description: Public attachment redirect — resolves a notification file index to a presigned S3 URL and forwards the browser
+      description: Attachment page emailed links open (file-download?_id=&index=) — needs sign-in, then forwards the browser to the `file` link endpoint
   connections:
     - id: notifications-collection
       description: MongoDB connection for notifications collection
@@ -257,6 +257,8 @@ exports:
       description: Renders one notification and emails it to one address, storing no record (no bell, dedup or retry) — for test sends; payload { notification_id, email, item }
     - id: dispatch-notifications
       description: Generic dispatch pipeline — render, store with dedup, send, record the result; payload { notification_id, items }
+    - id: file
+      description: Attachment link — a GET on /api/endpoints/<entry>/file/<notification_id>/<index> answers 302 to a 60-second signed link on the notifications bucket when the signed-in caller is the notification's recipient, else a bare 404
     - id: drain-notifications
       description: Re-sends unsent records (sent false with at least one failed attempt) from their stored render outputs; payload { max_attempts = 5, limit = 50 } — schedule from an app-side cron endpoint
   components:
@@ -281,6 +283,7 @@ api:
   - _ref: api/send-notification-record.yaml
   - _ref: api/drain-notifications.yaml
   - _ref: api/retry-notification-record.yaml
+  - _ref: api/file.yaml
 
 components:
   - id: notification-config

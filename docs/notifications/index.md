@@ -262,9 +262,13 @@ The `link` page resolves a notification id to its target page, marks the record 
 
 Email links composed by the pipeline arrive as `?_id=<record>&option=<dataPath>`, where `option` is a dot-path into the record's `data` (e.g. `links.button`, `actions.0.link`). Absolute URL targets in `data` are followed as-is; legacy records resolve from their top-level `links.button`.
 
-The `file-download` page is a redirector for notification attachments: params `_id` and `index` are required; it generates a presigned GET against `notifications-files-bucket-public` and forwards the browser.
+The `file-download` page is what emailed attachment links open: `file-download?_id=<notification>&index=<n>`, where `index` is the attachment's position in the record's `files`. It needs a session, so a signed-out recipient goes through the app's sign-in and lands back on it. It signs nothing itself: on mount it forwards the browser to the module's `file` link endpoint (Lowdefy 7.2.0 or later).
 
-`link`, `invalid`, and `file-download` are contributed to `auth.pages.public` by the module manifest, so they resolve without a session in any app that embeds the module — no need to list them in the app's own `auth.pages.public`. The inbox (`all`) stays protected.
+A `GET` on `/api/endpoints/<notifications entry>/file/<notification_id>/<index>` finds the notification only when the signed-in caller is its recipient, by the same rule as the inbox and bell (`contact_id` or `user_id` equal to the caller's user id). It takes `files[index]` and answers `302` to a link on `notifications-files-bucket-public` signed for 60 seconds. Images (`png`, `jpeg`, `gif`, `webp`) and PDFs open in the browser; every other type downloads under its `name`, else its key's last segment. A signed-out caller gets `401`. Another person's notification, an unknown one, and an index that is not a whole number or is past the end of `files` all get a `404` with no body.
+
+A recipient who cannot sign in, or whose notification names their user id as neither `contact_id` nor `user_id`, cannot open its attachments.
+
+`link` and `invalid` are contributed to `auth.pages.public` by the module manifest, so they resolve without a session in any app that embeds the module — no need to list them in the app's own `auth.pages.public`. The inbox (`all`) and `file-download` stay protected.
 
 ## Reference
 

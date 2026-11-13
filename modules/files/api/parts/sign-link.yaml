@@ -1,0 +1,56 @@
+# Signs a 60-second GET link for one stored object and returns it, so a link
+# endpoint (link: true) answers 302 to it. The browser follows the redirect at
+# once; a longer life would only help someone who copies the S3 URL.
+#
+# Only images and PDFs open in the browser. Every other type downloads, so an
+# uploaded HTML or SVG file never runs as a page on the bucket's origin.
+#
+# Other modules _ref this part as ../files/api/parts/sign-link.yaml.
+#
+# Vars:
+#   connection_id  the S3 connection to sign on, resolved by the caller, such
+#                  as { _module.connectionId: files-bucket }
+#   key            the object's key
+#   content_type   the stored file's content type
+#   file_name      the name the browser saves or shows the file under
+- :set_state:
+    sign_link_input:
+      key:
+        _var: key
+      content_type:
+        _var: content_type
+      file_name:
+        _var: file_name
+- :set_state:
+    sign_link_headers:
+      _js: |
+        const { key, content_type, file_name } = state('sign_link_input');
+        const inlineTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'];
+        const contentType =
+          typeof content_type === 'string' && content_type.length > 0 ? content_type : 'application/octet-stream';
+        const name =
+          typeof file_name === 'string' && file_name.length > 0 ? file_name : String(key).split('/').pop();
+        // RFC 5987 allows none of ' ( ) * unescaped, which encodeURIComponent leaves as they are.
+        const encodedName = encodeURIComponent(name).replace(
+          /['()*]/g,
+          (character) => '%' + character.charCodeAt(0).toString(16).toUpperCase()
+        );
+        const disposition = inlineTypes.includes(contentType.toLowerCase()) ? 'inline' : 'attachment';
+        return {
+          content_type: contentType,
+          content_disposition: `${disposition}; filename*=UTF-8''${encodedName}`,
+        };
+- id: sign_link
+  type: AwsS3PresignedGetObject
+  connectionId:
+    _var: connection_id
+  properties:
+    key:
+      _var: key
+    expires: 60
+    responseContentType:
+      _state: sign_link_headers.content_type
+    responseContentDisposition:
+      _state: sign_link_headers.content_disposition
+- :return:
+    _step: sign_link

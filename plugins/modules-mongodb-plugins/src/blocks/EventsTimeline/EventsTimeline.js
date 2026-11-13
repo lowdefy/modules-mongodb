@@ -475,17 +475,17 @@ function EventAction({
   );
 }
 
-function EventFiles({ files, downloadEndpointId, downloadPayload, methods }) {
+function EventFiles({ files, basePath, linkEndpointId, linkPath }) {
   return (
     <div style={{ marginTop: 6 }}>
       <FileDownload
-        blockId={`events_files_${downloadEndpointId}`}
+        basePath={basePath}
+        blockId={`events_files_${linkEndpointId}`}
         properties={{
-          downloadEndpointId,
-          downloadPayload,
+          linkEndpointId,
+          linkPath,
           fileList: files,
         }}
-        methods={methods}
       />
     </div>
   );
@@ -499,8 +499,9 @@ function EventTimelineItem({
   event,
   typeConfig,
   actionStatusConfig,
-  downloadEndpointId,
-  downloadPayload,
+  basePath,
+  linkEndpointId,
+  linkPath,
   contactLink,
   compact,
   methods,
@@ -516,7 +517,7 @@ function EventTimelineItem({
     Array.isArray(event.actions) &&
     event.actions.length > 0;
   const hasFiles =
-    downloadEndpointId && Array.isArray(event.files) && event.files.length > 0;
+    linkEndpointId && Array.isArray(event.files) && event.files.length > 0;
 
   return (
     <div>
@@ -585,9 +586,9 @@ function EventTimelineItem({
       {hasFiles && (
         <EventFiles
           files={event.files}
-          downloadEndpointId={downloadEndpointId}
-          downloadPayload={downloadPayload}
-          methods={methods}
+          basePath={basePath}
+          linkEndpointId={linkEndpointId}
+          linkPath={linkPath}
         />
       )}
     </div>
@@ -599,6 +600,7 @@ function EventTimelineItem({
 // ---------------------------------------------------------------------------
 
 const EventsTimeline = ({
+  basePath,
   blockId,
   classNames = {},
   properties,
@@ -611,8 +613,8 @@ const EventsTimeline = ({
     data = [],
     eventTypeConfig = {},
     actionStatusConfig,
-    downloadEndpointId,
-    downloadPayload,
+    linkEndpointId,
+    linkPath,
     contactPageId,
     contactIdQueryKey,
     contactIdPathKey,
@@ -666,8 +668,9 @@ const EventsTimeline = ({
             event={_event}
             typeConfig={_typeConfig}
             actionStatusConfig={actionStatusConfig}
-            downloadEndpointId={downloadEndpointId}
-            downloadPayload={downloadPayload}
+            basePath={basePath}
+            linkEndpointId={linkEndpointId}
+            linkPath={linkPath}
             contactLink={contactLink}
             compact={compact}
             methods={methods}
@@ -691,8 +694,9 @@ const EventsTimeline = ({
   }, [
     enrichedData,
     actionStatusConfig,
-    downloadEndpointId,
-    downloadPayload,
+    basePath,
+    linkEndpointId,
+    linkPath,
     contactLink,
     compact,
     methods,

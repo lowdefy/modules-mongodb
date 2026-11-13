@@ -58,6 +58,10 @@ Multi-line text. Renders a `TextArea`. Same var set as `text_input` minus `valid
 
 Rich-text editor. Renders a `TiptapInput`. Required-validation fires when `_string.length: _state: {key}.text` is `0`.
 
+Images pasted or dropped into the editor upload through the same `upload_files` request as `file_upload` (so their keys sit under `{organization_id}/workflows/`), and the editor saves each one as this module's `form-file` link, `<base path>/api/endpoints/<workflows entry>/form-file/<workflow_id>/<key>`, never as an S3 URL. The value keeps each upload in its `fileList`, so an image opens only for people who may view the action's form slot, like any form file, and the bucket can stay private. Until the form is saved, the image is in no slot, so the link answers `404` and the editor shows it as not loaded.
+
+The saved HTML holds the app's base path and the workflows entry id, but no host, so it works on every domain the app is served on. Apps that share workflow data must use the same base path and the same entry id for the workflows module. Images saved before this link existed keep their S3 URLs, and load only while the app's bucket serves them; rewriting them is the app's own work.
+
 | Var                     | Type    | Required / Default |
 | ----------------------- | ------- | ------------------ |
 | `key`                   | string  | required           |
@@ -440,19 +444,19 @@ S3 put via policy. Renders a `Label` wrapping an `S3UploadDragger`. When `requir
 
 #### `file_download`
 
-Lists files and downloads each through an API endpoint. Renders a `Label` wrapping a [`FileDownload`](../../../../docs/plugins/file-download.md).
+Lists files as plain links to a link endpoint. Renders a `Label` wrapping a [`FileDownload`](../../../../docs/plugins/file-download.md).
 
-| Var                    | Type    | Required / Default                     |
-| ---------------------- | ------- | -------------------------------------- |
-| `key`                  | string  | required                               |
-| `title`                | string  | —                                      |
-| `visible`              | boolean | `true`                                 |
-| `fileList`             | array   | required                               |
-| `label_disabled`       | boolean | `true`                                 |
-| `download_endpoint_id` | string  | this module's `download-form-file`     |
-| `download_payload`     | object  | `{ workflow_id }` of the page's action |
+| Var                | Type    | Required / Default                   |
+| ------------------ | ------- | ------------------------------------ |
+| `key`              | string  | required                             |
+| `title`            | string  | —                                    |
+| `visible`          | boolean | `true`                               |
+| `fileList`         | array   | required                             |
+| `label_disabled`   | boolean | `true`                               |
+| `link_endpoint_id` | string  | this module's `form-file`            |
+| `link_path`        | array   | `[workflow_id]` of the page's action |
 
-With no app config, a form file signs through `download-form-file`, which signs the key only when it is in the form slots of actions the caller may view in that workflow. Files that are `files` module records (from its `list-files`) need `download_endpoint_id: files/download-file` (the files module's entry id, then `download-file`), which signs by record.
+With no app config, a form file links to `form-file`, which redirects to the file only when its key is in the form slots of actions the caller may view in that workflow. Files that are `files` module records (from its `list-files`) need `link_endpoint_id: files/file` (the files module's entry id, then `file`) and `link_path: []`, which link by record.
 
 ```yaml
 - component: file_download

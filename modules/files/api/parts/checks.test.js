@@ -1,6 +1,7 @@
 /**
  * Runs the `_js` in check-upload.yaml and check-save.yaml, which refuse an
- * upload policy or a save before anything touches S3 or the database.
+ * upload policy or a save before anything touches S3 or the database, and in
+ * sign-link.yaml, which picks the headers a signed file link opens with.
  */
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
@@ -16,6 +17,7 @@ const jsOf = (file, stateKey) =>
 
 const uploadCode = jsOf("check-upload.yaml", "upload_problem");
 const saveCode = jsOf("check-save.yaml", "save_check_result");
+const signCode = jsOf("sign-link.yaml", "sign_link_headers");
 
 const MB = 1048576;
 const upload = {
@@ -134,5 +136,50 @@ describe("check-save", () => {
     expect(
       checkSave({ thumbnail: "data:text/html;base64,PGI+" }).thumbnail,
     ).toBeNull();
+  });
+});
+
+const signHeaders = (input) =>
+  new Function("state", signCode)(() => ({
+    key: "org-a/files/lot/lot-1/x/y/stored.pdf",
+    content_type: "application/pdf",
+    file_name: "report.pdf",
+    ...input,
+  }));
+
+describe("sign-link", () => {
+  test.each([
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "application/pdf",
+  ])("%s opens inline", (content_type) => {
+    expect(signHeaders({ content_type })).toEqual({
+      content_type,
+      content_disposition: "inline; filename*=UTF-8''report.pdf",
+    });
+  });
+
+  test.each(["text/html", "image/svg+xml", "text/plain", "application/zip"])(
+    "%s downloads",
+    (content_type) => {
+      expect(signHeaders({ content_type }).content_disposition).toBe(
+        "attachment; filename*=UTF-8''report.pdf",
+      );
+    },
+  );
+
+  test("the name is encoded for filename*", () => {
+    expect(
+      signHeaders({ file_name: "a b+c&d (1)'*ü.pdf" }).content_disposition,
+    ).toBe("inline; filename*=UTF-8''a%20b%2Bc%26d%20%281%29%27%2A%C3%BC.pdf");
+  });
+
+  test("a file with no type or name downloads under the key's last segment", () => {
+    expect(signHeaders({ content_type: null, file_name: null })).toEqual({
+      content_type: "application/octet-stream",
+      content_disposition: "attachment; filename*=UTF-8''stored.pdf",
+    });
   });
 });
