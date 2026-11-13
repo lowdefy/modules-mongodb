@@ -1,0 +1,8 @@
+# The `redact` block for an app's own agent: the module's `pii_patterns` joined
+# into one pattern. One entry, not one per pattern: Lowdefy applies entries one
+# after another, and separate entries leave digits behind that the joined
+# alternation masks whole (see ../shared/pii_patterns.yaml for the order).
+patterns:
+  - name: personal_information
+    pattern:
+      _ref: ../shared/pii_regex.yaml

@@ -105,6 +105,7 @@ Best-effort by design: every failure returns `{ title: null }` so the caller kee
 | `model`             | string  | `openai/gpt-5-mini` | Gateway model id. Small and fast is the right choice.                        |
 | `reasoningEffort`   | string  | `low`               | Passed to the model provider; this runs on a cosmetic path, latency matters. |
 | `zeroDataRetention` | boolean | —                   | Route only to gateway providers with a zero data retention policy.           |
+| `only`              | array   | —                   | Gateway providers the call may go to, e.g. `[anthropic]`. Empty for any.     |
 
 ### `SummarizeReportData` request
 
@@ -112,14 +113,16 @@ A one-shot reading of a report's data — the call behind the `ai-reporting` mod
 
 Unlike `GenerateChatTitle` it **throws** on failure — a missing key, a gateway error, an empty reply. It answers a button click, and the viewer who clicked is owed an error rather than an empty drawer.
 
-| Property      | Type    | Default                     | Description                                                                                 |
-| ------------- | ------- | --------------------------- | ------------------------------------------------------------------------------------------- |
-| `title`       | string  | —                           | The report's title. Required.                                                               |
-| `description` | string  | —                           | The report's description.                                                                   |
-| `scope`       | string  | —                           | The filter scope the rows were resolved under, as `buildSummaryInput` renders it. Required. |
-| `hasFilters`  | boolean | `false`                     | When true the reading opens by naming the scope.                                            |
-| `sections`    | array   | —                           | The shaped per-section data from `_analytics.buildSummaryInput`. Required.                  |
-| `model`       | string  | `anthropic/claude-sonnet-5` | Gateway model id (provider/model).                                                          |
+| Property            | Type    | Default                     | Description                                                                                 |
+| ------------------- | ------- | --------------------------- | ------------------------------------------------------------------------------------------- |
+| `title`             | string  | —                           | The report's title. Required.                                                               |
+| `description`       | string  | —                           | The report's description.                                                                   |
+| `scope`             | string  | —                           | The filter scope the rows were resolved under, as `buildSummaryInput` renders it. Required. |
+| `hasFilters`        | boolean | `false`                     | When true the reading opens by naming the scope.                                            |
+| `sections`          | array   | —                           | The shaped per-section data from `_analytics.buildSummaryInput`. Required.                  |
+| `model`             | string  | `anthropic/claude-sonnet-5` | Gateway model id (provider/model).                                                          |
+| `zeroDataRetention` | boolean | —                           | Route only to gateway providers with a zero data retention policy.                          |
+| `only`              | array   | —                           | Gateway providers the call may go to, e.g. `[anthropic]`. Empty for any.                    |
 
 ## `SupportWebhook` connection
 

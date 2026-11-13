@@ -80,7 +80,7 @@ The embedded shell renders the same chat and thread lifecycle inline — a toolb
 
 Delete asks first, in both shells, and the confirm names the thread. It is not configurable: there is no var to turn it off.
 
-The delete is **soft** — it sets a `deleted` [change stamp](../shared/soft-delete.md) and every read filters the thread out, so the conversation survives the click and the stamp records who deleted it and when. Nothing in the shell reads a deleted thread back and there is no restore control, so the confirm tells the user the chat goes without offering them recovery: bringing one back is an operator action against the collection.
+Delete removes the thread's text at once: the same write clears its messages and title and sets a `deleted` [change stamp](../shared/soft-delete.md), which records who deleted it and when. The empty row stays until the [TTL index](#retention-and-delete) removes it, and every read filters it out. There is no restore. See [Retention and delete](#retention-and-delete).
 
 ```yaml
 - id: assistant_card
@@ -172,15 +172,44 @@ The provisional title (the user's first message, truncated) still appears instan
 
 **A name the user typed is theirs.** Renaming a chat before its first reply lands skips titling for it, and a rename while the title is generating wins: the endpoint only replaces the provisional title it was given. After a thread is first saved its title changes only by a rename or by titling, never by a later save, so a tab holding an older name cannot put that name back. Set `generate_titles: false` to skip the model call entirely — the `AI_GATEWAY_API_KEY` secret is only exercised while titling is on.
 
-Two vars sharpen the generated names: `title_context` (one line of grounding, e.g. `"Acme Ltd — onboarding"`) lets the model name the subject when the exchange only ever says "this record", and `title_domain` (e.g. `"a staffing and payroll tool"`) grounds its vocabulary. `title_model` picks the gateway model — small and fast is the right choice. The titling call is sent the first question and reply, so where the agent routes with `zeroDataRetention`, set `title_zero_data_retention: true` to hold titling to the same providers.
+Two vars sharpen the generated names: `title_context` (one line of grounding, e.g. `"Acme Ltd — onboarding"`) lets the model name the subject when the exchange only ever says "this record", and `title_domain` (e.g. `"a staffing and payroll tool"`) grounds its vocabulary. `title_model` picks the gateway model — small and fast is the right choice. The titling call is sent the first question and reply, so it runs under zero data retention (`title_zero_data_retention: true`) and only on Anthropic (`title_providers: [anthropic]`) by default; see [The model provider](#the-model-provider). `title_model` must be a model those providers serve: the default is `anthropic/claude-haiku-5.5`.
 
 ## Tags
 
 `tag` is a display **label**, accumulated as a set and shown as chips on the thread cards. It is stored as the string, not an id — the module cannot resolve app ids, and a thread list is a historical record of what was discussed. The trade-off is that renaming the underlying record does not retitle old chips.
 
+## Personal information
+
+A typed message that looks like personal information (an email address, an ID, account or phone number, a passport number) is refused in the browser before it is sent: the chat shows `pii_guard_message` and keeps the text in the composer. It is on by default (`pii_guard: true`) and runs before `on_before_send`. `pii_patterns` replaces the pattern list. Editing a message skips the check, so leave `edit` out of `message_display.actions` while it is on. [Personal information in AI chats](../shared/personal-information.md) has the list, what it blocks and lets through, and its limits.
+
+The guard does not reach what the agent says: tell your own agent in its instructions how to answer a message with personal information in it, as `ai-reporting`'s agent does.
+
+## The model provider
+
+The module runs one model call of its own, the title. It goes through the AI Gateway with zero data retention and only to Anthropic by default (`title_zero_data_retention`, `title_providers`), so neither the gateway nor the provider keeps the exchange, and the gateway cannot route it to another host of the same model, such as Amazon Bedrock or Google Vertex, which would add a sub-processor. Change them only with the customer's written agreement.
+
+The agent is the app's, so set the same on it. Every message, and everything its tools read, goes to the model:
+
+```yaml
+agents:
+  - id: support
+    type: AIGatewayAgent
+    properties:
+      model: anthropic/claude-sonnet-5
+      zeroDataRetention: true
+      only:
+        - anthropic
+```
+
 ## Composer note
 
-`composer_note` puts a short fixed note of small secondary text under the composer, in both the docked panel and the embedded shell, e.g. a reminder not to share personal information. It shows whenever the conversation does and is never added to it, so the transcript stays clean. Inside the panel the chat gives up a fixed 56px to it, so a note longer than about three lines at the panel's width is clipped. Keep it to a sentence or two.
+A short fixed note of small secondary text sits under the composer, in both the docked panel and the embedded shell. By default it reads:
+
+> Don't enter personal information such as names, ID or employee numbers, salaries or contact details. Chats are processed by an AI service and kept for 90 days. Privacy Notice
+
+The number is `retention_days` (default 90; declare the threads collection's TTL index with the same period). "Privacy Notice" links `privacy_notice_url` and opens it in a new tab; with no URL set the link is left out. `composer_note` replaces the whole note with your own text (HTML allowed), and `composer_note: false` hides it. An app that turns on `sender_attachments` or `screenshot` should say in its own note that files are kept too: the default promises nothing about them.
+
+The note shows whenever the conversation does and is never added to it, so the transcript stays clean. Inside the panel the chat gives up a fixed 72px to it, so a note longer than four lines at the panel's width is clipped; the default fits down to a 360px-wide phone. Keep your own to a sentence or two.
 
 ## Attachments
 
@@ -275,16 +304,16 @@ The user's bubble, the outlined reply border and the composer border take the th
 message_display:
   roles:
     assistant:
-      variant: borderless   # `roles` replaces the module's whole key, so restate it
+      variant: borderless # `roles` replaces the module's whole key, so restate it
     user:
       styles:
         content:
-          background: '#0f766e'
-          color: '#ffffff'
+          background: "#0f766e"
+          color: "#ffffff"
 sender:
   styles:
     root:
-      borderColor: '#0f766e'
+      borderColor: "#0f766e"
 ```
 
 ## App behaviour on the chat
@@ -293,7 +322,7 @@ The module owns the thread lifecycle on `onUserMessage` and `onMessageComplete` 
 
 | Var                | Event           | For                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `on_before_send`   | `onBeforeSend`  | Refuse a typed send — `Throw` here. It runs in the browser, and welcome prompts, suggestions, regenerate and edit send without it, so a quota or entitlement check must also be enforced where the agent runs.                                                                                                                                                      |
+| `on_before_send`   | `onBeforeSend`  | Refuse a typed send — `Throw` here. Runs after the [personal-information guard](#personal-information). It runs in the browser, and welcome prompts, suggestions, regenerate and edit send without it, so a quota or entitlement check must also be enforced where the agent runs.                                                                                  |
 | `on_user_message`  | `onUserMessage` | The app's own record of what was asked. Runs after the module has persisted the thread, so a thread id is already stored by this point.                                                                                                                                                                                                                             |
 | `on_data_part`     | `onDataPart`    | Custom data parts the agent streams. Filter on the part type yourself; every part arrives here.                                                                                                                                                                                                                                                                     |
 | `on_feedback`      | `onFeedback`    | Ratings from the feedback control.                                                                                                                                                                                                                                                                                                                                  |
@@ -377,6 +406,54 @@ Without the hook, a reply the person leaves before it finishes is lost.
 
 The merge is a read then a write, so two saves to one thread within a few milliseconds of each other can still lose one of them. The two writers are a send and a reply finishing, which a person rarely lines up that closely.
 
+## Masking on the server
+
+The browser guard stops what an honest user types, but anyone signed in can call the module's endpoints or the agent route directly. So personal information is also masked on the server, with the same `pii_patterns`: every match in a text part becomes `[removed]`.
+
+- **Stored threads.** `save-thread` and `save-thread-on-finish` mask every message's text parts before they merge it with the stored history, and `save-thread` masks the title it stores on a new thread. `title-thread` masks the exchange before the titling model sees it, and the title before it is stored, and `rename-thread` masks the name a user types.
+- **What the model sees.** The agent is the app's, so the app sets its `redact`, with the module's `agent-redact` component:
+
+  ```yaml
+  agents:
+    - id: support
+      type: AIGatewayAgent
+      connectionId: ai_gateway
+      properties: { ... }
+      redact:
+        _ref:
+          module: ai-assistant
+          component: agent-redact
+  ```
+
+  Lowdefy then masks the user's messages before the model, the title call, the tools and the `onFinish` hooks see them. The component is the whole list joined into one pattern. Lowdefy applies `redact` entries one after another, so a list with one entry per pattern masks `80010150090` as `8[removed]`, while the joined alternation masks it whole. Leave `redact` out while `pii_guard` is off.
+
+With `pii_guard: false` the module's endpoints store text as it is sent.
+
+Only text is masked. Files and screenshots reach the model and the thread as they are: the patterns read text, and a picture of an ID number is not text. See [Retention and delete](#retention-and-delete) for what an app that turns attachments on does instead.
+
+## Retention and delete
+
+A thread is kept for a fixed period from when it started, then removed by a TTL index the app declares (the module creates no indexes):
+
+```js
+db.getCollection("<threads collection>").createIndex(
+  { created: 1 },
+  { expireAfterSeconds: 7776000 },
+);
+```
+
+`expireAfterSeconds` is `retention_days` × 86400; 7776000 is the default 90 days. `created` is a Date, set once when `save-thread` first stores the thread. The index is on `created`, not `updated`, because every save, the reply's `onFinish` save and every title write move `updated`, and the panel resumes the last thread opened: a thread in use would never expire, and its oldest messages would outlive the period the notice states. A thread still in use is removed when its period runs out, and the person starts a new one.
+
+Replace any TTL index the threads collection already has rather than adding this one beside it. Each TTL index removes rows on its own, so an older one (on `updated`, say) keeps deleting on its own schedule and the period the notice states stops being the real one. An existing `{ created: 1 }` index with another period is changed with `collMod`, or dropped and created again; creating it with a new `expireAfterSeconds` fails.
+
+**Delete.** Deleting a thread clears its messages and title in the same write that stamps `deleted`, and leaves the empty row for the TTL. A reply that finishes after the delete, through the browser's save or the agent's `onFinish` hook (`save-thread-on-finish`), finds the row deleted and writes nothing, so the text stays gone. A thread minted in the browser and deleted before its first message was saved has no row yet, so there is nothing to clear.
+
+**Attached files and screenshots.** With `sender_attachments` or `screenshot` on, the files sit in the app's own storage, behind its own connection. Neither delete nor the TTL index reaches them. An app that turns either on:
+
+- expires its chat upload prefix at the same `retention_days`, for example with an S3 lifecycle rule on the prefix the upload request gives each user;
+- blanks sensitive regions of a screenshot with `screenshot_mask_selectors` or a `data-support-mask` attribute on the element (password inputs are always blanked; see [Screenshot](#screenshot));
+- says in its own `composer_note` that files people attach are kept too, since the default note speaks only of the chat.
+
 ## Requirements
 
 - An app agent whose id is passed as `agent_id`.
@@ -398,9 +475,7 @@ The merge is a read then a write, so two saves to one thread within a few millis
   field and so sorts in memory — over one user's threads in one scope, which is the same
   bounded set the list is capped at.
 
-  A **TTL index** is also worth having where threads should expire — the module stamps
-  `updated` on every save, so `{ updated: 1 }` with `expireAfterSeconds` set to your retention
-  period expires a thread a fixed time after its last activity, not after its creation.
+  A **TTL index** on `{ created: 1 }` expires threads; see [Retention and delete](#retention-and-delete).
 
 ## Reference
 

@@ -162,6 +162,11 @@ routine:
     properties:
       model:
         _module.var: model
+      # The same routing as the reporting assistant: the summary is sent the report's rows.
+      zeroDataRetention:
+        _module.var: zero_data_retention
+      only:
+        _module.var: providers
       title:
         _state: summary_input.title
       description:

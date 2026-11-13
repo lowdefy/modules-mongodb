@@ -15,6 +15,18 @@ test("asks the gateway for zero data retention only when requested", () => {
   );
 });
 
+test("restricts the gateway to the requested providers", () => {
+  expect(
+    buildProviderOptions({ zeroDataRetention: true, only: ["anthropic"] })
+      .gateway,
+  ).toEqual({ zeroDataRetention: true, only: ["anthropic"] });
+  expect(buildProviderOptions({ only: ["anthropic"] }).gateway).toEqual({
+    only: ["anthropic"],
+  });
+  expect(buildProviderOptions({ only: [] })).not.toHaveProperty("gateway");
+  expect(buildProviderOptions({ only: null })).not.toHaveProperty("gateway");
+});
+
 test("passes the requested reasoning effort through", () => {
   expect(buildProviderOptions({ reasoningEffort: "medium" }).openai).toEqual({
     reasoningEffort: "medium",

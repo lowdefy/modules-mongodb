@@ -83,3 +83,7 @@ thread_selection:
 # Take screenshot in the panel: the page behind it, masked and editable, attaches to the composer
 # and uploads through sender_attachments on send.
 screenshot: true
+
+# Linked from the default composer note, which opens it in a new tab. A stand-in: the demo has
+# no privacy notice of its own.
+privacy_notice_url: https://example.com/privacy

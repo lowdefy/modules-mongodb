@@ -150,7 +150,29 @@ vars:
     default: anthropic/claude-sonnet-5
     description: >
       Gateway model id (provider/model) for the reporting assistant, e.g.
-      anthropic/claude-sonnet-5 or anthropic/claude-haiku-4.5.
+      anthropic/claude-sonnet-5 or anthropic/claude-haiku-5.5. Must be a model
+      one of `providers` serves.
+  zero_data_retention:
+    type: boolean
+    default: true
+    description: >-
+      Route the reporting assistant and the report page's AI summary only to
+      gateway providers under a zero data retention agreement, so neither the
+      gateway nor the provider keeps prompts or outputs. Both send app data to
+      the model. Turn it off only with the customer's written agreement.
+  providers:
+    type: array
+    items:
+      type: string
+    default:
+      - anthropic
+    description: >-
+      Gateway providers the reporting assistant and the AI summary may be
+      routed to (the gateway's `only` option). The default keeps the request
+      on Anthropic's own API rather than letting the gateway pick another host
+      of the same model, which would add a sub-processor. An empty list
+      allows any provider; change it only with the customer's written
+      agreement.
   ai_summary:
     type: boolean
     default: false
@@ -163,6 +185,65 @@ vars:
       `summarize-report` endpoint rejects every call — the hidden button is an
       affordance, the rejection is the switch. Needs the `ai-text` connection
       (bundled on `AI_GATEWAY_API_KEY`, or remapped) when on.
+  on_before_send:
+    type: array
+    default: []
+    description: >-
+      Actions run before a typed message is sent, on the chat's onBeforeSend,
+      after the personal-information guard (`pii_guard`). Throw here to refuse
+      the send. It runs in the browser and only for a typed message: welcome
+      starters fill the composer and pass through it, but the follow-up
+      suggestion chip sends without it. So it can turn a user away early, but a
+      quota or entitlement check must also be enforced where the agent runs.
+  pii_guard:
+    type: boolean
+    default: true
+    description: >-
+      Refuse a typed message that matches `pii_patterns`, in the browser, before
+      it is sent: the chat shows `pii_guard_message` and keeps the text in the
+      composer. Message editing and the chat block's `sendMessage` method skip
+      this check, so keep editing off while it is on. See
+      docs/shared/personal-information.md.
+  pii_patterns:
+    type: array
+    items:
+      type: string
+    default:
+      _ref: ../shared/pii_patterns.yaml
+    description: >-
+      Regex sources (JavaScript syntax) for personal information, joined with
+      `|` into one regex in this order. The default catches email addresses,
+      nine or more digits with only spaces between them, South African phone
+      numbers and South African passport numbers. Setting it replaces the whole
+      list. See docs/shared/personal-information.md for what passes and what is
+      blocked.
+  pii_guard_message:
+    type: string
+    default: This looks like personal information. Please remove it and describe the task instead.
+    description: The message shown when `pii_guard` refuses a send.
+  composer_note:
+    default: null
+    description: >-
+      A short fixed note of small text under the chat's composer: what not to
+      type, and how chats are handled. Null (the default) shows the module's
+      notice: "Don't enter personal information such as names, ID or employee
+      numbers, salaries or contact details. Chats are processed by an AI
+      service and kept for {retention_days} days. Privacy Notice", with
+      Privacy Notice linking `privacy_notice_url` in a new tab. A string
+      replaces it (HTML allowed); `false` hides it.
+  privacy_notice_url:
+    type: string
+    default: null
+    description: >-
+      URL of the app's privacy notice, linked from the default composer note
+      and opened in a new tab. Null leaves the link out.
+  retention_days:
+    type: number
+    default: 90
+    description: >-
+      How many days a chat is kept from when it started. The default composer
+      note states it; the TTL index the app declares on the conversations
+      collection must use the same period (see reference/indexes.md).
   welcome:
     type: object
     description: >

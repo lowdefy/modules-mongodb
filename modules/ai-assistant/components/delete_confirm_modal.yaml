@@ -1,6 +1,5 @@
-# Delete confirm. The delete is soft (api/delete-thread.yaml), so the copy says the chat goes
-# rather than that it is destroyed — but nothing in the shell hands it back, so this is still
-# the last point at which the user can stop it.
+# Delete confirm. The delete clears the thread's text (api/delete-thread.yaml) and nothing
+# hands it back, so this is the last point at which the user can stop it.
 #
 # ConfirmModal, not Modal: the panel stacks at 1100 and the Modal block does not forward
 # `zIndex`, so a Modal would open BEHIND the panel it was launched from. 1200 matches the

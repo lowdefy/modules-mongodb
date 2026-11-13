@@ -1,0 +1,19 @@
+# One string with every match of the module's `pii_patterns` replaced by
+# `[removed]`, for the chat writers that store a title or send text to a model
+# outside the agent. Pass the string as the `text` var; a missing one comes back
+# as "". Left as it is when `pii_guard` is false.
+_build.if:
+  test:
+    _module.var: pii_guard
+  then:
+    _string.replace:
+      on:
+        _if_none:
+          - _var: text
+          - ""
+      regex:
+        _ref: ../shared/pii_regex.yaml
+      newSubstr: "[removed]"
+      regexFlags: g
+  else:
+    _var: text

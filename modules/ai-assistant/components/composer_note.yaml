@@ -1,5 +1,6 @@
-# composer_note.yaml — the `composer_note` var, when set: a short fixed note under the composer,
-# e.g. what not to type into the chat. It shows with the conversation only, not the thread list.
+# composer_note.yaml — a short fixed note under the composer: the `composer_note` var, or the
+# module's default notice while it is null (../shared/chat_composer_note.yaml). `false` hides it.
+# It shows with the conversation only, not the thread list.
 #
 # vars:
 #   id     — both shells mount this, so each passes its own (see notice.yaml).
@@ -18,7 +19,7 @@ visible:
         - null
     - _ne:
         - _module.var: composer_note
-        - null
+        - false
 style:
   .element:
     margin: 0
@@ -32,4 +33,4 @@ style:
 properties:
   type: secondary
   content:
-    _module.var: composer_note
+    _ref: ../shared/chat_composer_note.yaml

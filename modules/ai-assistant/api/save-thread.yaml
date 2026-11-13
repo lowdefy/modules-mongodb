@@ -68,6 +68,21 @@ routine:
         projection:
           _id: 0
           messages: 1
+          deleted: 1
+  # A thread deleted while a save was in flight stays deleted: its text was
+  # cleared and this write must not put it back. Checked on the read above
+  # rather than in the upsert's filter, because an upsert whose filter misses
+  # inserts a second row under the same conversationId instead of skipping.
+  - :if:
+      _ne:
+        - _if_none:
+            - _step: load_stored_messages.deleted.timestamp
+            - null
+        - null
+    :then:
+      - :return:
+          saved: false
+  - _ref: api/routines/mask_messages.yaml
   - :set_state:
       stored_messages:
         _if_none:
@@ -137,14 +152,22 @@ routine:
           # Named once, when the row is created: after that rename-thread and title-thread own
           # it, so a save from a tab holding an older name cannot put that name back.
           title:
-            _payload: title
+            _if:
+              test:
+                _type:
+                  type: string
+                  on:
+                    _payload: title
+              then:
+                _ref:
+                  path: ../shared/mask_text.yaml
+                  vars:
+                    text:
+                      _payload: title
+              else: null
           # Initialised so live threads have one shape — see
-          # docs/shared/soft-delete.md. Deliberately NOT in the filter above:
-          # this is an upsert, and $exists is not an equality clause, so a
-          # no-match would mint a SECOND row under the same conversationId
-          # rather than skipping the write. An in-flight save landing after a
-          # delete therefore rewrites the deleted row's messages, but leaves the
-          # stamp intact, so it stays filtered out of every read.
+          # docs/shared/soft-delete.md. A deleted row never reaches this write:
+          # the read above returns first.
           deleted: null
       options:
         upsert: true

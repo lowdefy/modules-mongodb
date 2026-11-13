@@ -231,15 +231,16 @@ content:
               test:
                 _eq:
                   - _module.var: composer_note
-                  - null
+                  - false
               then: var(--fp-body-height, 520px)
-              else: calc(var(--fp-body-height, 520px) - 56px)
+              else: calc(var(--fp-body-height, 520px) - 72px)
 
     - _ref:
         path: components/composer_note.yaml
         vars:
           id: ai_panel_composer_note
-          height: 56px
+          # Four lines at 12px: the default notice wraps to four in a phone-width panel.
+          height: 72px
 
     # A ConfirmModal renders into a portal, so the panel's overflow does not clip it — only
     # its z-index matters, and the component sets that.

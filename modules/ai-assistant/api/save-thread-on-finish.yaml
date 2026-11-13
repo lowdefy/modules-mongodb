@@ -49,15 +49,25 @@ routine:
         projection:
           _id: 0
           messages: 1
+          deleted: 1
+  # No stored row, or a thread deleted while the reply streamed: either way
+  # there is nothing of this module's to write the reply to.
   - :if:
-      _eq:
-        - _if_none:
-            - _step: load_stored_messages
+      _or:
+        - _eq:
+            - _if_none:
+                - _step: load_stored_messages
+                - null
             - null
-        - null
+        - _ne:
+            - _if_none:
+                - _step: load_stored_messages.deleted.timestamp
+                - null
+            - null
     :then:
       - :return:
           saved: false
+  - _ref: api/routines/mask_messages.yaml
   - :set_state:
       stored_messages:
         _if_none:
@@ -78,6 +88,11 @@ routine:
           _payload: conversationId
         user_id:
           _user: id
+        # Between the read above and this write the thread can still be deleted.
+        deleted.timestamp:
+          $exists: false
+      # Matching nothing is the deleted case, not a fault.
+      disableNoMatchError: true
       update:
         $set:
           messages:
