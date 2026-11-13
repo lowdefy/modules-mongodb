@@ -1,5 +1,5 @@
 name: Service dashboard
-version: 1.4.1
+version: 2.0.0
 description: >-
   Shows the app's service report from Pelican to the users with the roles the
   app chooses: availability, incidents, response times, usage and support
@@ -105,4 +105,4 @@ secrets:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1.4.1"
+    version: "^2.0.0"
