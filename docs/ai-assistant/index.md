@@ -80,7 +80,7 @@ The embedded shell renders the same chat and thread lifecycle inline — a toolb
 
 Delete asks first, in both shells, and the confirm names the thread. It is not configurable: there is no var to turn it off.
 
-The delete is **soft** — it sets a `deleted` [change stamp](../shared/soft-delete.md) and every read filters the thread out, so the conversation survives the click and the stamp records who deleted it and when. Nothing in the shell reads a deleted thread back and there is no restore control, so the confirm tells the user the chat goes without offering them recovery: bringing one back is an operator action against the collection.
+Delete removes the thread's text at once: the same write clears its messages and title and sets a `deleted` [change stamp](../shared/soft-delete.md), which records who deleted it and when. The empty row stays until the [TTL index](#retention-and-delete) removes it, and every read filters it out. There is no restore. See [Retention and delete](#retention-and-delete).
 
 ```yaml
 - id: assistant_card
@@ -406,6 +406,54 @@ Without the hook, a reply the person leaves before it finishes is lost.
 
 The merge is a read then a write, so two saves to one thread within a few milliseconds of each other can still lose one of them. The two writers are a send and a reply finishing, which a person rarely lines up that closely.
 
+## Masking on the server
+
+The browser guard stops what an honest user types, but anyone signed in can call the module's endpoints or the agent route directly. So personal information is also masked on the server, with the same `pii_patterns`: every match in a text part becomes `[removed]`.
+
+- **Stored threads.** `save-thread` and `save-thread-on-finish` mask every message's text parts before they merge it with the stored history, and `save-thread` masks the title it stores on a new thread. `title-thread` masks the exchange before the titling model sees it, and the title before it is stored.
+- **What the model sees.** The agent is the app's, so the app sets its `redact`, with the module's `agent-redact` component:
+
+  ```yaml
+  agents:
+    - id: support
+      type: AIGatewayAgent
+      connectionId: ai_gateway
+      properties: { ... }
+      redact:
+        _ref:
+          module: ai-assistant
+          component: agent-redact
+  ```
+
+  Lowdefy then masks the user's messages before the model, the title call, the tools and the `onFinish` hooks see them. The component is the whole list joined into one pattern. Lowdefy applies `redact` entries one after another, so a list with one entry per pattern masks `80010150090` as `8[removed]`, while the joined alternation masks it whole. Leave `redact` out while `pii_guard` is off.
+
+With `pii_guard: false` the module's endpoints store text as it is sent.
+
+Only text is masked. Files and screenshots reach the model and the thread as they are: the patterns read text, and a picture of an ID number is not text. See [Retention and delete](#retention-and-delete) for what an app that turns attachments on does instead.
+
+## Retention and delete
+
+A thread is kept for a fixed period from when it started, then removed by a TTL index the app declares (the module creates no indexes):
+
+```js
+db.getCollection("<threads collection>").createIndex(
+  { created: 1 },
+  { expireAfterSeconds: 7776000 },
+);
+```
+
+`expireAfterSeconds` is `retention_days` × 86400; 7776000 is the default 90 days. `created` is a Date, set once when `save-thread` first stores the thread. The index is on `created`, not `updated`, because every save, the reply's `onFinish` save and every title write move `updated`, and the panel resumes the last thread opened: a thread in use would never expire, and its oldest messages would outlive the period the notice states. A thread still in use is removed when its period runs out, and the person starts a new one.
+
+Replace any TTL index the threads collection already has rather than adding this one beside it. Each TTL index removes rows on its own, so an older one (on `updated`, say) keeps deleting on its own schedule and the period the notice states stops being the real one. An existing `{ created: 1 }` index with another period is changed with `collMod`, or dropped and created again; creating it with a new `expireAfterSeconds` fails.
+
+**Delete.** Deleting a thread clears its messages and title in the same write that stamps `deleted`, and leaves the empty row for the TTL. A reply that finishes after the delete, through the browser's save or the agent's `onFinish` hook (`save-thread-on-finish`), finds the row deleted and writes nothing, so the text stays gone. A thread minted in the browser and deleted before its first message was saved has no row yet, so there is nothing to clear.
+
+**Attached files and screenshots.** With `sender_attachments` or `screenshot` on, the files sit in the app's own storage, behind its own connection. Neither delete nor the TTL index reaches them. An app that turns either on:
+
+- expires its chat upload prefix at the same `retention_days`, for example with an S3 lifecycle rule on the prefix the upload request gives each user;
+- blanks sensitive regions of a screenshot with `screenshot_mask_selectors` or a `data-support-mask` attribute on the element (password inputs are always blanked; see [Screenshot](#screenshot));
+- says in its own `composer_note` that files people attach are kept too, since the default note speaks only of the chat.
+
 ## Requirements
 
 - An app agent whose id is passed as `agent_id`.
@@ -427,9 +475,7 @@ The merge is a read then a write, so two saves to one thread within a few millis
   field and so sorts in memory — over one user's threads in one scope, which is the same
   bounded set the list is capped at.
 
-  A **TTL index** is also worth having where threads should expire — the module stamps
-  `updated` on every save, so `{ updated: 1 }` with `expireAfterSeconds` set to your retention
-  period expires a thread a fixed time after its last activity, not after its creation.
+  A **TTL index** on `{ created: 1 }` expires threads; see [Retention and delete](#retention-and-delete).
 
 ## Reference
 

@@ -1,7 +1,7 @@
 # Delete confirmation, opened by the rail's kebab menu with
 # CallMethod(setOpen, { open: true }) once onMenuClick has seeded the target row.
-# The delete is soft and there is no restore, so the confirm names the
-# conversation it is about to remove.
+# The delete clears the conversation's text and there is no restore, so the
+# confirm names the conversation it is about to remove.
 #
 # Never hidden with `visible:` — see rename_conversation_modal.yaml.
 id: delete_conversation_modal
@@ -25,8 +25,8 @@ events:
       - _ref: pages/chat/actions/refresh_conversations.yaml
       - # Deleting the conversation on screen has to move the page off it.
         # Otherwise the transcript stays open on a conversation the rail no
-        # longer lists, and the next turn saves its messages onto the deleted
-        # document — where nothing can reach them again.
+        # longer lists, and the next turn's save, which skips a deleted
+        # conversation, would drop it.
         - :if:
             _eq:
               - _state: menu_conversation_id

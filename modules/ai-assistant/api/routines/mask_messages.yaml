@@ -1,0 +1,12 @@
+# `replayable_messages` in and out: personal information in the text parts
+# masked (see ../shared/mask_messages.yaml). Both thread writers run it after
+# sanitize_messages and before merge_messages, so neither stores unmasked text.
+# It is not part of sanitize_messages because get-thread runs that on read,
+# where masking changes nothing that is stored.
+- :set_state:
+    replayable_messages:
+      _ref:
+        path: ../shared/mask_messages.yaml
+        vars:
+          messages:
+            _state: replayable_messages
