@@ -432,7 +432,7 @@ vars:
       "a staffing and payroll tool". Null for a generic prompt.
   title_model:
     type: string
-    default: anthropic/claude-haiku-4.5
+    default: anthropic/claude-haiku-5.5
     description: >-
       Gateway model id for the titling call. Small and fast is the right
       choice. Must be a model one of `title_providers` serves.
