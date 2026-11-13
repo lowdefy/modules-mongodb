@@ -383,6 +383,31 @@ Without the hook, a reply the person leaves before it finishes is lost.
 
 The merge is a read then a write, so two saves to one thread within a few milliseconds of each other can still lose one of them. The two writers are a send and a reply finishing, which a person rarely lines up that closely.
 
+## Masking on the server
+
+The browser guard stops what an honest user types, but anyone signed in can call the module's endpoints or the agent route directly. So personal information is also masked on the server, with the same `pii_patterns`: every match in a text part becomes `[removed]`.
+
+- **Stored threads.** `save-thread` and `save-thread-on-finish` mask every message's text parts before they merge it with the stored history, and `save-thread` masks the title it stores on a new thread. `title-thread` masks the exchange before the titling model sees it, and the title before it is stored.
+- **What the model sees.** The agent is the app's, so the app sets its `redact`, with the module's `agent-redact` component:
+
+  ```yaml
+  agents:
+    - id: support
+      type: AIGatewayAgent
+      connectionId: ai_gateway
+      properties: { ... }
+      redact:
+        _ref:
+          module: ai-assistant
+          component: agent-redact
+  ```
+
+  Lowdefy then masks the user's messages before the model, the title call, the tools and the `onFinish` hooks see them. The component is the whole list joined into one pattern. Lowdefy applies `redact` entries one after another, so a list with one entry per pattern masks `80010150090` as `8[removed]`, while the joined alternation masks it whole. Leave `redact` out while `pii_guard` is off.
+
+With `pii_guard: false` the module's endpoints store text as it is sent.
+
+Only text is masked. Files and screenshots reach the model and the thread as they are: the patterns read text, and a picture of an ID number is not text. See [Retention and delete](#retention-and-delete) for what an app that turns attachments on does instead.
+
 ## Retention and delete
 
 A thread is kept for a fixed period from when it started, then removed by a TTL index the app declares (the module creates no indexes):
