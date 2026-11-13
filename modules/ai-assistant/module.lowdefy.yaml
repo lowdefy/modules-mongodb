@@ -465,6 +465,12 @@ exports:
         action runs. Works whether the panel is open, closed or was never
         opened. Like the welcome prompts, the send does not pass through
         `on_before_send`.
+    - id: agent-redact
+      description: >-
+        The `redact` block for the app's own agent: this module's
+        `pii_patterns` joined into one pattern, so Lowdefy masks personal
+        information in the user's messages before the model, tools and hooks
+        see them. Set it as the agent's `redact` while `pii_guard` is on.
   connections:
     - id: ai_assistant_threads
       description: MongoDB connection for the threads collection
@@ -520,6 +526,9 @@ components:
   - id: open-with-prompt
     component:
       _ref: actions/open-with-prompt.yaml
+  - id: agent-redact
+    component:
+      _ref: components/agent_redact.yaml
 
 secrets:
   - name: MONGODB_URI

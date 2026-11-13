@@ -253,3 +253,17 @@ hooks:
   onFinish:
     - _module.endpointId: save-conversation
     - _module.endpointId: emit-data-parts
+# Lowdefy masks personal information in the user's messages before the model,
+# the title call, the tools and the onFinish hooks see them. One entry, the
+# whole list joined: Lowdefy applies entries one after another, and separate
+# entries leave digits behind that the joined alternation takes whole. No
+# redact at all while pii_guard is false (the _build.if has no else).
+redact:
+  _build.if:
+    test:
+      _module.var: pii_guard
+    then:
+      patterns:
+        - name: personal_information
+          pattern:
+            _ref: ../shared/pii_regex.yaml
