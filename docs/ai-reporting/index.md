@@ -15,7 +15,7 @@ Charts, saved reports, and CSV exports ride the same engine: their queries are p
 
 ## Requirements
 
-**Lowdefy 7.** The `report` page is a `Dynamic` block: it resolves each viewer's report through `resolve-report`, which reads the report id as `_payload: urlQuery.report_id` from the URL query the server passes into page config.
+**Lowdefy 7.2 or later.** The `reporting-assistant` agent sets `redact` (see [Personal information in questions](#personal-information-in-questions)), which earlier Lowdefy 7 releases reject at build. The `report` page is a `Dynamic` block: it resolves each viewer's report through `resolve-report`, which reads the report id as `_payload: urlQuery.report_id` from the URL query the server passes into page config.
 
 **The report policy in the app's `policies.dynamicBlocks`.** The `report` page renders blocks compiled from a stored, AI-authored spec, and a `Dynamic` block renders such blocks only under a [dynamic blocks policy](https://docs.lowdefy.com/dynamic-page-content). The module exports the policy as the `report-policy` component; Lowdefy reads policies only from `lowdefy.yaml`, so the app lists it (see the Quickstart). Without it the build fails, because the `report` page names a policy that does not exist.
 
@@ -132,6 +132,8 @@ Role-gate individual collections with `roles` in the [catalog](reference/catalog
 ### Personal information in questions
 
 A typed question that looks like personal information (an email address, an ID, account or phone number, a passport number) is refused in the browser before it is sent: the chat shows `pii_guard_message` and keeps the text in the composer. It is on by default (`pii_guard: true`); `pii_patterns` replaces the pattern list. When a message with personal information gets through, the agent opens its answer with a short reminder that personal details aren't needed, and never repeats them. [Personal information in AI chats](../shared/personal-information.md) has the list, what it blocks and lets through, and its limits.
+
+The guard stops what an honest user types; anyone signed in can call the agent route or the chat endpoints directly. So the server masks too, with the same `pii_patterns`, turning every match in a message's text into `[removed]`: the `reporting-assistant` agent sets Lowdefy's `redact`, so the model, the title call, the tools and the `onFinish` hooks see masked text, and `save-conversation` and `set-conversation-title` mask what they store. With `pii_guard: false` nothing is masked.
 
 `on_before_send` adds the app's own checks to the send, after the guard: a list of actions on the chat's `onBeforeSend`, whose event is `{ text, files, messages, switches }`. `Throw` refuses the send. It runs in the browser and the follow-up suggestion chip sends without it, so a quota or entitlement check must also be enforced where the agent runs.
 
