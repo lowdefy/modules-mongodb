@@ -469,6 +469,7 @@ _ref:
                           size: large
                           maxLength: 6
                           placeholder: "000000"
+                          autoFocus: true
                           label:
                             disabled: true
                         style:

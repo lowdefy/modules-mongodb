@@ -385,6 +385,12 @@ _ref:
                           size: large
                           maxLength: 6
                           placeholder: "000000"
+                          # Focused only under "Check your email". On the
+                          # expired-link render the email input comes first.
+                          autoFocus:
+                            _eq:
+                              - _state: login_view
+                              - link-sent
                           label:
                             # Unlabelled under the result; titled beside the
                             # email input on the expired-link render.
