@@ -67,7 +67,7 @@ exports:
     - id: files-bucket
       description: S3 bucket for private file storage
     - id: files-bucket-public
-      description: S3 bucket for public file storage
+      description: S3 bucket for public file storage, open to writes
   api:
     - id: list-files
       description: >-

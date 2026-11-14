@@ -1,12 +1,15 @@
 id: deliver
 type: InternalApi
 description: >-
-  Delivers one announced note, one bounded unit of work per call: copies one
-  media file into the public files bucket, or else dispatches the release-note
-  notification to up to 100 people owed it, all in one organisation. It then
-  calls itself detached while work remains. Payload { note_id, failed }:
-  failed lists the media names whose copy failed earlier in this chain, left
-  for the sweep. Every step is safe to repeat.
+  Delivers one announced note. Each call copies the note's media files into the
+  public files bucket, one at a time, then dispatches the release-note
+  notification in batches of up to 100 people owed it, each batch in one
+  organisation, starting new work only in its first 20 seconds. While work
+  remains it calls itself detached once, so a chain is at most 2 calls, and
+  the second copies no media; the sweep restarts what is left. Payload { note_id, failed, hop }: failed lists
+  the media names whose copy failed earlier in this chain, left for the sweep,
+  and hop counts this call in the chain, 1 when left out. Every step is safe
+  to repeat.
 routine:
   - :set_state:
       note_id:
@@ -15,6 +18,15 @@ routine:
         _if_none:
           - _payload: failed
           - []
+      hop:
+        _if_none:
+          - _payload: hop
+          - 1
+      started_at:
+        _js: |
+          return Date.now();
+      notified: 0
+      work_left: true
   # Marks the note as being worked on, so the sweep leaves a running chain
   # alone. A note that is gone matches nothing and ends the chain.
   - id: note
@@ -36,61 +48,98 @@ routine:
     :then:
       - :return:
           done: true
-  - id: stored_note
-    type: MongoDBFindOne
-    connectionId:
-      _module.connectionId: release-notes
-    properties:
-      query:
-        _id:
-          _state: note_id
-  - :set_state:
-      note:
-        _step: stored_note
-  # A file with no source link or content type cannot be fetched or checked,
-  # so it waits for a delivery that brings both.
-  - :set_state:
-      pending_media:
-        _js: |
-          const failed = state('failed');
-          return (
-            (state('note').media || []).find(
-              (file) =>
-                file.copied !== true &&
-                typeof file.source_url === 'string' &&
-                typeof file.content_type === 'string' &&
-                !failed.includes(file.name),
-            ) ?? null
-          );
-  - :if:
-      _ne:
-        - _state: pending_media
-        - null
-    :then:
-      - _ref: api/parts/copy-media.yaml
-      - id: next_media
-        type: CallApi
+  # A media copy may take up to 4 minutes, so new work starts only in the
+  # first 20 seconds, which keeps the call within a 5-minute function limit.
+  - :while:
+      _and:
+        - _state: work_left
+        - _js: |
+            return Date.now() - state('started_at') < 20000;
+    :do:
+      # Read each round, so the batch's email links the files copied so far.
+      - id: stored_note
+        type: MongoDBFindOne
+        connectionId:
+          _module.connectionId: release-notes
         properties:
-          endpointId:
-            _module.endpointId: deliver
-          detached: true
-          payload:
-            note_id:
+          query:
+            _id:
               _state: note_id
-            failed:
-              _state: failed
-      - :return:
-          media:
-            _state: pending_media.name
-  - _ref: api/parts/notify-batch.yaml
+      - :if:
+          _eq:
+            - _step: stored_note
+            - null
+        :then:
+          - :return:
+              done: true
+              notified:
+                _state: notified
+      - :set_state:
+          note:
+            _step: stored_note
+      # A file with no source link or content type cannot be fetched or
+      # checked, so it waits for a delivery that brings both. The chain's last
+      # call copies nothing, so slow copies can't fill every call of a chain
+      # and hold the notices back.
+      - :set_state:
+          pending_media:
+            _js: |
+              if (state('hop') >= 2) return null;
+              const failed = state('failed');
+              return (
+                (state('note').media || []).find(
+                  (file) =>
+                    file.copied !== true &&
+                    typeof file.source_url === 'string' &&
+                    typeof file.content_type === 'string' &&
+                    !failed.includes(file.name),
+                ) ?? null
+              );
+      - :if:
+          _ne:
+            - _state: pending_media
+            - null
+        :then:
+          - _ref: api/parts/copy-media.yaml
+        :else:
+          - _ref: api/parts/notify-batch.yaml
+          - :set_state:
+              notified:
+                _sum:
+                  - _state: notified
+                  - _state: batch_size
+              work_left:
+                _gt:
+                  - _state: batch_size
+                  - 0
   - :if:
-      _eq:
-        - _state: batch_size
-        - 0
+      _not:
+        _state: work_left
     :then:
       - :return:
           done: true
-  - id: next_batch
+          notified:
+            _state: notified
+  # Vercel refuses the third detached call in a chain with 508, so the chain
+  # stops at its second call and leaves the rest to the sweep.
+  - :if:
+      _gte:
+        - _state: hop
+        - 2
+    :then:
+      - :log:
+          event: release_note_delivery_left_for_sweep
+          note_id:
+            _state: note_id
+          message: >-
+            A release note's delivery reached the end of its chain with work
+            left. The sweep restarts it while it still has work the sweep
+            looks for.
+      - :return:
+          done: false
+          notified:
+            _state: notified
+  - id: next_call
     type: CallApi
     properties:
       endpointId:
@@ -101,6 +150,11 @@ routine:
           _state: note_id
         failed:
           _state: failed
+        hop:
+          _sum:
+            - _state: hop
+            - 1
   - :return:
+      done: false
       notified:
-        _state: batch_size
+        _state: notified

@@ -9,3 +9,4 @@ properties:
     _module.var: s3_region
   bucket:
     _secret: FILES_S3_BUCKET_PUB
+  write: true
