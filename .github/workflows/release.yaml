@@ -19,7 +19,7 @@ jobs:
     if: github.repository == 'lowdefy/modules-mongodb'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           # node 24.17.0 ships a regressed undici that throws "Premature close"
