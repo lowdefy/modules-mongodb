@@ -32,8 +32,13 @@ allowBuilds:
   sharp: false
   "@sentry/cli": false
 
+# Install no package version published less than 3 days (4320 minutes) ago.
+# Malicious releases have so far been caught and pulled within hours, and npm
+# lets an author unpublish for 72 hours.
+minimumReleaseAge: 4320
+
 # Lowdefy releases are installed the day they publish, so exempt the whole scope
-# (plus the unscoped `lowdefy` CLI) from pnpm's default new-package cooldown.
+# (plus the unscoped `lowdefy` CLI) from the release age.
 # Patterns, not version pins, so this never churns on version bumps.
 minimumReleaseAgeExclude:
   - "@lowdefy/*"
