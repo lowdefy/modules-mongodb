@@ -32,9 +32,17 @@ allowBuilds:
   sharp: false
   "@sentry/cli": false
 
-# Lowdefy releases are installed the day they publish, so exempt the whole scope
-# (plus the unscoped `lowdefy` CLI) from pnpm's default new-package cooldown.
-# Patterns, not version pins, so this never churns on version bumps.
+# Hold every new release for 3 days (in minutes) before it can be installed.
+# The widely spread malicious npm releases were caught within hours, npm allows
+# unpublish for 72 hours, and security fixes still arrive within days. pnpm's
+# own default is 1 day; this sets it explicitly. minimumReleaseAgeStrict stays
+# at its default.
+minimumReleaseAge: 4320
+
+# Our own and Lowdefy releases are installed the day they publish, so exempt
+# those scopes (plus the unscoped `lowdefy` CLI) from the cooldown. Patterns,
+# not version pins, so this never churns on version bumps.
 minimumReleaseAgeExclude:
+  - "@mrmtech/*"
   - "@lowdefy/*"
   - lowdefy
