@@ -11,8 +11,13 @@ packages:
 # disabledDate closure gets an antd-copy clone that never had utc extended —
 # "dayjs(...).utc is not a function" the moment a date picker opens. Deduping to
 # one copy (satisfies both ranges) makes the utc plugin registration shared.
+#
+# @lowdefy/community-plugin-e2e-mdb pins yaml 2.8.2 exactly, which has
+# GHSA-48c2-rrv3-qjmp. Remove the yaml override once that plugin releases with
+# yaml >= 2.8.3.
 overrides:
   dayjs: 1.11.20
+  "yaml@<2.8.3": 2.8.3
 
 # These pnpm keys live here, not under a "pnpm" key in package.json: pnpm 10+
 # no longer reads that key and silently ignores it — it only warns.
