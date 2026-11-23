@@ -32,7 +32,7 @@ Add `workflows` when an app needs multi-step business processes on any entity â€
 # lowdefy.yaml
 modules:
   - id: workflows
-    source: "github:lowdefy/modules-mongodb/modules/workflows@v2.0.1"
+    source: "github:lowdefy/modules-mongodb/modules/workflows@v2.1.0"
     vars:
       workflows_config:
         _ref: workflow_config/workflows.yaml
