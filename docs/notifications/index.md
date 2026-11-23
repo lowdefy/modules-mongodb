@@ -168,6 +168,42 @@ vars:
       types: [deal-note-mention, comment-mention]
 ```
 
+### Blocks in the opened notification's header
+
+`components.notification_header_slots` puts an app's own blocks in the header of an opened notification, after its title and before Mark as unread, such as a button that acts on the record the notification is about. They render for every opened notification, in a box sized like Mark as unread so the title still wraps first on a narrow pane, and also when the list and pane take turns on a phone.
+
+The blocks read the open notification from `_request: get_selected_notification.0`: the whole stored record of the [record convention](#record-convention), so `type` and `data` (the item the notification was dispatched with) say what to show. Showing them only for some types or data is the app's job, with `visible` on its blocks:
+
+```yaml
+vars:
+  components:
+    notification_header_slots:
+      - id: button_open_ticket
+        type: Button
+        visible:
+          _eq:
+            - _request: get_selected_notification.0.type
+            - support-reply
+        properties:
+          title: Open ticket
+          size: small
+          icon: LifeBuoy
+        events:
+          onClick:
+            - id: link_ticket
+              type: Link
+              params:
+                pageId:
+                  _module.pageId:
+                    id: ticket
+                    module: support
+                pathParams:
+                  ticket_key:
+                    _request: get_selected_notification.0.data.ticket_key
+```
+
+With no blocks the header is unchanged. `apps/demo/modules/notifications/header-slots.yaml` is this example in the demo app.
+
 ## Required indexes
 
 The pipeline's no-double-send guarantee depends on a unique partial index on `key` — **without it duplicate inserts succeed and the dedup does not exist**. The module cannot create indexes; create it with the app's index tooling (e.g. splice-actions):

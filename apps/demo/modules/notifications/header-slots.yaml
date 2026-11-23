@@ -1,0 +1,25 @@
+# Blocks in the opened notification's header. A support reply opens its ticket
+# from the key the support module put on the notification's data.
+- id: button_open_ticket
+  type: Button
+  visible:
+    _eq:
+      - _request: get_selected_notification.0.type
+      - support-reply
+  properties:
+    title: Open ticket
+    type: default
+    size: small
+    icon: LifeBuoy
+  events:
+    onClick:
+      - id: link_ticket
+        type: Link
+        params:
+          pageId:
+            _module.pageId:
+              id: ticket
+              module: support
+          pathParams:
+            ticket_key:
+              _request: get_selected_notification.0.data.ticket_key

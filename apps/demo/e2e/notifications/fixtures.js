@@ -25,6 +25,7 @@ export function record({
   popup = false,
   userId = USER.id,
   links = undefined,
+  data = undefined,
 }) {
   minutes += 1;
   return {
@@ -38,6 +39,7 @@ export function record({
     read,
     popup,
     ...(links ? { links } : {}),
+    ...(data ? { data } : {}),
     created: {
       app_name: "demo",
       timestamp: new Date(Date.now() - minutes * 60_000),

@@ -71,6 +71,20 @@ vars:
           description: >
             URL of the sound file, such as one in the app's public folder.
             Without it the sound is the chirp.
+  components:
+    type: object
+    description: "Component slot overrides: notification_header_slots"
+    properties:
+      notification_header_slots:
+        type: array
+        default: []
+        description: >
+          Extra blocks shown in the opened notification's header, after its
+          title and before Mark as unread, for every opened notification. They
+          read the open notification from `_request:
+          get_selected_notification.0` (the whole record: `_id`, `type`,
+          `data`, `created`, `read`); give them `visible` to show them only
+          for some types or data.
   live:
     type: boolean
     default: true
