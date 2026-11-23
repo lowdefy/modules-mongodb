@@ -172,7 +172,7 @@ vars:
 
 `components.notification_header_slots` puts an app's own blocks in the header of an opened notification, after its title and before Mark as unread, such as a button that acts on the record the notification is about. They render for every opened notification, in a box sized like Mark as unread so the title still wraps first on a narrow pane, and also when the list and pane take turns on a phone.
 
-The blocks read the open notification from `_request: get_selected_notification.0`: the whole stored record of the [record convention](#record-convention), so `type` and `data` (the item the notification was dispatched with) say what to show. Showing them only for some types or data is the app's job, with `visible` on its blocks:
+The blocks read the open notification from `_request: get_selected_notification.0`: the whole stored record of the [record convention](#record-convention), so `type` and `data` (the item the notification was dispatched with) say what to show. Showing them only for some types or data is the app's job, with `visible` on its blocks. A type another module sends is stored under that module's entry id (the support module's `support-reply` is `support/support-reply`), so compare it with `_module.notificationId`:
 
 ```yaml
 vars:
@@ -183,7 +183,9 @@ vars:
         visible:
           _eq:
             - _request: get_selected_notification.0.type
-            - support-reply
+            - _module.notificationId:
+                id: support-reply
+                module: support
         properties:
           title: Open ticket
           size: small

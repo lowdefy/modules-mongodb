@@ -14,7 +14,9 @@ components:
       visible:
         _eq:
           - _request: get_selected_notification.0.type
-          - support-reply
+          - _module.notificationId:
+              id: support-reply
+              module: support
       properties:
         title: Open ticket
       events:

@@ -9,14 +9,14 @@ const RECORDS = [
   record({ _id: "q2", type: "quote-approved", title: "Quote approved Q2" }),
   record({
     _id: "s1",
-    type: "support-reply",
+    type: "support/support-reply",
     title: "Support replied on ENC-1",
     preview: "Fixed the export",
     data: { ticket_key: "ENC-1" },
   }),
   record({
     _id: "s2",
-    type: "support-reply",
+    type: "support/support-reply",
     title: "Support replied on ENC-2",
     read: true,
   }),
