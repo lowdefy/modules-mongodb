@@ -165,6 +165,11 @@ test("the app's header button shows on a support reply and opens its ticket", as
   await expect(openTicket).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("header-slot.png") });
 
+  await rows(page).filter({ hasText: "Quote approved Q2" }).click();
+  await expect(page.locator("#pane_title")).toContainText("Quote approved Q2");
+  await expect(openTicket).toHaveCount(0);
+
+  await rows(page).filter({ hasText: "Support replied on ENC-1" }).click();
   await openTicket.click();
   await expect(page).toHaveURL(/\/support\/ENC-1$/);
 });

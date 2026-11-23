@@ -2,7 +2,7 @@
 "@lowdefy/modules-mongodb-notifications": minor
 ---
 
-**Apps can put their own blocks in the header of an opened notification.** The inbox gave an app no place for a button that acts on the record a notification is about, so the only way in was the email body's link. The new `components.notification_header_slots` var renders blocks after the notification's title and before Mark as unread, for every opened notification.
+**Apps can put their own blocks in the header of an opened notification.** The inbox's reading pane gave an app no place for a button that acts on the record a notification is about. The new `components.notification_header_slots` var renders blocks after the notification's title and before Mark as unread, for every opened notification.
 
 The blocks read the open notification from `_request: get_selected_notification.0`, the whole stored record (`_id`, `type`, `data`, `created`, `read`). Hide them per type or per data with `visible` on your blocks:
 
