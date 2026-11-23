@@ -24,3 +24,14 @@ Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars
 | `transport` | string | `smtp` |  | Email transport for the dispatch pipeline. "smtp" (default) sends SMTPMailSend over the notifications-email connection; "sendgrid" sends SendGridMailSend over the notifications-email-sendgrid connection (SendGrid HTTP API). Any other value throws on dispatch.  |
 | `email` |  |  |  | SMTP transport for notification emails, used when transport is "smtp" (the default). Ignored when the app remaps the notifications-email connection to its own email connection.  |
 | `sendgrid` |  |  |  | SendGrid HTTP API transport for notification emails, used when transport is "sendgrid". Ignored when the app remaps the notifications-email-sendgrid connection to its own connection.  |
+| `components` | object |  |  | Component slot overrides: notification_header_slots |
+
+## Nested var details
+
+### `components`
+
+Component slot overrides: notification_header_slots
+
+| Name | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `notification_header_slots` | array | `[]` |  | Extra blocks shown in the opened notification's header, after its title and before Mark as unread, for every opened notification. They read the open notification from `_request: get_selected_notification.0` (the whole record: `_id`, `type`, `data`, `created`, `read`); give them `visible` to show them only for some types or data.  |

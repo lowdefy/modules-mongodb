@@ -27,7 +27,13 @@ views:
     title: Support
     icon: LifeBuoy
     types:
-      - support-reply
+      - _module.notificationId:
+          id: support-reply
+          module: support
+# Blocks in the opened notification's header.
+components:
+  notification_header_slots:
+    _ref: modules/notifications/header-slots.yaml
 # Notification sounds offered to the viewer.
 sounds:
   _ref: modules/notifications/sounds.yaml

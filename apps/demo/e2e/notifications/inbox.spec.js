@@ -9,13 +9,14 @@ const RECORDS = [
   record({ _id: "q2", type: "quote-approved", title: "Quote approved Q2" }),
   record({
     _id: "s1",
-    type: "support-reply",
+    type: "support/support-reply",
     title: "Support replied on ENC-1",
     preview: "Fixed the export",
+    data: { ticket_key: "ENC-1" },
   }),
   record({
     _id: "s2",
-    type: "support-reply",
+    type: "support/support-reply",
     title: "Support replied on ENC-2",
     read: true,
   }),
@@ -144,4 +145,45 @@ test("a link to one notification opens it even when the Unread list is empty", a
     "Support replied on ENC-2",
   );
   await expect(page.locator("#list_empty")).toContainText("caught up");
+});
+
+test("the app's header button shows on a support reply and opens its ticket", async ({
+  ldf,
+  page,
+}) => {
+  await ldf.goto("/notifications/all");
+  const openTicket = page.locator("#button_open_ticket");
+
+  await rows(page).filter({ hasText: "Quote approved Q1" }).click();
+  await expect(page.locator("#pane_title")).toContainText("Quote approved Q1");
+  await expect(openTicket).toHaveCount(0);
+
+  await rows(page).filter({ hasText: "Support replied on ENC-1" }).click();
+  await expect(page.locator("#pane_title")).toContainText(
+    "Support replied on ENC-1",
+  );
+  await expect(openTicket).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("header-slot.png") });
+
+  await rows(page).filter({ hasText: "Quote approved Q2" }).click();
+  await expect(page.locator("#pane_title")).toContainText("Quote approved Q2");
+  await expect(openTicket).toHaveCount(0);
+
+  await rows(page).filter({ hasText: "Support replied on ENC-1" }).click();
+  await openTicket.click();
+  await expect(page).toHaveURL(/\/support\/ENC-1$/);
+});
+
+test("on a phone the app's header button shows in the pane", async ({
+  ldf,
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await ldf.goto("/notifications/all");
+  await rows(page).filter({ hasText: "Support replied on ENC-1" }).click();
+  await expect(page.locator("#pane_back")).toBeVisible();
+  await expect(page.locator("#button_open_ticket")).toBeVisible();
+  await page.screenshot({
+    path: test.info().outputPath("phone-header-slot.png"),
+  });
 });
