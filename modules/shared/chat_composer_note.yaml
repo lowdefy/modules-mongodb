@@ -1,7 +1,9 @@
 # The AI chat modules' composer note (ai-assistant and ai-reporting): the
 # module's `composer_note` var when the app set one, else the default notice
 # with the module's `retention_days` and, when `privacy_notice_url` is set, a
-# Privacy Notice link that opens in a new tab.
+# Privacy Notice link that opens in a new tab. `composer_note: false` hides
+# the note and leaves an empty string here: Paragraph's content must be a
+# string, and the schema check runs on a hidden block too.
 #
 # Rendered as HTML by a Paragraph. `_nunjucks` escapes the URL. The link says
 # `data-new-tab` rather than `target`: the HTML sanitiser strips `target`, and
@@ -24,4 +26,11 @@ _build.if:
         privacy_notice_url:
           _module.var: privacy_notice_url
   else:
-    _module.var: composer_note
+    _build.if:
+      test:
+        _build.eq:
+          - _module.var: composer_note
+          - false
+      then: ""
+      else:
+        _module.var: composer_note
