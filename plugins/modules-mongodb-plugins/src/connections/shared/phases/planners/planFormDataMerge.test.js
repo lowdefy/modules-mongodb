@@ -1,13 +1,17 @@
 import planFormDataMerge from "./planFormDataMerge.js";
 
-function makeLoadedState({ form_data = {}, type = "install-step" } = {}) {
+function makeLoadedState({
+  form_data = {},
+  type = "install-step",
+  key = null,
+} = {}) {
   return {
     workflow: {
       _id: "wf-1",
       workflow_type: "device-installation",
       form_data,
     },
-    targetAction: { _id: "a-1", workflow_id: "wf-1", type },
+    targetAction: { _id: "a-1", workflow_id: "wf-1", type, key },
   };
 }
 
@@ -22,8 +26,9 @@ test("unkeyed action: merges onto form_data[type]", () => {
   expect(form_data).toEqual({ "install-step": { physical_id: "D-42" } });
 });
 
-test("keyed action: merges onto form_data[type][current_key]; sibling keys untouched", () => {
+test("keyed action: merges onto form_data[type][action.key]; sibling keys untouched", () => {
   const loadedState = makeLoadedState({
+    key: "device-2",
     form_data: {
       "install-step": {
         "device-1": { physical_id: "D-1" },
@@ -33,7 +38,7 @@ test("keyed action: merges onto form_data[type][current_key]; sibling keys untou
   });
 
   const { form_data } = planFormDataMerge({
-    params: { form: { physical_id: "D-2b" }, current_key: "device-2" },
+    params: { form: { physical_id: "D-2b" } },
     loadedState,
   });
 
@@ -43,6 +48,27 @@ test("keyed action: merges onto form_data[type][current_key]; sibling keys untou
       "device-2": { physical_id: "D-2b" },
     },
   });
+});
+
+test("keyed action: the slot comes from the loaded action, not a client-sent current_key", () => {
+  const base = {
+    "install-step": {
+      "device-1": { physical_id: "D-1" },
+      "device-2": { physical_id: "D-2" },
+    },
+  };
+  for (const current_key of [undefined, null, "device-1"]) {
+    const { form_data } = planFormDataMerge({
+      params: { form: { physical_id: "D-2b" }, current_key },
+      loadedState: makeLoadedState({ key: "device-2", form_data: base }),
+    });
+    expect(form_data).toEqual({
+      "install-step": {
+        "device-1": { physical_id: "D-1" },
+        "device-2": { physical_id: "D-2b" },
+      },
+    });
+  }
 });
 
 test("channel merge order: form → form_review → form_overrides, later wins per-key", () => {
@@ -156,8 +182,8 @@ test("empty channels: submitted_form is {} and form_data equals the loaded value
 
 test("target path absent in loaded form_data → created (keyed)", () => {
   const { form_data } = planFormDataMerge({
-    params: { form: { physical_id: "D-9" }, current_key: "device-9" },
-    loadedState: makeLoadedState({ form_data: {} }),
+    params: { form: { physical_id: "D-9" } },
+    loadedState: makeLoadedState({ key: "device-9", form_data: {} }),
   });
 
   expect(form_data).toEqual({

@@ -91,14 +91,16 @@ test("carries over in a keyed slot, but not a key from another slot", () => {
       other: { scan: upload("legacy/c.pdf") },
     },
   });
-  const submit = (key) =>
+  const submit = (key, current_key) =>
     check({
-      params: { current_key: "site-a", form: { scan: upload(key) } },
+      params: { current_key, form: { scan: upload(key) } },
       loadedState,
     });
   expect(() => submit("legacy/a.pdf")).not.toThrow();
   expect(() => submit("legacy/b.pdf")).toThrow(/form\.scan/);
   expect(() => submit("legacy/c.pdf")).toThrow(/form\.scan/);
+  // The slot is the loaded action's, whatever key the client claims.
+  expect(() => submit("legacy/b.pdf", "site-b")).toThrow(/form\.scan/);
 });
 
 test("a caller with no organization can only carry files over", () => {

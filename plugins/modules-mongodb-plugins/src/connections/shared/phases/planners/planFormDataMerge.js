@@ -24,14 +24,15 @@ import mergeDeep, { cloneContainers, isPlainObject } from "./deepMerge.js";
 
 /**
  * @param {Object} args
- * @param {Object} args.params — submit params; reads `form`, `form_review`,
- *   and `current_key` (the keyed-action submit param — not an action-doc
- *   field; equals the loaded target action's `key`).
+ * @param {Object} args.params — submit params; reads `form` and
+ *   `form_review`.
  * @param {import('../types.js').PreHookResult} [args.preHookResult] — reads
  *   `form_overrides`.
  * @param {import('../types.js').LoadedState} args.loadedState — reads
- *   `workflow.form_data` (the loaded base) and `targetAction.type` (the
- *   form_data namespace).
+ *   `workflow.form_data` (the loaded base) and `targetAction.type` /
+ *   `targetAction.key` (the form_data namespace — taken from the loaded doc,
+ *   never from the request, so a client can't aim the merge at another
+ *   instance's slot).
  * @returns {{ form_data: Object, submitted_form: Object }} — `form_data` is
  *   the whole planned object (threaded into `planWorkflowRecompute`'s
  *   `formData` input by task 15); `submitted_form` is the pre-merged channel
@@ -48,7 +49,7 @@ function planFormDataMerge({ params, preHookResult, loadedState }) {
   );
 
   const type = loadedState.targetAction.type;
-  const key = params.current_key;
+  const key = loadedState.targetAction.key;
   const form_data = cloneContainers(loadedState.workflow.form_data ?? {});
 
   // Nothing submitted on any channel → form_data carries over unchanged
@@ -58,7 +59,7 @@ function planFormDataMerge({ params, preHookResult, loadedState }) {
     return { form_data, submitted_form };
   }
 
-  if (key) {
+  if (key != null) {
     // Keyed action: target is form_data[type][key].
     const typeBase = isPlainObject(form_data[type]) ? form_data[type] : {};
     form_data[type] = {

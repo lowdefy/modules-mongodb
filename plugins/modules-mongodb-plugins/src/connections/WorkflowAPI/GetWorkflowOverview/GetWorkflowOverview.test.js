@@ -215,6 +215,15 @@ describe("GetWorkflowOverview return shape", () => {
     expect(result).toEqual({ workflow: null, groups: [] });
   });
 
+  test("an operator object as workflow_id is rejected, not used as a filter", async () => {
+    await seedWorkflow();
+    await expect(
+      GetWorkflowOverview(
+        buildContext({ request: { workflow_id: { $ne: null } } }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_params" });
+  });
+
   test("returns { workflow, groups } when workflow exists", async () => {
     await seedWorkflow();
     await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });

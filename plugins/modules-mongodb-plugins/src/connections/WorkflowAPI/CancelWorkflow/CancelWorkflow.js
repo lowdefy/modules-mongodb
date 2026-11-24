@@ -8,20 +8,10 @@ import commitPlan from "../../shared/phases/commitPlan.js";
 import runTrackerCascade from "../../shared/phases/runTrackerCascade.js";
 import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js";
 import { WorkflowEngineError } from "../../shared/errors.js";
-
-// Fields that may NOT be overwritten by payload.references — they are engine-
-// owned on the workflow doc (carried over from the prior handler).
-const RESERVED_WORKFLOW_KEYS = [
-  "_id",
-  "workflow_id",
-  "type",
-  "workflow_type",
-  "entity",
-  "status",
-  "form_data",
-  "created",
-  "updated",
-];
+import {
+  ENGINE_OWNED_WORKFLOW_KEYS,
+  omitKeys,
+} from "../../shared/engineOwnedKeys.js";
 
 const TERMINAL_STAGES = ["done", "not-required"];
 
@@ -100,12 +90,12 @@ async function CancelWorkflow(lowdefyContext) {
     now,
   });
 
-  // payload.references merge (minus reserved keys), applied at plan time so the
+  // payload.references merge (minus engine-owned keys), applied at plan time so the
   // whole-doc $set carries it (CancelWorkflow.js:5–18, 44–47 semantics).
-  const safeReferences = { ...(params.references ?? {}) };
-  for (const key of RESERVED_WORKFLOW_KEYS) {
-    delete safeReferences[key];
-  }
+  const safeReferences = omitKeys(
+    params.references,
+    ENGINE_OWNED_WORKFLOW_KEYS,
+  );
   const plannedWorkflowDoc = { ...recomputed, ...safeReferences };
 
   // ── Plan: lifecycle event (workflow-cancelled) ───────────────────────────

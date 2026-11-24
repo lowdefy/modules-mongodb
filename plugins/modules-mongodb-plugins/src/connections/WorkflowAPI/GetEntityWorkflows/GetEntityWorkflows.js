@@ -7,6 +7,7 @@ import {
 } from "../../shared/render/resolveActionAccess.js";
 import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js";
+import { pruneFormData } from "../../shared/render/viewableFormData.js";
 
 /**
  * GetEntityWorkflows — server-side replacement for the get-entity-workflows.yaml
@@ -20,7 +21,8 @@ import deriveGroupStatus from "../../shared/phases/planners/deriveGroupStatus.js
  * Params: { entity: { connection_id, id } }
  *
  * Response: { workflows: [...] }
- *   Each workflow: { _id, workflow_type, status, groups: [...], ...doc fields }
+ *   Each workflow: { _id, workflow_type, status, groups: [...], ...doc fields,
+ *     form_data pruned to the visible actions' slices }
  *   Each group: { id, order, title, icon, link, action_group, workflow_type, workflow_id, actions: [...] }
  *   Each action card: { _id, kind, type, status, allowed, message, link }
  */
@@ -192,6 +194,10 @@ async function GetEntityWorkflows(lowdefyContext) {
 
     return {
       ...wfDoc,
+      form_data: pruneFormData({
+        formData: wfDoc.form_data,
+        actions: visibleActions.map(({ action }) => action),
+      }),
       title,
       entity_link,
       groups: groupEntries,

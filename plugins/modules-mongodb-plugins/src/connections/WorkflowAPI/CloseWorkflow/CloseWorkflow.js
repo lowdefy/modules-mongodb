@@ -8,20 +8,10 @@ import commitPlan from "../../shared/phases/commitPlan.js";
 import runTrackerCascade from "../../shared/phases/runTrackerCascade.js";
 import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js";
 import { WorkflowEngineError } from "../../shared/errors.js";
-
-// Fields that may NOT be overwritten by payload.references — engine-owned on
-// the workflow doc (carried over from the prior handler).
-const RESERVED_WORKFLOW_KEYS = [
-  "_id",
-  "workflow_id",
-  "type",
-  "workflow_type",
-  "entity",
-  "status",
-  "form_data",
-  "created",
-  "updated",
-];
+import {
+  ENGINE_OWNED_WORKFLOW_KEYS,
+  omitKeys,
+} from "../../shared/engineOwnedKeys.js";
 
 const TERMINAL_STAGES = ["done", "not-required"];
 
@@ -118,10 +108,10 @@ async function CloseWorkflow(lowdefyContext) {
     now,
   });
 
-  const safeReferences = { ...(params.references ?? {}) };
-  for (const key of RESERVED_WORKFLOW_KEYS) {
-    delete safeReferences[key];
-  }
+  const safeReferences = omitKeys(
+    params.references,
+    ENGINE_OWNED_WORKFLOW_KEYS,
+  );
   const plannedWorkflowDoc = { ...recomputed, ...safeReferences };
 
   // ── Plan: lifecycle event (workflow-closed) ──────────────────────────────

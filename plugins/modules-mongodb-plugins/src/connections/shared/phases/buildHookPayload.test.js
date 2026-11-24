@@ -26,6 +26,16 @@ function baseContext(overrides = {}) {
 }
 
 describe("buildHookPayload", () => {
+  test("current_key is the action's own key, not a client-sent param", () => {
+    const payload = buildHookPayload(
+      baseContext({
+        params: { current_key: "forged" },
+        action: { _id: "A1", type: "qualify", key: "k1" },
+      }),
+    );
+    expect(payload.current_key).toBe("k1");
+  });
+
   test("builds the full payload shape (no result) — signal present, no interaction or current_status", () => {
     const ctx = baseContext();
     const payload = buildHookPayload(ctx);

@@ -125,7 +125,6 @@ function emitSubmitEndpoint(
   const properties = {
     action_id: { _payload: "action_id" },
     signal: { _payload: "signal" },
-    current_key: { _payload: "current_key" },
     fields: { _payload: "fields" },
     form: { _payload: "form" },
     form_review: { _payload: "form_review" },
@@ -176,8 +175,12 @@ function emitSubmitEndpoint(
 // loads the action by id and reads type/kind off the doc, so no per-action-type
 // granularity is needed. type: Api (client-callable) — the handler's load-phase
 // edit-verb gate is the access authority, same posture as submit. The endpoint
-// is signal-less and carries no form/interaction/action_type keys.
+// is signal-less and carries no form/interaction/action_type keys. It carries
+// the workflow's own render slices (no ancestors — a fields edit never
+// cascades): the handler re-renders the action's status_map cell against the
+// new field values, and status_map only reaches the engine via render_config.
 function emitFieldsEndpoint(workflow) {
+  const ownSlices = emitWorkflowRenderSlices(workflow);
   return {
     id: `${workflow.type}-update-fields`,
     type: "Api",
@@ -192,6 +195,9 @@ function emitFieldsEndpoint(workflow) {
           // needs (the component builds the id from it at runtime).
           workflow_type: workflow.type,
           fields: { _payload: "fields" },
+          ...(ownSlices
+            ? { render_config: { [workflow.type]: ownSlices } }
+            : {}),
         },
       },
       {

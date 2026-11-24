@@ -103,6 +103,25 @@ describe("tenant scoping", () => {
     ).toBe("blocked");
   });
 
+  test("updateOne can't move a doc out of the org — $set of the tenant field is overridden", async () => {
+    await bulkWriteActions({
+      mongoDb: mongo.db,
+      collection: "actions",
+      operations: [
+        {
+          updateOne: {
+            filter: { _id: "mine" },
+            update: { $set: { stage: "done", organizationId: "org-b" } },
+          },
+        },
+      ],
+      tenant,
+    });
+    expect(
+      await mongo.db.collection("actions").findOne({ _id: "mine" }),
+    ).toMatchObject({ stage: "done", organizationId: "org-a" });
+  });
+
   test("updateMany / deleteOne / deleteMany filters are tenant-merged", async () => {
     await bulkWriteActions({
       mongoDb: mongo.db,

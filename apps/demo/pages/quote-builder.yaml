@@ -241,8 +241,6 @@ _ref:
                           action_id:
                             _url_query: action_id
                           signal: submit
-                          current_key:
-                            _state: current_action.key
                       messages:
                         success: Quote sent for approval.
                     - id: back_to_deal
@@ -277,8 +275,6 @@ _ref:
                           action_id:
                             _url_query: action_id
                           signal: approve
-                          current_key:
-                            _state: current_action.key
                       messages:
                         success: Quote approved.
                     - id: back_to_deal_approve
@@ -314,8 +310,6 @@ _ref:
                           action_id:
                             _url_query: action_id
                           signal: request_changes
-                          current_key:
-                            _state: current_action.key
                       messages:
                         success: Changes requested.
                     - id: back_to_deal_changes

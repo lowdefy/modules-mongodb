@@ -26,13 +26,19 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  *
  * Params: { reference_field, reference_value }
  *
- * Response: array of event docs with { actions[], title, description, info }
+ * Response: array of events { _id, type, date, created, files, title,
+ *   description, info, actions[], <display_key> } — other apps' display
+ *   blocks and event metadata are not returned.
  *   Each event.action card: { _id, kind, status, link, message, updated }
  */
 async function GetEventsTimeline(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
   const { params, mongoDb, connection, tenant } = context;
   const { reference_field, reference_value } = params;
+  // A null target (e.g. the entity id hasn't resolved yet) has no timeline.
+  // Matching on it would turn `{ [field]: null }` into "every event without
+  // the field" — most of the org's activity on other entity types.
+  if (reference_value == null) return [];
   const display_key = connection.display_key;
   const userRoles = context.user?.roles;
   const eventsCollection = connection.eventsCollection ?? "log-events";
@@ -252,7 +258,26 @@ async function GetEventsTimeline(lowdefyContext) {
         },
       },
     },
-    { $project: { author_contact: 0 } },
+    // ── Ship only what the timeline renders ──
+    // Events carry every app's display block at the top level, and an
+    // internal comment is written only into its own app's block — returning
+    // the whole doc would hand another app's internal comments (and event
+    // metadata) to this app's client. Keep this app's block and the fields
+    // the EventsTimeline block reads.
+    {
+      $project: {
+        _id: 1,
+        type: 1,
+        date: 1,
+        created: 1,
+        files: 1,
+        title: 1,
+        description: 1,
+        info: 1,
+        actions: 1,
+        [display_key]: 1,
+      },
+    },
   ];
 
   const rawEvents = await mongoDb

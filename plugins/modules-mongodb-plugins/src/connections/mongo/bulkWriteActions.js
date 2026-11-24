@@ -1,10 +1,11 @@
-import { scopeQuery, stampDoc } from "./tenantScope.js";
+import { scopeQuery, stampDoc, stampUpdate } from "./tenantScope.js";
 
 /**
  * Apply the tenant verdict to every bulk operation: insert documents (and
  * replacement docs) are stamped; update/delete/replace filters are `$and`-
- * merged — so no op in the batch can read, write, or spawn a doc outside the
- * org wall (tenant-wall contract). An op kind outside the known set throws:
+ * merged; update documents pin the tenant field — so no op in the batch can
+ * read, write, spawn, or move a doc outside the org wall (tenant-wall
+ * contract). An op kind outside the known set throws:
  * silently passing it through would be a hole in the wall.
  *
  * @param {Array<object>} operations — driver bulkWrite operations.
@@ -23,6 +24,13 @@ function scopeOperations(operations, tenant) {
         };
       case "updateOne":
       case "updateMany":
+        return {
+          [kind]: {
+            ...spec,
+            filter: scopeQuery(spec.filter, tenant),
+            update: stampUpdate(spec.update, tenant),
+          },
+        };
       case "deleteOne":
       case "deleteMany":
         return { [kind]: { ...spec, filter: scopeQuery(spec.filter, tenant) } };
