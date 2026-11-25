@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-support
 
+## 2.1.1
+
 ## 2.1.0
 
 ## 2.0.1

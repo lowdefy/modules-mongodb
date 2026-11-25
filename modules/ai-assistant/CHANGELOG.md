@@ -1,5 +1,11 @@
 # @lowdefy/modules-mongodb-ai-assistant
 
+## 2.1.1
+
+### Patch Changes
+
+- [#344](https://github.com/lowdefy/modules-mongodb/pull/344) [`5d7db6a`](https://github.com/lowdefy/modules-mongodb/commit/5d7db6a296d6b41387dc85d66220c384c2a1524c) Thanks [@machielvdw](https://github.com/machielvdw)! - **`composer_note: false` no longer warns on every page.** Hiding the note under the chat's composer passed `false` to a Paragraph as its text, so the dev server showed `Block "Paragraph" property "content" must be type "string"` on every page with the chat panel. The note's text is now an empty string when the var is `false`, and the note stays hidden as before. Nothing to change on upgrade.
+
 ## 2.1.0
 
 ## 2.0.1
