@@ -26,9 +26,6 @@ function makeWorkflowsConfig() {
         {
           type: "qualify",
           kind: "form",
-          status_map: {
-            done: { "test-app": { message: "Owner {{ assignees[0] }}" } },
-          },
           access: {
             "test-app": {
               view: true,
@@ -204,9 +201,23 @@ test("null clears a field", async () => {
 
 test("re-renders the status-map cell against the new field values", async () => {
   await seed();
+  // status_map is not on the connection's workflowsConfig — it rides the
+  // emitted endpoint's render_config, as in production.
   await UpdateActionFields(
     buildContext({
-      request: { action_id: "A1", fields: { assignees: ["u-7"] } },
+      request: {
+        action_id: "A1",
+        fields: { assignees: ["u-7"] },
+        render_config: {
+          onboarding: {
+            qualify: {
+              status_map: {
+                done: { "test-app": { message: "Owner {{ assignees[0] }}" } },
+              },
+            },
+          },
+        },
+      },
     }),
   );
   const doc = await mongo.db.collection("actions").findOne({ _id: "A1" });

@@ -1,4 +1,4 @@
-import { scopeQuery } from "./tenantScope.js";
+import { scopeQuery, stampUpdate } from "./tenantScope.js";
 
 /**
  * Wraps the native driver `findOneAndUpdate` with `returnDocument: "after"`.
@@ -12,7 +12,8 @@ import { scopeQuery } from "./tenantScope.js";
  * `tenant` is the framework tenant verdict `{ field, value }` (or null): when
  * set, the filter is `$and`-merged with the tenant clause so an update can
  * never claim another org's doc (tenant-wall contract). A cross-org target
- * surfaces as the same `null` miss. No upsert semantics here — `upsert` is
+ * surfaces as the same `null` miss. The update itself pins the tenant field
+ * (`stampUpdate`), so a `$set` can't move the doc out of the org. No upsert semantics here — `upsert` is
  * never passed, so a scoped miss can't spawn a doc.
  */
 async function findOneAndUpdateDoc({
@@ -25,7 +26,7 @@ async function findOneAndUpdateDoc({
 }) {
   const result = await mongoDb
     .collection(collection)
-    .findOneAndUpdate(scopeQuery(filter, tenant), update, {
+    .findOneAndUpdate(scopeQuery(filter, tenant), stampUpdate(update, tenant), {
       returnDocument: "after",
       session,
     });

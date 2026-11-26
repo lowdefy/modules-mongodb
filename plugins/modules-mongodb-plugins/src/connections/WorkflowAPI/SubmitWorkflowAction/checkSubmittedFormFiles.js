@@ -18,23 +18,24 @@ import UserError from "./UserError.js";
  * code and is not checked.
  *
  * The slot is found as planFormDataMerge finds it: `form_data[type]`, or
- * `form_data[type][current_key]` for a keyed action.
+ * `form_data[type][key]` for a keyed action, with the key taken from the
+ * loaded action.
  *
  * @param {Object} args
- * @param {Object} args.params — submit params; reads `form`, `form_review`,
- *   `current_key`.
+ * @param {Object} args.params — submit params; reads `form` and `form_review`.
  * @param {import('../../shared/phases/types.js').LoadedState} args.loadedState
  * @param {Object} [args.user] — the session user; reads `organization_id`.
  * @throws {UserError} naming the field, when a file is refused.
  */
 function checkSubmittedFormFiles({ params, loadedState, user }) {
-  const typeSlot =
-    loadedState.workflow.form_data?.[loadedState.targetAction.type];
-  const storedSlot = params.current_key
-    ? isPlainObject(typeSlot)
-      ? typeSlot[params.current_key]
-      : undefined
-    : typeSlot;
+  const { type, key } = loadedState.targetAction;
+  const typeSlot = loadedState.workflow.form_data?.[type];
+  const storedSlot =
+    key != null
+      ? isPlainObject(typeSlot)
+        ? typeSlot[key]
+        : undefined
+      : typeSlot;
   const storedKeys = new Set(
     listFormFiles(storedSlot).map(({ file }) => file.key),
   );

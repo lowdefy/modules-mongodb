@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import getMongoDb from "../../mongo/getMongoDb.js";
+import assertFilterParams from "./assertFilterParams.js";
 
 /**
  * Shared invocation-setup step (design D7/D8/D11; task 15).
@@ -38,6 +39,10 @@ import getMongoDb from "../../mongo/getMongoDb.js";
  * every `mongo/` wrapper call so all reads are org-scoped and all writes are
  * org-stamped (tenant-wall contract).
  *
+ * Params that land in a Mongo filter are checked to be scalar ids
+ * (`assertFilterParams`) before anything is read, so no client payload can
+ * smuggle a query operator into a handler's lookup.
+ *
  * `getMongoDb` is async (first call awaits `connect` + the `hello` topology
  * probe, D11), so the context is built at handler entry — never at module
  * scope.
@@ -60,6 +65,8 @@ async function createEngineContext(lowdefyContext) {
     requestId,
     tenant = null,
   } = lowdefyContext;
+
+  assertFilterParams(params);
 
   const user = connection?.user;
 

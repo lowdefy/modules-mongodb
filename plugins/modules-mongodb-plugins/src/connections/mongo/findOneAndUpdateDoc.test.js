@@ -74,6 +74,17 @@ describe("tenant scoping", () => {
     expect(after.n).toBe(1);
   });
 
+  test("an update can't move the doc out of the org — $set of the tenant field is overridden", async () => {
+    const doc = await findOneAndUpdateDoc({
+      mongoDb: mongo.db,
+      collection: "docs",
+      filter: { _id: "mine" },
+      update: { $set: { n: 2, organizationId: "org-b" } },
+      tenant,
+    });
+    expect(doc).toMatchObject({ _id: "mine", n: 2, organizationId: "org-a" });
+  });
+
   test("null tenant leaves the filter unchanged", async () => {
     const doc = await findOneAndUpdateDoc({
       mongoDb: mongo.db,

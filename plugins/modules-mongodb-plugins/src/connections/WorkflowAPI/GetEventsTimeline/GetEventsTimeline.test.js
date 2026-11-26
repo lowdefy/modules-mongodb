@@ -205,6 +205,64 @@ describe("basic return shape", () => {
     expect(result).toEqual([]);
   });
 
+  test("returns only the target's events, not another entity's", async () => {
+    await seedEvent({ _id: "e1", reference_value: "lot-1" });
+    await seedEvent({ _id: "e2", reference_value: "lot-2" });
+    const result = await GetEventsTimeline(
+      buildContext({
+        request: { reference_field: "lot_ids", reference_value: "lot-1" },
+      }),
+    );
+    expect(result.map((e) => e._id)).toEqual(["e1"]);
+  });
+
+  test("a missing reference_value returns [] instead of matching every event without the field", async () => {
+    await seedEvent({
+      _id: "e1",
+      reference_field: "deal_ids",
+      reference_value: "d-1",
+    });
+    for (const reference_value of [null, undefined]) {
+      const result = await GetEventsTimeline(
+        buildContext({
+          request: { reference_field: "lot_ids", reference_value },
+        }),
+      );
+      expect(result).toEqual([]);
+    }
+  });
+
+  test("another app's display block (e.g. its internal comment) and event metadata are not returned", async () => {
+    await mongo.db.collection("log-events").insertOne({
+      _id: "e1",
+      lot_ids: "lot-1",
+      action_ids: [],
+      type: "action-submit",
+      date: new Date("2026-05-01T10:00:00Z"),
+      created: {
+        timestamp: new Date("2026-05-01T10:00:00Z"),
+        user: { id: "u1" },
+      },
+      metadata: { internal_note: "x" },
+      "test-app": { title: "Submitted", description: "Shared comment" },
+      "team-app": { title: "Submitted", description: "Internal-only comment" },
+    });
+    const [event] = await GetEventsTimeline(
+      buildContext({
+        request: { reference_field: "lot_ids", reference_value: "lot-1" },
+      }),
+    );
+    expect(event).toMatchObject({
+      _id: "e1",
+      type: "action-submit",
+      title: "Submitted",
+      description: "Shared comment",
+      actions: [],
+    });
+    expect(event).not.toHaveProperty("team-app");
+    expect(event).not.toHaveProperty("metadata");
+  });
+
   test("returns events with title, description, info display fields from display_key block", async () => {
     await seedEvent({
       _id: "ev-1",

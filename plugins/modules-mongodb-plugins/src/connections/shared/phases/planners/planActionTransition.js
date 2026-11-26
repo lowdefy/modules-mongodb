@@ -3,6 +3,7 @@ import resolveSignal from "../../fsm/resolveSignal.js";
 import computeEngineLinks from "../../render/computeEngineLinks.js";
 import renderStatusMap from "../../render/renderStatusMap.js";
 import deepMerge from "./deepMerge.js";
+import { ENGINE_OWNED_ACTION_KEYS, omitKeys } from "../../engineOwnedKeys.js";
 
 // The action-level universal fields. On the UPDATE path they are stripped for a
 // USER submit (`source: 'user'`, any kind) — a user edits assignees/due_date
@@ -13,19 +14,20 @@ import deepMerge from "./deepMerge.js";
 const UNIVERSAL_FIELDS = ["assignees", "due_date"];
 
 /**
- * Apply the source-based universal-fields rule to the update-path `fields` bag:
- * strip `assignees` / `due_date` for a user-driven submit, pass them through for
- * hook/cascade orchestration (`source !== "user"`). All other keys pass through
- * verbatim regardless of source (pre-hook data seeding, tracker child-link
- * forwarding). The create/upsert path does NOT call this — seeding onto a
- * freshly-spawned action is initialization, not a form-submit clobber.
+ * Apply the source-based rule to the update-path `fields` bag. A user-driven
+ * submit's bag comes straight from the client payload, so it is stripped of
+ * the universal fields and of every engine-owned key (`ENGINE_OWNED_ACTION_KEYS`
+ * — otherwise a client could forge `status`, or retarget the `_id`-filtered
+ * write onto another action). Hook/cascade orchestration (`source !== "user"`)
+ * is server-authored and passes through verbatim (pre-hook data seeding,
+ * tracker child-link forwarding). The create/upsert path does NOT call this —
+ * seeding onto a freshly-spawned action is initialization, not a form-submit
+ * clobber.
  */
 function applyUpdateFieldsRule(fields, source) {
   if (fields == null) return {};
   if (source !== "user") return fields;
-  const filtered = { ...fields };
-  for (const key of UNIVERSAL_FIELDS) delete filtered[key];
-  return filtered;
+  return omitKeys(fields, [...UNIVERSAL_FIELDS, ...ENGINE_OWNED_ACTION_KEYS]);
 }
 
 /**

@@ -136,15 +136,7 @@ export const workflowTest = base.extend({
       // field (part 38) — there is no interaction / target_status / force.
       async submit(
         action_id,
-        {
-          signal,
-          fields,
-          form,
-          form_review,
-          comment,
-          current_key,
-          metadata,
-        } = {},
+        { signal, fields, form, form_review, comment, metadata } = {},
         options = {},
       ) {
         const endpointId = await submitEndpointId(action_id);
@@ -155,7 +147,6 @@ export const workflowTest = base.extend({
           form,
           form_review,
           comment,
-          current_key,
           metadata,
         };
         return post(endpointId, payload, options);

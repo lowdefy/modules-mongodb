@@ -400,6 +400,44 @@ describe("invokePreHook — prehook_redirect", () => {
     });
   });
 
+  test("keyed target: an entry matching the loaded (type, key) is a redirect even when the client omits current_key", async () => {
+    const callApi = jest.fn(async () => ({
+      actions: [{ type: "install-step", key: "k1", signal: "approve" }],
+      event_overrides: {},
+      form_overrides: {},
+    }));
+    const params = makeParams({
+      current_key: undefined,
+      hooks: { submit: { pre: "h" } },
+    });
+    const loadedState = makeLoadedState({
+      targetAction: { _id: "A1", type: "install-step", key: "k1" },
+    });
+    await expect(
+      invokePreHook(loadedState, params, user, callApi),
+    ).rejects.toMatchObject({ code: "prehook_redirect" });
+  });
+
+  test("keyed target: a client-sent current_key can't make a sibling instance look like the current action", async () => {
+    const callApi = jest.fn(async () => ({
+      actions: [{ type: "install-step", key: "k2", signal: "approve" }],
+      event_overrides: {},
+      form_overrides: {},
+    }));
+    const params = makeParams({
+      current_key: "k2",
+      hooks: { submit: { pre: "h" } },
+    });
+    const loadedState = makeLoadedState({
+      targetAction: { _id: "A1", type: "install-step", key: "k1" },
+    });
+    await expect(
+      invokePreHook(loadedState, params, user, callApi),
+    ).resolves.toMatchObject({
+      actions: [{ type: "install-step", key: "k2", signal: "approve" }],
+    });
+  });
+
   test("entry with absent key treated as key:null for redirect check — matches current action", async () => {
     // Entry has no key field; absent key normalises to null.
     const callApi = jest.fn(async () => ({

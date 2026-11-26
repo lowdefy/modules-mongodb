@@ -313,6 +313,89 @@ describe("cancel sweep + lifecycle", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// payload.references — merged onto the workflow doc minus engine-owned keys
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("payload references", () => {
+  test("engine-owned keys in references are dropped; other references land", async () => {
+    await seedWorkflow({
+      overrides: {
+        parent_action_id: null,
+        parent_workflow_id: null,
+        parent_entity: null,
+        key: null,
+        display_order: 1,
+      },
+    });
+    await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+    await CancelWorkflow(
+      buildContext({
+        request: {
+          workflow_id: "wf-1",
+          references: {
+            _id: "wf-other",
+            workflow_type: "other",
+            title: "Forged",
+            key: "forged",
+            display_order: 99,
+            entity: { connection_id: "x", id: "y" },
+            form_data: { forged: true },
+            parent_action_id: "tracker-elsewhere",
+            parent_workflow_id: "wf-elsewhere",
+            parent_entity: { connection_id: "x", id: "y" },
+            lead_ids: ["lead-1"],
+          },
+        },
+      }),
+    );
+
+    const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+    expect(wf).toMatchObject({
+      workflow_type: "onboarding",
+      title: "Onboarding",
+      key: null,
+      display_order: 1,
+      entity: { connection_id: "leads-collection", id: "lead-1" },
+      form_data: {},
+      parent_action_id: null,
+      parent_workflow_id: null,
+      parent_entity: null,
+      lead_ids: ["lead-1"],
+    });
+    expect(
+      await mongo.db
+        .collection("workflows")
+        .countDocuments({ _id: "wf-other" }),
+    ).toBe(0);
+  });
+
+  test("under a tenant, references can't move the workflow to another org", async () => {
+    await seedWorkflow({ overrides: { organizationId: "org-a" } });
+    await seedAction({
+      _id: "a1",
+      type: "qualify",
+      stage: "action-required",
+      extra: { organizationId: "org-a" },
+    });
+
+    await CancelWorkflow({
+      ...buildContext({
+        request: {
+          workflow_id: "wf-1",
+          references: { organizationId: "org-b" },
+        },
+      }),
+      tenant: { field: "organizationId", value: "org-a" },
+    });
+
+    const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+    expect(wf.organizationId).toBe("org-a");
+    expect(wf.status[0].stage).toBe("cancelled");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Preconditions
 // ─────────────────────────────────────────────────────────────────────────────
 

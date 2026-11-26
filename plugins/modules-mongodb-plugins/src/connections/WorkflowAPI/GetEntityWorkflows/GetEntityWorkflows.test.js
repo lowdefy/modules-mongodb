@@ -398,6 +398,83 @@ describe("access drop", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// form_data — only the visible actions' slices ship
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("form_data pruning", () => {
+  const deniedAccess = {
+    access: { "test-app": { view: false, edit: false, review: ["reviewer"] } },
+  };
+
+  test("submitted values for actions the user can't see are not returned", async () => {
+    await seedWorkflow({
+      overrides: {
+        form_data: {
+          qualify: { budget: 100 },
+          "review-only": { secret: "s" },
+          kickoff: { k1: { date: "d1" }, k2: { date: "d2" } },
+        },
+      },
+    });
+    await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
+    await seedAction({
+      _id: "a2",
+      type: "review-only",
+      action_group: "phase-1",
+      extra: deniedAccess,
+    });
+    await seedAction({
+      _id: "a3",
+      type: "kickoff",
+      action_group: "phase-2",
+      key: "k1",
+    });
+    await seedAction({
+      _id: "a4",
+      type: "kickoff",
+      action_group: "phase-2",
+      key: "k2",
+      extra: deniedAccess,
+    });
+
+    const result = await GetEntityWorkflows(
+      buildContext({
+        request: {
+          entity: { connection_id: "leads-collection", id: "lead-1" },
+        },
+      }),
+    );
+
+    expect(result.workflows[0].form_data).toEqual({
+      qualify: { budget: 100 },
+      kickoff: { k1: { date: "d1" } },
+    });
+  });
+
+  test("a workflow with no visible actions returns empty form_data", async () => {
+    await seedWorkflow({
+      overrides: { form_data: { "review-only": { secret: "s" } } },
+    });
+    await seedAction({
+      _id: "a1",
+      type: "review-only",
+      action_group: "phase-1",
+      extra: deniedAccess,
+    });
+
+    const result = await GetEntityWorkflows(
+      buildContext({
+        request: {
+          entity: { connection_id: "leads-collection", id: "lead-1" },
+        },
+      }),
+    );
+
+    expect(result.workflows[0].form_data).toEqual({});
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Link collapse
 // ─────────────────────────────────────────────────────────────────────────────
 

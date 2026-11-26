@@ -33,14 +33,14 @@ function normaliseKey(key) {
  * An entry redirects the current action iff:
  *   - its `action_id` equals the target action's `_id`, OR
  *   - its `(type, key)` — key-normalised — equals the target action's
- *     `(type, current_key-normalised)`.
+ *     `(type, key)` as loaded.
  *
  * A `{ type: <currentType>, key: <other> }` entry is a sibling keyed instance
  * (a legal auxiliary target) and must NOT be rejected.
  *
  * @param {object} entry - a PreHookResult actions entry
  * @param {object} targetAction - the loaded target action doc
- * @param {string | null} currentKey - normalised current_key from params
+ * @param {string | null} currentKey - the loaded target action's normalised key
  * @returns {boolean}
  */
 function resolvesToCurrentAction(entry, targetAction, currentKey) {
@@ -101,7 +101,7 @@ async function invokePreHook(loadedState, params, user, callApi) {
   }
 
   const actions = raw.actions ?? [];
-  const currentKey = normaliseKey(params.current_key ?? null);
+  const currentKey = normaliseKey(loadedState.targetAction.key);
 
   // Validate each entry in the response (closed grammar + redirect check).
   for (const entry of actions) {

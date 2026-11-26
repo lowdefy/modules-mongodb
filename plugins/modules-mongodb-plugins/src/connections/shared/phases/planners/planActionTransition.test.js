@@ -161,9 +161,8 @@ test("form kind update: universal keys stripped; non-universal keys still writte
   expect(result.doc.custom_field).toBe(42);
 });
 
-test("tracker kind update: universal keys stripped; child-link fields still forwarded", () => {
+test("tracker kind cascade update: child-link fields forwarded", () => {
   const fields = {
-    assignees: ["u-2"],
     child_workflow_id: "cw-1",
     child_entity: { connection_id: "cc-1", id: "ce-1" },
   };
@@ -178,16 +177,64 @@ test("tracker kind update: universal keys stripped; child-link fields still forw
       kind: "tracker",
       tracker: { child_workflow_type: "child-type" },
     }),
+    source: "cascade",
     payload: { fields },
   });
-  // Universal key dropped.
-  expect(result.doc.assignees).toEqual(["orig"]);
   // Cascade child-link fields forwarded.
   expect(result.doc.child_workflow_id).toBe("cw-1");
   expect(result.doc.child_entity).toEqual({
     connection_id: "cc-1",
     id: "ce-1",
   });
+});
+
+test("user submit: engine-owned keys in fields are dropped; custom keys still written", () => {
+  const fields = {
+    _id: "a-other",
+    workflow_id: "wf-other",
+    type: "other-type",
+    kind: "check",
+    key: "k-forged",
+    action_group: "g-other",
+    status: [{ stage: "forged" }],
+    entity: { connection_id: "x", id: "y" },
+    created: "forged",
+    updated: "forged",
+    access: { demo: { view: true, edit: true, review: true } },
+    workflow_type: "other-workflow",
+    tracker: { child_workflow_type: "x" },
+    child_workflow_id: "cw-forged",
+    child_entity: { connection_id: "x", id: "y" },
+    title: "forged",
+    group_index: 99,
+    decl_index: 99,
+    custom_field: 42,
+  };
+  const result = plan({ payload: { fields } });
+  expect(result.doc).toMatchObject({
+    _id: "a-1",
+    workflow_id: "wf-1",
+    type: "qualify",
+    kind: "form",
+    key: null,
+    updated: now,
+    access: { demo: { view: true, edit: true } },
+    workflow_type: "onboarding",
+    tracker: null,
+    custom_field: 42,
+  });
+  // The submit's own transition is the status head — a forged status array
+  // can't replace the state machine's result.
+  expect(result.doc.status).toHaveLength(2);
+  expect(result.doc.status[0]).toMatchObject({ event_id: "e1" });
+  expect(result.doc.status[1]).toMatchObject({ stage: "action-required" });
+  expect(result.doc).not.toHaveProperty("entity");
+  expect(result.doc).not.toHaveProperty("action_group");
+  expect(result.doc).not.toHaveProperty("created");
+  expect(result.doc).not.toHaveProperty("child_workflow_id");
+  expect(result.doc).not.toHaveProperty("child_entity");
+  expect(result.doc.title).toBeUndefined();
+  expect(result.doc.group_index).toBeUndefined();
 });
 
 test("auxiliary-source update: universal keys pass through (hook seeding path, Part 65 D1)", () => {

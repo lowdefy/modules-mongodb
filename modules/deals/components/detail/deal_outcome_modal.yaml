@@ -95,7 +95,6 @@ events:
               action_id:
                 _state: deal_outcome_action._id
               signal: submit
-              current_key: null
               form:
                 outcome_type: won
                 reason:

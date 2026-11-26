@@ -85,8 +85,6 @@ _ref:
                   action_id:
                     _url_query: action_id
                   signal: submit
-                  current_key:
-                    _state: current_action.key
             - id: back_to_thing
               type: Link
               params:
@@ -114,8 +112,6 @@ _ref:
                   action_id:
                     _url_query: action_id
                   signal: approve
-                  current_key:
-                    _state: current_action.key
             - id: back_to_thing_approve
               type: Link
               params:

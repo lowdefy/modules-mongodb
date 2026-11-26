@@ -44,3 +44,22 @@ export function stampDoc(doc, tenant) {
   if (!tenant) return doc;
   return { ...doc, [tenant.field]: tenant.value };
 }
+
+/**
+ * Pin the tenant field inside an update so no `$set` can move a doc out of the
+ * org: scoping the filter alone only controls which doc is matched, not what
+ * the update writes onto it. The tenant clause is merged AFTER the caller's
+ * `$set`, so a caller-authored value on the tenant field is overridden.
+ *
+ * @param {Object} update — an operator-style update document.
+ * @param {{ field: string, value: string } | null} tenant — the framework
+ *   tenant verdict, or null (no pin).
+ * @returns {Object} the pinned update.
+ */
+export function stampUpdate(update, tenant) {
+  if (!tenant) return update;
+  return {
+    ...update,
+    $set: { ...(update.$set ?? {}), [tenant.field]: tenant.value },
+  };
+}

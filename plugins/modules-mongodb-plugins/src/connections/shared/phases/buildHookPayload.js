@@ -27,7 +27,7 @@ function buildHookPayload({ params, workflow, action, user, result }) {
     workflow_type: workflow.workflow_type,
     action_id: action._id,
     action_type: action.type,
-    current_key: params.current_key ?? null,
+    current_key: action.key ?? null,
     signal: params.signal,
     form: params.form,
     form_review: params.form_review,
