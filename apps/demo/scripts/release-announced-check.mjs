@@ -452,7 +452,8 @@ try {
     stalledNotices.length,
   );
 
-  // 6. A media file whose copy fails is logged and left; the notices still go.
+  // 6. Media files whose copies fail are logged and left; the notices still go.
+  // Three of them, so the copies can't use up a chain's calls before the notices.
   const withMedia = await announce({
     version: "1.3.0",
     audience: {
@@ -460,13 +461,11 @@ try {
       organizations: { mode: "only", ids: [O3] },
     },
     extra: {
-      media: [
-        {
-          name: "shot.png",
-          content_type: "image/png",
-          url: "https://127.0.0.1/shot.png",
-        },
-      ],
+      media: ["shot.png", "second.png", "third.png"].map((name) => ({
+        name,
+        content_type: "image/png",
+        url: `https://127.0.0.1/${name}`,
+      })),
     },
   });
   check(
@@ -484,10 +483,13 @@ try {
   });
   const mediaNote = await notes.findOne({ _id: noteId("1.3.0") });
   check(
-    "the file keeps its public key and stays not copied",
-    mediaNote?.media?.[0]?.key ===
-      `release-notes/${noteId("1.3.0")}/shot.png` &&
-      mediaNote?.media?.[0]?.copied === false,
+    "each file keeps its public key and stays not copied",
+    mediaNote?.media?.length === 3 &&
+      mediaNote.media.every(
+        (file) =>
+          file.key === `release-notes/${noteId("1.3.0")}/${file.name}` &&
+          file.copied === false,
+      ),
     mediaNote?.media,
   );
 
